@@ -14,7 +14,7 @@ const BreadCrumbComponent = () => {
 
   // Extract and process the path, excluding 'app' for display purposes
 const pathSegments =
-  location.pathname === "/app/dashboard"
+  location.pathname === "/dashboard"
     ? ["dashboard"]
     : location.pathname
         .split("/")
@@ -27,8 +27,8 @@ const pathSegments =
 
     // Build the navigation path
     const path = pathSegments.slice(0, index + 1).join("/");
-    const isDirectAppPath = location.pathname.startsWith(`/app/${path}`) && !location.pathname.includes("/dashboard");
-    const fullPath = isDirectAppPath ? `/app/${path}` : `/app/dashboard/${path}`;
+    const isDirectAppPath = location.pathname.startsWith(`/${path}`) && !location.pathname.includes("/dashboard");
+    const fullPath = isDirectAppPath ? `/${path}` : `/dashboard/${path}`;
 
     // Capitalize for display
     const displayText = decodeURIComponent(segment)

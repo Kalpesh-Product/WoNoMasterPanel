@@ -19,10 +19,10 @@ const WebsitesLayout = () => {
   return (
     <TabLayout
       tabs={tabs}
-      basePath={"/app/dashboard/frontend-dashboard/websites"}
+      basePath={"/dashboard/company/websites"}
       defaultTabPath={"active"}
       scrollable={true}
-      hideTabsOnPaths={["/app/dashboard/frontend-dashboard/websites/active/"]}
+      hideTabsOnPaths={["/dashboard/company/websites/active/"]}
     />
   );
 };

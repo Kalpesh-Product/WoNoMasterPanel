@@ -167,6 +167,7 @@ export const routes = createBrowserRouter([
                     element: <FrontendLayout />,
                     children: [
                       {
+                        index : true,
                         path: "",
                         element: <FrontendDashboard />,
                       },
