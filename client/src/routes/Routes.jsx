@@ -136,6 +136,7 @@ import Websites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/Websit
 import WebsitesLayout from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsitesLayout";
 import InActiveWebsites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/InActiveWebsites";
 import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsiteTemp";
+import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
 
 export const routes = createBrowserRouter([
   // {
@@ -163,127 +164,113 @@ export const routes = createBrowserRouter([
                     index: true,
                   },
                   {
-                    path: "company",
-                    element: <FrontendLayout />,
+                    path: "companies",
                     children: [
                       {
-                        index : true,
-                        path: "",
-                        element: <FrontendDashboard />,
+                        index: true,
+                        element: <Companies />, // ✅ NEW parent page for listing companies
                       },
                       {
-                        path: "select-theme",
-                        element: <ThemeGrid />,
-                      },
-                      {
-                        path: "view-theme",
-                        element: <ViewTheme />,
-                      },
-                      {
-                        path: "live-demo",
-                        element: <PageDemo />,
-                      },
-                      // {
-                      //   path: "*",
-                      //   element: <ThemeGrid />,
-                      // },
-                      {
-                        path: "create-website",
-                        element: <CreateWebsite />,
-                      },
-                      {
-                        path: "websites",
-                        element: <WebsitesLayout />,
-                        children: [
-                          { path: "active", element: <Websites /> },
-                          { path: "inactive", element: <InActiveWebsites /> },
-                          { path: ":website", element: <EditWebsite /> },
-                          { path: "inactive/:website", element: <EditWebsiteTemp /> },
-                        ],
-                      },
-
-                      // {
-                      //   path: "select-theme/edit-theme/:templateName/:pageName",
-                      //   element: <EditTemplate />,
-                      // },
-                      {
-                        path: "edit-theme/:templateName/:pageName",
-                        element: <EditTemplate />,
-                      },
-                      {
-                        path: "data",
-                        element: <FrontendData />,
+                        path: ":companyId",
+                        element: <FrontendLayout />,
                         children: [
                           {
-                            path: "leads",
                             index: true,
-                            element: <FrontendLeads />,
+                            element: <FrontendDashboard />, // ✅ Existing dashboard now under companyId
                           },
                           {
-                            path: "asset-list",
-                            element: <DepartmentAssetCommon />,
+                            path: "select-theme",
+                            element: <ThemeGrid />,
                           },
                           {
-                            path: "website-issue-reports",
-                            element: <FrontendWebsiteIssueReports />,
+                            path: "view-theme",
+                            element: <ViewTheme />,
                           },
                           {
-                            path: "monthly-invoice-reports",
-                            element: <MonthlyInvoiceCommon />,
+                            path: "live-demo",
+                            element: <PageDemo />,
                           },
                           {
-                            path: "vendor",
-                            element: <VendorTable />,
+                            path: "create-website",
+                            element: <CreateWebsite />,
                           },
                           {
-                            path: "vendor/vendor-onboard",
-                            element: <Vendor />,
+                            path: "websites",
+                            element: <WebsitesLayout />,
+                            children: [
+                              { path: "active", element: <Websites /> },
+                              {
+                                path: "inactive",
+                                element: <InActiveWebsites />,
+                              },
+                              { path: ":website", element: <EditWebsite /> },
+                              {
+                                path: "inactive/:website",
+                                element: <EditWebsiteTemp />,
+                              },
+                            ],
                           },
                           {
-                            path: "vendor/:id",
-                            element: <ViewVendor />,
-                          },
-                        ],
-                      },
-                      {
-                        path: "settings",
-                        element: <FrontendSettings />,
-                        children: [
-                          {
-                            path: "bulk-upload",
-                            element: <DepartmentWiseBulkUpload />,
+                            path: "edit-theme/:templateName/:pageName",
+                            element: <EditTemplate />,
                           },
                           {
-                            path: "sops",
-                            element: <SopUpload />,
+                            path: "data",
+                            element: <FrontendData />,
+                            children: [
+                              {
+                                path: "leads",
+                                element: <FrontendLeads />,
+                                index: true,
+                              },
+                              {
+                                path: "asset-list",
+                                element: <DepartmentAssetCommon />,
+                              },
+                              {
+                                path: "website-issue-reports",
+                                element: <FrontendWebsiteIssueReports />,
+                              },
+                              {
+                                path: "monthly-invoice-reports",
+                                element: <MonthlyInvoiceCommon />,
+                              },
+                              { path: "vendor", element: <VendorTable /> },
+                              {
+                                path: "vendor/vendor-onboard",
+                                element: <Vendor />,
+                              },
+                              { path: "vendor/:id", element: <ViewVendor /> },
+                            ],
                           },
                           {
-                            path: "policies",
-                            element: <PolicyUpload />,
-                          },
-                        ],
-                      },
-                      {
-                        path: "finance",
-                        element: <FrontendFinLayout />,
-                        children: [
-                          {
-                            path: "budget",
-                            element: <BudgetPage />,
+                            path: "settings",
+                            element: <FrontendSettings />,
+                            children: [
+                              {
+                                path: "bulk-upload",
+                                element: <DepartmentWiseBulkUpload />,
+                              },
+                              { path: "sops", element: <SopUpload /> },
+                              { path: "policies", element: <PolicyUpload /> },
+                            ],
                           },
                           {
-                            path: "payment-schedule",
-                            element: <PaymentScheduleCommon />,
-                          },
-                          {
-                            path: "voucher",
-                            element: <Reimbursement />,
+                            path: "finance",
+                            element: <FrontendFinLayout />,
+                            children: [
+                              { path: "budget", element: <BudgetPage /> },
+                              {
+                                path: "payment-schedule",
+                                element: <PaymentScheduleCommon />,
+                              },
+                              { path: "voucher", element: <Reimbursement /> },
+                            ],
                           },
                         ],
                       },
                     ],
                   },
-      
                 ],
               },
 

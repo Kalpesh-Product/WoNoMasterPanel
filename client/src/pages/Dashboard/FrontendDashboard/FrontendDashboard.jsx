@@ -465,41 +465,38 @@ const FrontendDashboard = () => {
 
   const cardsConfigFrontend = [
     {
-    route: "create-website",
-    title: "Create Website",
-    icon: <LuHardDriveUpload />,
-  },
-  {
-    route: "websites",
-    title: "Edit website",
-    icon: <LuHardDriveUpload />,
-  },
-  {
-    route: "select-theme",
-    title: "New Themes",
-    icon: <CgWebsite />,
-  },
-  {
-    route: "finance",
-    title: "Finance",
-    icon: <SiCashapp />,
-  },
-  {
-    route: "data",
-    title: "Data",
-    icon: <SiGoogleadsense />,
-  },
-  {
-    route: "settings",
-    title: "Settings",
-    icon: <MdMiscellaneousServices />,
-  },
-];
+      route: "create-website",
+      title: "Create Website",
+      icon: <LuHardDriveUpload />,
+    },
+    {
+      route: "websites",
+      title: "Edit website",
+      icon: <LuHardDriveUpload />,
+    },
+    {
+      route: "select-theme",
+      title: "New Themes",
+      icon: <CgWebsite />,
+    },
+    {
+      route: "finance",
+      title: "Finance",
+      icon: <SiCashapp />,
+    },
+    {
+      route: "data",
+      title: "Data",
+      icon: <SiGoogleadsense />,
+    },
+    {
+      route: "settings",
+      title: "Settings",
+      icon: <MdMiscellaneousServices />,
+    },
+  ];
 
-  const allowedCards = filterPermissions(
-    cardsConfigFrontend,
-    userPermissions
-  );
+  const allowedCards = filterPermissions(cardsConfigFrontend, userPermissions);
 
   const techExpenseGraphConfig = [
     {
@@ -533,67 +530,61 @@ const FrontendDashboard = () => {
   );
 
   const pieChartConfig = [
-  {
-    key: PERMISSIONS.FRONTEND_NATION_WISE_SITE_VISITORS.value,
-    layout: 1,
-    border: true,
-    title: "Nation-wise site Visitors",
-    percent: true,
-    data: [],
-    options: [],
-    width: 500,
-  },
-  {
-    key: PERMISSIONS.FRONTEND_STATE_WISE_SITE_VISITORS.value,
-    layout: 1,
-    border: true,
-    title: "State-wise site Visitors",
-    percent: true,
-    data: [],
-    options: [],
-    width: 500,
-  },
-];
+    {
+      key: PERMISSIONS.FRONTEND_NATION_WISE_SITE_VISITORS.value,
+      layout: 1,
+      border: true,
+      title: "Nation-wise site Visitors",
+      percent: true,
+      data: [],
+      options: [],
+      width: 500,
+    },
+    {
+      key: PERMISSIONS.FRONTEND_STATE_WISE_SITE_VISITORS.value,
+      layout: 1,
+      border: true,
+      title: "State-wise site Visitors",
+      percent: true,
+      data: [],
+      options: [],
+      width: 500,
+    },
+  ];
 
-
-  const allowedPieCharts = filterPermissions(
-    pieChartConfig,
-    userPermissions
-  );
+  const allowedPieCharts = filterPermissions(pieChartConfig, userPermissions);
 
   const techWidgets = [
+    // {
+    //   layout: allowedSalesGraph.length,
+    //   widgets: allowedSalesGraph.map((config) => (
+    //     <WidgetSection
+    //       layout={1}
+    //       border
+    //       title={config.title}
+    //       titleLabel={config.titleLabel}>
+    //       <BarGraph data={config.data} options={config.options} />
+    //     </WidgetSection>
+    //   )),
+    // },
     {
-      layout: allowedSalesGraph.length,
-      widgets: allowedSalesGraph.map((config) => (
-        <WidgetSection
-          layout={1}
-          border
-          title={config.title}
-          titleLabel={config.titleLabel}
-        >
-          <BarGraph data={config.data} options={config.options} />
-        </WidgetSection>
+      layout: allowedCards.length,
+      widgets: allowedCards.map((config) => (
+        <Card icon={config.icon} title={config.title} route={config.route} />
       )),
     },
     {
-      layout: allowedCards.length,
-      widgets: allowedCards.map((config)=>  <Card
-          icon={config.icon}
-          title={config.title}
-          route={config.route}
-        />)
-    },
-    {
       layout: allowedPieCharts.length,
-      widgets: allowedPieCharts.map((config)=>
-       <WidgetSection layout={1} border title={config.title}>
+      widgets: allowedPieCharts.map((config) => (
+        <WidgetSection layout={1} border title={config.title}>
           <PieChartMui
             percent={config.percent} // Enable percentage display
             data={config.data} // Pass processed data
             options={config.options}
             width={config.width}
           />
-        </WidgetSection>)
+        </WidgetSection>
+      )),
     },
     {
       layout: allowedExpenseGraph.length,
@@ -605,29 +596,27 @@ const FrontendDashboard = () => {
               <Skeleton variant="text" width={200} height={30} />
               <Skeleton variant="rectangular" width="100%" height={300} />
             </Box>
-          }
-        >
-          {
-            allowedExpenseGraph.map((config)=>
+          }>
+          {allowedExpenseGraph.map((config) => (
             <YearlyGraph
-            data={config.data}
-            options={config.options}
-            title={config.title}
-            onYearChange={config.onYearChange}
-            titleAmount={config.titleAmount}
-          />)
-          }
+              data={config.data}
+              options={config.options}
+              title={config.title}
+              onYearChange={config.onYearChange}
+              titleAmount={config.titleAmount}
+            />
+          ))}
         </Suspense>,
       ],
     },
 
     {
       layout: allowedIssuesGraph.length,
-      widgets: allowedIssuesGraph.map((config)=>
-       <WidgetSection layout={config.layout} title={config.title} border>
+      widgets: allowedIssuesGraph.map((config) => (
+        <WidgetSection layout={config.layout} title={config.title} border>
           <LineGraph options={config.options} data={config.data} />
-        </WidgetSection>,
-        ),
+        </WidgetSection>
+      )),
     },
   ];
 
