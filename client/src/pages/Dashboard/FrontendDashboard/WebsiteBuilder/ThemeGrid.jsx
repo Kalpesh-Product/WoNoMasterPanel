@@ -134,7 +134,7 @@ const ThemeGrid = () => {
                   className="theme-grid w-full h-full overflow-hidden shadow-lg rounded-xl"
                   key={index}
                   onClick={() =>
-                    navigate("/app/dashboard/frontend-dashboard/view-theme", {
+                    navigate("/dashboard/company/view-theme", {
                       state: {
                         templateName: template.templateName,
                         pageName: template.pages[0]?.pageName,
@@ -157,7 +157,7 @@ const ThemeGrid = () => {
                 className="theme-grid w-full h-full overflow-hidden shadow-lg rounded-xl"
                 key={index}
                 onClick={() => {
-                  navigate("/app/dashboard/frontend-dashboard/view-theme", {
+                  navigate("/dashboard/company/view-theme", {
                     state: { image },
                   }); // Pass theme data
                   window.scrollTo({ top: 0, behavior: "instant" });

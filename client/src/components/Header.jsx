@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { queryClient } from "../main";
 import relativeTime from "dayjs/plugin/relativeTime";
 import dayjs from "dayjs";
+import WoNoLogo from "../assets/WONO_LOGO_Black_TP.png"
 
 
 const Header = ({
@@ -118,7 +119,7 @@ const Header = ({
               <img
                 onClick={() => navigate("dashboard")}
                 className="w-[70%] h-full object-contain cursor-pointer"
-                src={companyLogo?.logoUrl || biznestLogo}
+                src={ WoNoLogo}
                 alt="logo"
               />
               {!isMobile && (
@@ -154,7 +155,7 @@ const Header = ({
               /> */}
             </div>
 
-            <div className="flex w-full justify-end gap-4">
+            {/* <div className="flex w-full justify-end gap-4">
               <button
                 onClick={(e) => setNotificationAnchorEl(e.currentTarget)}
                 className="relative bg-[#1E3D73] text-white rounded-md "
@@ -173,11 +174,11 @@ const Header = ({
               <button className="bg-[#1E3D73] p-2 text-white rounded-md">
                 <MdOutlineMailOutline size={20} />
               </button>
-            </div>
+            </div> */}
           </>
         )}
         {/* <div className="flex items-center gap-4 w-[40%]"> */}
-        <div className="flex items-center gap-4 md:w-[45%] w-fit">
+        <div className="flex items-center gap-4 md:w-fit w-fit">
           <Avatar onClick={handleAvatarClick} className="cursor-pointer">
             {/* {auth.user.email === "abrar@biznest.co.in" ? ( */}
             {/* {auth?.user?.profilePicture?.url ? (
