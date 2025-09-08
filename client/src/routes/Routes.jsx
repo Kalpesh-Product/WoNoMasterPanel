@@ -137,6 +137,7 @@ import WebsitesLayout from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/
 import InActiveWebsites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/InActiveWebsites";
 import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsiteTemp";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOverview";
 
 export const routes = createBrowserRouter([
   // {
@@ -168,28 +169,20 @@ export const routes = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        element: <Companies />, // ✅ NEW parent page for listing companies
+                        element: <Companies />,
                       },
                       {
                         path: ":companyId",
+                        element: <CompanyOverview />, // ✅ NEW intermediate page
+                      },
+                      {
+                        path: ":companyId/website-builder", // ✅ move FrontendLayout here
                         element: <FrontendLayout />,
                         children: [
-                          {
-                            index: true,
-                            element: <FrontendDashboard />, // ✅ Existing dashboard now under companyId
-                          },
-                          {
-                            path: "select-theme",
-                            element: <ThemeGrid />,
-                          },
-                          {
-                            path: "view-theme",
-                            element: <ViewTheme />,
-                          },
-                          {
-                            path: "live-demo",
-                            element: <PageDemo />,
-                          },
+                          { index: true, element: <FrontendDashboard /> },
+                          { path: "select-theme", element: <ThemeGrid /> },
+                          { path: "view-theme", element: <ViewTheme /> },
+                          { path: "live-demo", element: <PageDemo /> },
                           {
                             path: "create-website",
                             element: <CreateWebsite />,
