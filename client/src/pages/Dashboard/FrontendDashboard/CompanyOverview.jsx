@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 
 const cards = [
   { title: "Website Builder", path: "website-builder" },
-  { title: "Nomad Listing", path: "nomad-listing" },
+  { title: "Nomad Listing", path: "nomad-listings" },
   { title: "POC Details", path: "poc-details" },
 ];
 

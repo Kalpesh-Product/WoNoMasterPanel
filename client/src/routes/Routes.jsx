@@ -141,6 +141,7 @@ import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
 import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOverview";
 import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
 import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
+import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
 
 export const routes = createBrowserRouter([
   // {
@@ -178,6 +179,15 @@ export const routes = createBrowserRouter([
                         path: ":companyId",
                         element: <CompanyOverview />, // ✅ NEW intermediate page
                       },
+                      {
+                        path: ":companyId/nomad-listings",
+                        element: <NomadListingsOverview />, // ✅ intermediate page
+                      },
+                      {
+                        path: ":companyId/nomad-listings/add",
+                        element: <NomadListing />, // ✅ actual form page
+                      },
+
                       {
                         path: ":companyId/website-builder", // ✅ move FrontendLayout here
                         element: <FrontendLayout />,
@@ -270,10 +280,10 @@ export const routes = createBrowserRouter([
                         ],
                       },
 
-                      {
-                        path: ":companyId/nomad-listing",
-                        element: <NomadListing />, // ✅ new page
-                      },
+                      // {
+                      //   path: ":companyId/nomad-listing",
+                      //   element: <NomadListing />, // ✅ new page
+                      // },
                       {
                         path: ":companyId/poc-details",
                         element: <PocDetails />, // ✅ new page
