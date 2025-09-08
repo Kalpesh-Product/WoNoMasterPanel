@@ -139,6 +139,8 @@ import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
 import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
 import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOverview";
+import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
+import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 
 export const routes = createBrowserRouter([
   // {
@@ -266,6 +268,15 @@ export const routes = createBrowserRouter([
                             ],
                           },
                         ],
+                      },
+
+                      {
+                        path: ":companyId/nomad-listing",
+                        element: <NomadListing />, // ✅ new page
+                      },
+                      {
+                        path: ":companyId/poc-details",
+                        element: <PocDetails />, // ✅ new page
                       },
                     ],
                   },
