@@ -475,25 +475,11 @@ const FrontendDashboard = () => {
       icon: <LuHardDriveUpload />,
     },
     {
-      route: "select-theme",
-      title: "New Themes",
-      icon: <CgWebsite />,
+      route: "leads",
+      title: "Leads",
+      icon: <LuHardDriveUpload />,
     },
-    {
-      route: "finance",
-      title: "Finance",
-      icon: <SiCashapp />,
-    },
-    {
-      route: "data",
-      title: "Data",
-      icon: <SiGoogleadsense />,
-    },
-    {
-      route: "settings",
-      title: "Settings",
-      icon: <MdMiscellaneousServices />,
-    },
+
   ];
 
   const allowedCards = filterPermissions(cardsConfigFrontend, userPermissions);

@@ -137,6 +137,7 @@ import WebsitesLayout from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/
 import InActiveWebsites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/InActiveWebsites";
 import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsiteTemp";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
 
 export const routes = createBrowserRouter([
   // {
@@ -185,6 +186,10 @@ export const routes = createBrowserRouter([
                           {
                             path: "view-theme",
                             element: <ViewTheme />,
+                          },
+                          {
+                            path: "leads",
+                            element: <CompanyLeads />,
                           },
                           {
                             path: "live-demo",
