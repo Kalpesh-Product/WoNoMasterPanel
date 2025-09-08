@@ -6,6 +6,8 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { Chip } from "@mui/material";
+import { useDispatch } from "react-redux";
+import { setSelectedCompany } from "../../../redux/slices/companySlice";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -17,6 +19,7 @@ const slugify = (str) =>
 const Companies = () => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
+  const dispatch = useDispatch();
 
   // ✅ fetch companies from API
   const {
@@ -61,17 +64,22 @@ const Companies = () => {
         field: "companyName",
         headerName: "Company Name",
         flex: 1,
-        cellRenderer: (params) => (
-          <span
-            onClick={() =>
-              navigate(
-                `/dashboard/companies/${slugify(params.data.companyName)}`
-              )
-            }
-            className="text-blue-600 hover:underline cursor-pointer">
-            {params.value}
-          </span>
-        ),
+        cellRenderer: (params) => {
+          console.log("params data : ", params.data);
+          return (
+            <span
+              onClick={() => {
+                dispatch(setSelectedCompany(params.data));
+                navigate(
+                  `/dashboard/companies/${slugify(params.data.companyName)}`
+                );
+              }}
+              className="text-blue-600 hover:underline cursor-pointer"
+            >
+              {params.value}
+            </span>
+          );
+        },
       },
       { field: "companyType", headerName: "Type", flex: 1 },
       {
