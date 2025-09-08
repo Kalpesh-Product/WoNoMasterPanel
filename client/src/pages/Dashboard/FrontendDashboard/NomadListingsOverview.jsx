@@ -52,13 +52,13 @@ export default function NomadListingsOverview() {
     <div className="p-4 flex flex-col gap-4">
       <PageFrame>
         {/* ✅ PrimaryButton above table */}
-        <div className="flex justify-end pb-4">
+        {/* <div className="flex justify-end pb-4">
           <PrimaryButton
             type="button"
             title="Add Listing"
             handleSubmit={handleAddClick}
           />
-        </div>
+        </div> */}
 
         <AgTable
           data={tableData}
@@ -66,6 +66,8 @@ export default function NomadListingsOverview() {
           search
           tableTitle="Nomad Listings"
           loading={isPending}
+          buttonTitle="Add Listing"
+          handleClick={handleAddClick}
         />
       </PageFrame>
     </div>
