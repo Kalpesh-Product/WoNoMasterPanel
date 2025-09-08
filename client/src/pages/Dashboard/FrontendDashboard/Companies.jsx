@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
+import { Chip } from "@mui/material";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -79,6 +80,37 @@ const Companies = () => {
         flex: 1,
         valueGetter: (params) =>
           `${params.data.city || ""}, ${params.data.country || ""}`,
+      },
+      {
+        field: "registration",
+        headerName: "Registration",
+        flex: 1,
+        cellRenderer: (params) => {
+          // Later you can replace "Inactive" with a real field from API
+          const value = params.value || "Inactive";
+
+          const statusColorMap = {
+            Active: { backgroundColor: "#90EE90", color: "#006400" },
+            Inactive: { backgroundColor: "#FFC5C5", color: "#8B0000" },
+          };
+
+          const { backgroundColor, color } = statusColorMap[value] || {
+            backgroundColor: "gray",
+            color: "white",
+          };
+
+          return (
+            <Chip
+              label={value}
+              style={{
+                backgroundColor,
+                color,
+                // fontWeight: 600,
+              }}
+              size="small"
+            />
+          );
+        },
       },
     ],
     [navigate]
