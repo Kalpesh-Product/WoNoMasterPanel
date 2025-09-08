@@ -19,7 +19,7 @@ const CompanyLeads = () => {
     enabled: !!selectedCompany,
     queryFn: async () => {
       const response = await axios.get(
-        `/api/company/leads?companyId=${selectedCompany?._id}`
+        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`
       );
       return response?.data;
     },
@@ -28,42 +28,38 @@ const CompanyLeads = () => {
     {
       field: "srNo",
       headerName: "SrNo",
-      flex: 1,
+      width:100
     },
     {
-      field: "leadName",
+      field: "fullName",
       headerName: "Lead Name",
-      flex: 1,
     },
     {
       field: "noOfPeople",
       headerName: "People Count",
-      flex: 1,
     },
     {
       field: "mobileNumber",
       headerName: "People Count",
-      flex: 1,
     },
     {
       field: "email",
       headerName: "Email",
-      flex: 1,
     },
     {
       field: "startDate",
       headerName: "Start Date",
-      flex: 1,
+      
     },
     {
       field: "endDate",
       headerName: "End Date",
-      flex: 1,
+      
     },
     {
       field: "recievedDate",
       headerName: "Recieved Date",
-      flex: 1,
+      
     },
   ];
   if (isPending) return <>Loading Leads</>;
@@ -71,7 +67,7 @@ const CompanyLeads = () => {
   return (
     <div className="p-4">
       <PageFrame>
-        <YearWiseTable tableTitle={"Leads"} columns={columns} />
+        <YearWiseTable data={data} tableTitle={"Leads"} columns={columns} />
       </PageFrame>
     </div>
   );
