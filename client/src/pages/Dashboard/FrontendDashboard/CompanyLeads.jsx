@@ -35,6 +35,16 @@ const CompanyLeads = () => {
       headerName: "Lead Name",
     },
     {
+      field: "source",
+      headerName: "Source",
+       cellRenderer : (params)=> <span>{params.value || "-"}</span>
+    },
+    {
+      field: "productType",
+      headerName: "Product",
+      cellRenderer : (params)=> <span>{params.value || "-"}</span>
+    },
+    {
       field: "noOfPeople",
       headerName: "People Count",
     },
