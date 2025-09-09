@@ -74,8 +74,7 @@ const Companies = () => {
                   `/dashboard/companies/${slugify(params.data.companyName)}`
                 );
               }}
-              className="text-blue-600 hover:underline cursor-pointer"
-            >
+              className="text-blue-600 hover:underline cursor-pointer">
               {params.value}
             </span>
           );
@@ -93,9 +92,12 @@ const Companies = () => {
         field: "registration",
         headerName: "Registration",
         flex: 1,
+        valueGetter: (params) => {
+          const link = params.data?.websiteTemplateLink;
+          return link && String(link).trim() !== "" ? "Active" : "Inactive";
+        },
         cellRenderer: (params) => {
-          // Later you can replace "Inactive" with a real field from API
-          const value = params.value || "Inactive";
+          const value = params.value; // "Active" | "Inactive"
 
           const statusColorMap = {
             Active: { backgroundColor: "#90EE90", color: "#006400" },
@@ -110,11 +112,7 @@ const Companies = () => {
           return (
             <Chip
               label={value}
-              style={{
-                backgroundColor,
-                color,
-                // fontWeight: 600,
-              }}
+              style={{ backgroundColor, color }}
               size="small"
             />
           );
