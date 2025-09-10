@@ -11,6 +11,7 @@ import performanceReducer from "../slices/performanceSlice";
 import financeReducer from "../slices/financeSlice";
 import userReducer from "../slices/userSlice";
 import assetReducer from "../slices/assetsSlice";
+import companyReducer from "../slices/companySlice";
 
 const persistConfig = {
   key: "root",
@@ -24,6 +25,7 @@ const persistConfig = {
     "finance",
     "user",
     "assets",
+    "company"
   ],
   transforms: [
     encryptTransform({
@@ -43,6 +45,7 @@ const rootreducer = combineReducers({
   finance: financeReducer,
   user: userReducer,
   assets: assetReducer,
+  company: companyReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootreducer);

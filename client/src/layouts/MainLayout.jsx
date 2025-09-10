@@ -26,23 +26,23 @@ const MainLayout = () => {
   const axios = useAxiosPrivate();
   const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
   const [permissionChecked, setPermissionChecked] = useState(false);
-  const {
-    data: notifications = [],
-    isLoading: isNotificationsLoading,
-    refetch: refetchNotifications,
-  } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: async () => {
-      const res = await axios.get("/api/notifications/get-my-notifications");
+  // const {
+  //   data: notifications = [],
+  //   isLoading: isNotificationsLoading,
+  //   refetch: refetchNotifications,
+  // } = useQuery({
+  //   queryKey: ["notifications"],
+  //   queryFn: async () => {
+  //     const res = await axios.get("/api/notifications/get-my-notifications");
 
-      const filtered = res.data.filter(
-        (n) => n.initiatorData?._id !== auth?.user?._id
-      );
+  //     const filtered = res.data.filter(
+  //       (n) => n.initiatorData?._id !== auth?.user?._id
+  //     );
 
-      return filtered;
-    },
-    refetchInterval: 15000,
-  });
+  //     return filtered;
+  //   },
+  //   refetchInterval: 15000,
+  // });
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -92,34 +92,34 @@ const MainLayout = () => {
     setPermissionChecked(true);
   }, [location.pathname, auth, navigate]);
 
-  const unreadCount = notifications.reduce((total, notification) => {
-    const count = notification.users.filter(
-      (user) =>
-        user.userActions?.hasRead === false &&
-        user.userActions?.whichUser?._id === auth.user._id
-    ).length;
-    return total + count;
-  }, 0);
+  // const unreadCount = notifications.reduce((total, notification) => {
+  //   const count = notification.users.filter(
+  //     (user) =>
+  //       user.userActions?.hasRead === false &&
+  //       user.userActions?.whichUser?._id === auth.user._id
+  //   ).length;
+  //   return total + count;
+  // }, 0);
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowFooter(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
+  // useEffect(() => {
+  //   const observer = new IntersectionObserver(
+  //     ([entry]) => {
+  //       setShowFooter(entry.isIntersecting);
+  //     },
+  //     { threshold: 0.1 }
+  //   );
 
-    if (dummyRef.current) {
-      observer.observe(dummyRef.current);
-    }
+  //   if (dummyRef.current) {
+  //     observer.observe(dummyRef.current);
+  //   }
 
-    return () => {
-      if (dummyRef.current) {
-        observer.unobserve(dummyRef.current);
-      }
-    };
-  }, []);
+  //   return () => {
+  //     if (dummyRef.current) {
+  //       observer.unobserve(dummyRef.current);
+  //     }
+  //   };
+  // }, []);
 
   return (
     <div className="w-full flex flex-col justify-between h-screen overflow-y-auto">
@@ -130,10 +130,10 @@ const MainLayout = () => {
           </IconButton>
         )}
         <Header
-          notifications={notifications}
-          unseenCount={unreadCount || 0}
-          onRefreshNotifications={refetchNotifications}
-          isRefreshingNotifications={isNotificationsLoading}
+          // notifications={notifications}
+          // unseenCount={unreadCount || 0}
+          // onRefreshNotifications={refetchNotifications}
+          // isRefreshingNotifications={isNotificationsLoading}
         />
       </header>
 

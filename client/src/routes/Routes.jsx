@@ -136,6 +136,12 @@ import Websites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/Websit
 import WebsitesLayout from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsitesLayout";
 import InActiveWebsites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/InActiveWebsites";
 import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsiteTemp";
+import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
+import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOverview";
+import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
+import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
+import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
 
 export const routes = createBrowserRouter([
   // {
@@ -163,127 +169,127 @@ export const routes = createBrowserRouter([
                     index: true,
                   },
                   {
-                    path: "company",
-                    element: <FrontendLayout />,
+                    path: "companies",
                     children: [
                       {
-                        index : true,
-                        path: "",
-                        element: <FrontendDashboard />,
+                        index: true,
+                        element: <Companies />,
                       },
                       {
-                        path: "select-theme",
-                        element: <ThemeGrid />,
+                        path: ":companyId",
+                        element: <CompanyOverview />, // ✅ NEW intermediate page
                       },
                       {
-                        path: "view-theme",
-                        element: <ViewTheme />,
+                        path: ":companyId/nomad-listings",
+                        element: <NomadListingsOverview />, // ✅ intermediate page
                       },
                       {
-                        path: "live-demo",
-                        element: <PageDemo />,
+                        path: ":companyId/nomad-listings/add",
+                        element: <NomadListing />, // ✅ actual form page
                       },
-                      // {
-                      //   path: "*",
-                      //   element: <ThemeGrid />,
-                      // },
+
                       {
-                        path: "create-website",
-                        element: <CreateWebsite />,
-                      },
-                      {
-                        path: "websites",
-                        element: <WebsitesLayout />,
+                        path: ":companyId/website-builder", // ✅ move FrontendLayout here
+                        element: <FrontendLayout />,
                         children: [
-                          { path: "active", element: <Websites /> },
-                          { path: "inactive", element: <InActiveWebsites /> },
-                          { path: ":website", element: <EditWebsite /> },
-                          { path: "inactive/:website", element: <EditWebsiteTemp /> },
+                          { index: true, element: <FrontendDashboard /> },
+                          { path: "select-theme", element: <ThemeGrid /> },
+                          { path: "view-theme", element: <ViewTheme /> },
+                          {
+                            path: "leads",
+                            element: <CompanyLeads />,
+                          },
+                          { path: "live-demo", element: <PageDemo /> },
+                          {
+                            path: "create-website",
+                            element: <CreateWebsite />,
+                          },
+                          {
+                            path: "websites",
+                            element: <WebsitesLayout />,
+                            children: [
+                              { path: "active", element: <Websites /> },
+                              {
+                                path: "inactive",
+                                element: <InActiveWebsites />,
+                              },
+                              { path: ":website", element: <EditWebsite /> },
+                              {
+                                path: "inactive/:website",
+                                element: <EditWebsiteTemp />,
+                              },
+                            ],
+                          },
+                          {
+                            path: "edit-theme/:templateName/:pageName",
+                            element: <EditTemplate />,
+                          },
+                          {
+                            path: "data",
+                            element: <FrontendData />,
+                            children: [
+                              {
+                                path: "leads",
+                                element: <FrontendLeads />,
+                                index: true,
+                              },
+                              {
+                                path: "asset-list",
+                                element: <DepartmentAssetCommon />,
+                              },
+                              {
+                                path: "website-issue-reports",
+                                element: <FrontendWebsiteIssueReports />,
+                              },
+                              {
+                                path: "monthly-invoice-reports",
+                                element: <MonthlyInvoiceCommon />,
+                              },
+                              { path: "vendor", element: <VendorTable /> },
+                              {
+                                path: "vendor/vendor-onboard",
+                                element: <Vendor />,
+                              },
+                              { path: "vendor/:id", element: <ViewVendor /> },
+                            ],
+                          },
+                          {
+                            path: "settings",
+                            element: <FrontendSettings />,
+                            children: [
+                              {
+                                path: "bulk-upload",
+                                element: <DepartmentWiseBulkUpload />,
+                              },
+                              { path: "sops", element: <SopUpload /> },
+                              { path: "policies", element: <PolicyUpload /> },
+                            ],
+                          },
+                          {
+                            path: "finance",
+                            element: <FrontendFinLayout />,
+                            children: [
+                              { path: "budget", element: <BudgetPage /> },
+                              {
+                                path: "payment-schedule",
+                                element: <PaymentScheduleCommon />,
+                              },
+                              { path: "voucher", element: <Reimbursement /> },
+                            ],
+                          },
                         ],
                       },
 
                       // {
-                      //   path: "select-theme/edit-theme/:templateName/:pageName",
-                      //   element: <EditTemplate />,
+                      //   path: ":companyId/nomad-listing",
+                      //   element: <NomadListing />, // ✅ new page
                       // },
                       {
-                        path: "edit-theme/:templateName/:pageName",
-                        element: <EditTemplate />,
-                      },
-                      {
-                        path: "data",
-                        element: <FrontendData />,
-                        children: [
-                          {
-                            path: "leads",
-                            index: true,
-                            element: <FrontendLeads />,
-                          },
-                          {
-                            path: "asset-list",
-                            element: <DepartmentAssetCommon />,
-                          },
-                          {
-                            path: "website-issue-reports",
-                            element: <FrontendWebsiteIssueReports />,
-                          },
-                          {
-                            path: "monthly-invoice-reports",
-                            element: <MonthlyInvoiceCommon />,
-                          },
-                          {
-                            path: "vendor",
-                            element: <VendorTable />,
-                          },
-                          {
-                            path: "vendor/vendor-onboard",
-                            element: <Vendor />,
-                          },
-                          {
-                            path: "vendor/:id",
-                            element: <ViewVendor />,
-                          },
-                        ],
-                      },
-                      {
-                        path: "settings",
-                        element: <FrontendSettings />,
-                        children: [
-                          {
-                            path: "bulk-upload",
-                            element: <DepartmentWiseBulkUpload />,
-                          },
-                          {
-                            path: "sops",
-                            element: <SopUpload />,
-                          },
-                          {
-                            path: "policies",
-                            element: <PolicyUpload />,
-                          },
-                        ],
-                      },
-                      {
-                        path: "finance",
-                        element: <FrontendFinLayout />,
-                        children: [
-                          {
-                            path: "budget",
-                            element: <BudgetPage />,
-                          },
-                          {
-                            path: "payment-schedule",
-                            element: <PaymentScheduleCommon />,
-                          },
-                          {
-                            path: "voucher",
-                            element: <Reimbursement />,
-                          },
-                        ],
+                        path: ":companyId/poc-details",
+                        element: <PocDetails />, // ✅ new page
                       },
                     ],
                   },
-      
                 ],
               },
 
