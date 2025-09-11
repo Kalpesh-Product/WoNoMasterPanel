@@ -1,4 +1,6 @@
-const { default: HostCompany } = require("../../models/host/hostCompany");
+const {
+  default: HostCompany,
+} = require("../../models/hostCompany/hostCompany");
 
 const createCompany = async (req, res, next) => {
   try {
@@ -44,9 +46,7 @@ const createCompany = async (req, res, next) => {
     }
 
     return res.status(201).json({
-      success: true,
       message: "Company created successfully",
-      data: newCompany,
     });
   } catch (error) {
     if (error.code === 11000) {

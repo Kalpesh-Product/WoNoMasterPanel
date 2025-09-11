@@ -5,6 +5,7 @@ const hostCompanySchema = new mongoose.Schema(
     companyId: {
       type: String,
       unique: true,
+      required: true,
     },
     name: {
       type: String,
