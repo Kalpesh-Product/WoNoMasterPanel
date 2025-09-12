@@ -66,7 +66,7 @@ export default function NomadListingsOverview() {
           search
           tableTitle="Nomad Listings"
           loading={isPending}
-          buttonTitle="Add Listing"
+          buttonTitle="Add Product"
           handleClick={handleAddClick}
         />
       </PageFrame>
