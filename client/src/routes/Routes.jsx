@@ -142,6 +142,7 @@ import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOvervie
 import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
 import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
+import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 
 export const routes = createBrowserRouter([
   // {
@@ -174,6 +175,10 @@ export const routes = createBrowserRouter([
                       {
                         index: true,
                         element: <Companies />,
+                      },
+                      {
+                        path: "add-company",
+                        element: <AddCompany />, // ✅ NEW intermediate page
                       },
                       {
                         path: ":companyId",
