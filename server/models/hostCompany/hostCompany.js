@@ -7,23 +7,6 @@ const hostCompanySchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    mobile: {
-      type: String,
-      required: true,
-      trim: true,
-    },
     country: {
       type: String,
       trim: true,

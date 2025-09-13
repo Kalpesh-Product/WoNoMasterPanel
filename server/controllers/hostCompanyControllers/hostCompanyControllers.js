@@ -1,3 +1,5 @@
+const { default: axios } = require("axios");
+const { default: Employee } = require("../../models/hostCompany/employees");
 const {
   default: HostCompany,
 } = require("../../models/hostCompany/hostCompany");
@@ -20,9 +22,6 @@ const createCompany = async (req, res, next) => {
 
     const companyData = {
       companyId,
-      name: payload.name,
-      email: payload.email,
-      mobile: payload.mobile,
       country: payload.country,
       state: payload.state,
       city: payload.city,
@@ -37,25 +36,46 @@ const createCompany = async (req, res, next) => {
       selectedServices: payload.selectedServices || [],
     };
 
+    //Store company data in company collection (master panel)
     const newCompany = new HostCompany(companyData);
+    const savedCompany = await newCompany.save();
 
-    const savedCompany = newCompany.save();
+    //Store employee in employee collection (master panel)
 
-    if (!savedCompany) {
-      return res.status(400).json({ message: "Failed to onboard the company" });
+    const employee = await Employee.findOne({ email: payload.email });
+
+    if (employee) {
+      return res.status(400).json({ message: "Email already exists" });
     }
+
+    const newEmployee = new Employee({
+      name: payload.name,
+      email: payload.email,
+      phone: payload.mobile,
+      company: savedCompany._id,
+    });
+
+    await newEmployee.save();
+
+    //Store POC data in poc collection (nomads)
+    await axios.post("http://localhost:3000/api/poc/create-poc", {
+      companyId: companyId,
+      name: payload?.name,
+      designation: payload?.designation,
+      email: payload?.email,
+      phone: payload?.phone,
+      linkedInProfile: payload?.linkedInProfile,
+      languagesSpoken: payload?.languages || [],
+      address: payload?.address,
+      profileImage: payload?.profileImage,
+      isActive: payload?.isActive ?? true,
+      availibilityTime: payload?.availabilityTime,
+    });
 
     return res.status(201).json({
       message: "Company created successfully",
     });
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key (email uniqueness violation)
-      return res.status(400).json({
-        success: false,
-        message: "A company with this email already exists",
-      });
-    }
     next(error);
   }
 };

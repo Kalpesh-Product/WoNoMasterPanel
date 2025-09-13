@@ -4,6 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
 import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
+import axios from "axios";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 
@@ -29,8 +30,8 @@ const AddCompany = () => {
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
       console.log(fd);
-      // const response = await axios.post("/api/company", fd);
-      // return response.data;
+      const response = await axios.post("/api/hosts/onboard-company", fd);
+      return response.data;
     },
     onSuccess: () => {
       toast.success("Company added successfully");
