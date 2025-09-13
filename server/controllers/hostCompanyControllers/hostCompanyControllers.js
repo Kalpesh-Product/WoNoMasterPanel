@@ -58,7 +58,7 @@ const createCompany = async (req, res, next) => {
     await newEmployee.save();
 
     //Store POC data in poc collection (nomads)
-    await axios.post("http://localhost:3000/api/poc/create-poc", {
+    await axios.post("https://wononomadsbe.vercel.app/api/poc/create-poc", {
       companyId: companyId,
       name: payload?.name,
       designation: payload?.designation,
