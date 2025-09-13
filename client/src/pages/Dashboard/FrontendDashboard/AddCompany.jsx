@@ -24,6 +24,17 @@ const AddCompany = () => {
       companyCity: "",
       companyState: "",
       selectedServices: [], // will need checkboxes / multi-select later
+
+            pocName: "",
+      pocDesignation: "",
+      pocEmail: "",
+      pocPhone: "",
+      pocLinkedInProfile: "",
+      pocLanguages: "",
+      pocAddress: "",
+      pocProfileImage: "",
+      pocIsActive: true,
+      pocAvailabilityTime: "",
     },
   });
 
@@ -42,8 +53,16 @@ const AddCompany = () => {
     },
   });
 
-  const onSubmit = (data) => {
-    register(data);
+ const onSubmit = (data) => {
+    // split languages from comma string → array
+    const formattedData = {
+      ...data,
+      pocLanguages: data.pocLanguages
+        ? data.pocLanguages.split(",").map((l) => l.trim())
+        : [],
+    };
+
+    register(formattedData);
   };
 
   return (
@@ -399,6 +418,151 @@ const AddCompany = () => {
                 </TextField>
               );
             }}
+          />
+
+                   {/* ------------------- POC SECTION ------------------- */}
+          <div className="col-span-2 mt-6">
+            <h2 className="text-title font-pmedium text-primary mb-2">
+              Point of Contact (POC) Details
+            </h2>
+          </div>
+
+          <Controller
+            name="pocName"
+            control={control}
+            rules={{ required: "POC Name is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="POC Name"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="pocDesignation"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="POC Designation"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="pocEmail"
+            control={control}
+            rules={{
+              required: "POC Email is required",
+              pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
+            }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="POC Email"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="pocPhone"
+            control={control}
+            rules={{ required: "POC Phone is required" }}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="POC Phone"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="pocLinkedInProfile"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="LinkedIn Profile URL"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="pocLanguages"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Languages (comma separated)"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="pocAddress"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="POC Address"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="pocProfileImage"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Profile Image URL"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="pocAvailabilityTime"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Availability Time"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
           />
 
           {/* Later: selectedServices → you may want checkboxes or multi-select */}
