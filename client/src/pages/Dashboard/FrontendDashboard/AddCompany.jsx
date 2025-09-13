@@ -30,7 +30,7 @@ const AddCompany = () => {
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
       console.log(fd);
-      const response = await axios.post("/api/hosts/onboard-company", fd);
+      const response = await axios.post("http://localhost:5000/api/hosts/onboard-company", fd);
       return response.data;
     },
     onSuccess: () => {
