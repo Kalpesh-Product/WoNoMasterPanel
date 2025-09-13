@@ -22,15 +22,12 @@ const createCompany = async (req, res, next) => {
 
     const companyData = {
       companyId,
-      country: payload.country,
-      state: payload.state,
-      city: payload.city,
       companyName: payload.companyName,
       industry: payload.industry,
       companySize: payload.companySize,
-      companyType: payload.companyType,
       companyCity: payload.companyCity,
       companyState: payload.companyState,
+      companyCountry: payload.companyCountry,
       websiteURL: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
@@ -49,9 +46,15 @@ const createCompany = async (req, res, next) => {
     }
 
     const newEmployee = new Employee({
-      name: payload.name,
-      email: payload.email,
-      phone: payload.mobile,
+      name: payload.pocName,
+      email: payload?.pocEmail,
+      phone: payload?.pocPhone,
+      linkedInProfile: payload?.pocLinkedInProfile,
+      languages: payload?.pocLanguages || [],
+      address: payload?.pocAddress,
+      profileImage: payload?.pocProfileImage,
+      designation: payload?.pocDesignation,
+      isActive: payload?.isActive ?? true,
       company: savedCompany._id,
     });
 
@@ -60,16 +63,16 @@ const createCompany = async (req, res, next) => {
     //Store POC data in poc collection (nomads)
     await axios.post("https://wononomadsbe.vercel.app/api/poc/create-poc", {
       companyId: companyId,
-      name: payload?.name,
-      designation: payload?.designation,
-      email: payload?.email,
-      phone: payload?.phone,
-      linkedInProfile: payload?.linkedInProfile,
-      languagesSpoken: payload?.languages || [],
-      address: payload?.address,
-      profileImage: payload?.profileImage,
+      name: payload?.pocName,
+      designation: payload?.pocDesignation,
+      email: payload?.pocEmail,
+      phone: payload?.pocPhone,
+      linkedInProfile: payload?.pocLinkedInProfile,
+      languages: payload?.pocLanguages || [],
+      address: payload?.pocAddress,
+      profileImage: payload?.pocProfileImage,
       isActive: payload?.isActive ?? true,
-      availibilityTime: payload?.availabilityTime,
+      availibilityTime: payload?.pocAvailabilityTime,
     });
 
     return res.status(201).json({

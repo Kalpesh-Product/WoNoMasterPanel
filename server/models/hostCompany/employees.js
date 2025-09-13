@@ -41,9 +41,6 @@ const employeeSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
-    availibilityTime: {
-      type: String,
-    },
   },
   {
     timestamps: true,

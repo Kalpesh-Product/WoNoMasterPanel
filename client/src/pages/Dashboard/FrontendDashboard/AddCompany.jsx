@@ -11,18 +11,18 @@ import { City, Country, State } from "country-state-city";
 const AddCompany = () => {
   const { control, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
-      name: "",
-      email: "",
-      mobile: "",
-      country: "",
-      state: "",
-      city: "",
+      // name: "",
+      // email: "",
+      // mobile: "",
+      // country: "",
+      // state: "",
+      // city: "",
       companyName: "",
       industry: "",
       companySize: "",
-      companyType: "",
       companyCity: "",
       companyState: "",
+      companyCountry: "",
       selectedServices: [], // will need checkboxes / multi-select later
 
             pocName: "",
@@ -76,7 +76,7 @@ const AddCompany = () => {
           onSubmit={handleSubmit(onSubmit)}
         >
           {/* Personal Details */}
-          <Controller
+          {/* <Controller
             name="name"
             control={control}
             rules={{ required: "Full Name is required" }}
@@ -128,10 +128,10 @@ const AddCompany = () => {
                 helperText={fieldState.error?.message}
               />
             )}
-          />
+          /> */}
 
           {/* Location */}
-          <Controller
+          {/* <Controller
             name="country"
             control={control}
             // rules={{ required: "Country is required" }}
@@ -243,7 +243,7 @@ const AddCompany = () => {
                 </TextField>
               );
             }}
-          />
+          /> */}
 
           {/* Company Info */}
           <Controller
@@ -291,7 +291,7 @@ const AddCompany = () => {
             )}
           />
 
-          <Controller
+          {/* <Controller
             name="companyType"
             control={control}
             render={({ field }) => (
@@ -303,7 +303,7 @@ const AddCompany = () => {
                 variant="standard"
               />
             )}
-          />
+          /> */}
 
           {/* Company Location */}
           <Controller

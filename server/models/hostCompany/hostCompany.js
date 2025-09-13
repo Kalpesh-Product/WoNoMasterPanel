@@ -7,18 +7,6 @@ const hostCompanySchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    country: {
-      type: String,
-      trim: true,
-    },
-    state: {
-      type: String,
-      trim: true,
-    },
-    city: {
-      type: String,
-      trim: true,
-    },
     companyName: {
       type: String,
       required: true,
@@ -32,15 +20,15 @@ const hostCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    companyType: {
-      type: String,
-      trim: true,
-    },
     companyCity: {
       type: String,
       trim: true,
     },
     companyState: {
+      type: String,
+      trim: true,
+    },
+    companyCountry: {
       type: String,
       trim: true,
     },
