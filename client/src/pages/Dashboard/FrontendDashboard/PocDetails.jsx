@@ -1,7 +1,7 @@
 // src/pages/Dashboard/FrontendDashboard/PocDetails.jsx
 import React from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
-import axios from "axios"
+import axios from "axios";
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, TextField } from "@mui/material";
@@ -43,25 +43,24 @@ async function fetchPocAxios(companyId, signal) {
     "https://wononomadsbe.vercel.app/api/poc/poc",
   ];
 
-    try {
-      const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/poc/poc?companyId=${companyId}`,
-        { signal }
-      );
-      const data = res.data;
-      return Array.isArray(data) && data.length ? data[0] : data || null;
-    } catch (_err) {
-      // try next url
-    }
-  
+  try {
+    const res = await axios.get(
+      `https://wononomadsbe.vercel.app/api/poc/poc?companyId=${companyId}`,
+      { signal }
+    );
+    const data = res.data;
+    return Array.isArray(data) && data.length ? data[0] : data || null;
+  } catch (_err) {
+    // try next url
+  }
+
   return null;
 }
 
 // ---------- component ----------
 const PocDetails = () => {
-   
   const selectedCompany = useSelector((s) => s.company?.selectedCompany);
-  
+
   // const companyId = getCompanyId(selectedCompany);
 
   const companyId = selectedCompany.companyId;
@@ -78,7 +77,6 @@ const PocDetails = () => {
     retry: 0,
     staleTime: 5 * 60 * 1000,
   });
-
 
   const poc = pocFromCompany || fetchedPoc || placeholder;
 
@@ -123,7 +121,7 @@ const PocDetails = () => {
           )}
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-6">
+        <div className="bg-white ">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center gap-6 border border-gray-200 rounded-xl p-4">
             <Avatar
