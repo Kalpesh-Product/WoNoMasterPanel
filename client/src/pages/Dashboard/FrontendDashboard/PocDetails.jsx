@@ -1,9 +1,9 @@
 // src/pages/Dashboard/FrontendDashboard/PocDetails.jsx
 import React from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
+import axios from "axios"
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
 import { Avatar, TextField } from "@mui/material";
 
 // ---------- UI helpers ----------
@@ -43,41 +43,42 @@ async function fetchPocAxios(companyId, signal) {
     "https://wononomadsbe.vercel.app/api/poc/poc",
   ];
 
-  for (const url of ENDPOINTS) {
     try {
-      const res = await axios.post(
-        url,
-        { companyId },
-        {
-          signal,
-          headers: { "Content-Type": "application/json" },
-          timeout: 8000,
-        }
+      const res = await axios.get(
+        `https://wononomadsbe.vercel.app/api/poc/poc?companyId=${companyId}`,
+        { signal }
       );
       const data = res.data;
       return Array.isArray(data) && data.length ? data[0] : data || null;
     } catch (_err) {
       // try next url
     }
-  }
+  
   return null;
 }
 
 // ---------- component ----------
 const PocDetails = () => {
+   
   const selectedCompany = useSelector((s) => s.company?.selectedCompany);
-  const companyId = getCompanyId(selectedCompany);
+  
+  // const companyId = getCompanyId(selectedCompany);
+
+  const companyId = selectedCompany.companyId;
+
   const pocFromCompany = selectedCompany?.poc || null; // instant fill if present
 
   const { data: fetchedPoc = null } = useQuery({
     queryKey: ["pocDetails", companyId],
-    enabled: !!companyId && !pocFromCompany, // skip query if we already have POC in Redux
+    // enabled: !!companyId && !pocFromCompany, // skip query if we already have POC in Redux
+    enabled: !!companyId,
     queryFn: ({ signal }) => fetchPocAxios(companyId, signal),
     placeholderData: null, // no loaders; we'll normalize below
     refetchOnWindowFocus: false,
     retry: 0,
     staleTime: 5 * 60 * 1000,
   });
+
 
   const poc = pocFromCompany || fetchedPoc || placeholder;
 
