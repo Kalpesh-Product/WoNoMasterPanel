@@ -136,7 +136,7 @@ const Companies = () => {
           tableTitle={"Companies"}
           tableHeight={500}
           buttonTitle={"Add Company"}
-          handleClick={()=>navigate('add-company')}
+          handleClick={() => navigate("add-company")}
         />
       </PageFrame>
     </div>
