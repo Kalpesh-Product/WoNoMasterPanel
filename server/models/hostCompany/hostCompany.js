@@ -44,6 +44,10 @@ const hostCompanySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    isRegistered: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

@@ -31,6 +31,7 @@ const createCompany = async (req, res, next) => {
       websiteURL: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
+      isRegistered: true,
     };
 
     //Store company data in company collection (master panel)
@@ -83,6 +84,37 @@ const createCompany = async (req, res, next) => {
   }
 };
 
+const getCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostCompany.find();
+
+    if (!companies || !companies.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCompany = async (req, res, next) => {
+  try {
+    const { companyId } = req.query;
+    const company = await HostCompany.findOne(companyId);
+
+    if (!company || !company.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(company);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createCompany,
+  getCompanies,
+  getCompany,
 };
