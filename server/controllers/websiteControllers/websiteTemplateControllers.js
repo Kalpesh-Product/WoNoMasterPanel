@@ -12,13 +12,26 @@ const createTemplate = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    const company = "BizNest";
+    const { company } = req.query;
+
     // `products` might arrive as a JSON string in multipart. Normalize it.
 
     let { products, testimonials, about } = req.body;
-    about = JSON.parse(about || "[]");
-    products = JSON.parse(products || "[]");
-    testimonials = JSON.parse(testimonials || "[]");
+    // about = JSON.parse(about || "[]");
+    // products = JSON.parse(products || "[]");
+    // testimonials = JSON.parse(testimonials || "[]");
+
+    const safeParse = (val, fallback) => {
+      try {
+        return typeof val === "string" ? JSON.parse(val) : val || fallback;
+      } catch {
+        return fallback;
+      }
+    };
+
+    about = safeParse(about, []);
+    products = safeParse(products, []);
+    testimonials = safeParse(testimonials, []);
 
     for (const k of Object.keys(req.body)) {
       if (/^(products|testimonials)\.\d+\./.test(k)) delete req.body[k];
@@ -32,9 +45,16 @@ const createTemplate = async (req, res, next) => {
     const searchKey = formatCompanyName(req.body.companyName);
     const baseFolder = `${company}/template/${searchKey}`;
 
+    if (searchKey === "") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Provide a valid company name" });
+    }
+
     let template = await WebsiteTemplate.findOne({ searchKey }).session(
       session
     );
+
     if (template) {
       await session.abortTransaction();
       session.endSession();

@@ -63,14 +63,14 @@ const templateSchema = new mongoose.Schema(
       },
     ],
     //contact
-    contactTitle: { type: String },
-    mapUrl: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: { type: String, required: true },
-    address: { type: String, required: true },
-    //footer
-    registeredCompanyName: { type: String },
-    copyrightText: { type: String, required: true },
+    // contactTitle: { type: String },
+    // mapUrl: { type: String, required: true },
+    // email: { type: String, required: true },
+    // phone: { type: String, required: true },
+    // address: { type: String, required: true },
+    // //footer
+    // registeredCompanyName: { type: String },
+    // copyrightText: { type: String, required: true },
   },
   { timestamps: true }
 );
