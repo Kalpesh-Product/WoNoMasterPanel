@@ -221,6 +221,20 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  {
+                    path: "profile",
+                    element: <ProfileLayout />,
+                    children: [
+                      {
+                        path: "my-profile",
+                        element: <UserDetails />,
+                      },
+                      {
+                        path: "change-password",
+                        element: <ChangePassword />,
+                      },
+                    ],
+                  },
 
                   {
                     path: "companies",
@@ -395,56 +409,56 @@ export const routes = createBrowserRouter([
                     path: "change-password",
                     element: <ChangePassword />,
                   },
-                  {
-                    path: "permissions",
-                    element: <AccessGrant />,
-                  },
-                  {
-                    path: "HR",
-                    element: <HrCommonLayout />,
-                    children: [
-                      {
-                        path: "attendance",
-                        element: <HrCommonAttendance />,
-                      },
-                      {
-                        path: "attendance-correction-requests",
-                        element: <HrCommonAttandenceRequests />,
-                      },
-                      {
-                        path: "leaves",
-                        element: <HrCommonLeaves />,
-                      },
-                      {
-                        path: "agreements",
-                        element: <HrCommonAgreements />,
-                      },
-                      {
-                        path: "company-handbook",
-                        element: <HrCommonHandbook />,
-                      },
-                      {
-                        path: "company-handbook/:department",
-                        element: <HrCommonDocuments />,
-                      },
-                      {
-                        path: "payslips",
-                        element: <HrCommonPayslips />,
-                      },
-                    ],
-                  },
-                  {
-                    path: "my-assets",
-                    element: <MyAssets />,
-                  },
-                  {
-                    path: "my-meetings",
-                    element: <MeetingRoomCredits />,
-                  },
-                  {
-                    path: "tickets-history",
-                    element: <TicketsHistory />,
-                  },
+                  // {
+                  //   path: "permissions",
+                  //   element: <AccessGrant />,
+                  // },
+                  // {
+                  //   path: "HR",
+                  //   element: <HrCommonLayout />,
+                  //   children: [
+                  //     {
+                  //       path: "attendance",
+                  //       element: <HrCommonAttendance />,
+                  //     },
+                  //     {
+                  //       path: "attendance-correction-requests",
+                  //       element: <HrCommonAttandenceRequests />,
+                  //     },
+                  //     {
+                  //       path: "leaves",
+                  //       element: <HrCommonLeaves />,
+                  //     },
+                  //     {
+                  //       path: "agreements",
+                  //       element: <HrCommonAgreements />,
+                  //     },
+                  //     {
+                  //       path: "company-handbook",
+                  //       element: <HrCommonHandbook />,
+                  //     },
+                  //     {
+                  //       path: "company-handbook/:department",
+                  //       element: <HrCommonDocuments />,
+                  //     },
+                  //     {
+                  //       path: "payslips",
+                  //       element: <HrCommonPayslips />,
+                  //     },
+                  //   ],
+                  // },
+                  // {
+                  //   path: "my-assets",
+                  //   element: <MyAssets />,
+                  // },
+                  // {
+                  //   path: "my-meetings",
+                  //   element: <MeetingRoomCredits />,
+                  // },
+                  // {
+                  //   path: "tickets-history",
+                  //   element: <TicketsHistory />,
+                  // },
                 ],
               },
               {

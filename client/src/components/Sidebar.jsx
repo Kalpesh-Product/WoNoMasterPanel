@@ -141,6 +141,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/data-upload",
         },
+        {
+          id: 7,
+          title: "Profile",
+          codeName: "Prof",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/profile/my-profile",
+        },
       ],
     },
   ];
