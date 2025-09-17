@@ -371,7 +371,7 @@ const editTemplate = async (req, res, next) => {
       (name || "").toLowerCase().split("-")[0].replace(/\s+/g, "");
 
     const searchKey = formatCompanyName(req.body.companyName);
-    const baseFolder = `${company}/template/${searchKey}`;
+    const baseFolder = `WoNo${company}/template/${searchKey}`;
 
     const template = await WebsiteTemplate.findOne({ searchKey }).session(
       session

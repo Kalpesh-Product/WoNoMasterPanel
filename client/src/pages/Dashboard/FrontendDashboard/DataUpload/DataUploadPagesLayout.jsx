@@ -2,25 +2,20 @@ import { Tabs } from "@mui/material";
 import React, { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
-const ProfileLayout = () => {
+const DataUploadPagesLayout = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   // Map routes to tabs
   const tabs = [
-    { label: "Profile", path: "my-profile" },
-    { label: "Change Password", path: "change-password" },
-    // { label: "Permissions", path: "permissions" },
-    // { label: "HR", path: "HR" },
-    // { label: "Assets", path: "my-assets" },
-    // { label: "Meetings", path: "my-meetings" },
-    // { label: "Ticket History", path: "tickets-history" },
+    { label: "Product Upload", path: "product-upload" },
+    { label: "Product Image Upload", path: "product-image-upload" },
   ];
 
   // Redirect to "first tab" if the current path is "/module/first-page"
   useEffect(() => {
-    if (location.pathname === "/profile") {
-      navigate("/profile/my-profile", {
+    if (location.pathname === "/dashboard/data-upload") {
+      navigate("/dashboard/data-upload/product-upload", {
         replace: true,
       });
     }
@@ -84,4 +79,4 @@ const ProfileLayout = () => {
   );
 };
 
-export default ProfileLayout;
+export default DataUploadPagesLayout;

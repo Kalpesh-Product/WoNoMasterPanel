@@ -146,12 +146,17 @@ import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
+import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
+import EditInactiveWebsite from "../pages/Dashboard/IncativeWebsites/EditInactiveWebsite";
+import DataUploadPagesLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/DataUploadPagesLayout";
+import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductUpload";
+import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
 
 export const routes = createBrowserRouter([
-  // {
-  //   path: "/",
-  //   element: <LoginPage />,
-  // },
+  {
+    path: "/",
+    element: <LoginPage />,
+  },
 
   {
     element: <PersistLogin />,
@@ -189,6 +194,48 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  {
+                    path: "data-upload",
+                    element: <DataUploadPagesLayout />,
+                    children: [
+                      {
+                        path: "product-upload",
+                        element: <ProductUpload />,
+                      },
+                      {
+                        path: "product-image-upload",
+                        element: <ProductImageUpload />,
+                      },
+                    ],
+                  },
+                  {
+                    path: "inactive-websites",
+                    children: [
+                      {
+                        index: true,
+                        element: <InactiveWebsites />, // list view
+                      },
+                      {
+                        path: ":websiteId", // detail view
+                        element: <EditInactiveWebsite />, // reuse or create a new WebsiteDetails page
+                      },
+                    ],
+                  },
+                  {
+                    path: "profile",
+                    element: <ProfileLayout />,
+                    children: [
+                      {
+                        path: "my-profile",
+                        element: <UserDetails />,
+                      },
+                      {
+                        path: "change-password",
+                        element: <ChangePassword />,
+                      },
+                    ],
+                  },
+
                   {
                     path: "companies",
                     children: [
@@ -362,56 +409,56 @@ export const routes = createBrowserRouter([
                     path: "change-password",
                     element: <ChangePassword />,
                   },
-                  {
-                    path: "permissions",
-                    element: <AccessGrant />,
-                  },
-                  {
-                    path: "HR",
-                    element: <HrCommonLayout />,
-                    children: [
-                      {
-                        path: "attendance",
-                        element: <HrCommonAttendance />,
-                      },
-                      {
-                        path: "attendance-correction-requests",
-                        element: <HrCommonAttandenceRequests />,
-                      },
-                      {
-                        path: "leaves",
-                        element: <HrCommonLeaves />,
-                      },
-                      {
-                        path: "agreements",
-                        element: <HrCommonAgreements />,
-                      },
-                      {
-                        path: "company-handbook",
-                        element: <HrCommonHandbook />,
-                      },
-                      {
-                        path: "company-handbook/:department",
-                        element: <HrCommonDocuments />,
-                      },
-                      {
-                        path: "payslips",
-                        element: <HrCommonPayslips />,
-                      },
-                    ],
-                  },
-                  {
-                    path: "my-assets",
-                    element: <MyAssets />,
-                  },
-                  {
-                    path: "my-meetings",
-                    element: <MeetingRoomCredits />,
-                  },
-                  {
-                    path: "tickets-history",
-                    element: <TicketsHistory />,
-                  },
+                  // {
+                  //   path: "permissions",
+                  //   element: <AccessGrant />,
+                  // },
+                  // {
+                  //   path: "HR",
+                  //   element: <HrCommonLayout />,
+                  //   children: [
+                  //     {
+                  //       path: "attendance",
+                  //       element: <HrCommonAttendance />,
+                  //     },
+                  //     {
+                  //       path: "attendance-correction-requests",
+                  //       element: <HrCommonAttandenceRequests />,
+                  //     },
+                  //     {
+                  //       path: "leaves",
+                  //       element: <HrCommonLeaves />,
+                  //     },
+                  //     {
+                  //       path: "agreements",
+                  //       element: <HrCommonAgreements />,
+                  //     },
+                  //     {
+                  //       path: "company-handbook",
+                  //       element: <HrCommonHandbook />,
+                  //     },
+                  //     {
+                  //       path: "company-handbook/:department",
+                  //       element: <HrCommonDocuments />,
+                  //     },
+                  //     {
+                  //       path: "payslips",
+                  //       element: <HrCommonPayslips />,
+                  //     },
+                  //   ],
+                  // },
+                  // {
+                  //   path: "my-assets",
+                  //   element: <MyAssets />,
+                  // },
+                  // {
+                  //   path: "my-meetings",
+                  //   element: <MeetingRoomCredits />,
+                  // },
+                  // {
+                  //   path: "tickets-history",
+                  //   element: <TicketsHistory />,
+                  // },
                 ],
               },
               {
