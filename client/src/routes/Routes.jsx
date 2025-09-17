@@ -142,6 +142,10 @@ import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOvervie
 import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
 import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
+import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
+import AllLeads from "../pages/Dashboard/Leads/AllLeads";
+import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
+import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
 
 export const routes = createBrowserRouter([
   {
@@ -169,11 +173,32 @@ export const routes = createBrowserRouter([
                     index: true,
                   },
                   {
+                    path: "all-leads",
+                    element: <AllLeads />,
+                  },
+                  {
+                    path: "requested-services",
+                    children: [
+                      {
+                        index: true,
+                        element: <RequestedServices />,
+                      },
+                      {
+                        path: ":companyId", // inside page
+                        element: <RequestedServicesDetails />,
+                      },
+                    ],
+                  },
+                  {
                     path: "companies",
                     children: [
                       {
                         index: true,
                         element: <Companies />,
+                      },
+                      {
+                        path: "add-company",
+                        element: <AddCompany />, // ✅ NEW intermediate page
                       },
                       {
                         path: ":companyId",

@@ -1,3 +1,5 @@
+const { default: axios } = require("axios");
+const { default: Employee } = require("../../models/hostCompany/employees");
 const {
   default: HostCompany,
 } = require("../../models/hostCompany/hostCompany");
@@ -20,46 +22,99 @@ const createCompany = async (req, res, next) => {
 
     const companyData = {
       companyId,
-      name: payload.name,
-      email: payload.email,
-      mobile: payload.mobile,
-      country: payload.country,
-      state: payload.state,
-      city: payload.city,
       companyName: payload.companyName,
       industry: payload.industry,
       companySize: payload.companySize,
-      companyType: payload.companyType,
       companyCity: payload.companyCity,
       companyState: payload.companyState,
+      companyCountry: payload.companyCountry,
       websiteURL: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
+      isRegistered: true,
     };
 
+    //Store company data in company collection (master panel)
     const newCompany = new HostCompany(companyData);
+    const savedCompany = await newCompany.save();
 
-    const savedCompany = newCompany.save();
+    //Store employee in employee collection (master panel)
 
-    if (!savedCompany) {
-      return res.status(400).json({ message: "Failed to onboard the company" });
+    const employee = await Employee.findOne({ email: payload.email });
+
+    if (employee) {
+      return res.status(400).json({ message: "Email already exists" });
     }
+
+    const newEmployee = new Employee({
+      name: payload.pocName,
+      email: payload?.pocEmail,
+      phone: payload?.pocPhone,
+      linkedInProfile: payload?.pocLinkedInProfile,
+      languages: payload?.pocLanguages || [],
+      address: payload?.pocAddress,
+      profileImage: payload?.pocProfileImage,
+      designation: payload?.pocDesignation,
+      isActive: payload?.isActive ?? true,
+      company: savedCompany._id,
+    });
+
+    await newEmployee.save();
+
+    //Store POC data in poc collection (nomads)
+    await axios.post("https://wononomadsbe.vercel.app/api/poc/create-poc", {
+      companyId: companyId,
+      name: payload?.pocName,
+      designation: payload?.pocDesignation,
+      email: payload?.pocEmail,
+      phone: payload?.pocPhone,
+      linkedInProfile: payload?.pocLinkedInProfile,
+      languages: payload?.pocLanguages || [],
+      address: payload?.pocAddress,
+      profileImage: payload?.pocProfileImage,
+      isActive: payload?.isActive ?? true,
+      availibilityTime: payload?.pocAvailabilityTime,
+    });
 
     return res.status(201).json({
       message: "Company created successfully",
     });
   } catch (error) {
-    if (error.code === 11000) {
-      // Duplicate key (email uniqueness violation)
-      return res.status(400).json({
-        success: false,
-        message: "A company with this email already exists",
-      });
+    next(error);
+  }
+};
+
+const getCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostCompany.find();
+
+    if (!companies || !companies.length) {
+      return res.status(200).json([]);
     }
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCompany = async (req, res, next) => {
+  try {
+    const { companyId } = req.query;
+    const company = await HostCompany.findOne(companyId);
+
+    if (!company || !company.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(company);
+  } catch (error) {
     next(error);
   }
 };
 
 module.exports = {
   createCompany,
+  getCompanies,
+  getCompany,
 };

@@ -44,6 +44,8 @@ const agreementRoutes = require("./routes/agreementRoutes");
 const logRoutes = require("./routes/logRoutes");
 const auditLogger = require("./middlewares/auditLogger");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
+const employeeRoutes = require("./routes/employeeRoutes");
+
 require("./listeners/logEventListener");
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -69,6 +71,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/hosts", hostCompanyRoutes);
+app.use("/api/employee", employeeRoutes);
 
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
 app.use("/api/company", verifyJwt, auditLogger, companyRoutes);

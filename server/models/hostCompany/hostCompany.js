@@ -7,35 +7,6 @@ const hostCompanySchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    mobile: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    country: {
-      type: String,
-      trim: true,
-    },
-    state: {
-      type: String,
-      trim: true,
-    },
-    city: {
-      type: String,
-      trim: true,
-    },
     companyName: {
       type: String,
       required: true,
@@ -49,15 +20,15 @@ const hostCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    companyType: {
-      type: String,
-      trim: true,
-    },
     companyCity: {
       type: String,
       trim: true,
     },
     companyState: {
+      type: String,
+      trim: true,
+    },
+    companyCountry: {
       type: String,
       trim: true,
     },
@@ -72,6 +43,10 @@ const hostCompanySchema = new mongoose.Schema(
     selectedServices: {
       type: [String],
       default: [],
+    },
+    isRegistered: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
