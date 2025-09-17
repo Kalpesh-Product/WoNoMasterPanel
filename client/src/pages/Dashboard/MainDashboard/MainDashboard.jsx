@@ -17,8 +17,7 @@ const MainDashboard = () => {
             <WidgetSection
               layout={1}
               border
-              title={"Clock In / Out Attendance"}
-            >
+              title={"Clock In / Out Attendance"}>
               <ClockInOutAttendance />
             </WidgetSection>
           </div>
@@ -33,13 +32,13 @@ const MainDashboard = () => {
   ];
   return (
     <div>
-      {mainWidgets.map((widget, index) => (
+      {/* {mainWidgets.map((widget, index) => (
         <LazyDashboardWidget
           key={index}
           layout={widget.layout}
           widgets={widget.widgets}
         />
-      ))}
+      ))} */}
     </div>
   );
 };

@@ -73,6 +73,7 @@ app.get("/", (req, res) => {
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
 
+app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
 app.use("/api/company", verifyJwt, auditLogger, companyRoutes);
 app.use("/api/budget", verifyJwt, auditLogger, budgetRoutes);

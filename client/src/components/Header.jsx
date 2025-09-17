@@ -50,7 +50,7 @@ const Header = ({
   const [isHovered, setIsHovered] = useState(false);
   const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
   const navigate = useNavigate();
-  // const { auth } = useAuth(); 
+  const { auth } = useAuth(); 
   const logout = useLogout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
@@ -181,12 +181,12 @@ const Header = ({
         <div className="flex items-center gap-4 md:w-fit w-fit">
           <Avatar onClick={handleAvatarClick} className="cursor-pointer">
             {/* {auth.user.email === "abrar@biznest.co.in" ? ( */}
-            {/* {auth?.user?.profilePicture?.url ? (
+            {auth?.user?.profilePicture?.url ? (
               // <img src={Abrar} alt="" />
               <img src={auth?.user?.profilePicture?.url} alt="" />
             ) : (
               auth.user.firstName.charAt(0)
-            )} */}
+            )}
           </Avatar>
 
           <div
@@ -196,9 +196,9 @@ const Header = ({
           >
             {!isMobile && (
               <>
-                {/* <h1 className="text-xl font-semibold text-start">
+                <h1 className="text-xl font-semibold text-start">
                   {auth.user.firstName}
-                </h1> */}
+                </h1>
                 {/* <span className="text-content w-full">
                   {auth.user.designation.split(" ").length > 2
                   {auth.user.designation.split(" ").length > 3
