@@ -127,6 +127,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/requested-services",
         },
+        {
+          id: 5,
+          title: "Inactive Websites",
+          codeName: "Inac",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/inactive-websites",
+        },
       ],
     },
   ];

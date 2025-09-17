@@ -146,6 +146,8 @@ import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
+import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
+import EditInactiveWebsite from "../pages/Dashboard/IncativeWebsites/EditInactiveWebsite";
 
 export const routes = createBrowserRouter([
   // {
@@ -189,6 +191,20 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  {
+                    path: "inactive-websites",
+                    children: [
+                      {
+                        index: true,
+                        element: <InactiveWebsites />, // list view
+                      },
+                      {
+                        path: ":websiteId", // detail view
+                        element: <EditInactiveWebsite />, // reuse or create a new WebsiteDetails page
+                      },
+                    ],
+                  },
+
                   {
                     path: "companies",
                     children: [
