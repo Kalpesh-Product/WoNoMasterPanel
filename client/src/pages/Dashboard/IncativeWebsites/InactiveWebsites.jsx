@@ -88,6 +88,9 @@ const InactiveWebsites = () => {
                   );
                 },
               },
+              {
+                label: "Soft Delete",
+              },
             ]}
           />
         );

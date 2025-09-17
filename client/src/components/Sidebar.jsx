@@ -134,6 +134,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/inactive-websites",
         },
+        {
+          id: 6,
+          title: "Data Upload",
+          codeName: "Data",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/data-upload",
+        },
       ],
     },
   ];

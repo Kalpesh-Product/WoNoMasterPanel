@@ -148,6 +148,9 @@ import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
 import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
 import EditInactiveWebsite from "../pages/Dashboard/IncativeWebsites/EditInactiveWebsite";
+import DataUploadPagesLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/DataUploadPagesLayout";
+import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductUpload";
+import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
 
 export const routes = createBrowserRouter([
   // {
@@ -188,6 +191,20 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId", // inside page
                         element: <RequestedServicesDetails />,
+                      },
+                    ],
+                  },
+                  {
+                    path: "data-upload",
+                    element: <DataUploadPagesLayout />,
+                    children: [
+                      {
+                        path: "product-upload",
+                        element: <ProductUpload />,
+                      },
+                      {
+                        path: "product-image-upload",
+                        element: <ProductImageUpload />,
                       },
                     ],
                   },
