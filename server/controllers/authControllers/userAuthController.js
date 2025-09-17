@@ -52,6 +52,54 @@ const login = async (req, res, next) => {
   }
 };
 
+const signup = async (req, res, next) => {
+  try {
+    const { email, firstName, lastName, password } = req.body;
+
+    // 1. Validate input
+    if (!email || !firstName || !lastName || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+    const emailRegex = /^[a-zA-Z0-9_.±]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$/;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format" });
+    }
+
+    // 2. Check if user already exists
+    const existingUser = await AdminUser.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: "Email already registered" });
+    }
+
+    // 3. Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 4. Create new user
+    const newUser = new AdminUser({
+      email,
+      firstName,
+      lastName,
+      password: hashedPassword,
+    });
+
+    await newUser.save();
+
+    // 5. Send success response
+    res.status(201).json({
+      message: "User registered successfully",
+      user: {
+        id: newUser._id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const logout = async (req, res, next) => {
   try {
     const cookies = req.cookies;
@@ -60,7 +108,7 @@ const logout = async (req, res, next) => {
     }
 
     const refreshToken = cookies?.masterPannelCookie;
-    const user = await Employee.findOne({ refreshToken }).lean().exec();
+    const user = await AdminUser.findOne({ refreshToken }).lean().exec();
     if (!user) {
       res.clearCookie("masterPannelCookie", {
         httpOnly: true,
@@ -70,7 +118,7 @@ const logout = async (req, res, next) => {
       return res.sendStatus(201);
     }
 
-    await Employee.findOneAndUpdate({ refreshToken }, { refreshToken: "" })
+    await AdminUser.findOneAndUpdate({ refreshToken }, { refreshToken: "" })
       .lean()
       .exec();
     res.clearCookie("masterPannelCookie", {
@@ -84,4 +132,4 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { login, logout };
+module.exports = { login, logout, signup };
