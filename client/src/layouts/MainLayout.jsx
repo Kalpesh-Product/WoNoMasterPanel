@@ -46,26 +46,26 @@ const MainLayout = () => {
 
   useEffect(() => {
     const pathname = location.pathname;
-    console.log("🔍 Current pathname:", pathname);
+    // console.log("🔍 Current pathname:", pathname);
 
     const rawPermissions = auth?.user?.permissions?.permissions || [];
-    console.log("🔑 Raw permissions from auth:", rawPermissions);
+    // console.log("🔑 Raw permissions from auth:", rawPermissions);
 
     const guardedRoutes = Object.values(PERMISSIONS).filter(
       (perm) => perm.route
     );
-    console.log(
-      "🎯 Guarded Routes:",
-      guardedRoutes.map((g) => g.route)
-    );
+    // console.log(
+    //   "🎯 Guarded Routes:",
+    //   guardedRoutes.map((g) => g.route)
+    // );
 
     const currentRoutePermission = guardedRoutes.find((perm) =>
       pathname.includes(perm.route)
     );
-    console.log(
-      "🚦 Matched Permission Object:",
-      currentRoutePermission || "None (public route)"
-    );
+    // console.log(
+    //   "🚦 Matched Permission Object:",
+    //   currentRoutePermission || "None (public route)"
+    // );
 
     if (currentRoutePermission) {
       const userHasPermission = rawPermissions.includes(

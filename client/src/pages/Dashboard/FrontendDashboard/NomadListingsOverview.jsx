@@ -7,21 +7,17 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 
 export default function NomadListingsOverview() {
-  // const axios = useAxiosPrivate();
   const navigate = useNavigate();
-  const { companyId } = useParams();
   const location = useLocation()
-  // const {companyId} = location?.state
-
+   const {companyId} = location?.state || ""
 
   // ✅ Fetch listings of a company
   const { data: listings = [], isPending } = useQuery({
     queryKey: ["nomad-listings", companyId],
     queryFn: async () => {
-      const res = await axios.get(`https://wononomadsbe.vercel.app/api/company/get-single-company-data/CMP0001`);
+      const res = await axios.get(`https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`);
       
-      const data = [res.data]
-      return data || [];
+      return res.data || [];
     },
   });
 
@@ -30,6 +26,7 @@ export default function NomadListingsOverview() {
     srNo: index + 1,
     businessId: item.businessId,
     companyName: item.companyName,
+    companyType: item.companyType,
     city: item.city,
     state: item.state,
     country: item.country,
@@ -42,6 +39,7 @@ export default function NomadListingsOverview() {
     { headerName: "SR NO", field: "srNo", width: 100 },
     { headerName: "Business ID", field: "businessId", flex: 1 },
     { headerName: "Company Name", field: "companyName", flex: 1 },
+    { headerName: "Company Type", field: "companyType", flex: 1 },
     { headerName: "City", field: "city", flex: 1 },
     { headerName: "State", field: "state", flex: 1 },
     { headerName: "Country", field: "country", flex: 1 },
