@@ -144,10 +144,10 @@ import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
 
 export const routes = createBrowserRouter([
-  // {
-  //   path: "/",
-  //   element: <LoginPage />,
-  // },
+  {
+    path: "/",
+    element: <LoginPage />,
+  },
 
   {
     element: <PersistLogin />,

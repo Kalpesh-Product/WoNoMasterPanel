@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
 const hostCompanySchema = new mongoose.Schema(
   {
@@ -78,4 +78,4 @@ const hostCompanySchema = new mongoose.Schema(
 );
 
 const HostCompany = mongoose.model("HostCompany", hostCompanySchema);
-export default HostCompany;
+module.exports = HostCompany;
