@@ -153,10 +153,10 @@ import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/Produ
 import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
 
 export const routes = createBrowserRouter([
-  // {
-  //   path: "/",
-  //   element: <LoginPage />,
-  // },
+  {
+    path: "/",
+    element: <LoginPage />,
+  },
 
   {
     element: <PersistLogin />,
