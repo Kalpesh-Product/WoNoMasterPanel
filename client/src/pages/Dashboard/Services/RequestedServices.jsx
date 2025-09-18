@@ -86,30 +86,30 @@ const RequestedServices = () => {
         headerName: "No of Services",
         flex: 1,
       },
-      {
-        field: "registration",
-        headerName: "Registration",
-        flex: 1,
-        cellRenderer: (params) => {
-          const value = params.value;
-          const statusColorMap = {
-            Active: { backgroundColor: "#90EE90", color: "#006400" },
-            Inactive: { backgroundColor: "#FFC5C5", color: "#8B0000" },
-          };
-          const { backgroundColor, color } = statusColorMap[value] || {
-            backgroundColor: "gray",
-            color: "white",
-          };
+      // {
+      //   field: "registration",
+      //   headerName: "Registration",
+      //   flex: 1,
+      //   cellRenderer: (params) => {
+      //     const value = params.value;
+      //     const statusColorMap = {
+      //       Active: { backgroundColor: "#90EE90", color: "#006400" },
+      //       Inactive: { backgroundColor: "#FFC5C5", color: "#8B0000" },
+      //     };
+      //     const { backgroundColor, color } = statusColorMap[value] || {
+      //       backgroundColor: "gray",
+      //       color: "white",
+      //     };
 
-          return (
-            <Chip
-              label={value}
-              style={{ backgroundColor, color }}
-              size="small"
-            />
-          );
-        },
-      },
+      //     return (
+      //       <Chip
+      //         label={value}
+      //         style={{ backgroundColor, color }}
+      //         size="small"
+      //       />
+      //     );
+      //   },
+      // },
     ],
     [navigate]
   );

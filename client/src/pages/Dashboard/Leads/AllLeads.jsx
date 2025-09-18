@@ -16,7 +16,7 @@ const AllLeads = () => {
     { label: "All Enquiry", component: <AllEnquiryTable /> },
     { label: "All POC Contact", component: <AllPOCContactTable /> },
     { label: "Connect With Us", component: <ConnectWithUsTable /> },
-    { label: "Sign Up", component: <SignUpTable /> },
+    // { label: "Sign Up", component: <SignUpTable /> },
     { label: "Job Applications", component: <JobApplicationsTable /> },
   ];
 
