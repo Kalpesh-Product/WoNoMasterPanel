@@ -1,8 +1,11 @@
 const { default: axios } = require("axios");
-const { default: Employee } = require("../../models/hostCompany/employees");
-const {
-  default: HostCompany,
-} = require("../../models/hostCompany/hostCompany");
+// const { default: Employee } = require("../../models/hostCompany/employees");
+// const {
+//   default: HostCompany,
+// } = require("../../models/hostCompany/hostCompany");
+// ✅ Use plain require for CommonJS models
+const Employee = require("../../models/hostCompany/employees");
+const HostCompany = require("../../models/hostCompany/hostCompany");
 
 const createCompany = async (req, res, next) => {
   try {
