@@ -25,6 +25,7 @@ import dayjs from "dayjs";
 import { filterPermissions } from "../../../utils/accessConfig";
 import useAuth from "../../../hooks/useAuth";
 import { PERMISSIONS } from "../../../constants/permissions";
+import { useSelector } from "react-redux";
 
 const FrontendDashboard = () => {
   const { setIsSidebarOpen } = useSidebar();
@@ -35,12 +36,14 @@ const FrontendDashboard = () => {
 
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
+  const isWebsiteTemplate = useSelector((state)=>state.company.selectedCompany.isWebsiteTemplate)
 
   useEffect(() => {
     setIsSidebarOpen(true);
   }, []); // Empty dependency array ensures this runs once on mount
 
   //--------------------Frontend budget-graph-----------------------//
+
   const { data: hrFinance = [], isPending: isHrLoading } = useQuery({
     queryKey: ["frontendBudget"],
     queryFn: async () => {
@@ -470,7 +473,7 @@ const FrontendDashboard = () => {
       icon: <LuHardDriveUpload />,
     },
     {
-      route: "websites",
+      route: "edit-website",
       title: "Edit website",
       icon: <LuHardDriveUpload />,
     },

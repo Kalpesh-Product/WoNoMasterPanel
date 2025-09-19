@@ -12,6 +12,11 @@ const hostCompanySchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    registeredEntityName: {
+      type: String,
+      trim: true,
+    },
+
     industry: {
       type: String,
       trim: true,
@@ -45,6 +50,10 @@ const hostCompanySchema = new mongoose.Schema(
       default: [],
     },
     isRegistered: {
+      type: Boolean,
+      default: false,
+    },
+    isWebsiteTemplate: {
       type: Boolean,
       default: false,
     },
