@@ -57,6 +57,9 @@ const NomadListing = () => {
       companyType: "",
       ratings: "",
       totalReviews: "",
+      productName: "",
+      cost: "",
+      description: "",
       latitude: "",
       longitude: "",
       inclusions: [],
@@ -119,6 +122,27 @@ const NomadListing = () => {
           encType="multipart/form-data"
           onSubmit={handleSubmit(onSubmit)}
           className="grid grid-cols-2 gap-4">
+          {/* Product Name */}
+          <Controller
+            name="productName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                size="small"
+                label="Product Name"
+                // type="number"
+              />
+            )}
+          />
+          {/* Cost */}
+          <Controller
+            name="cost"
+            control={control}
+            render={({ field }) => (
+              <TextField {...field} size="small" label="Cost" type="number" />
+            )}
+          />
           {/* Company Type */}
           <Controller
             name="companyType"
@@ -157,6 +181,24 @@ const NomadListing = () => {
               </FormControl>
             )}
           />
+
+          {/* Description */}
+          <div className="col-span-2">
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Description"
+                  multiline
+                  minRows={3}
+                  fullWidth
+                />
+              )}
+            />
+          </div>
 
           {/* Ratings */}
           <Controller
