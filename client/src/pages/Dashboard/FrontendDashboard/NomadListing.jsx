@@ -135,6 +135,29 @@ const NomadListing = () => {
             )}
           />
 
+          {/* Inclusions - Multi select */}
+          <Controller
+            name="inclusions"
+            control={control}
+            render={({ field }) => (
+              <FormControl size="small">
+                <InputLabel>Inclusions</InputLabel>
+                <Select
+                  {...field}
+                  multiple
+                  input={<OutlinedInput label="Inclusions" />}
+                  renderValue={(selected) => selected.join(", ")}>
+                  {inclusionOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      <Checkbox checked={field.value.indexOf(option) > -1} />
+                      <ListItemText primary={option} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
+          />
+
           {/* Ratings */}
           <Controller
             name="ratings"
@@ -178,29 +201,6 @@ const NomadListing = () => {
             control={control}
             render={({ field }) => (
               <TextField {...field} size="small" label="Longitude" />
-            )}
-          />
-
-          {/* Inclusions - Multi select */}
-          <Controller
-            name="inclusions"
-            control={control}
-            render={({ field }) => (
-              <FormControl size="small">
-                <InputLabel>Inclusions</InputLabel>
-                <Select
-                  {...field}
-                  multiple
-                  input={<OutlinedInput label="Inclusions" />}
-                  renderValue={(selected) => selected.join(", ")}>
-                  {inclusionOptions.map((option) => (
-                    <MenuItem key={option} value={option}>
-                      <Checkbox checked={field.value.indexOf(option) > -1} />
-                      <ListItemText primary={option} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
             )}
           />
 
