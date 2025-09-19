@@ -9,8 +9,16 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 
 export default function NomadListingsOverview() {
   const navigate = useNavigate();
+  // const location = useLocation();
+  // const { companyId } = location?.state || "";
+
+  // backward navigation support
   const location = useLocation();
-  const { companyId } = location?.state || "";
+  const navState = location?.state || {};
+  const companyId =
+    navState.companyId || sessionStorage.getItem("companyId") || "";
+  const companyName =
+    navState.companyName || sessionStorage.getItem("companyName") || "";
 
   // ✅ Fetch listings of a company
   const { data: listings = [], isPending } = useQuery({
@@ -102,14 +110,20 @@ export default function NomadListingsOverview() {
 
   // ✅ Navigate to Add Listing form
   const handleAddClick = () => {
-    navigate(
-      `/dashboard/companies/${slugify(
-        listings?.[0]?.companyName
-      )}/nomad-listings/add`,
-      {
-        state: { companyId }, // keep companyId for backend usage
-      }
-    );
+    // navigate(
+    //   `/dashboard/companies/${slugify(
+    //     listings?.[0]?.companyName
+    //   )}/nomad-listings/add`,
+    //   {
+    //     state: { companyId }, // keep companyId for backend usage
+    //   }
+    // );
+
+    // backward navigation support
+    const nameForUrl = companyName || listings?.[0]?.companyName || "";
+    navigate(`/dashboard/companies/${slugify(nameForUrl)}/nomad-listings/add`, {
+      state: { companyId },
+    });
   };
 
   return (

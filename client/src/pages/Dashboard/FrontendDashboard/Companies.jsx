@@ -68,9 +68,20 @@ const Companies = () => {
               onClick={() => {
                 dispatch(setSelectedCompany(params.data));
 
+                // for backward navigating
+                sessionStorage.setItem("companyId", params.data.companyId);
+                sessionStorage.setItem("companyName", params.data.companyName);
+
                 navigate(
                   `/dashboard/companies/${slugify(params.data.companyName)}`,
-                  { state: { companyId: params.data.companyId } }
+
+                  // for backward navigation
+                  {
+                    state: {
+                      companyId: params.data.companyId,
+                      companyName: params.data.companyName,
+                    },
+                  }
                 );
               }}
               className="text-blue-600 hover:underline cursor-pointer">
