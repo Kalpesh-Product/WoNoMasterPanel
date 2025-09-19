@@ -151,6 +151,8 @@ import EditInactiveWebsite from "../pages/Dashboard/IncativeWebsites/EditInactiv
 import DataUploadPagesLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/DataUploadPagesLayout";
 import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductUpload";
 import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
+import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
+import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
 
 export const routes = createBrowserRouter([
   {
@@ -194,19 +196,34 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  // {
+                  //   path: "data-upload",
+                  //   element: <DataUploadPagesLayout />,
+                  //   children: [
+                  //     {
+                  //       path: "product-upload",
+                  //       element: <ProductUpload />,
+                  //     },
+                  //     {
+                  //       path: "product-image-upload",
+                  //       element: <ProductImageUpload />,
+                  //     },
+                  //   ],
+                  // },
                   {
                     path: "data-upload",
-                    element: <DataUploadPagesLayout />,
-                    children: [
-                      {
-                        path: "product-upload",
-                        element: <ProductUpload />,
-                      },
-                      {
-                        path: "product-image-upload",
-                        element: <ProductImageUpload />,
-                      },
-                    ],
+                    // element: <ProductUpload />,
+                    element: <CompaniesUpload />,
+                    // children: [
+                    //   {
+                    //     path: "product-upload",
+                    //     element: <ProductUpload />,
+                    //   },
+                    //   {
+                    //     path: "product-image-upload",
+                    //     element: <ProductImageUpload />,
+                    //   },
+                    // ],
                   },
                   {
                     path: "inactive-websites",
@@ -258,6 +275,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/nomad-listings/add",
                         element: <NomadListing />, // ✅ actual form page
+                      },
+                      {
+                        path: ":companyId/nomad-listings/:listingId",
+                        element: <EditNomadListing />, // ✅ Edit form
                       },
 
                       {
