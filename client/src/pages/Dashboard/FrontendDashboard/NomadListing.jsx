@@ -247,40 +247,40 @@ const NomadListing = () => {
           />
 
           {/* About */}
-          <div className="col-span-2">
-            <Controller
-              name="about"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="About"
-                  multiline
-                  minRows={3}
-                  fullWidth
-                />
-              )}
-            />
-          </div>
+          {/* <div className="col-span-2"> */}
+          <Controller
+            name="about"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                size="small"
+                label="About"
+                multiline
+                minRows={3}
+                fullWidth
+              />
+            )}
+          />
+          {/* </div> */}
 
           {/* Address */}
-          <div className="col-span-2">
-            <Controller
-              name="address"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Address"
-                  multiline
-                  minRows={2}
-                  fullWidth
-                />
-              )}
-            />
-          </div>
+          {/* <div className="col-span-2"> */}
+          <Controller
+            name="address"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                size="small"
+                label="Address"
+                multiline
+                minRows={3}
+                fullWidth
+              />
+            )}
+          />
+          {/* </div> */}
 
           {/* Images Upload */}
           <div className="col-span-2">

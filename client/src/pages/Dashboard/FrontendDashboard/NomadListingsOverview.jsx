@@ -71,6 +71,16 @@ export default function NomadListingsOverview() {
               {
                 label: "Edit",
                 onClick: () => {
+                  // persist for backward/refresh navigation
+                  sessionStorage.setItem("companyId", companyId || "");
+                  sessionStorage.setItem(
+                    "companyName",
+                    params?.data?.companyName || ""
+                  );
+                  sessionStorage.setItem(
+                    "businessId",
+                    params?.data?.businessId || ""
+                  );
                   navigate(
                     `/dashboard/companies/${slugify(
                       params?.data?.companyName
