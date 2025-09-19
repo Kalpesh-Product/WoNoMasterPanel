@@ -12,8 +12,11 @@ const templateSchema = new mongoose.Schema(
       id: { type: String },
       url: { type: String },
     },
-
     companyName: { type: String, required: true },
+    companyId: {
+      type: String,
+      // required: true
+    },
     title: { type: String, required: true },
     subTitle: { type: String, required: true },
     CTAButtonText: { type: String },
@@ -62,15 +65,15 @@ const templateSchema = new mongoose.Schema(
         rating: { type: Number },
       },
     ],
-    //contact
-    // contactTitle: { type: String },
-    // mapUrl: { type: String, required: true },
-    // email: { type: String, required: true },
-    // phone: { type: String, required: true },
-    // address: { type: String, required: true },
-    // //footer
-    // registeredCompanyName: { type: String },
-    // copyrightText: { type: String, required: true },
+    // contact
+    contactTitle: { type: String },
+    mapUrl: { type: String },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    address: { type: String },
+    //footer
+    registeredCompanyName: { type: String },
+    copyrightText: { type: String },
   },
   { timestamps: true }
 );

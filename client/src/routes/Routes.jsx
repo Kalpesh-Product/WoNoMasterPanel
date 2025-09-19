@@ -229,22 +229,23 @@ export const routes = createBrowserRouter([
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
-                          {
-                            path: "websites",
-                            element: <WebsitesLayout />,
-                            children: [
-                              { path: "active", element: <Websites /> },
-                              {
-                                path: "inactive",
-                                element: <InActiveWebsites />,
-                              },
-                              { path: ":website", element: <EditWebsite /> },
-                              {
-                                path: "inactive/:website",
-                                element: <EditWebsiteTemp />,
-                              },
-                            ],
-                          },
+                           { path: "edit-website", element: <EditWebsite /> },
+                          // {
+                          //   path: "websites",
+                          //   element: <WebsitesLayout />,
+                          //   children: [
+                          //     { path: "active", element: <Websites /> },
+                          //     {
+                          //       path: "inactive",
+                          //       element: <InActiveWebsites />,
+                          //     },
+                          //     { path: ":website", element: <EditWebsite /> },
+                          //     {
+                          //       path: "inactive/:website",
+                          //       element: <EditWebsiteTemp />,
+                          //     },
+                          //   ],
+                          // },
                           {
                             path: "edit-theme/:templateName/:pageName",
                             element: <EditTemplate />,

@@ -43,7 +43,7 @@ const createTemplate = async (req, res, next) => {
     };
 
     const searchKey = formatCompanyName(req.body.companyName);
-    const baseFolder = `${company}/template/${searchKey}`;
+    const baseFolder = `WoNo${company}/template/${searchKey}`;
 
     if (searchKey === "") {
       await session.abortTransaction();
@@ -65,6 +65,7 @@ const createTemplate = async (req, res, next) => {
 
     template = new WebsiteTemplate({
       searchKey,
+      companyId: req.body?.companyId,
       companyName: req.body.companyName,
       title: req.body.title,
       subTitle: req.body.subTitle,
@@ -228,10 +229,17 @@ const createTemplate = async (req, res, next) => {
 
 const getTemplate = async (req, res) => {
   try {
-    const { company } = req.params;
+    const { companyName } = req.params;
+
+    const formatCompanyName = (name) => {
+      if (!name) return "";
+      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+    };
+
+    const searchKey = formatCompanyName(companyName);
 
     const template = await WebsiteTemplate.findOne({
-      searchKey: company,
+      searchKey,
       isActive: true,
     });
 
@@ -325,8 +333,9 @@ const editTemplate = async (req, res, next) => {
       galleryImageIds,
       companyLogoId,
       about,
+      companyName,
     } = req.body;
-    const company = "BizNest";
+    const company = companyName;
 
     // --- helpers ---
     const parseJson = (raw, fallback) => {
@@ -400,7 +409,7 @@ const editTemplate = async (req, res, next) => {
       testimonialTitle: req.body.testimonialTitle ?? template.testimonialTitle,
       contactTitle: req.body.contactTitle ?? template.contactTitle,
       mapUrl: req.body.mapUrl ?? template.mapUrl,
-      email: req.body.websiteEmail ?? template.websiteEmail,
+      email: req.body.email ?? template.email,
       phone: req.body.phone ?? template.phone,
       address: req.body.address ?? template.address,
       registeredCompanyName:
