@@ -43,9 +43,9 @@ const EditWebsite = () => {
   const { state } = useLocation();
   const formRef = useRef(null);
   const tenant = "spring";
-  const tpl = state.website;
-
-  const isLoading = state.isLoading;
+  const website = useSelector((state)=>state.company.selectedCompany)
+  //  const tpl = website || "";
+  //  const isLoading = state.isLoading || false;
 
   const {
     control,
@@ -85,6 +85,23 @@ const EditWebsite = () => {
       deletedTestimonialImageIds: [], // [imageId]
     },
   });
+
+  const {data:tpl,isLoading} = useQuery({
+    queryKey: ["website-data"],
+    queryFn: async ()=>{
+
+       const formatCompanyName = (name) => {
+      if (!name) return "";
+      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+    };
+
+    const searchKey = formatCompanyName(website.companyName);
+
+      const response = await axios.get(`/api/editor/get-website/${searchKey}`)
+
+      return response.data
+    }
+  })
 
   const {
     fields: productFields,
@@ -190,7 +207,7 @@ const EditWebsite = () => {
             }))
           : [defaultTestimonial],
     });
-  }, [isLoading, tpl, reset]);
+  }, [tpl, reset]);
 
   const values = watch();
 

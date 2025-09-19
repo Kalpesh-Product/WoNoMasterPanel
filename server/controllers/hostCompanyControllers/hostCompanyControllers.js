@@ -1,11 +1,9 @@
 const { default: axios } = require("axios");
-// const { default: Employee } = require("../../models/hostCompany/employees");
-// const {
-//   default: HostCompany,
-// } = require("../../models/hostCompany/hostCompany");
-// ✅ Use plain require for CommonJS models
 const Employee = require("../../models/hostCompany/employees");
 const HostCompany = require("../../models/hostCompany/hostCompany");
+const { Readable } = require("stream");
+const csvParser = require("csv-parser");
+const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 
 const createCompany = async (req, res, next) => {
   try {
@@ -23,6 +21,15 @@ const createCompany = async (req, res, next) => {
 
     const companyId = `CMP${String(newIdNumber).padStart(4, "0")}`;
 
+    const formatCompanyName = (name) => {
+      if (!name) return "";
+      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+    };
+
+    const searchKey = formatCompanyName(req.body.companyName);
+
+    const isWebsiteTemplate = await WebsiteTemplate.findOne({ searchKey });
+
     const companyData = {
       companyId,
       companyName: payload.companyName,
@@ -35,6 +42,7 @@ const createCompany = async (req, res, next) => {
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
       isRegistered: true,
+      isWebsiteTemplate: isWebsiteTemplate ? true : false,
     };
 
     //Store company data in company collection (master panel)
@@ -104,9 +112,10 @@ const getCompanies = async (req, res, next) => {
 const getCompany = async (req, res, next) => {
   try {
     const { companyId } = req.query;
-    const company = await HostCompany.findOne(companyId);
 
-    if (!company || !company.length) {
+    const company = await HostCompany.findOne({ companyId: companyId });
+
+    if (!company) {
       return res.status(200).json([]);
     }
 
@@ -116,8 +125,96 @@ const getCompany = async (req, res, next) => {
   }
 };
 
+const bulkInsertCompanies = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid CSV file" });
+    }
+
+    const companies = [];
+
+    const lastCompany = await HostCompany.countDocuments();
+
+    let newId = lastCompany + 1;
+
+    const stream = Readable.from(file.buffer.toString("utf-8").trim());
+    stream
+      .pipe(csvParser())
+      .on("data", (row) => {
+        const companyId = `CMP${String(newId).padStart(4, "0")}`;
+        const company = {
+          companyName: row["Business Name"]?.trim(),
+          companyId: companyId,
+          registeredEntityName: row["Registered Entity name"]?.trim(),
+          companyCity: row["Website"]?.trim() || null,
+          address: row["Address"]?.trim(),
+          companyState: row["City"]?.trim(),
+          companyCountry: row["State"]?.trim(),
+          websiteURL: row["Country"]?.trim(),
+        };
+        newId++;
+        companies.push(company);
+      })
+      .on("end", async () => {
+        try {
+          const companySet = new Set();
+          const uniqueCompanies = companies.filter((company) => {
+            if (!company.companyName) return false; // skip empty names
+            if (companySet.has(company.companyName)) {
+              return false; // duplicate
+            }
+            companySet.add(company.companyName);
+            return true;
+          });
+
+          const result = await HostCompany.insertMany(uniqueCompanies);
+
+          const insertedCount = result.length;
+          const failedCount = companies.length - insertedCount;
+
+          res.status(200).json({
+            message: "Bulk insert completed",
+            total: companies.length,
+            inserted: insertedCount,
+            failed: failedCount,
+          });
+        } catch (insertError) {
+          if (insertError.name === "BulkWriteError") {
+            const insertedCount = insertError.result?.nInserted || 0;
+            const failedCount = companies.length - insertedCount;
+
+            res.status(200).json({
+              message: "Bulk insert completed with partial failure",
+              total: companies.length,
+              inserted: insertedCount,
+              failed: failedCount,
+              writeErrors: insertError.writeErrors?.map((e) => ({
+                index: e.index,
+                errmsg: e.errmsg,
+                code: e.code,
+                op: e.op,
+              })),
+            });
+          } else {
+            res.status(500).json({
+              message: "Unexpected error during bulk insert",
+              error: insertError.message,
+            });
+          }
+        }
+      });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
 module.exports = {
   createCompany,
   getCompanies,
   getCompany,
+  bulkInsertCompanies,
 };
