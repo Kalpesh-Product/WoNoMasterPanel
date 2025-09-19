@@ -9,7 +9,6 @@ import { Chip } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
 
-
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
   str
@@ -31,9 +30,7 @@ const Companies = () => {
     queryKey: ["companiesList"],
     queryFn: async () => {
       try {
-        const response = await axiosPrivate.get(
-          "/api/hosts/companies"
-        );
+        const response = await axiosPrivate.get("/api/hosts/companies");
         return response.data; // backend should return an array of companies
       } catch (error) {
         throw new Error(
@@ -43,7 +40,7 @@ const Companies = () => {
     },
   });
 
-   // ✅ define columns with logo, name, type, location
+  // ✅ define columns with logo, name, type, location
   const columns = useMemo(
     () => [
       {
@@ -66,14 +63,14 @@ const Companies = () => {
         headerName: "Company Name",
         flex: 1,
         cellRenderer: (params) => {
-        
           return (
             <span
               onClick={() => {
                 dispatch(setSelectedCompany(params.data));
-                
+
                 navigate(
-                  `/dashboard/companies/${slugify(params.data.companyName)}`,{state:{companyId: params.data.companyId}}
+                  `/dashboard/companies/${slugify(params.data.companyName)}`,
+                  { state: { companyId: params.data.companyId } }
                 );
               }}
               className="text-blue-600 hover:underline cursor-pointer">
@@ -88,14 +85,16 @@ const Companies = () => {
         headerName: "Location",
         flex: 1,
         valueGetter: (params) =>
-          `${params.data.companyCity || ""}, ${params.data.companyCountry || ""}`,
+          `${params.data.companyCity || ""}, ${
+            params.data.companyCountry || ""
+          }`,
       },
       {
         field: "isRegistered",
         headerName: "Registration",
         flex: 1,
         valueGetter: (params) => {
-           return  params.data.isRegistered ? "Active" : "Inactive";
+          return params.data.isRegistered ? "Active" : "Inactive";
         },
         cellRenderer: (params) => {
           const value = params.value; // "Active" | "Inactive"

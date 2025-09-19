@@ -1,13 +1,12 @@
-import  { useRef } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useRef } from "react";
+import { useForm, Controller, useFieldArray } from "react-hook-form";
 import {
   TextField,
   MenuItem,
-  CircularProgress,
-  Select,
-  InputLabel,
   FormControl,
+  InputLabel,
   OutlinedInput,
+  Select,
   Checkbox,
   ListItemText,
 } from "@mui/material";
@@ -17,9 +16,7 @@ import SecondaryButton from "../../../components/SecondaryButton";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import UploadFileInput from "../../../components/UploadFileInput";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
-import { Country, State, City } from "country-state-city";
 
 // Dummy inclusions
 const inclusionOptions = [
@@ -38,6 +35,13 @@ const inclusionOptions = [
 // Dummy company types
 const companyTypes = ["Coworking", "Meeting Room", "Cafe", "Private Stay"];
 
+// ✅ Default review structure
+const defaultReview = {
+  name: "",
+  review: "",
+  rating: 5,
+};
+
 const NomadListing = () => {
   const axios = useAxiosPrivate();
   const formRef = useRef(null);
@@ -46,33 +50,29 @@ const NomadListing = () => {
     control,
     handleSubmit,
     reset,
-    watch,
     formState: { errors },
   } = useForm({
     defaultValues: {
-      businessId: `BIZ_${Date.now()}`, // auto generated
-      companyName: "",
-      registeredEntityName: "",
-      website: "",
-      address: "",
-      country: "",
-      state: "",
-      city: "",
-      about: "",
-      latitude: "",
-      longitude: "",
+      businessId: `BIZ_${Date.now()}`,
+      companyType: "",
       ratings: "",
       totalReviews: "",
+      latitude: "",
+      longitude: "",
       inclusions: [],
-      services: "",
-      companyType: "",
-      logo: null,
+      about: "",
+      address: "",
       images: [],
+      reviews: [defaultReview], // ✅ initialize with one review
     },
   });
 
-  const selectedCountry = watch("country");
-  const selectedState = watch("state");
+  // ✅ Field Array for reviews
+  const {
+    fields: reviewFields,
+    append: appendReview,
+    remove: removeReview,
+  } = useFieldArray({ control, name: "reviews" });
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
@@ -96,8 +96,8 @@ const NomadListing = () => {
 
     fd.set("businessId", values.businessId);
     fd.set("inclusions", JSON.stringify(values.inclusions));
+    fd.set("reviews", JSON.stringify(values.reviews)); // ✅ add reviews to payload
 
-    if (values.logo) fd.append("logo", values.logo);
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
@@ -114,52 +114,24 @@ const NomadListing = () => {
   return (
     <div className="p-4">
       <PageFrame>
-        <div className="flex items-center justify-between pb-4">
-          <span className="text-title font-pmedium text-primary uppercase">
-            Nomad Listing
-          </span>
-        </div>
-
         <form
           ref={formRef}
           encType="multipart/form-data"
           onSubmit={handleSubmit(onSubmit)}
           className="grid grid-cols-2 gap-4">
-          {/* Company Name */}
+          {/* Company Type */}
           <Controller
-            name="companyName"
+            name="companyType"
             control={control}
-            rules={{ required: "Company Name is required" }}
+            rules={{ required: "Company Type is required" }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Company Name"
-                helperText={errors?.companyName?.message}
-                error={!!errors.companyName}
-              />
-            )}
-          />
-
-          {/* Registered Entity */}
-          <Controller
-            name="registeredEntityName"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Registered Entity Name"
-              />
-            )}
-          />
-
-          {/* Website */}
-          <Controller
-            name="website"
-            control={control}
-            render={({ field }) => (
-              <TextField {...field} size="small" label="Website" />
+              <TextField {...field} select size="small" label="Company Type">
+                {companyTypes.map((type) => (
+                  <MenuItem key={type} value={type.toLowerCase()}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </TextField>
             )}
           />
 
@@ -191,68 +163,6 @@ const NomadListing = () => {
             )}
           />
 
-          {/* Country */}
-          <Controller
-            name="country"
-            control={control}
-            rules={{ required: "Country is required" }}
-            render={({ field }) => (
-              <TextField {...field} select size="small" label="Country">
-                {Country.getAllCountries().map((c) => (
-                  <MenuItem key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-
-          {/* State */}
-          <Controller
-            name="state"
-            control={control}
-            render={({ field }) => (
-              <TextField {...field} select size="small" label="State">
-                {selectedCountry &&
-                  State.getStatesOfCountry(
-                    Country.getAllCountries().find(
-                      (c) => c.name === selectedCountry
-                    )?.isoCode
-                  ).map((s) => (
-                    <MenuItem key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
-          />
-
-          {/* City */}
-          <Controller
-            name="city"
-            control={control}
-            render={({ field }) => (
-              <TextField {...field} select size="small" label="City">
-                {selectedCountry &&
-                  selectedState &&
-                  City.getCitiesOfState(
-                    Country.getAllCountries().find(
-                      (c) => c.name === selectedCountry
-                    )?.isoCode,
-                    State.getStatesOfCountry(
-                      Country.getAllCountries().find(
-                        (c) => c.name === selectedCountry
-                      )?.isoCode
-                    ).find((s) => s.name === selectedState)?.isoCode
-                  ).map((city) => (
-                    <MenuItem key={city.name} value={city.name}>
-                      {city.name}
-                    </MenuItem>
-                  ))}
-              </TextField>
-            )}
-          />
-
           {/* Latitude */}
           <Controller
             name="latitude"
@@ -268,22 +178,6 @@ const NomadListing = () => {
             control={control}
             render={({ field }) => (
               <TextField {...field} size="small" label="Longitude" />
-            )}
-          />
-
-          {/* Company Type */}
-          <Controller
-            name="companyType"
-            control={control}
-            rules={{ required: "Company Type is required" }}
-            render={({ field }) => (
-              <TextField {...field} select size="small" label="Company Type">
-                {companyTypes.map((type) => (
-                  <MenuItem key={type} value={type.toLowerCase()}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </TextField>
             )}
           />
 
@@ -307,22 +201,6 @@ const NomadListing = () => {
                   ))}
                 </Select>
               </FormControl>
-            )}
-          />
-
-          {/* Services */}
-          <Controller
-            name="services"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Services"
-                multiline
-                minRows={2}
-                fullWidth
-              />
             )}
           />
 
@@ -362,20 +240,6 @@ const NomadListing = () => {
             />
           </div>
 
-          {/* Logo Upload */}
-          <Controller
-            name="logo"
-            control={control}
-            render={({ field }) => (
-              <UploadFileInput
-                id="logo"
-                value={field.value}
-                label="Company Logo"
-                onChange={field.onChange}
-              />
-            )}
-          />
-
           {/* Images Upload */}
           <div className="col-span-2">
             <Controller
@@ -384,13 +248,101 @@ const NomadListing = () => {
               render={({ field }) => (
                 <UploadMultipleFilesInput
                   {...field}
-                  label="Company Images"
+                  label="Product Images"
                   maxFiles={5}
                   allowedExtensions={["jpg", "jpeg", "png", "webp"]}
                   id="images"
                 />
               )}
             />
+          </div>
+
+          {/* ✅ Reviews Section */}
+          <div className="col-span-2">
+            <div className="py-4 border-b border-gray-300">
+              <span className="text-lg font-medium text-primary">Reviews</span>
+            </div>
+
+            {reviewFields.map((field, index) => (
+              <div
+                key={field.id}
+                className="rounded-lg border border-gray-300 p-4 my-3">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-semibold">Review {index + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeReview(index)}
+                    className="text-sm text-red-500">
+                    Remove
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <Controller
+                    name={`reviews.${index}.name`}
+                    control={control}
+                    rules={{ required: "Name is required" }}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        size="small"
+                        label="Reviewer Name"
+                        fullWidth
+                        helperText={errors?.reviews?.[index]?.name?.message}
+                        error={!!errors?.reviews?.[index]?.name}
+                      />
+                    )}
+                  />
+
+                  {/* Rating */}
+                  <Controller
+                    name={`reviews.${index}.rating`}
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        type="number"
+                        size="small"
+                        label="Rating (1-5)"
+                        fullWidth
+                        inputProps={{ min: 1, max: 5 }}
+                      />
+                    )}
+                  />
+                </div>
+
+                {/* Review text */}
+                <Controller
+                  name={`reviews.${index}.review`}
+                  control={control}
+                  rules={{ required: "Review is required" }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      size="small"
+                      label="Review"
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      helperText={errors?.reviews?.[index]?.review?.message}
+                      error={!!errors?.reviews?.[index]?.review}
+                      sx={{ mt: 2 }} // ✅ adds spacing above this input
+                    />
+                  )}
+                />
+              </div>
+            ))}
+
+            {/* Add Review button */}
+            <div>
+              <button
+                type="button"
+                onClick={() => appendReview({ ...defaultReview })}
+                className="text-sm text-primary">
+                + Add Review
+              </button>
+            </div>
           </div>
 
           {/* Submit / Reset */}

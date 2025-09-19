@@ -64,17 +64,20 @@ export default function NomadListingsOverview() {
                 label: "Edit",
                 onClick: () => {
                   navigate(
-                    // `/dashboard/inactive-websites/${params?.data?.companyName}`,
-                    `/dashboard/companies/${companyId}/nomad-listings/${params?.data?.companyName}`,
+                    `/dashboard/companies/${slugify(
+                      params?.data?.companyName
+                    )}/nomad-listings/${slugify(params?.data?.companyName)}`,
                     {
                       state: {
                         website: params.data,
+                        companyId, // still pass companyId
                         isLoading: isPending,
                       },
                     }
                   );
                 },
               },
+
               {
                 label: "Activate Listing",
               },
@@ -90,9 +93,23 @@ export default function NomadListingsOverview() {
     // { headerName: "Total Reviews", field: "totalReviews", flex: 1 },
   ];
 
+  // ✅ helper to make slugs URL-safe
+  const slugify = (str) =>
+    str
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^\w-]+/g, "");
+
   // ✅ Navigate to Add Listing form
   const handleAddClick = () => {
-    navigate(`/dashboard/companies/${companyId}/nomad-listings/add`);
+    navigate(
+      `/dashboard/companies/${slugify(
+        listings?.[0]?.companyName
+      )}/nomad-listings/add`,
+      {
+        state: { companyId }, // keep companyId for backend usage
+      }
+    );
   };
 
   return (
