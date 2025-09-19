@@ -1,8 +1,6 @@
 const { default: axios } = require("axios");
-const { default: Employee } = require("../../models/hostCompany/employees");
-const {
-  default: HostCompany,
-} = require("../../models/hostCompany/hostCompany");
+const Employee = require("../../models/hostCompany/employees");
+const HostCompany = require("../../models/hostCompany/hostCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
