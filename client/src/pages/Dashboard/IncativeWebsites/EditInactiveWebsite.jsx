@@ -42,7 +42,7 @@ const EditInactiveWebsite = () => {
   const axios = useAxiosPrivate();
   const { state } = useLocation();
   const formRef = useRef(null);
-  const tenant = "spring";
+  const tenant = "";
   const tpl = state.website;
 
   const isLoading = state.isLoading;
@@ -198,7 +198,8 @@ const EditInactiveWebsite = () => {
   const { mutate: updateTemplate, isPending: isUpdating } = useMutation({
     mutationKey: ["website-update", tenant],
     mutationFn: async (fd) => {
-      const res = await axios.patch(`/api/editor/edit-website`, fd, {
+  
+      const res = await axios.patch(`/api/editor/edit-website/${tenant}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -761,7 +762,6 @@ const EditInactiveWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.name`}
                         control={control}
-                        rules={{ required: "Name is required" }}
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -795,8 +795,7 @@ const EditInactiveWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.rating`}
                         control={control}
-                        rules={{ required: "Rating is required" }}
-                        render={({ field }) => (
+                         render={({ field }) => (
                           <TextField
                             {...field}
                             type="number"
@@ -814,8 +813,7 @@ const EditInactiveWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.testimony`}
                         control={control}
-                        rules={{ required: "Testimony is required" }}
-                        render={({ field }) => (
+                         render={({ field }) => (
                           <TextField
                             {...field}
                             size="small"
