@@ -89,10 +89,10 @@ const EditNomadListing = () => {
 
   // ---- Prefill logic -------------------------------------------------
 
-  // If the row object is missing (e.g., refresh), refetch listings and pick by businessId
+  // 1) Always fetch the full listing (don't gate on navState.website)
   const { data: fetchedListing } = useQuery({
     queryKey: ["nomad-listing-detail", companyId, businessId],
-    enabled: !navState.website && !!companyId && !!businessId,
+    enabled: !!companyId && !!businessId, // <- changed
     queryFn: async () => {
       const res = await axios.get(
         `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`
@@ -102,12 +102,12 @@ const EditNomadListing = () => {
     },
   });
 
-  // Map API/row structure to form fields, then reset
+  // 2) Prefer fetchedListing (richer) over navState.website, normalize fields
   useEffect(() => {
-    const src = navState.website || fetchedListing;
+    // prefer the fully-fetched record when available
+    const src = fetchedListing || navState.website;
     if (!src) return;
 
-    // reviews can be an array of {name, review, rating}
     const reviews =
       Array.isArray(src.reviews) && src.reviews.length
         ? src.reviews.map((r) => ({
@@ -117,20 +117,31 @@ const EditNomadListing = () => {
           }))
         : [defaultReview];
 
+    const inclusionsArr = Array.isArray(src.inclusions)
+      ? src.inclusions
+      : typeof src.inclusions === "string" && src.inclusions.trim()
+      ? src.inclusions
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
     reset({
       businessId: src.businessId || businessId || `BIZ_${Date.now()}`,
+      // productName: src.productName || src.companyName || src.name || "",
       productName: src.productName || src.name || "",
       cost: src.cost || "",
+      // description: src.description || src.services || "",
       description: src.description || "",
       companyType: src.companyType || "",
       ratings: src.ratings ?? "",
       totalReviews: src.totalReviews ?? "",
-      latitude: src.latitude || "",
-      longitude: src.longitude || "",
-      inclusions: Array.isArray(src.inclusions) ? src.inclusions : [],
+      latitude: src.latitude != null ? String(src.latitude) : "",
+      longitude: src.longitude != null ? String(src.longitude) : "",
+      inclusions: inclusionsArr,
       about: src.about || "",
       address: src.address || "",
-      images: [], // ⚠️ cannot prefill file inputs; leave empty
+      images: [], // cannot prefill file inputs
       reviews,
     });
   }, [navState.website, fetchedListing, businessId, reset]);
@@ -348,7 +359,7 @@ const EditNomadListing = () => {
           {/* </div> */}
 
           {/* Images Upload */}
-          <div className="col-span-2">
+          {/* <div className="col-span-2">
             <Controller
               name="images"
               control={control}
@@ -356,6 +367,41 @@ const EditNomadListing = () => {
                 <UploadMultipleFilesInput
                   {...field}
                   label="Product Images"
+                  maxFiles={5}
+                  allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                  id="images"
+                />
+              )}
+            />
+          </div> */}
+
+          {/* Images Upload */}
+          <div className="col-span-2">
+            {/* Existing images preview (from API) */}
+            {fetchedListing?.images?.length > 0 && (
+              <div className="flex gap-3 flex-wrap mb-3">
+                {fetchedListing.images.map((img) => (
+                  <div
+                    key={img._id}
+                    className="relative w-24 h-24 border rounded overflow-hidden">
+                    <img
+                      src={img.url}
+                      alt={`Image ${img.index}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Upload new images (will be added on top of existing ones) */}
+            <Controller
+              name="images"
+              control={control}
+              render={({ field }) => (
+                <UploadMultipleFilesInput
+                  {...field}
+                  label="Upload New Images"
                   maxFiles={5}
                   allowedExtensions={["jpg", "jpeg", "png", "webp"]}
                   id="images"
