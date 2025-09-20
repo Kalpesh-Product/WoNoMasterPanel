@@ -6,6 +6,7 @@ const {
 } = require("../../config/cloudinaryConfig");
 const Company = require("../../models/hr/Company");
 const mongoose = require("mongoose");
+const { uploadFileToS3 } = require("../../config/s3config");
 
 const createTemplate = async (req, res, next) => {
   const session = await mongoose.startSession();
@@ -86,20 +87,69 @@ const createTemplate = async (req, res, next) => {
     });
 
     // Helper: upload an array of multer files to a folder
+    // const uploadImages = async (files = [], folder) => {
+    //   const arr = [];
+    //   for (const file of files) {
+    //     const buffer = await sharp(file.buffer)
+    //       .webp({ quality: 80 })
+    //       .toBuffer();
+    //     const base64Image = `data:image/webp;base64,${buffer.toString(
+    //       "base64"
+    //     )}`;
+    //     const uploadResult = await handleFileUpload(base64Image, folder);
+    //     arr.push({ id: uploadResult.public_id, url: uploadResult.secure_url });
+    //   }
+    //   return arr;
+    // };
+
     const uploadImages = async (files = [], folder) => {
       const arr = [];
       for (const file of files) {
         const buffer = await sharp(file.buffer)
           .webp({ quality: 80 })
           .toBuffer();
-        const base64Image = `data:image/webp;base64,${buffer.toString(
-          "base64"
+
+        const route = `${folder}/${Date.now()}_${file.originalname.replace(
+          /\s+/g,
+          "_"
         )}`;
-        const uploadResult = await handleFileUpload(base64Image, folder);
-        arr.push({ id: uploadResult.public_id, url: uploadResult.secure_url });
+        const url = await uploadFileToS3(route, {
+          buffer,
+          mimetype: "image/webp",
+        });
+        arr.push({ url });
       }
       return arr;
     };
+
+    if (req.body.companyLogo) {
+      template.companyLogo = { url: req.body.companyLogo.url };
+    }
+
+    if (req.body.heroImages) {
+      template.heroImages = req.body.heroImages.map((img) => ({
+        url: img.url,
+      }));
+    }
+
+    if (req.body.gallery) {
+      template.gallery = req.body.gallery.map((img) => ({
+        url: img.url,
+      }));
+    }
+
+    if (req.body.products) {
+      // template.products = req.body.products.map((img) => ({
+      //   url: img.url,
+      // }));
+      template.products = req.body.products;
+    }
+
+    if (req.body.testimonials) {
+      template.testimonials = req.body.testimonials.map((img) => ({
+        url: img.url,
+      }));
+    }
 
     // Multer.any puts files in req.files (array). Build a quick index by fieldname.
     const filesByField = {};
@@ -115,15 +165,14 @@ const createTemplate = async (req, res, next) => {
       const buffer = await sharp(logoFile.buffer)
         .webp({ quality: 80 })
         .toBuffer();
-      const base64Image = `data:image/webp;base64,${buffer.toString("base64")}`;
-      const uploadResult = await handleFileUpload(
-        base64Image,
-        `${baseFolder}/companyLogo`
-      );
-      template.companyLogo = {
-        id: uploadResult.public_id,
-        url: uploadResult.secure_url,
-      };
+      const route = `${baseFolder}/companyLogo/${Date.now()}_${
+        logoFile.originalname
+      }`;
+      const url = await uploadFileToS3(route, {
+        buffer,
+        mimetype: "image/webp",
+      });
+      template.companyLogo = { url };
     }
 
     // heroImages
@@ -355,18 +404,18 @@ const editTemplate = async (req, res, next) => {
       );
     };
 
-    const uploadImages = async (files = [], folder) => {
-      const out = [];
-      for (const file of files) {
-        const buffer = await sharp(file.buffer)
-          .webp({ quality: 80 })
-          .toBuffer();
-        const base64 = `data:image/webp;base64,${buffer.toString("base64")}`;
-        const up = await handleFileUpload(base64, folder);
-        out.push({ id: up.public_id, url: up.secure_url });
-      }
-      return out;
-    };
+    // const uploadImages = async (files = [], folder) => {
+    //   const out = [];
+    //   for (const file of files) {
+    //     const buffer = await sharp(file.buffer)
+    //       .webp({ quality: 80 })
+    //       .toBuffer();
+    //     const base64 = `data:image/webp;base64,${buffer.toString("base64")}`;
+    //     const up = await handleFileUpload(base64, folder);
+    //     out.push({ id: up.public_id, url: up.secure_url });
+    //   }
+    //   return out;
+    // };
 
     about = parseJson(about, []);
     companyLogoId = parseJson(companyLogoId, undefined);
