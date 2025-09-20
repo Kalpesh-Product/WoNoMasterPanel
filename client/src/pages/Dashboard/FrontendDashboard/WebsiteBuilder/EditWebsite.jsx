@@ -789,7 +789,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.name`}
                         control={control}
-                        rules={{ required: "Name is required" }}
+                      
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -823,8 +823,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.rating`}
                         control={control}
-                        rules={{ required: "Rating is required" }}
-                        render={({ field }) => (
+                         render={({ field }) => (
                           <TextField
                             {...field}
                             type="number"
@@ -842,8 +841,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.testimony`}
                         control={control}
-                        rules={{ required: "Testimony is required" }}
-                        render={({ field }) => (
+                         render={({ field }) => (
                           <TextField
                             {...field}
                             size="small"
