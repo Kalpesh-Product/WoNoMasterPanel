@@ -146,7 +146,7 @@ const createTemplate = async (req, res, next) => {
     }
 
     if (req.body.testimonials) {
-      template.testimonials = req.body.testimonials.map((img) => ({
+      template.testimonials = req.body.testimonials?.map((img) => ({
         url: img.url,
       }));
     }
