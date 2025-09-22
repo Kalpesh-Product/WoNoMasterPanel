@@ -121,7 +121,6 @@ const createTemplate = async (req, res, next) => {
       }
       return arr;
     };
-
     if (req.body.companyLogo) {
       template.companyLogo = { url: req.body.companyLogo.url };
     }
@@ -146,7 +145,8 @@ const createTemplate = async (req, res, next) => {
     }
 
     if (req.body.testimonials) {
-      template.testimonials = req.body.testimonials?.map((img) => ({
+      const testimonialsData = JSON.parse(req.body.testimonials);
+      template.testimonials = testimonialsData?.map((img) => ({
         url: img.url,
       }));
     }
@@ -270,6 +270,7 @@ const createTemplate = async (req, res, next) => {
 
     return res.status(201).json({ message: "Template created", template });
   } catch (error) {
+    console.log(error);
     await session.abortTransaction();
     session.endSession();
     next(error);
