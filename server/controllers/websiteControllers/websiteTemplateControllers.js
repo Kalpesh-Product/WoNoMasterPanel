@@ -121,6 +121,7 @@ const createTemplate = async (req, res, next) => {
       }
       return arr;
     };
+
     if (req.body.companyLogo) {
       template.companyLogo = { url: req.body.companyLogo.url };
     }
@@ -137,18 +138,31 @@ const createTemplate = async (req, res, next) => {
       }));
     }
 
-    if (req.body.products) {
-      // template.products = req.body.products.map((img) => ({
-      //   url: img.url,
-      // }));
-      template.products = req.body.products;
+    // if (req.body.products) {
+    //   // template.products = req.body.products.map((img) => ({
+    //   //   url: img.url,
+    //   // }));
+    //   template.products = req.body.products;
+    // }
+
+    if (Array.isArray(products) && products.length) {
+      template.products = products;
     }
 
+    // if (req.body.testimonials) {
+    //   template.testimonials = req.body.testimonials.map((img) => ({
+    //     url: img.url,
+    //   }));
+    // }
+
     if (req.body.testimonials) {
-      const testimonialsData = JSON.parse(req.body.testimonials);
-      template.testimonials = testimonialsData?.map((img) => ({
-        url: img.url,
-      }));
+      const parsedTestimonials = Array.isArray(req.body.testimonials)
+        ? req.body.testimonials
+        : safeParse(req.body.testimonials, []);
+
+      template.testimonials = parsedTestimonials.map((t) =>
+        t?.url ? { url: t.url } : {}
+      );
     }
 
     // Multer.any puts files in req.files (array). Build a quick index by fieldname.
@@ -230,7 +244,10 @@ const createTemplate = async (req, res, next) => {
       }
     }
 
-    template.testimonials = (testimonials || []).map((t, i) => ({
+    // template.testimonials = (testimonials || []).map((t, i) => ({
+    template.testimonials = (
+      Array.isArray(testimonials) ? testimonials : []
+    ).map((t, i) => ({
       image: tUploads[i], // may be undefined if fewer images provided
       name: t.name,
       jobPosition: t.jobPosition,
@@ -270,7 +287,6 @@ const createTemplate = async (req, res, next) => {
 
     return res.status(201).json({ message: "Template created", template });
   } catch (error) {
-    console.log(error);
     await session.abortTransaction();
     session.endSession();
     next(error);
