@@ -38,7 +38,7 @@ const createCompany = async (req, res, next) => {
       companyCity: payload.companyCity,
       companyState: payload.companyState,
       companyCountry: payload.companyCountry,
-      websiteURL: payload.websiteURL,
+      websiteLink: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
       isRegistered: true,
