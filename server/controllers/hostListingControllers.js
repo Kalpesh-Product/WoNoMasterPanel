@@ -229,7 +229,7 @@ const editCompanyListing = async (req, res) => {
 
     /** ---------------- CALL REMOTE EDIT CONTROLLER ---------------- **/
     const response = await axios.patch(
-      `http://localhost:3000/api/company/update-company`,
+      `https://wononomadsbe.vercel.app/api/company/update-company`,
       updateData
     );
 
