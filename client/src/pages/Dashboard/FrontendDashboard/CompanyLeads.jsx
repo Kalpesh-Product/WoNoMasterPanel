@@ -18,7 +18,8 @@ const CompanyLeads = () => {
     enabled: !!selectedCompany,
     queryFn: async () => {
       const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`,
+        // `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`,
+        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?.companyId}`,
         { headers: { "Cache-Control": "no-cache" } }
       );
       return response?.data;
