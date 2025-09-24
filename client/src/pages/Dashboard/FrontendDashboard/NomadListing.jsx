@@ -283,21 +283,63 @@ const NomadListing = () => {
           {/* </div> */}
 
           {/* Images Upload */}
-          <div className="col-span-2">
-            <Controller
-              name="images"
-              control={control}
-              render={({ field }) => (
-                <UploadMultipleFilesInput
-                  {...field}
-                  label="Product Images"
-                  maxFiles={5}
-                  allowedExtensions={["jpg", "jpeg", "png", "webp"]}
-                  id="images"
-                />
-              )}
-            />
-          </div>
+          {/* <div className="col-span-2"> */}
+          <Controller
+            name="images"
+            control={control}
+            render={({ field }) => (
+              <UploadMultipleFilesInput
+                {...field}
+                label="Product Images"
+                maxFiles={5}
+                allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                id="images"
+              />
+            )}
+          />
+          {/* </div> */}
+          <Controller
+            name="mapUrl"
+            control={control}
+            rules={{
+              required: "Map URL is required",
+              validate: (val) => {
+                const MAP_EMBED_REGEX =
+                  /^https?:\/\/(www\.)?(google\.com|maps\.google\.com)\/maps\/embed(\/v1\/[a-z]+|\?pb=|\/?\?)/i;
+
+                const v = (val || "").trim();
+
+                // If they pasted a full iframe, fail validation (or you can auto-extract)
+                // if (/<\s*iframe/i.test(v)) {
+                //   return 'Paste only the "src" URL from the embed code (not the full <iframe>).';
+                // }
+
+                return (
+                  MAP_EMBED_REGEX.test(v) ||
+                  "Ewnter a valid Google Maps *embed* URL (e.g. https://www.google.com/maps/embed?pb=...)"
+                );
+              },
+            }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                onChange={(e) => {
+                  // Optional: auto-extract src if a whole iframe was pasted
+                  const extractIframeSrc = (val = "") =>
+                    val.match(/src=["']([^"']+)["']/i)?.[1] || val;
+                  const raw = e.target.value;
+                  const cleaned = extractIframeSrc(raw).trim();
+
+                  field.onChange(cleaned);
+                }}
+                size="small"
+                label="Embed Map URL"
+                fullWidth
+                helperText={errors?.mapUrl?.message}
+                error={!!errors.mapUrl}
+              />
+            )}
+          />
 
           {/* ✅ Reviews Section */}
           <div className="col-span-2">
