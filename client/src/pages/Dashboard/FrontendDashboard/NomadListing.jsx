@@ -50,6 +50,7 @@ const NomadListing = () => {
     control,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -93,18 +94,62 @@ const NomadListing = () => {
     },
   });
 
-  const onSubmit = (values, e) => {
-    const formEl = e?.target || formRef.current;
+  // const onSubmit = (values, e) => {
+  //   const formEl = e?.target || formRef.current;
+  //   const fd = new FormData(formEl);
+
+  //   fd.set("businessId", values.businessId);
+  //   fd.set("inclusions", JSON.stringify(values.inclusions));
+  //   fd.set("reviews", JSON.stringify(values.reviews)); // ✅ add reviews to payload
+
+  //   if (values.images?.length) {
+  //     values.images.forEach((file) => fd.append("images", file));
+  //   }
+
+  //   createCompany(fd);
+  // };
+
+  // const onSubmit = (values, e) => {
+  //   const formEl = e?.target || formRef.current;
+  //   const fd = new FormData(formEl);
+  const onSubmit = (values) => {
+    const formEl = formRef.current;
     const fd = new FormData(formEl);
 
+    // ✅ ensure proper values override
     fd.set("businessId", values.businessId);
-    fd.set("inclusions", JSON.stringify(values.inclusions));
-    fd.set("reviews", JSON.stringify(values.reviews)); // ✅ add reviews to payload
+    fd.set("companyType", values.companyType);
+    fd.set("ratings", values.ratings);
+    fd.set("totalReviews", values.totalReviews);
+    fd.set("productName", values.productName);
+    fd.set("cost", values.cost);
+    fd.set("description", values.description);
+    fd.set("latitude", values.latitude);
+    fd.set("longitude", values.longitude);
+    fd.set("about", values.about);
+    fd.set("address", values.address);
 
+    // ✅ structured fields
+    fd.set("inclusions", JSON.stringify(values.inclusions || []));
+    fd.set("reviews", JSON.stringify(values.reviews || []));
+
+    // ✅ clean up default react-hook-form keys
+    for (const key of Array.from(fd.keys())) {
+      if (/^reviews\.\d+\./.test(key)) fd.delete(key);
+    }
+
+    // ✅ images
+    fd.delete("images");
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
 
+    // (optional) see what will be sent
+    for (const [k, v] of fd.entries()) {
+      console.log(k, v instanceof File ? v.name : v);
+    }
+
+    // 🔥 make sure it hits the API (even if wrong endpoint)
     createCompany(fd);
   };
 
@@ -120,7 +165,7 @@ const NomadListing = () => {
         <form
           ref={formRef}
           encType="multipart/form-data"
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onSubmit, () => onSubmit(getValues()))}
           className="grid grid-cols-2 gap-4">
           {/* Product Name */}
           <Controller
@@ -298,6 +343,7 @@ const NomadListing = () => {
             )}
           />
           {/* </div> */}
+
           <Controller
             name="mapUrl"
             control={control}
