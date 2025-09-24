@@ -46,8 +46,18 @@ const hostCompanySchema = new mongoose.Schema(
       trim: true,
     },
     selectedServices: {
-      type: [String],
-      default: [],
+      apps: [
+        {
+          appName: { type: String, required: true },
+          isActive: { type: Boolean, default: false },
+        },
+      ],
+      modules: [
+        {
+          moduleName: { type: String, required: true },
+          isActive: { type: Boolean, default: false },
+        },
+      ],
     },
     isRegistered: {
       type: Boolean,
