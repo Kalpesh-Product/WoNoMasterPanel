@@ -12,6 +12,7 @@ const {
   getCompanyListings,
   createCompanyListings,
   createCompanyListing,
+  editCompanyListing,
 } = require("../controllers/hostListingControllers");
 
 //company
@@ -26,6 +27,7 @@ router.get("/company", getCompany);
 
 //listing
 router.post("/add-company-listing", upload.any(), createCompanyListing);
+router.patch("/edit-company-listing", upload.any(), editCompanyListing);
 router.get("/get-companies-listings", getAllCompanyListings);
 router.get("/get-company-listings", getCompanyListings);
 

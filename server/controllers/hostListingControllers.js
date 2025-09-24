@@ -126,6 +126,127 @@ const createCompanyListing = async (req, res) => {
   }
 };
 
+const editCompanyListing = async (req, res) => {
+  try {
+    const {
+      businessId,
+      companyType,
+      ratings,
+      totalReviews,
+      productName,
+      cost,
+      description,
+      latitude,
+      longitude,
+      inclusions,
+      about,
+      address,
+      reviews,
+      existingImages = [],
+    } = req.body;
+
+    let parsedReviews;
+    if (typeof reviews === "string") {
+      parsedReviews = JSON.parse(reviews);
+    }
+
+    // Fetch base company info
+    const company = await HostCompany.findOne({
+      companyId: req.body.companyId?.trim(),
+    });
+
+    if (!company) {
+      return res.status(400).json({ message: "Company not found" });
+    }
+
+    const updateData = {
+      businessId,
+      companyType,
+      ratings,
+      totalReviews,
+      productName,
+      cost,
+      description,
+      latitude,
+      longitude,
+      inclusions,
+      about,
+      address,
+      reviews: parsedReviews,
+      images: [...existingImages], // start with existing images
+    };
+
+    /** ---------------- IMAGE UPLOAD LOGIC ---------------- **/
+    const formatCompanyType = (type) => {
+      const map = {
+        hostel: "hostels",
+        privatestay: "private-stay",
+        meetingroom: "meetingroom",
+        coworking: "coworking",
+        cafe: "cafe",
+        coliving: "coliving",
+        workation: "workation",
+      };
+      const key = String(type || "").toLowerCase();
+      return map[key] || "unknown";
+    };
+
+    const pathCompanyType = formatCompanyType(companyType);
+
+    const safeCompanyName =
+      (company.companyName || "unnamed").replace(/[^\w\- ]+/g, "").trim() ||
+      "unnamed";
+
+    const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
+
+    if (req.files?.length > 0) {
+      const imageFiles = req.files.filter((f) => f.fieldname === "images");
+
+      if (imageFiles.length > 0) {
+        const sanitizeFileName = (name) =>
+          String(name || "file")
+            .replace(/[/\\?%*:|"<>]/g, "_")
+            .replace(/\s+/g, "_");
+
+        const results = await Promise.allSettled(
+          imageFiles.map((file) => {
+            const uniqueKey = `${folderPath}/images/${sanitizeFileName(
+              file.originalname
+            )}`;
+            return uploadFileToS3(uniqueKey, file).then((url) => ({
+              url,
+            }));
+          })
+        );
+
+        const uploaded = results
+          .filter((r) => r.status === "fulfilled")
+          .map((r) => r.value);
+
+        updateData.images.push(...uploaded);
+      }
+    }
+
+    /** ---------------- CALL REMOTE EDIT CONTROLLER ---------------- **/
+    const response = await axios.patch(
+      `http://localhost:3000/api/company/update-company`,
+      updateData
+    );
+
+    if (!response.data) {
+      return res.status(400).json({ message: "Failed to update listing" });
+    }
+
+    return res.status(200).json({
+      message: "Listing updated successfully",
+      data: updateData,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const getAllCompanyListings = async (req, res) => {
   try {
     const response = await axios.get(
@@ -162,4 +283,5 @@ module.exports = {
   getCompanyListings,
   getAllCompanyListings,
   createCompanyListing,
+  editCompanyListing,
 };
