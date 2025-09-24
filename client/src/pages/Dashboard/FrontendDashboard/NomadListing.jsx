@@ -17,6 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
+import { useLocation } from "react-router-dom";
 
 // Dummy inclusions
 const inclusionOptions = [
@@ -43,6 +44,10 @@ const defaultReview = {
 };
 
 const NomadListing = () => {
+  const location = useLocation();
+  const navState = location?.state || {};
+  const companyId =
+    navState.companyId || sessionStorage.getItem("companyId") || "";
   const axios = useAxiosPrivate();
   const formRef = useRef(null);
 
@@ -80,7 +85,7 @@ const NomadListing = () => {
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
-      const res = await axios.post("/api/companies/create", fd, {
+      const res = await axios.post("/api/hosts/add-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -117,7 +122,8 @@ const NomadListing = () => {
     const fd = new FormData(formEl);
 
     // ✅ ensure proper values override
-    fd.set("businessId", values.businessId);
+    // fd.set("businessId", values.businessId);
+    fd.set("companyId", companyId); // ✅ from previous page
     fd.set("companyType", values.companyType);
     fd.set("ratings", values.ratings);
     fd.set("totalReviews", values.totalReviews);
