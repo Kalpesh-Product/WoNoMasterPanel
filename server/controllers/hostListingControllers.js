@@ -122,6 +122,9 @@ const createCompanyListing = async (req, res) => {
       .status(201)
       .json({ message: "Listing added successfully", data: listingData });
   } catch (error) {
+    console.log("REQ BODY:", req.body);
+    console.log("REQ FILES:", req.files);
+
     res.status(500).json({ error: error.message });
   }
 };
