@@ -37,7 +37,7 @@ const hostCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    websiteURL: {
+    websiteLink: {
       type: String,
       trim: true,
     },

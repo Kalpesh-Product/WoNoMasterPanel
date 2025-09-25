@@ -17,6 +17,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
+import { useLocation } from "react-router-dom";
 
 // Dummy inclusions
 const inclusionOptions = [
@@ -43,6 +44,10 @@ const defaultReview = {
 };
 
 const NomadListing = () => {
+  const location = useLocation();
+  const navState = location?.state || {};
+  const companyId =
+    navState.companyId || sessionStorage.getItem("companyId") || "";
   const axios = useAxiosPrivate();
   const formRef = useRef(null);
 
@@ -50,6 +55,7 @@ const NomadListing = () => {
     control,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -79,7 +85,7 @@ const NomadListing = () => {
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
-      const res = await axios.post("/api/companies/create", fd, {
+      const res = await axios.post("/api/hosts/add-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -93,18 +99,63 @@ const NomadListing = () => {
     },
   });
 
-  const onSubmit = (values, e) => {
-    const formEl = e?.target || formRef.current;
+  // const onSubmit = (values, e) => {
+  //   const formEl = e?.target || formRef.current;
+  //   const fd = new FormData(formEl);
+
+  //   fd.set("businessId", values.businessId);
+  //   fd.set("inclusions", JSON.stringify(values.inclusions));
+  //   fd.set("reviews", JSON.stringify(values.reviews)); // ✅ add reviews to payload
+
+  //   if (values.images?.length) {
+  //     values.images.forEach((file) => fd.append("images", file));
+  //   }
+
+  //   createCompany(fd);
+  // };
+
+  // const onSubmit = (values, e) => {
+  //   const formEl = e?.target || formRef.current;
+  //   const fd = new FormData(formEl);
+  const onSubmit = (values) => {
+    const formEl = formRef.current;
     const fd = new FormData(formEl);
 
-    fd.set("businessId", values.businessId);
-    fd.set("inclusions", JSON.stringify(values.inclusions));
-    fd.set("reviews", JSON.stringify(values.reviews)); // ✅ add reviews to payload
+    // ✅ ensure proper values override
+    // fd.set("businessId", values.businessId);
+    fd.set("companyId", companyId); // ✅ from previous page
+    fd.set("companyType", values.companyType);
+    fd.set("ratings", values.ratings);
+    fd.set("totalReviews", values.totalReviews);
+    fd.set("productName", values.productName);
+    fd.set("cost", values.cost);
+    fd.set("description", values.description);
+    fd.set("latitude", values.latitude);
+    fd.set("longitude", values.longitude);
+    fd.set("about", values.about);
+    fd.set("address", values.address);
 
+    // ✅ structured fields
+    fd.set("inclusions", JSON.stringify(values.inclusions || []));
+    fd.set("reviews", JSON.stringify(values.reviews || []));
+
+    // ✅ clean up default react-hook-form keys
+    for (const key of Array.from(fd.keys())) {
+      if (/^reviews\.\d+\./.test(key)) fd.delete(key);
+    }
+
+    // ✅ images
+    fd.delete("images");
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
 
+    // (optional) see what will be sent
+    for (const [k, v] of fd.entries()) {
+      console.log(k, v instanceof File ? v.name : v);
+    }
+
+    // 🔥 make sure it hits the API (even if wrong endpoint)
     createCompany(fd);
   };
 
@@ -120,7 +171,7 @@ const NomadListing = () => {
         <form
           ref={formRef}
           encType="multipart/form-data"
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={handleSubmit(onSubmit, () => onSubmit(getValues()))}
           className="grid grid-cols-2 gap-4">
           {/* Product Name */}
           <Controller
@@ -283,21 +334,64 @@ const NomadListing = () => {
           {/* </div> */}
 
           {/* Images Upload */}
-          <div className="col-span-2">
-            <Controller
-              name="images"
-              control={control}
-              render={({ field }) => (
-                <UploadMultipleFilesInput
-                  {...field}
-                  label="Product Images"
-                  maxFiles={5}
-                  allowedExtensions={["jpg", "jpeg", "png", "webp"]}
-                  id="images"
-                />
-              )}
-            />
-          </div>
+          {/* <div className="col-span-2"> */}
+          <Controller
+            name="images"
+            control={control}
+            render={({ field }) => (
+              <UploadMultipleFilesInput
+                {...field}
+                label="Product Images"
+                maxFiles={5}
+                allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                id="images"
+              />
+            )}
+          />
+          {/* </div> */}
+
+          <Controller
+            name="mapUrl"
+            control={control}
+            rules={{
+              required: "Map URL is required",
+              validate: (val) => {
+                const MAP_EMBED_REGEX =
+                  /^https?:\/\/(www\.)?(google\.com|maps\.google\.com)\/maps\/embed(\/v1\/[a-z]+|\?pb=|\/?\?)/i;
+
+                const v = (val || "").trim();
+
+                // If they pasted a full iframe, fail validation (or you can auto-extract)
+                // if (/<\s*iframe/i.test(v)) {
+                //   return 'Paste only the "src" URL from the embed code (not the full <iframe>).';
+                // }
+
+                return (
+                  MAP_EMBED_REGEX.test(v) ||
+                  "Ewnter a valid Google Maps *embed* URL (e.g. https://www.google.com/maps/embed?pb=...)"
+                );
+              },
+            }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                onChange={(e) => {
+                  // Optional: auto-extract src if a whole iframe was pasted
+                  const extractIframeSrc = (val = "") =>
+                    val.match(/src=["']([^"']+)["']/i)?.[1] || val;
+                  const raw = e.target.value;
+                  const cleaned = extractIframeSrc(raw).trim();
+
+                  field.onChange(cleaned);
+                }}
+                size="small"
+                label="Embed Map URL"
+                fullWidth
+                helperText={errors?.mapUrl?.message}
+                error={!!errors.mapUrl}
+              />
+            )}
+          />
 
           {/* ✅ Reviews Section */}
           <div className="col-span-2">
