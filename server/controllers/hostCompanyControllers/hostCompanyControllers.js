@@ -177,61 +177,39 @@ const updateServices = async (req, res, next) => {
   }
 };
 
-// const updateServices = async (req, res, next) => {
-//   try {
-//     const { companyId, selectedServices } = req.body;
+const activateProduct = async (req, res, next) => {
+  try {
+    const { businessId, status } = req.body;
 
-//     if (!companyId || !selectedServices) {
-//       return res.status(400).json({
-//         message: "companyId and services are required",
-//       });
-//     }
+    if (!businessId) {
+      return res.status(400).json({
+        message: "Business Id missing",
+      });
+    }
 
-//     const company = await HostCompany.findOne({ companyId });
-//     if (!company) throw new Error("Company not found");
+    if (typeof status !== "boolean") {
+      return res.status(400).json({
+        message: "Status must be true/false",
+      });
+    }
 
-//     // Convert existing apps/modules to maps for O(1) lookup
-//     const appsMap = new Map(
-//       company.selectedServices.apps.map((a) => [a.appName, a])
-//     );
-//     const modulesMap = new Map(
-//       company.selectedServices.modules.map((m) => [m.moduleName, m])
-//     );
+    const response = await axios.patch(
+      "https://wononomads.vercel.app/api/company/activate-product",
+      {
+        businessId,
+        status,
+      }
+    );
 
-//     // Update or add apps
-//     selectedServices.apps.forEach((app) => {
-//       if (appsMap.has(app.appName)) {
-//         appsMap.get(app.appName).isActive = app.isActive;
-//       } else {
-//         company.selectedServices.apps.push(app);
-//       }
-//     });
+    if (response.status !== 200) {
+      return res.status(400).json({ message: "Failed to activate product" });
+    }
 
-//     // Update or add modules
-//     selectedServices.modules.forEach((mod) => {
-//       if (modulesMap.has(mod.moduleName)) {
-//         modulesMap.get(mod.moduleName).isActive = mod.isActive;
-//       } else {
-//         company.selectedServices.modules.push(mod);
-//       }
-//     });
-
-//     const updatedCompany = await company.save();
-
-//     if (!updatedCompany) {
-//       return res.status(404).json({
-//         message: "Company not found",
-//       });
-//     }
-
-//     return res.status(200).json({
-//       message: "Services added successfully",
-//       company: updatedCompany,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    return res.status(200).json({ message: "Product activated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
 
 const getCompanies = async (req, res, next) => {
   try {
@@ -352,6 +330,7 @@ const bulkInsertCompanies = async (req, res, next) => {
 
 module.exports = {
   createCompany,
+  activateProduct,
   updateServices,
   getCompanies,
   getCompany,
