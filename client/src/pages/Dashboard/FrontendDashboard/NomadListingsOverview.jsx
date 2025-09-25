@@ -6,6 +6,9 @@ import PrimaryButton from "../../../components/PrimaryButton";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import { toast } from "sonner";
+import { queryClient } from "../../../main";
+import StatusChip from "../../../components/StatusChip";
 
 export default function NomadListingsOverview() {
   const navigate = useNavigate();
@@ -41,7 +44,8 @@ export default function NomadListingsOverview() {
       // console.log("Data from mutauton",data)
     },
     onSuccess: (data) => {
-      console.log("success", data);
+      toast.success(data.message || "PRODUCT ACTIVATED");
+      queryClient.invalidateQueries({ queryKey: ["nomad-listings"] });
     },
     onError: (error) => {
       console.log("error", error);
@@ -71,6 +75,14 @@ export default function NomadListingsOverview() {
     { headerName: "Company Name", field: "companyName", flex: 1 },
     { headerName: "Company Type", field: "companyType", flex: 1 },
     {
+      headerName: "Status",
+      field: "isActive",
+      flex: 1,
+      cellRenderer: (params) => (
+        <StatusChip status={params.value ? "Active" : "Inactive"} />
+      ),
+    },
+    {
       headerName: "Actions",
       field: "actions",
       flex: 1,
@@ -79,12 +91,6 @@ export default function NomadListingsOverview() {
           <ThreeDotMenu
             rowId={params.data.id}
             menuItems={[
-              // {
-              //   label: "Mark As Active",
-              //   // onClick: () => {
-              //   //   markAsActive(params.data.searchKey);
-              //   // },
-              // },
               {
                 label: "Edit",
                 onClick: () => {
@@ -113,15 +119,25 @@ export default function NomadListingsOverview() {
                 },
               },
 
-              {
-                label: "Activate Listing",
-                onClick: () => {
-                  toggleStatus({
-                    businessId: params?.data?.businessId,
-                    status: params?.data?.status || true,
-                  });
-                },
-              },
+              params?.data?.isActive
+                ? {
+                    label: "Deactivate Listing",
+                    onClick: () => {
+                      toggleStatus({
+                        businessId: params?.data?.businessId,
+                        status: false, // deactivate
+                      });
+                    },
+                  }
+                : {
+                    label: "Activate Listing",
+                    onClick: () => {
+                      toggleStatus({
+                        businessId: params?.data?.businessId,
+                        status: true, // activate
+                      });
+                    },
+                  },
             ]}
           />
         );
