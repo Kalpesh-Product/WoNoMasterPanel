@@ -113,7 +113,7 @@ export default function NomadListingsOverview() {
                 label: "Activate Listing",
                 onClick : ()=>{
                   toggleStatus({
-                    companyId : params?.data?.companyId,
+                    businessId : params?.data?.businessId,
                     status : params?.data?.status || true
                   })
                 }
