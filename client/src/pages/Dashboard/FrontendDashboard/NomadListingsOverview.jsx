@@ -15,7 +15,7 @@ export default function NomadListingsOverview() {
   // backward navigation support
   const location = useLocation();
   const navState = location?.state || {};
-  const axios = useAxiosPrivate()
+  const axios = useAxiosPrivate();
   const companyId =
     navState.companyId || sessionStorage.getItem("companyId") || "";
   const companyName =
@@ -33,16 +33,20 @@ export default function NomadListingsOverview() {
     },
   });
 
-  const {mutate : toggleStatus, isPending : isToggle} = useMutation({
-    mutationFn : async (data)=>{
-      // const response = await axios.post()
-      // return response.data
+  const { mutate: toggleStatus, isPending: isToggle } = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/hosts/activate-product", data);
+      return response.data;
 
-      console.log("Data from mutauton",data)
+      // console.log("Data from mutauton",data)
     },
-    onSuccess:(data)=>{console.log("success", data)},
-    onError:(error)=>{console.log("error", error)}
-  })
+    onSuccess: (data) => {
+      console.log("success", data);
+    },
+    onError: (error) => {
+      console.log("error", error);
+    },
+  });
 
   // ✅ Table data
   const tableData = !isPending
@@ -111,12 +115,12 @@ export default function NomadListingsOverview() {
 
               {
                 label: "Activate Listing",
-                onClick : ()=>{
+                onClick: () => {
                   toggleStatus({
-                    businessId : params?.data?.businessId,
-                    status : params?.data?.status || true
-                  })
-                }
+                    businessId: params?.data?.businessId,
+                    status: params?.data?.status || true,
+                  });
+                },
               },
             ]}
           />
