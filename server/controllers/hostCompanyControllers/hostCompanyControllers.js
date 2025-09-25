@@ -95,7 +95,26 @@ const createCompany = async (req, res, next) => {
   }
 };
 
-const editCompany = async (req, res, next) => {
+const serviceOptions = [
+  {
+    items: [
+      "Tickets",
+      "Meetings",
+      "Tasks",
+      "Performance",
+      "Visitors",
+      "Assets",
+    ],
+  },
+  {
+    items: ["Finance", "Sales", "HR", "Admin", "Maintenance", "IT"],
+  },
+];
+
+const validApps = new Set(serviceOptions[0].items);
+const validModules = new Set(serviceOptions[1].items);
+
+const updateServices = async (req, res, next) => {
   try {
     const { companyId, selectedServices } = req.body;
 
@@ -105,10 +124,25 @@ const editCompany = async (req, res, next) => {
       });
     }
 
+    // validate incoming apps/modules
+    const invalidApps = selectedServices.apps.filter(
+      (a) => !validApps.has(a.appName)
+    );
+    const invalidModules = selectedServices.modules.filter(
+      (m) => !validModules.has(m.moduleName)
+    );
+
+    if (invalidApps.length || invalidModules.length) {
+      return res.status(400).json({
+        message: "Invalid app/module names provided",
+        invalidApps: invalidApps.map((a) => a.appName),
+        invalidModules: invalidModules.map((m) => m.moduleName),
+      });
+    }
+
     const company = await HostCompany.findOne({ companyId });
     if (!company) throw new Error("Company not found");
 
-    // Convert existing apps/modules to maps for O(1) lookup
     const appsMap = new Map(
       company.selectedServices.apps.map((a) => [a.appName, a])
     );
@@ -116,7 +150,6 @@ const editCompany = async (req, res, next) => {
       company.selectedServices.modules.map((m) => [m.moduleName, m])
     );
 
-    // Update or add apps
     selectedServices.apps.forEach((app) => {
       if (appsMap.has(app.appName)) {
         appsMap.get(app.appName).isActive = app.isActive;
@@ -125,7 +158,6 @@ const editCompany = async (req, res, next) => {
       }
     });
 
-    // Update or add modules
     selectedServices.modules.forEach((mod) => {
       if (modulesMap.has(mod.moduleName)) {
         modulesMap.get(mod.moduleName).isActive = mod.isActive;
@@ -136,20 +168,70 @@ const editCompany = async (req, res, next) => {
 
     const updatedCompany = await company.save();
 
-    if (!updatedCompany) {
-      return res.status(404).json({
-        message: "Company not found",
-      });
-    }
-
     return res.status(200).json({
-      message: "Services added successfully",
+      message: "Services updated successfully",
       company: updatedCompany,
     });
   } catch (error) {
     next(error);
   }
 };
+
+// const updateServices = async (req, res, next) => {
+//   try {
+//     const { companyId, selectedServices } = req.body;
+
+//     if (!companyId || !selectedServices) {
+//       return res.status(400).json({
+//         message: "companyId and services are required",
+//       });
+//     }
+
+//     const company = await HostCompany.findOne({ companyId });
+//     if (!company) throw new Error("Company not found");
+
+//     // Convert existing apps/modules to maps for O(1) lookup
+//     const appsMap = new Map(
+//       company.selectedServices.apps.map((a) => [a.appName, a])
+//     );
+//     const modulesMap = new Map(
+//       company.selectedServices.modules.map((m) => [m.moduleName, m])
+//     );
+
+//     // Update or add apps
+//     selectedServices.apps.forEach((app) => {
+//       if (appsMap.has(app.appName)) {
+//         appsMap.get(app.appName).isActive = app.isActive;
+//       } else {
+//         company.selectedServices.apps.push(app);
+//       }
+//     });
+
+//     // Update or add modules
+//     selectedServices.modules.forEach((mod) => {
+//       if (modulesMap.has(mod.moduleName)) {
+//         modulesMap.get(mod.moduleName).isActive = mod.isActive;
+//       } else {
+//         company.selectedServices.modules.push(mod);
+//       }
+//     });
+
+//     const updatedCompany = await company.save();
+
+//     if (!updatedCompany) {
+//       return res.status(404).json({
+//         message: "Company not found",
+//       });
+//     }
+
+//     return res.status(200).json({
+//       message: "Services added successfully",
+//       company: updatedCompany,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 const getCompanies = async (req, res, next) => {
   try {
@@ -270,7 +352,7 @@ const bulkInsertCompanies = async (req, res, next) => {
 
 module.exports = {
   createCompany,
-  editCompany,
+  updateServices,
   getCompanies,
   getCompany,
   bulkInsertCompanies,
