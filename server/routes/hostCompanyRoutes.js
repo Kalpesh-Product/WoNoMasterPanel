@@ -6,6 +6,7 @@ const {
   getCompany,
   getCompanies,
   bulkInsertCompanies,
+  updateServices,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -22,6 +23,7 @@ router.post(
   bulkInsertCompanies
 );
 router.post("/onboard-company", createCompany);
+router.patch("/update-services", updateServices);
 router.get("/companies", getCompanies);
 router.get("/company", getCompany);
 
