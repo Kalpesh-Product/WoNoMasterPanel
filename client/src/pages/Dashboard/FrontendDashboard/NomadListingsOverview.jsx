@@ -1,5 +1,5 @@
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
@@ -15,6 +15,7 @@ export default function NomadListingsOverview() {
   // backward navigation support
   const location = useLocation();
   const navState = location?.state || {};
+  const axios = useAxiosPrivate()
   const companyId =
     navState.companyId || sessionStorage.getItem("companyId") || "";
   const companyName =
@@ -32,9 +33,21 @@ export default function NomadListingsOverview() {
     },
   });
 
+  const {mutate : toggleStatus, isPending : isToggle} = useMutation({
+    mutationFn : async (data)=>{
+      // const response = await axios.post()
+      // return response.data
+
+      console.log("Data from mutauton",data)
+    },
+    onSuccess:(data)=>{console.log("success", data)},
+    onError:(error)=>{console.log("error", error)}
+  })
+
   // ✅ Table data
   const tableData = !isPending
     ? listings?.map((item, index) => ({
+        ...item,
         srNo: index + 1,
         businessId: item.businessId,
         companyName: item.companyName,
@@ -98,17 +111,18 @@ export default function NomadListingsOverview() {
 
               {
                 label: "Activate Listing",
+                onClick : ()=>{
+                  toggleStatus({
+                    companyId : params?.data?.companyId,
+                    status : params?.data?.status || true
+                  })
+                }
               },
             ]}
           />
         );
       },
     },
-    // { headerName: "City", field: "city", flex: 1 },
-    // { headerName: "State", field: "state", flex: 1 },
-    // { headerName: "Country", field: "country", flex: 1 },
-    // { headerName: "Ratings", field: "ratings", flex: 1 },
-    // { headerName: "Total Reviews", field: "totalReviews", flex: 1 },
   ];
 
   // ✅ helper to make slugs URL-safe
