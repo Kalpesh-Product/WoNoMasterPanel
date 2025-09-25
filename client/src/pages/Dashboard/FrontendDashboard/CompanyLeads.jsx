@@ -9,6 +9,24 @@ const CompanyLeads = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axios = useAxiosPrivate();
   console.log("selected : sadas", selectedCompany);
+
+  // const {
+  //   data = [],
+  //   isPending,
+  //   isError,
+  // } = useQuery({
+  //   queryKey: ["leadCompany"],
+  //   enabled: !!selectedCompany,
+  //   queryFn: async () => {
+  //     const response = await axios.get(
+  //       // `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`,
+  //       `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?.companyId}`,
+  //       { headers: { "Cache-Control": "no-cache" } }
+  //     );
+  //     return response?.data;
+  //   },
+  // });
+
   const {
     data = [],
     isPending,
@@ -18,12 +36,15 @@ const CompanyLeads = () => {
     enabled: !!selectedCompany,
     queryFn: async () => {
       const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`,
+        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?.companyId}`,
         { headers: { "Cache-Control": "no-cache" } }
       );
-      return response?.data;
+
+      // Ensure it’s always an array
+      return Array.isArray(response?.data) ? response.data : [];
     },
   });
+
   const columns = [
     {
       field: "srNo",
