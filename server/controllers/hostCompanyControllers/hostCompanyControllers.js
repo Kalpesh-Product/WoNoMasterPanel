@@ -194,7 +194,7 @@ const activateProduct = async (req, res, next) => {
     }
 
     const response = await axios.patch(
-      "http://localhost:3000/api/company/activate-product",
+      "https://wononomads.vercel.app/api/company/activate-product",
       {
         businessId,
         status,
