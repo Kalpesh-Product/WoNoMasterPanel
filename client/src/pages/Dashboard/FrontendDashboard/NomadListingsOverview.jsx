@@ -1,11 +1,14 @@
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import { toast } from "sonner";
+import { queryClient } from "../../../main";
+import StatusChip from "../../../components/StatusChip";
 
 export default function NomadListingsOverview() {
   const navigate = useNavigate();
@@ -15,6 +18,7 @@ export default function NomadListingsOverview() {
   // backward navigation support
   const location = useLocation();
   const navState = location?.state || {};
+  const axios = useAxiosPrivate();
   const companyId =
     navState.companyId || sessionStorage.getItem("companyId") || "";
   const companyName =
@@ -32,9 +36,26 @@ export default function NomadListingsOverview() {
     },
   });
 
+  const { mutate: toggleStatus, isPending: isToggle } = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/hosts/activate-product", data);
+      return response.data;
+
+      // console.log("Data from mutauton",data)
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "PRODUCT ACTIVATED");
+      queryClient.invalidateQueries({ queryKey: ["nomad-listings"] });
+    },
+    onError: (error) => {
+      console.log("error", error);
+    },
+  });
+
   // ✅ Table data
   const tableData = !isPending
     ? listings?.map((item, index) => ({
+        ...item,
         srNo: index + 1,
         businessId: item.businessId,
         companyName: item.companyName,
@@ -54,6 +75,14 @@ export default function NomadListingsOverview() {
     { headerName: "Company Name", field: "companyName", flex: 1 },
     { headerName: "Company Type", field: "companyType", flex: 1 },
     {
+      headerName: "Status",
+      field: "isActive",
+      flex: 1,
+      cellRenderer: (params) => (
+        <StatusChip status={params.value ? "Active" : "Inactive"} />
+      ),
+    },
+    {
       headerName: "Actions",
       field: "actions",
       flex: 1,
@@ -62,12 +91,6 @@ export default function NomadListingsOverview() {
           <ThreeDotMenu
             rowId={params.data.id}
             menuItems={[
-              // {
-              //   label: "Mark As Active",
-              //   // onClick: () => {
-              //   //   markAsActive(params.data.searchKey);
-              //   // },
-              // },
               {
                 label: "Edit",
                 onClick: () => {
@@ -96,19 +119,30 @@ export default function NomadListingsOverview() {
                 },
               },
 
-              {
-                label: "Activate Listing",
-              },
+              params?.data?.isActive
+                ? {
+                    label: "Deactivate Listing",
+                    onClick: () => {
+                      toggleStatus({
+                        businessId: params?.data?.businessId,
+                        status: false, // deactivate
+                      });
+                    },
+                  }
+                : {
+                    label: "Activate Listing",
+                    onClick: () => {
+                      toggleStatus({
+                        businessId: params?.data?.businessId,
+                        status: true, // activate
+                      });
+                    },
+                  },
             ]}
           />
         );
       },
     },
-    // { headerName: "City", field: "city", flex: 1 },
-    // { headerName: "State", field: "state", flex: 1 },
-    // { headerName: "Country", field: "country", flex: 1 },
-    // { headerName: "Ratings", field: "ratings", flex: 1 },
-    // { headerName: "Total Reviews", field: "totalReviews", flex: 1 },
   ];
 
   // ✅ helper to make slugs URL-safe
