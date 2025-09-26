@@ -1,6 +1,6 @@
 // src/pages/Dashboard/Services/RequestedServicesDetails.jsx
 import React, { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { Box, Checkbox, CircularProgress, FormHelperText } from "@mui/material";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +9,8 @@ import PrimaryButton from "../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
 const RequestedServicesDetails = () => {
+  const navigate = useNavigate();
+
   const axios = useAxiosPrivate();
   const { companyId } = useParams();
   const queryClient = useQueryClient();
@@ -76,6 +78,9 @@ const RequestedServicesDetails = () => {
     onSuccess: () => {
       toast.success("Services activated successfully");
       queryClient.invalidateQueries({ queryKey: ["company", companyId] });
+
+      // ✅ redirect after success
+      navigate("/dashboard/requested-services");
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Something went wrong");
@@ -170,11 +175,11 @@ const RequestedServicesDetails = () => {
     const selected = data.selectedServices;
 
     const appsPayload = addonApps
-      .filter((a) => selected.includes(a.label))
+      .filter((a) => a.isRequested) // take all requested apps
       .map((a) => ({ appName: a.rawKey, isActive: true }));
 
     const modulesPayload = addonModules
-      .filter((m) => selected.includes(m.label))
+      .filter((m) => m.isRequested) // take all requested modules
       .map((m) => ({ moduleName: m.rawKey, isActive: true }));
 
     const payload = {
