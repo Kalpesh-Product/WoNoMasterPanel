@@ -1,6 +1,6 @@
 // src/pages/Dashboard/FrontendDashboard/RequestedServices.jsx
 import React, { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -17,6 +17,7 @@ const slugify = (str) =>
 const RequestedServices = () => {
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
+  const location = useLocation(); // 👈 track current location
 
   // ✅ fetch companies from backend
   const {
@@ -24,30 +25,53 @@ const RequestedServices = () => {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["companies"],
+    queryKey: ["companies", location.key], // 👈 include location.key
     queryFn: async () => {
       const res = await axios.get("/api/hosts/companies");
       return res.data;
     },
+    refetchOnWindowFocus: true,
   });
 
   // ✅ transform backend data for table
-  const tableData = companies.map((c) => {
-    const noOfServices = [
-      ...(c?.selectedServices?.defaults || []),
-      ...(c?.selectedServices?.apps || []),
-      ...(c?.selectedServices?.modules || []),
-    ].filter((s) => s.isRequested).length; // ✅ count only active
+  // ✅ transform backend data for table
+  const tableData = companies
+    .map((c) => {
+      const allServices = [
+        ...(c?.selectedServices?.defaults || []),
+        ...(c?.selectedServices?.apps || []),
+        ...(c?.selectedServices?.modules || []),
+      ];
 
-    return {
-      id: c._id, // still needed for React key
-      companyId: c.companyId, // ✅ for navigation + API
-      logo: c.logo,
-      companyName: c.companyName,
-      noOfServices,
-      registration: c.isRegistered ? "Active" : "Inactive",
-    };
-  });
+      const requestedCount = allServices.filter(
+        (s) => s.isRequested === true
+      ).length;
+      const activeCount = allServices.filter((s) => s.isActive === true).length;
+
+      // 🔹 check if this company has any service with BOTH true
+      const hasBothTrue = allServices.some(
+        (s) => s.isRequested === true && s.isActive === true
+      );
+
+      // 🟢 Log only if BOTH true exists AND requestedCount > 3 AND requestedCount > activeCount
+      if (hasBothTrue && requestedCount > 3 && requestedCount > activeCount) {
+        console.log(
+          `Company: ${c.companyName} (${c.companyId}) → Requested: ${requestedCount}, Active: ${activeCount}`
+        );
+      }
+
+      return {
+        id: c._id,
+        companyId: c.companyId,
+        logo: c.logo,
+        companyName: c.companyName,
+        noOfServices: requestedCount,
+        noOfActive: activeCount,
+        registration: c.isRegistered ? "Active" : "Inactive",
+      };
+    })
+    // ✅ filter companies that satisfy BOTH conditions
+    .filter((c) => c.noOfServices > 3 && c.noOfServices > c.noOfActive);
 
   // ✅ define table columns
   const columns = useMemo(
@@ -88,7 +112,7 @@ const RequestedServices = () => {
       },
       {
         field: "noOfServices",
-        headerName: "No of Services",
+        headerName: "No of Requested Services",
         flex: 1,
       },
       // {

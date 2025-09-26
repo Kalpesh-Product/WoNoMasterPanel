@@ -71,7 +71,7 @@ const CompanyLeads = () => {
     },
     {
       field: "mobileNumber",
-      headerName: "People Count",
+      headerName: "Mobile Number",
     },
     {
       field: "email",
@@ -88,6 +88,14 @@ const CompanyLeads = () => {
     {
       field: "recievedDate",
       headerName: "Recieved Date",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+    },
+    {
+      field: "comments",
+      headerName: "Comments",
     },
   ];
   if (isPending) return <>Loading Leads</>;
