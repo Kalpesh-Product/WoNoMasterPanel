@@ -1,4 +1,5 @@
 const sharp = require("sharp");
+const axios = require("axios");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const {
   handleFileUpload,
@@ -262,7 +263,7 @@ const createTemplate = async (req, res, next) => {
 
     try {
       const updatedCompany = await axios.patch(
-        "https://wononomadsbe.vercel.app/api/company/add-template-link",
+        "http://localhost:3000/api/company/add-template-link",
         {
           companyName: req.body.companyName,
           link: `https://${savedTemplate.searchKey}.wono.co/`,
@@ -280,6 +281,7 @@ const createTemplate = async (req, res, next) => {
         return res.status(201).json({
           message:
             "Website created but failed to add link.Check if the company is listed in Nomads.",
+          error: error,
           template,
         });
       }
@@ -367,6 +369,11 @@ const getInActiveTemplates = async (req, res) => {
 const activateTemplate = async (req, res) => {
   try {
     const { searchKey } = req.query;
+
+    if (!searchKey) {
+      return res.status(400).json({ message: "Search key is missing" });
+    }
+
     const template = await WebsiteTemplate.findOneAndUpdate(
       {
         searchKey,
@@ -380,7 +387,34 @@ const activateTemplate = async (req, res) => {
       return res.status(400).json({ message: "Failed to activate website" });
     }
 
-    return res.status(400).json({ message: "Website activated successfully" });
+    return res.status(200).json({ message: "Website activated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const deleteTemplate = async (req, res) => {
+  try {
+    const { searchKey } = req.query;
+
+    if (!searchKey) {
+      return res.status(400).json({ message: "Search key is missing" });
+    }
+
+    const template = await WebsiteTemplate.findOneAndUpdate(
+      {
+        searchKey,
+      },
+      {
+        isDeleted: true,
+      }
+    );
+
+    if (!template) {
+      return res.status(400).json({ message: "Failed to delete website" });
+    }
+
+    return res.status(200).json({ message: "Website deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -678,4 +712,5 @@ module.exports = {
   getInActiveTemplates,
   getInActiveTemplate,
   activateTemplate,
+  deleteTemplate,
 };
