@@ -94,85 +94,89 @@ const CompaniesUpload = () => {
   };
 
   return (
-    <PageFrame>
-      <h2 className="font-pmedium text-title text-primary uppercase">
-        Companies Upload
-      </h2>
-      <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
-        <div>
-          <h4 className="text-2xl font-semibold">Bulk Upload</h4>
-          <p className="text-sm text-gray-600">
-            Choose the upload type and provide a CSV. Example header:{" "}
-            <code>name,email,phone</code>.
-          </p>
-        </div>
-
-        {/* Upload Type */}
-        <TextField
-          select
-          size="small"
-          fullWidth
-          label="Upload Type"
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-          disabled={isPending}>
-          {KIND_OPTIONS.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-        <p className="text-xs text-gray-500">
-          Endpoint: <code>/api/{TYPE_MAP[kind].api}</code> • File key:{" "}
-          <code>{TYPE_MAP[kind].formKey}</code>
-        </p>
-
-        {/* File input */}
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,text/csv"
-          onChange={onInputChange}
-          className="hidden"
-          id="csv-input"
-        />
-        <div
-          className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-          onClick={() => inputRef.current?.click()}>
-          <p className="font-medium">
-            {file
-              ? "Change file"
-              : "Drag & drop your CSV here or click to browse"}
-          </p>
-          {filename && (
+    <div className="p-0">
+      <PageFrame>
+        <h2 className="font-pmedium text-title text-primary uppercase">
+          Companies Upload
+        </h2>
+        <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+          <div>
+            <h4 className="text-2xl font-semibold">Bulk Upload</h4>
             <p className="text-sm text-gray-600">
-              Selected: {filename} {filesize && `• ${filesize}`}
+              Choose the upload type and provide a CSV. Example header:{" "}
+              <code>name,email,phone</code>.
             </p>
-          )}
-        </div>
+          </div>
 
-        <p className="text-xs text-gray-500">
-          Accepted type: <code>.csv</code>. Max size: {humanSize(MAX_BYTES)}.
-        </p>
-        {error && <div className="text-sm text-red-600">{error}</div>}
+          {/* Upload Type */}
+          <TextField
+            select
+            size="small"
+            fullWidth
+            label="Upload Type"
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            disabled={isPending}
+          >
+            {KIND_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
+          <p className="text-xs text-gray-500">
+            Endpoint: <code>/api/{TYPE_MAP[kind].api}</code> • File key:{" "}
+            <code>{TYPE_MAP[kind].formKey}</code>
+          </p>
 
-        <div className="flex gap-4 justify-center">
-          <PrimaryButton
-            type="button"
-            title={isPending ? "Uploading…" : "Upload"}
-            handleSubmit={handleUpload}
-            isLoading={isPending}
-            disabled={!file || isPending}
+          {/* File input */}
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={onInputChange}
+            className="hidden"
+            id="csv-input"
           />
-          <SecondaryButton
-            type="button"
-            title="Reset"
-            handleSubmit={handleReset}
-            disabled={isPending && !file}
-          />
+          <div
+            className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
+            onClick={() => inputRef.current?.click()}
+          >
+            <p className="font-medium">
+              {file
+                ? "Change file"
+                : "Drag & drop your CSV here or click to browse"}
+            </p>
+            {filename && (
+              <p className="text-sm text-gray-600">
+                Selected: {filename} {filesize && `• ${filesize}`}
+              </p>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-500">
+            Accepted type: <code>.csv</code>. Max size: {humanSize(MAX_BYTES)}.
+          </p>
+          {error && <div className="text-sm text-red-600">{error}</div>}
+
+          <div className="flex gap-4 justify-center">
+            <PrimaryButton
+              type="button"
+              title={isPending ? "Uploading…" : "Upload"}
+              handleSubmit={handleUpload}
+              isLoading={isPending}
+              disabled={!file || isPending}
+            />
+            <SecondaryButton
+              type="button"
+              title="Reset"
+              handleSubmit={handleReset}
+              disabled={isPending && !file}
+            />
+          </div>
         </div>
-      </div>
-    </PageFrame>
+      </PageFrame>
+    </div>
   );
 };
 

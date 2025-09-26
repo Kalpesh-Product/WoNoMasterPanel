@@ -116,19 +116,27 @@ const validModules = new Set(serviceOptions[1].items);
 
 const updateServices = async (req, res, next) => {
   try {
-    const { companyId, selectedServices } = req.body;
+    const { companyId, selectedServices = {} } = req.body;
 
-    if (!companyId || !selectedServices) {
+    if (!companyId) {
       return res.status(400).json({
-        message: "companyId and services are required",
+        message: "companyId is required",
+      });
+    }
+
+    // default to empty arrays if not provided
+    const { apps = [], modules = [] } = selectedServices;
+
+    // if both are missing/empty, reject
+    if (!apps.length && !modules.length) {
+      return res.status(400).json({
+        message: "At least one of apps or modules must be provided",
       });
     }
 
     // validate incoming apps/modules
-    const invalidApps = selectedServices.apps.filter(
-      (a) => !validApps.has(a.appName)
-    );
-    const invalidModules = selectedServices.modules.filter(
+    const invalidApps = apps.filter((a) => !validApps.has(a.appName));
+    const invalidModules = modules.filter(
       (m) => !validModules.has(m.moduleName)
     );
 
@@ -150,7 +158,7 @@ const updateServices = async (req, res, next) => {
       company.selectedServices.modules.map((m) => [m.moduleName, m])
     );
 
-    selectedServices.apps.forEach((app) => {
+    apps.forEach((app) => {
       if (appsMap.has(app.appName)) {
         appsMap.get(app.appName).isActive = app.isActive;
       } else {
@@ -158,7 +166,7 @@ const updateServices = async (req, res, next) => {
       }
     });
 
-    selectedServices.modules.forEach((mod) => {
+    modules.forEach((mod) => {
       if (modulesMap.has(mod.moduleName)) {
         modulesMap.get(mod.moduleName).isActive = mod.isActive;
       } else {

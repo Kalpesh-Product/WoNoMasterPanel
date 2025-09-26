@@ -51,6 +51,7 @@ const hostCompanySchema = new mongoose.Schema(
           {
             appName: { type: String },
             isActive: { type: Boolean, default: false },
+            isRequested: { type: Boolean, default: false },
           },
         ],
         default: [],
@@ -60,6 +61,7 @@ const hostCompanySchema = new mongoose.Schema(
           {
             moduleName: { type: String },
             isActive: { type: Boolean, default: false },
+            isRequested: { type: Boolean, default: false },
           },
         ],
         default: [],
@@ -69,12 +71,13 @@ const hostCompanySchema = new mongoose.Schema(
           {
             name: { type: String, required: true },
             isActive: { type: Boolean, default: true },
+            isRequested: { type: Boolean, default: true },
           },
         ],
         default: [
-          { name: "websiteBuilder", isActive: true },
-          { name: "leadGeneration", isActive: true },
-          { name: "automatedGoogleSheets", isActive: true },
+          { name: "websiteBuilder", isActive: true, isRequested: true },
+          { name: "leadGeneration", isActive: true, isRequested: true },
+          { name: "automatedGoogleSheets", isActive: true, isRequested: true },
         ],
       },
     },
