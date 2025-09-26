@@ -262,9 +262,7 @@ const bulkInsertCompanies = async (req, res, next) => {
     }
 
     const companies = [];
-
     const lastCompany = await HostCompany.countDocuments();
-
     let newId = lastCompany + 1;
 
     const stream = Readable.from(file.buffer.toString("utf-8").trim());
@@ -274,43 +272,58 @@ const bulkInsertCompanies = async (req, res, next) => {
         const companyId = `CMP${String(newId).padStart(4, "0")}`;
         const company = {
           companyName: row["Business Name"]?.trim(),
-          companyId: companyId,
-          registeredEntityName: row["Registered Entity name"]?.trim(),
-          companyCity: row["Website"]?.trim() || null,
+          companyId,
+          registeredEntityName: row["Registered Entity Name"]?.trim(),
+          websiteLink: row["Website"]?.trim(),
           address: row["Address"]?.trim(),
-          companyState: row["City"]?.trim(),
-          companyCountry: row["State"]?.trim(),
-          websiteURL: row["Country"]?.trim(),
+          companyCity: row["City"]?.trim(),
+          companyState: row["State"]?.trim(),
+          companyCountry: row["Country"]?.trim(),
+          industry: row["Services"]?.trim(),
+          companySize: row["Total Seats"]?.trim(),
+          type: row["Type"]?.trim(),
         };
         newId++;
         companies.push(company);
       })
       .on("end", async () => {
         try {
-          const companySet = new Set();
-          const uniqueCompanies = companies.filter((company) => {
-            if (!company.companyName) return false; // skip empty names
-            if (companySet.has(company.companyName)) {
-              return false; // duplicate
+          const seenCompanies = new Map(); // companyName -> set of types
+          const uniqueCompanies = [];
+
+          for (const company of companies) {
+            if (!company.companyName || !company.type) continue;
+
+            const name = company.companyName.toLowerCase();
+            const type = company.type.toLowerCase();
+
+            if (!seenCompanies.has(name)) {
+              // first time seeing this company
+              seenCompanies.set(name, new Set([type]));
+              uniqueCompanies.push(company);
+            } else {
+              const types = seenCompanies.get(name);
+
+              if (types.has(type)) {
+                // same type -> allow duplicate
+                uniqueCompanies.push(company);
+              } else {
+                // different type already exists → skip this one
+                continue;
+              }
             }
-            companySet.add(company.companyName);
-            return true;
-          });
-          console.log(uniqueCompanies);
+          }
 
           const result = await HostCompany.insertMany(uniqueCompanies);
 
           const insertedCount = result.length;
           const failedCount = companies.length - insertedCount;
-          if (failedCount > 0) {
-            return res.status(400).json({
-              message:
-                "Some companies could not be inserted. Please check for duplicates or invalid data.",
-            });
-          }
 
           res.status(200).json({
-            message: "Bulk insert completed",
+            message:
+              failedCount > 0
+                ? "Bulk insert completed with partial failure"
+                : "Bulk insert completed",
             total: companies.length,
             inserted: insertedCount,
             failed: failedCount,
