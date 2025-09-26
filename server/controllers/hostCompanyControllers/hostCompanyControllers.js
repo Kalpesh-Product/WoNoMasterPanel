@@ -301,6 +301,14 @@ const bulkInsertCompanies = async (req, res, next) => {
 
           const insertedCount = result.length;
           const failedCount = companies.length - insertedCount;
+          if (failedCount > 0) {
+            return res
+              .status(400)
+              .json({
+                message:
+                  "Some companies could not be inserted. Please check for duplicates or invalid data.",
+              });
+          }
 
           res.status(200).json({
             message: "Bulk insert completed",
