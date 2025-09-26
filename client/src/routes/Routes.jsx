@@ -153,6 +153,7 @@ import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/Produ
 import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
+import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
 
 export const routes = createBrowserRouter([
   {
@@ -213,17 +214,17 @@ export const routes = createBrowserRouter([
                   {
                     path: "data-upload",
                     // element: <ProductUpload />,
-                    element: <CompaniesUpload />,
-                    // children: [
-                    //   {
-                    //     path: "product-upload",
-                    //     element: <ProductUpload />,
-                    //   },
-                    //   {
-                    //     path: "product-image-upload",
-                    //     element: <ProductImageUpload />,
-                    //   },
-                    // ],
+                    element: <UploadLayout />,
+                    children: [
+                      {
+                        path: "company-upload",
+                        element: <CompaniesUpload />,
+                      },
+                      {
+                        path: "product-image-upload",
+                        element: <ProductImageUpload />,
+                      },
+                    ],
                   },
                   {
                     path: "inactive-websites",
