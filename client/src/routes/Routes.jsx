@@ -154,6 +154,7 @@ import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
+import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 
 export const routes = createBrowserRouter([
   {
@@ -219,6 +220,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "company-upload",
                         element: <CompaniesUpload />,
+                      },
+                      {
+                        path: "product-upload",
+                        element: <ProductsUpload />,
                       },
                       {
                         path: "product-image-upload",
@@ -298,7 +303,7 @@ export const routes = createBrowserRouter([
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
-                           { path: "edit-website", element: <EditWebsite /> },
+                          { path: "edit-website", element: <EditWebsite /> },
                           // {
                           //   path: "websites",
                           //   element: <WebsitesLayout />,
