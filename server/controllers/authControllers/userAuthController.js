@@ -18,7 +18,7 @@ const login = async (req, res, next) => {
     const user = await AdminUser.findOne({ email }).lean().exec();
     if (!user) return res.status(404).json({ message: "No user found" });
 
-    const isPasswordValid = bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid)
       return res.status(400).json({ message: "invalid password" });
 
