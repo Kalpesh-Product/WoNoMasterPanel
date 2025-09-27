@@ -100,15 +100,20 @@ const CompanyLeads = () => {
   ];
   if (isPending) return <>Loading Leads</>;
   if (isError) return <span className="text-red-500">Error Loading Leads</span>;
+
   return (
     <div className="p-4">
       <PageFrame>
         <YearWiseTable
-          data={data}
+          data={Array.isArray(data) ? data : []} // 👈 ensure always array
           tableTitle={"Leads"}
           columns={columns}
-          // dateColumn="createdAt" // 👈 add this
         />
+        {Array.isArray(data) && data.length === 0 && (
+          <div className="text-center text-gray-500 py-4">
+            No leads found for this company
+          </div>
+        )}
       </PageFrame>
     </div>
   );
