@@ -94,8 +94,8 @@ const CompanyLeads = () => {
       headerName: "Status",
     },
     {
-      field: "comments",
-      headerName: "Comments",
+      field: "comment",
+      headerName: "Comment",
     },
   ];
   if (isPending) return <>Loading Leads</>;
