@@ -65,13 +65,16 @@ const RequestedServices = () => {
         companyId: c.companyId,
         logo: c.logo,
         companyName: c.companyName,
-        noOfServices: requestedCount,
+        noOfServices: requestedCount - activeCount, // 👈 display as difference
         noOfActive: activeCount,
         registration: c.isRegistered ? "Active" : "Inactive",
+        _requested: requestedCount, // 👈 keep raw values hidden
+        _active: activeCount,
       };
     })
     // ✅ filter companies that satisfy BOTH conditions
-    .filter((c) => c.noOfServices > 3 && c.noOfServices > c.noOfActive);
+    // .filter((c) => c.noOfServices > 3 && c.noOfServices > c.noOfActive);
+    .filter((c) => c._requested > 3 && c._requested > c._active);
 
   // ✅ define table columns
   const columns = useMemo(
