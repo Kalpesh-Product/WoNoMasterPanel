@@ -121,7 +121,7 @@ export default function NomadListingsOverview() {
 
               params?.data?.isActive
                 ? {
-                    label: "Deactivate Listing",
+                    label: "Mark As Inactive",
                     onClick: () => {
                       toggleStatus({
                         businessId: params?.data?.businessId,
@@ -130,7 +130,7 @@ export default function NomadListingsOverview() {
                     },
                   }
                 : {
-                    label: "Activate Listing",
+                    label: "Mark As Active",
                     onClick: () => {
                       toggleStatus({
                         businessId: params?.data?.businessId,

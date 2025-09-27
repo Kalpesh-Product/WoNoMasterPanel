@@ -1,4 +1,4 @@
-import React, { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
 import PageFrame from "../../../../components/Pages/PageFrame";
@@ -6,23 +6,27 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import normalAxios from "axios";
 
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
-const KIND_OPTIONS = ["companies"];
+const KIND_OPTIONS = ["products"];
 const TYPE_MAP = {
-  companies: { api: "hosts/bulk-insert-companies", formKey: "companies" },
+  products: {
+    api: "https://wononomadsbe.vercel.app/api/company/bulk-insert-companies",
+    formKey: "companies",
+  },
   poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
   //   reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
-const CompaniesUpload = () => {
+const ProductsUpload = () => {
   const axios = useAxiosPrivate();
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
-  const [kind, setKind] = useState("companies");
+  const [kind, setKind] = useState("products");
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
@@ -34,7 +38,7 @@ const CompaniesUpload = () => {
       const form = new FormData();
       form.append(formKey, file);
 
-      const res = await axios.post(`/api/${api}`, form, {
+      const res = await normalAxios.post(`${api}`, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -97,7 +101,7 @@ const CompaniesUpload = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          Companies Upload
+          Products Upload
         </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>
@@ -180,7 +184,7 @@ const CompaniesUpload = () => {
   );
 };
 
-export default CompaniesUpload;
+export default ProductsUpload;
 
 // Helpers
 function humanSize(bytes) {

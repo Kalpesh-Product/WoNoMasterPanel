@@ -153,6 +153,8 @@ import ProductUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/Produ
 import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductImageUpload";
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
+import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
+import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 
 export const routes = createBrowserRouter([
   {
@@ -213,17 +215,21 @@ export const routes = createBrowserRouter([
                   {
                     path: "data-upload",
                     // element: <ProductUpload />,
-                    element: <CompaniesUpload />,
-                    // children: [
-                    //   {
-                    //     path: "product-upload",
-                    //     element: <ProductUpload />,
-                    //   },
-                    //   {
-                    //     path: "product-image-upload",
-                    //     element: <ProductImageUpload />,
-                    //   },
-                    // ],
+                    element: <UploadLayout />,
+                    children: [
+                      {
+                        path: "company-upload",
+                        element: <CompaniesUpload />,
+                      },
+                      {
+                        path: "product-upload",
+                        element: <ProductsUpload />,
+                      },
+                      {
+                        path: "product-image-upload",
+                        element: <ProductImageUpload />,
+                      },
+                    ],
                   },
                   {
                     path: "inactive-websites",
@@ -297,7 +303,7 @@ export const routes = createBrowserRouter([
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
-                           { path: "edit-website", element: <EditWebsite /> },
+                          { path: "edit-website", element: <EditWebsite /> },
                           // {
                           //   path: "websites",
                           //   element: <WebsitesLayout />,

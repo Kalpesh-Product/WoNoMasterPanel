@@ -116,68 +116,40 @@ const validModules = new Set(serviceOptions[1].items);
 
 const updateServices = async (req, res, next) => {
   try {
-    const { companyId, selectedServices = {} } = req.body;
+    const { companyId } = req.body;
 
     if (!companyId) {
-      return res.status(400).json({
-        message: "companyId is required",
-      });
-    }
-
-    // default to empty arrays if not provided
-    const { apps = [], modules = [] } = selectedServices;
-
-    // if both are missing/empty, reject
-    if (!apps.length && !modules.length) {
-      return res.status(400).json({
-        message: "At least one of apps or modules must be provided",
-      });
-    }
-
-    // validate incoming apps/modules
-    const invalidApps = apps.filter((a) => !validApps.has(a.appName));
-    const invalidModules = modules.filter(
-      (m) => !validModules.has(m.moduleName)
-    );
-
-    if (invalidApps.length || invalidModules.length) {
-      return res.status(400).json({
-        message: "Invalid app/module names provided",
-        invalidApps: invalidApps.map((a) => a.appName),
-        invalidModules: invalidModules.map((m) => m.moduleName),
-      });
+      return res.status(400).json({ message: "companyId is required" });
     }
 
     const company = await HostCompany.findOne({ companyId });
-    if (!company) throw new Error("Company not found");
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
 
-    const appsMap = new Map(
-      company.selectedServices.apps.map((a) => [a.appName, a])
-    );
-    const modulesMap = new Map(
-      company.selectedServices.modules.map((m) => [m.moduleName, m])
-    );
-
-    apps.forEach((app) => {
-      if (appsMap.has(app.appName)) {
-        appsMap.get(app.appName).isActive = app.isActive;
-      } else {
-        company.selectedServices.apps.push(app);
+    // 🔹 Always flip isActive = true wherever isRequested = true
+    company.selectedServices.apps.forEach((app) => {
+      if (app.isRequested) {
+        app.isActive = true;
       }
     });
 
-    modules.forEach((mod) => {
-      if (modulesMap.has(mod.moduleName)) {
-        modulesMap.get(mod.moduleName).isActive = mod.isActive;
-      } else {
-        company.selectedServices.modules.push(mod);
+    company.selectedServices.modules.forEach((mod) => {
+      if (mod.isRequested) {
+        mod.isActive = true;
+      }
+    });
+
+    company.selectedServices.defaults.forEach((def) => {
+      if (def.isRequested) {
+        def.isActive = true;
       }
     });
 
     const updatedCompany = await company.save();
 
     return res.status(200).json({
-      message: "Services updated successfully",
+      message: "Requested services activated successfully",
       company: updatedCompany,
     });
   } catch (error) {
@@ -301,6 +273,14 @@ const bulkInsertCompanies = async (req, res, next) => {
 
           const insertedCount = result.length;
           const failedCount = companies.length - insertedCount;
+          if (failedCount > 0) {
+            return res
+              .status(400)
+              .json({
+                message:
+                  "Some companies could not be inserted. Please check for duplicates or invalid data.",
+              });
+          }
 
           res.status(200).json({
             message: "Bulk insert completed",
