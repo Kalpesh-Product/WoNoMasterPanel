@@ -5,6 +5,8 @@ const UploadLayout = () => {
   const tabs = [
     { label: "Company Upload", path: "company-upload" },
     { label: "Product Upload", path: "product-upload" },
+    { label: "News Upload", path: "news-upload" },
+    { label: "Blogs Upload", path: "blogs-upload" },
   ];
 
   return (
