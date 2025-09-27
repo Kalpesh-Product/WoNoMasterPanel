@@ -98,6 +98,7 @@ const CompanyLeads = () => {
       headerName: "Comment",
     },
   ];
+
   if (isPending) return <>Loading Leads</>;
   if (isError) return <span className="text-red-500">Error Loading Leads</span>;
 
