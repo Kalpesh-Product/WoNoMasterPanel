@@ -448,7 +448,7 @@ const EditWebsite = () => {
                     <UploadFileInput
                       id="companyLogo"
                       value={field.value}
-                      label="Replace Company Logo"
+                      label="Add/Replace Company Logo"
                       onChange={field.onChange}
                     />
                   )}
@@ -572,7 +572,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`products.${index}.type`}
                         control={control}
-                        rules={{ required: "Type is required" }}
+                         
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -589,7 +589,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`products.${index}.name`}
                         control={control}
-                        rules={{ required: "Name is required" }}
+                         
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -606,7 +606,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`products.${index}.cost`}
                         control={control}
-                        rules={{ required: "Cost is required" }}
+                         
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -623,7 +623,7 @@ const EditWebsite = () => {
                       <Controller
                         name={`products.${index}.description`}
                         control={control}
-                        rules={{ required: "Description is required" }}
+                         
                         render={({ field }) => (
                           <TextField
                             {...field}
