@@ -167,7 +167,7 @@ const EditNomadListing = () => {
     const formEl = e?.target || formRef.current;
     const fd = new FormData(formEl);
 
-    fd.set("companyId", companyId); // ✅ backend requires it
+    fd.set("companyId", companyId);
     fd.set("businessId", values.businessId);
     fd.set("companyType", values.companyType);
     fd.set("ratings", values.ratings);
@@ -180,9 +180,18 @@ const EditNomadListing = () => {
     fd.set("about", values.about);
     fd.set("address", values.address);
 
-    // structured fields
-    fd.set("inclusions", JSON.stringify(values.inclusions || []));
-    // 🔥 map rating → starCount
+    // ✅ inclusions always array
+    const inclusionsArr = Array.isArray(values.inclusions)
+      ? values.inclusions
+      : typeof values.inclusions === "string"
+      ? values.inclusions
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    fd.set("inclusions", JSON.stringify(inclusionsArr));
+
+    // ✅ map rating → starCount
     const mappedReviews = (values.reviews || []).map((r) => ({
       name: r.name,
       review: r.review,
@@ -190,18 +199,16 @@ const EditNomadListing = () => {
     }));
     fd.set("reviews", JSON.stringify(mappedReviews));
 
-    // clean up react-hook-form keys like reviews.0.name
+    // clean react-hook-form noise
     for (const key of Array.from(fd.keys())) {
       if (/^reviews\.\d+\./.test(key)) fd.delete(key);
     }
 
-    // append new images (existing ones already in backend)
     fd.delete("images");
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
 
-    // send
     createCompany(fd);
   };
 
