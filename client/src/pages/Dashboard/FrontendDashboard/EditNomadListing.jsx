@@ -180,7 +180,7 @@ const EditNomadListing = () => {
     fd.set("about", values.about);
     fd.set("address", values.address);
 
-    // ✅ inclusions always array
+    // ✅ inclusions always string
     const inclusionsArr = Array.isArray(values.inclusions)
       ? values.inclusions
       : typeof values.inclusions === "string"
@@ -189,9 +189,9 @@ const EditNomadListing = () => {
           .map((s) => s.trim())
           .filter(Boolean)
       : [];
-    fd.set("inclusions", JSON.stringify(inclusionsArr));
+    fd.set("inclusions", inclusionsArr.join(", "));
 
-    // ✅ map rating → starCount
+    // ✅ reviews: rating → starCount
     const mappedReviews = (values.reviews || []).map((r) => ({
       name: r.name,
       review: r.review,
@@ -199,7 +199,7 @@ const EditNomadListing = () => {
     }));
     fd.set("reviews", JSON.stringify(mappedReviews));
 
-    // clean react-hook-form noise
+    // cleanup RHF noise
     for (const key of Array.from(fd.keys())) {
       if (/^reviews\.\d+\./.test(key)) fd.delete(key);
     }

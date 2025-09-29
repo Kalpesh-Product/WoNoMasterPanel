@@ -121,9 +121,7 @@ const NomadListing = () => {
     const formEl = formRef.current;
     const fd = new FormData(formEl);
 
-    // ✅ ensure proper values override
-    // fd.set("businessId", values.businessId);
-    fd.set("companyId", companyId); // ✅ from previous page
+    fd.set("companyId", companyId);
     fd.set("companyType", values.companyType);
     fd.set("ratings", values.ratings);
     fd.set("totalReviews", values.totalReviews);
@@ -135,27 +133,29 @@ const NomadListing = () => {
     fd.set("about", values.about);
     fd.set("address", values.address);
 
-    // ✅ structured fields
-    fd.set("inclusions", JSON.stringify(values.inclusions || []));
+    // ✅ inclusions as comma-separated string
+    const inclusionsArr = Array.isArray(values.inclusions)
+      ? values.inclusions
+      : typeof values.inclusions === "string"
+      ? values.inclusions
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+    fd.set("inclusions", inclusionsArr.join(", "));
+
+    // ✅ reviews unchanged
     fd.set("reviews", JSON.stringify(values.reviews || []));
 
-    // ✅ clean up default react-hook-form keys
     for (const key of Array.from(fd.keys())) {
       if (/^reviews\.\d+\./.test(key)) fd.delete(key);
     }
 
-    // ✅ images
     fd.delete("images");
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
 
-    // (optional) see what will be sent
-    for (const [k, v] of fd.entries()) {
-      console.log(k, v instanceof File ? v.name : v);
-    }
-
-    // 🔥 make sure it hits the API (even if wrong endpoint)
     createCompany(fd);
   };
 
