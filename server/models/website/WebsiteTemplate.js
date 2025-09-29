@@ -7,6 +7,10 @@ const templateSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
     //hero
     companyLogo: {
       id: { type: String },
