@@ -113,7 +113,7 @@ const ProductsUpload = () => {
           </div>
 
           {/* Upload Type */}
-          <TextField
+          {/* <TextField
             select
             size="small"
             fullWidth
@@ -126,7 +126,7 @@ const ProductsUpload = () => {
                 {option}
               </MenuItem>
             ))}
-          </TextField>
+          </TextField> */}
           {/* <p className="text-xs text-gray-500">
             Endpoint: <code>/api/{TYPE_MAP[kind].api}</code> • File key:{" "}
             <code>{TYPE_MAP[kind].formKey}</code>
