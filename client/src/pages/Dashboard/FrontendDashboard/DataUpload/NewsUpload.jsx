@@ -10,9 +10,8 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["news"];
 const TYPE_MAP = {
-  companies: { api: "hosts/bulk-insert-companies", formKey: "companies" },
-  poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
-  //   reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
+  api: "https://wononomadsbe.vercel.app/api/news/bulk-insert-news",
+  formKey: "news-file",
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -30,11 +29,13 @@ const NewsUpload = () => {
   const { mutate, isPending } = useMutation({
     mutationKey: ["bulk-upload"],
     mutationFn: async ({ file, kind }) => {
-      const { api, formKey } = TYPE_MAP[kind];
+      // console.log("type map:",TYPE_MAP[kind])
+      // console.log("kind:",kind)
+      const { api, formKey } = TYPE_MAP;
       const form = new FormData();
       form.append(formKey, file);
 
-      const res = await axios.post(`/api/${api}`, form, {
+      const res = await axios.post(`${api}`, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -139,7 +140,8 @@ const NewsUpload = () => {
           />
           <div
             className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-            onClick={() => inputRef.current?.click()}>
+            onClick={() => inputRef.current?.click()}
+          >
             <p className="font-medium">
               {file ? "Change file" : "Upload your CSV here (click to browse)"}
             </p>

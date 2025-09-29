@@ -10,9 +10,8 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["blogs"];
 const TYPE_MAP = {
-  companies: { api: "hosts/bulk-insert-companies", formKey: "companies" },
-  poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
-  //   reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
+   api: "https://wononomadsbe.vercel.app/api/blogs/bulk-insert-blogs",
+  formKey: "blog-file",
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -30,11 +29,11 @@ const BlogUpload = () => {
   const { mutate, isPending } = useMutation({
     mutationKey: ["bulk-upload"],
     mutationFn: async ({ file, kind }) => {
-      const { api, formKey } = TYPE_MAP[kind];
+      const { api, formKey } = TYPE_MAP;
       const form = new FormData();
       form.append(formKey, file);
 
-      const res = await axios.post(`/api/${api}`, form, {
+      const res = await axios.post(`${api}`, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
