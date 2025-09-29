@@ -150,18 +150,16 @@ const EditNomadListing = () => {
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
-      // keeping your existing endpoint to avoid functional changes
-      const res = await axiosPriv.post("/api/companies/create", fd, {
+      const res = await axiosPriv.patch("/api/hosts/edit-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
     },
     onSuccess: () => {
-      toast.success("Company added successfully!");
-      reset();
+      toast.success("Company updated successfully!");
     },
     onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to add company");
+      toast.error(err?.response?.data?.message || "Failed to update company");
     },
   });
 
@@ -169,14 +167,41 @@ const EditNomadListing = () => {
     const formEl = e?.target || formRef.current;
     const fd = new FormData(formEl);
 
+    fd.set("companyId", companyId); // ✅ backend requires it
     fd.set("businessId", values.businessId);
-    fd.set("inclusions", JSON.stringify(values.inclusions));
-    fd.set("reviews", JSON.stringify(values.reviews));
+    fd.set("companyType", values.companyType);
+    fd.set("ratings", values.ratings);
+    fd.set("totalReviews", values.totalReviews);
+    fd.set("productName", values.productName);
+    fd.set("cost", values.cost);
+    fd.set("description", values.description);
+    fd.set("latitude", values.latitude);
+    fd.set("longitude", values.longitude);
+    fd.set("about", values.about);
+    fd.set("address", values.address);
 
+    // structured fields
+    fd.set("inclusions", JSON.stringify(values.inclusions || []));
+    // 🔥 map rating → starCount
+    const mappedReviews = (values.reviews || []).map((r) => ({
+      name: r.name,
+      review: r.review,
+      starCount: Number(r.rating ?? 0),
+    }));
+    fd.set("reviews", JSON.stringify(mappedReviews));
+
+    // clean up react-hook-form keys like reviews.0.name
+    for (const key of Array.from(fd.keys())) {
+      if (/^reviews\.\d+\./.test(key)) fd.delete(key);
+    }
+
+    // append new images (existing ones already in backend)
+    fd.delete("images");
     if (values.images?.length) {
       values.images.forEach((file) => fd.append("images", file));
     }
 
+    // send
     createCompany(fd);
   };
 
