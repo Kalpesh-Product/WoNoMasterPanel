@@ -36,10 +36,10 @@ const templateSchema = new mongoose.Schema(
     productTitle: { type: String },
     products: [
       {
-        type: { type: String, required: true },
-        name: { type: String, required: true },
+        type: { type: String },
+        name: { type: String },
         cost: { type: String },
-        description: { type: String, required: true },
+        description: { type: String },
         images: [
           {
             id: { type: String },

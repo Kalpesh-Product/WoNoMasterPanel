@@ -36,7 +36,9 @@ const FrontendDashboard = () => {
 
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
-  const isWebsiteTemplate = useSelector((state)=>state.company.selectedCompany.isWebsiteTemplate)
+  const isWebsiteTemplate = useSelector(
+    (state) => state.company.selectedCompany.isWebsiteTemplate
+  );
 
   useEffect(() => {
     setIsSidebarOpen(true);
@@ -482,7 +484,6 @@ const FrontendDashboard = () => {
       title: "Leads",
       icon: <LuHardDriveUpload />,
     },
-
   ];
 
   const allowedCards = filterPermissions(cardsConfigFrontend, userPermissions);
@@ -557,10 +558,24 @@ const FrontendDashboard = () => {
     //   )),
     // },
     {
-      layout: allowedCards.length,
-      widgets: allowedCards.map((config) => (
-        <Card icon={config.icon} title={config.title} route={config.route} />
-      )),
+      layout: 2,
+      widgets: allowedCards
+        .filter((config) => {
+          if (!isWebsiteTemplate && config.title === "Create Website")
+            return true;
+          if (isWebsiteTemplate && config.title === "Edit website") return true;
+          if (config.title === "Leads") return true;
+          return false;
+        })
+
+        .map((config) => (
+          <Card
+            key={config.title}
+            icon={config.icon}
+            title={config.title}
+            route={config.route}
+          />
+        )),
     },
     {
       layout: allowedPieCharts.length,
@@ -585,7 +600,8 @@ const FrontendDashboard = () => {
               <Skeleton variant="text" width={200} height={30} />
               <Skeleton variant="rectangular" width="100%" height={300} />
             </Box>
-          }>
+          }
+        >
           {allowedExpenseGraph.map((config) => (
             <YearlyGraph
               data={config.data}
