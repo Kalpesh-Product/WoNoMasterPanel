@@ -136,9 +136,7 @@ const ProductUpload = () => {
           className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
           onClick={() => inputRef.current?.click()}>
           <p className="font-medium">
-            {file
-              ? "Change file"
-              : "Drag & drop your CSV here or click to browse"}
+            {file ? "Change file" : "Upload your CSV here (click to browse)"}
           </p>
           {filename && (
             <p className="text-sm text-gray-600">

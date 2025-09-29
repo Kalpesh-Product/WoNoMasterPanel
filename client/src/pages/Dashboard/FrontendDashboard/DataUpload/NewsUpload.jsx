@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
-const KIND_OPTIONS = ["companies"];
+const KIND_OPTIONS = ["news"];
 const TYPE_MAP = {
   companies: { api: "hosts/bulk-insert-companies", formKey: "companies" },
   poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
@@ -17,12 +17,12 @@ const TYPE_MAP = {
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
-const CompaniesUpload = () => {
+const NewsUpload = () => {
   const axios = useAxiosPrivate();
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
-  const [kind, setKind] = useState("companies");
+  const [kind, setKind] = useState("news");
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
@@ -97,7 +97,7 @@ const CompaniesUpload = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          Companies Upload
+          News Upload
         </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>
@@ -109,7 +109,7 @@ const CompaniesUpload = () => {
           </div>
 
           {/* Upload Type */}
-          <TextField
+          {/* <TextField
             select
             size="small"
             fullWidth
@@ -122,7 +122,7 @@ const CompaniesUpload = () => {
                 {option}
               </MenuItem>
             ))}
-          </TextField>
+          </TextField> */}
           {/* <p className="text-xs text-gray-500">
             Endpoint: <code>/api/{TYPE_MAP[kind].api}</code> • File key:{" "}
             <code>{TYPE_MAP[kind].formKey}</code>
@@ -176,7 +176,7 @@ const CompaniesUpload = () => {
   );
 };
 
-export default CompaniesUpload;
+export default NewsUpload;
 
 // Helpers
 function humanSize(bytes) {
