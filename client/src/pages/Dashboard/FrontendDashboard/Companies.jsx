@@ -133,6 +133,14 @@ const Companies = () => {
     [navigate]
   );
 
+  // ✅ sort companies: Active first, then Inactive
+  const sortedCompanies = useMemo(() => {
+    return [...companies].sort((a, b) => {
+      if (a.isRegistered === b.isRegistered) return 0;
+      return a.isRegistered ? -1 : 1; // Active first
+    });
+  }, [companies]);
+
   if (isLoading) return <div className="p-6">Loading companies…</div>;
   if (isError)
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -141,7 +149,7 @@ const Companies = () => {
     <div className="p-4">
       <PageFrame>
         <AgTable
-          data={companies}
+          data={sortedCompanies}
           columns={columns}
           search={true}
           tableTitle={"Companies"}
