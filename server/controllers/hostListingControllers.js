@@ -110,7 +110,7 @@ const createCompanyListing = async (req, res) => {
     }
 
     const response = await axios.post(
-      "http://localhost:3001/api/company/create-company",
+      "https://wononomadsbe.vercel.app/api/company/create-company",
       listingData
     );
 
