@@ -36,11 +36,11 @@ const inclusionOptions = [
 // Dummy company types
 const companyTypes = ["Coworking", "Meeting Room", "Cafe", "Private Stay"];
 
-// ✅ Default review structure
+// ✅ Default description structure
 const defaultReview = {
   name: "",
-  review: "",
-  rating: 5,
+  description: "",
+  starCount: 5,
 };
 
 const NomadListing = () => {
@@ -72,7 +72,7 @@ const NomadListing = () => {
       about: "",
       address: "",
       images: [],
-      reviews: [defaultReview], // ✅ initialize with one review
+      reviews: [defaultReview], // ✅ initialize with one description
     },
   });
 
@@ -85,6 +85,7 @@ const NomadListing = () => {
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
+
       const res = await axios.post("/api/hosts/add-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -172,7 +173,8 @@ const NomadListing = () => {
           ref={formRef}
           encType="multipart/form-data"
           onSubmit={handleSubmit(onSubmit, () => onSubmit(getValues()))}
-          className="grid grid-cols-2 gap-4">
+          className="grid grid-cols-2 gap-4"
+        >
           {/* Product Name */}
           <Controller
             name="productName"
@@ -217,14 +219,41 @@ const NomadListing = () => {
             render={({ field }) => (
               <FormControl size="small">
                 <InputLabel>Inclusions</InputLabel>
-                <Select
+                {/* <Select
                   {...field}
                   multiple
                   input={<OutlinedInput label="Inclusions" />}
-                  renderValue={(selected) => selected.join(", ")}>
+                  renderValue={(selected) => Array.isArray(selected) ? selected.join(", ") : selected}>
                   {inclusionOptions.map((option) => (
                     <MenuItem key={option} value={option}>
                       <Checkbox checked={field.value.indexOf(option) > -1} />
+                      <ListItemText primary={option} />
+                    </MenuItem>
+                  ))}
+                </Select> */}
+                <Select
+                  {...field}
+                  multiple
+                  value={
+                    Array.isArray(field.value)
+                      ? field.value
+                      : field.value
+                      ? [field.value]
+                      : []
+                  }
+                  input={<OutlinedInput label="Inclusions" />}
+                  renderValue={(selected) =>
+                    Array.isArray(selected) ? selected.join(", ") : ""
+                  }
+                >
+                  {inclusionOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      <Checkbox
+                        checked={
+                          Array.isArray(field.value) &&
+                          field.value.includes(option)
+                        }
+                      />
                       <ListItemText primary={option} />
                     </MenuItem>
                   ))}
@@ -402,13 +431,15 @@ const NomadListing = () => {
             {reviewFields.map((field, index) => (
               <div
                 key={field.id}
-                className="rounded-lg border border-gray-300 p-4 my-3">
+                className="rounded-lg border border-gray-300 p-4 my-3"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold">Review {index + 1}</span>
                   <button
                     type="button"
                     onClick={() => removeReview(index)}
-                    className="text-sm text-red-500">
+                    className="text-sm text-red-500"
+                  >
                     Remove
                   </button>
                 </div>
@@ -433,7 +464,7 @@ const NomadListing = () => {
 
                   {/* Rating */}
                   <Controller
-                    name={`reviews.${index}.rating`}
+                    name={`reviews.${index}.starCount`}
                     control={control}
                     render={({ field }) => (
                       <TextField
@@ -450,9 +481,9 @@ const NomadListing = () => {
 
                 {/* Review text */}
                 <Controller
-                  name={`reviews.${index}.review`}
+                  name={`reviews.${index}.description`}
                   control={control}
-                  rules={{ required: "Review is required" }}
+                   
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -461,8 +492,8 @@ const NomadListing = () => {
                       fullWidth
                       multiline
                       minRows={3}
-                      helperText={errors?.reviews?.[index]?.review?.message}
-                      error={!!errors?.reviews?.[index]?.review}
+                      helperText={errors?.reviews?.[index]?.description?.message}
+                      error={!!errors?.reviews?.[index]?.description}
                       sx={{ mt: 2 }} // ✅ adds spacing above this input
                     />
                   )}
@@ -475,7 +506,8 @@ const NomadListing = () => {
               <button
                 type="button"
                 onClick={() => appendReview({ ...defaultReview })}
-                className="text-sm text-primary">
+                className="text-sm text-primary"
+              >
                 + Add Review
               </button>
             </div>

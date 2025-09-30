@@ -110,11 +110,11 @@ const createCompanyListing = async (req, res) => {
     }
 
     const response = await axios.post(
-      "https://wononomadsbe.vercel.app/api/company/create-company",
+      "http://localhost:3001/api/company/create-company",
       listingData
     );
 
-    if (!response.data) {
+    if (response.status !== 201) {
       return res.status(400).json({ message: "Failed to add listing" });
     }
 
@@ -122,9 +122,6 @@ const createCompanyListing = async (req, res) => {
       .status(201)
       .json({ message: "Listing added successfully", data: listingData });
   } catch (error) {
-    console.log("REQ BODY:", req.body);
-    console.log("REQ FILES:", req.files);
-
     res.status(500).json({ error: error.message });
   }
 };
