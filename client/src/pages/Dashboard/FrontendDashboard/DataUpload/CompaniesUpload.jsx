@@ -12,7 +12,7 @@ const KIND_OPTIONS = ["companies"];
 const TYPE_MAP = {
   companies: { api: "hosts/bulk-insert-companies", formKey: "companies" },
   poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
-  //   reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
+  reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB

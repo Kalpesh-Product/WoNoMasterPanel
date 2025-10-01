@@ -1,3 +1,4 @@
+// src/pages/Dashboard/FrontendDashboard/ProductsUpload.jsx
 import { useRef, useState, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
@@ -5,32 +6,37 @@ import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
-import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
-import normalAxios from "axios";
+import axios from "axios";
 
-// const KIND_OPTIONS = ["companies", "poc", "reviews"];
-const KIND_OPTIONS = ["products"];
+const API_BASE = "https://wononomadsbe.vercel.app/api";
+
+const KIND_OPTIONS = ["products", "poc", "reviews"];
+
 const TYPE_MAP = {
-  products: {
-    api: "https://wononomadsbe.vercel.app/api/company/bulk-insert-companies",
-    formKey: "companies",
+  companies: {
+    api: `${API_BASE}/company/bulk-insert-companies`,
+    formKey: "products",
   },
-  poc: { api: "poc/bulk-insert-poc", formKey: "poc" },
-  //   reviews: { api: "review/bulk-insert-reviews", formKey: "reviews" },
+  poc: { api: `${API_BASE}/poc/bulk-insert-poc`, formKey: "poc" },
+  reviews: {
+    api: `${API_BASE}/review/bulk-insert-reviews`,
+    formKey: "reviews",
+  },
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const ProductsUpload = () => {
-  const axios = useAxiosPrivate();
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
+  const [dragActive, setDragActive] = useState(false);
   const [kind, setKind] = useState("products");
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
 
+  // ✅ mutation
   const { mutate, isPending } = useMutation({
     mutationKey: ["bulk-upload"],
     mutationFn: async ({ file, kind }) => {
@@ -38,7 +44,7 @@ const ProductsUpload = () => {
       const form = new FormData();
       form.append(formKey, file);
 
-      const res = await normalAxios.post(`${api}`, form, {
+      const res = await axios.post(api, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
@@ -86,6 +92,26 @@ const ProductsUpload = () => {
     validateAndSet(f);
   }
 
+  function onDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const f = e.dataTransfer.files?.[0] ?? null;
+    validateAndSet(f);
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(true);
+  }
+
+  function onDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+  }
+
   function handleUpload() {
     if (!file) return setError("Select a CSV file first.");
     mutate({ file, kind });
@@ -113,7 +139,7 @@ const ProductsUpload = () => {
           </div>
 
           {/* Upload Type */}
-          {/* <TextField
+          <TextField
             select
             size="small"
             fullWidth
@@ -126,13 +152,14 @@ const ProductsUpload = () => {
                 {option}
               </MenuItem>
             ))}
-          </TextField> */}
+          </TextField>
+
           {/* <p className="text-xs text-gray-500">
-            Endpoint: <code>/api/{TYPE_MAP[kind].api}</code> • File key:{" "}
+            Endpoint: <code>{TYPE_MAP[kind].api}</code> • File key:{" "}
             <code>{TYPE_MAP[kind].formKey}</code>
           </p> */}
 
-          {/* File input */}
+          {/* Hidden input */}
           <input
             ref={inputRef}
             type="file"
@@ -141,11 +168,25 @@ const ProductsUpload = () => {
             className="hidden"
             id="csv-input"
           />
+
+          {/* Dropzone */}
           <div
-            className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-            onClick={() => inputRef.current?.click()}>
+            className={[
+              "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition",
+              dragActive
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-gray-400",
+            ].join(" ")}
+            onClick={() => inputRef.current?.click()}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}>
             <p className="font-medium">
-              {file ? "Change file" : "Upload your CSV here (click to browse)"}
+              {dragActive
+                ? "Drop your file here"
+                : file
+                ? "Change file"
+                : "Upload your CSV here (click to browse)"}
             </p>
             {filename && (
               <p className="text-sm text-gray-600">
@@ -159,6 +200,7 @@ const ProductsUpload = () => {
           </p>
           {error && <div className="text-sm text-red-600">{error}</div>}
 
+          {/* Actions */}
           <div className="flex gap-4 justify-center">
             <PrimaryButton
               type="button"

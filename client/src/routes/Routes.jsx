@@ -157,6 +157,9 @@ import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/Upload
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
+import AccessTree from "../components/AccessTree";
+import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkUploadImages";
+import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
 
 export const routes = createBrowserRouter([
   {
@@ -186,6 +189,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "all-leads",
                     element: <AllLeads />,
+                  },
+                  {
+                    path: "access-tree",
+                    element: <AccessTree />,
                   },
                   {
                     path: "requested-services",
@@ -234,6 +241,14 @@ export const routes = createBrowserRouter([
                       {
                         path: "blogs-upload",
                         element: <BlogUpload />,
+                      },
+                      {
+                        path: "bulk-upload-images",
+                        element: <BulkUploadImages />,
+                      },
+                      {
+                        path: "upload-single-image",
+                        element: <UploadSingleImage />,
                       },
                       {
                         path: "product-image-upload",

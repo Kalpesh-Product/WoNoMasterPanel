@@ -148,6 +148,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
         },
+        {
+          id: 8,
+          title: "Access Control",
+          codeName: "Access",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/access-tree",
+        },
       ],
     },
   ];

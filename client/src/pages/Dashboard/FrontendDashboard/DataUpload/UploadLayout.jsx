@@ -4,7 +4,9 @@ import TabLayout from "../../../../components/Tabs/TabLayout";
 const UploadLayout = () => {
   const tabs = [
     { label: "Company Upload", path: "company-upload" },
-    { label: "Product Upload", path: "product-upload" },
+    { label: "Products Upload", path: "product-upload" },
+    { label: "Bulk Upload Images", path: "bulk-upload-images" },
+    { label: "Upload Single Image", path: "upload-single-image" },
     { label: "News Upload", path: "news-upload" },
     { label: "Blogs Upload", path: "blogs-upload" },
   ];
