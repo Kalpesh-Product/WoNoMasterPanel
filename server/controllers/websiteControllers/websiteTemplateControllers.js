@@ -262,20 +262,24 @@ const createTemplate = async (req, res, next) => {
 
     const savedTemplate = await template.save({ session });
 
+    if (!savedTemplate) {
+      return res.status(400).json({ message: "Failed to create template" });
+    }
+
     const updateHostCompany = await HostCompany.findOneAndUpdate(
-      { companyName: req.body.companyName },
+      { companyName: req.body.companyName }, //can't use company Id as the nomads signup can't send any company Id
       {
         isWebsiteTemplate: true,
       }
     );
 
     if (!updateHostCompany) {
-      return res.status(400).json({ message: "Failed to update company" });
+      return res.status(400).json({ message: "Company not found" });
     }
 
     try {
       const updatedCompany = await axios.patch(
-        "http://localhost:3000/api/company/add-template-link",
+        "https://wononomadsbe.vercel.app/api/company/add-template-link",
         {
           companyName: req.body.companyName,
           link: `https://${savedTemplate.searchKey}.wono.co/`,
@@ -293,9 +297,8 @@ const createTemplate = async (req, res, next) => {
       if (error.response?.status !== 200) {
         return res.status(201).json({
           message:
-            "Website created but failed to add link.Check if the company is listed in Nomads.",
-          error: error,
-          template,
+            "Failed to add link.Check if the company is listed in Nomads.",
+          error: error.message,
         });
       }
     }
