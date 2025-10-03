@@ -96,5 +96,5 @@ const hostCompanySchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const HostCompany = mongoose.model("HostCompany", hostCompanySchema);
-module.exports = HostCompany;
+const TestCompany = mongoose.model("TestCompany", hostCompanySchema);
+module.exports = TestCompany;

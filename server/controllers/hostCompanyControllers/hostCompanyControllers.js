@@ -4,6 +4,7 @@ const HostCompany = require("../../models/hostCompany/hostCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
+const TestCompany = require("../../models/hostCompany/testCompany");
 
 const createCompany = async (req, res, next) => {
   try {
@@ -286,7 +287,7 @@ const bulkInsertCompanies = async (req, res, next) => {
             }
           }
 
-          const result = await HostCompany.insertMany(uniqueCompanies);
+          const result = await TestCompany.insertMany(uniqueCompanies);
 
           const insertedCount = result.length;
           const failedCount = companies.length - insertedCount;
@@ -331,6 +332,93 @@ const bulkInsertCompanies = async (req, res, next) => {
   }
 };
 
+const bulkInsertLogos = async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid CSV file" });
+    }
+
+    const companies = [];
+
+    //fetch companies from master panel
+    const productCompanies = await axios.get(
+      "https://wononomadsbe.vercel.app/api/company/companies"
+    );
+
+    const companyMap = new Map();
+    productCompanies.data.forEach((company) => {
+      companyMap.set(company.businessId, company.logo);
+    });
+
+    const stream = Readable.from(file.buffer.toString("utf-8").trim());
+    stream
+      .pipe(csvParser())
+      .on("data", (row) => {
+        const businessId = row["Business ID"]?.trim();
+
+        const company = {
+          companyName: row["Business Name"]?.trim(),
+          logo: companyMap.get(businessId) || "",
+        };
+        companies.push(company);
+      })
+      .on("end", async () => {
+        try {
+          const operations = companies.map((company) => ({
+            updateOne: {
+              filter: { companyName: company.companyName },
+              update: { $set: { logo: company.logo } },
+            },
+          }));
+
+          const result = await TestCompany.bulkWrite(operations);
+
+          const updatedCount = result.length;
+          const failedCount = companies.length - updatedCount;
+
+          res.status(200).json({
+            message:
+              failedCount > 0
+                ? "Bulk update completed with partial failure"
+                : "Bulk update completed",
+            total: companies.length,
+            inserted: updatedCount,
+            failed: failedCount,
+          });
+        } catch (insertError) {
+          if (insertError.name === "BulkWriteError") {
+            const updatedCount = insertError.result?.nInserted || 0;
+            const failedCount = companies.length - updatedCount;
+
+            res.status(200).json({
+              message: "Bulk update completed with partial failure",
+              total: companies.length,
+              updated: updatedCount,
+              failed: failedCount,
+              writeErrors: insertError.writeErrors?.map((e) => ({
+                index: e.index,
+                errmsg: e.errmsg,
+                code: e.code,
+                op: e.op,
+              })),
+            });
+          } else {
+            res.status(500).json({
+              message: "Unexpected error during bulk insert",
+              error: insertError.message,
+            });
+          }
+        }
+      });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
 module.exports = {
   createCompany,
   activateProduct,
@@ -338,4 +426,5 @@ module.exports = {
   getCompanies,
   getCompany,
   bulkInsertCompanies,
+  bulkInsertLogos,
 };
