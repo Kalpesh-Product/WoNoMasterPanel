@@ -275,7 +275,7 @@ const createTemplate = async (req, res, next) => {
 
     try {
       const updatedCompany = await axios.patch(
-        "http://localhost:3000/api/company/add-template-link",
+        "https://wononomadsbe.vercel.app/api/company/add-template-link",
         {
           companyName: req.body.companyName,
           link: `https://${savedTemplate.searchKey}.wono.co/`,
