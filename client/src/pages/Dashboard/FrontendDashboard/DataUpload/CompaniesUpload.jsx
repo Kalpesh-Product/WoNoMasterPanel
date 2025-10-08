@@ -97,7 +97,7 @@ const CompaniesUpload = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          Companies Upload
+          Companies Data Upload
         </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>

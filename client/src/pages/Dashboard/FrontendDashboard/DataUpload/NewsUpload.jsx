@@ -98,7 +98,7 @@ const NewsUpload = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          News Upload
+          News Data Upload
         </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>
@@ -140,8 +140,7 @@ const NewsUpload = () => {
           />
           <div
             className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-            onClick={() => inputRef.current?.click()}
-          >
+            onClick={() => inputRef.current?.click()}>
             <p className="font-medium">
               {file ? "Change file" : "Upload your CSV here (click to browse)"}
             </p>

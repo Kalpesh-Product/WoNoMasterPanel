@@ -10,7 +10,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["blogs"];
 const TYPE_MAP = {
-   api: "https://wononomadsbe.vercel.app/api/blogs/bulk-insert-blogs",
+  api: "https://wononomadsbe.vercel.app/api/blogs/bulk-insert-blogs",
   formKey: "blog-file",
 };
 
@@ -96,7 +96,7 @@ const BlogUpload = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          Blog Upload
+          Blog Data Upload
         </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>
