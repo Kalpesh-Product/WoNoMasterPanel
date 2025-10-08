@@ -4,10 +4,9 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { useQuery } from "@tanstack/react-query";
 
 const AllEnquiryTable = () => {
+  const axios = useAxiosPrivate();
 
-   const axios = useAxiosPrivate()
-
-    const {
+  const {
     data = [],
     isPending,
     isError,
@@ -34,7 +33,8 @@ const AllEnquiryTable = () => {
     { field: "endDate", headerName: "End Date" },
     { field: "source", headerName: "Source" },
     { field: "productType", headerName: "Product Type" },
-    { field: "submittedAt", headerName: "Submitted At" },
+    // { field: "submittedAt", headerName: "Submitted At" },
+    { field: "createdAt", headerName: "Submitted At" },
   ];
 
   return <AgTable data={data} columns={columns} search tableHeight={350} />;
