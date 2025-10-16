@@ -13,9 +13,9 @@ const API_BASE = "https://wononomadsbe.vercel.app/api";
 const KIND_OPTIONS = ["products", "poc", "reviews"];
 
 const TYPE_MAP = {
-  companies: {
+  products: {
     api: `${API_BASE}/company/bulk-insert-companies`,
-    formKey: "products",
+    formKey: "companies",
   },
   poc: { api: `${API_BASE}/poc/bulk-insert-poc`, formKey: "poc" },
   reviews: {
@@ -146,7 +146,8 @@ const ProductsUpload = () => {
             label="Upload Type"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            disabled={isPending}>
+            disabled={isPending}
+          >
             {KIND_OPTIONS.map((option) => (
               <MenuItem key={option} value={option}>
                 {option}
@@ -180,7 +181,8 @@ const ProductsUpload = () => {
             onClick={() => inputRef.current?.click()}
             onDrop={onDrop}
             onDragOver={onDragOver}
-            onDragLeave={onDragLeave}>
+            onDragLeave={onDragLeave}
+          >
             <p className="font-medium">
               {dragActive
                 ? "Drop your file here"
