@@ -225,6 +225,67 @@ const getCompany = async (req, res, next) => {
   }
 };
 
+// async function checkCompanyIds() {
+//   try {
+//     // 1️⃣ Count total documents
+//     const totalCount = await HostCompany.countDocuments();
+
+//     // 2️⃣ Find the max companyId
+//     const maxCompany = await HostCompany.findOne()
+//       .sort({ companyId: -1 })
+//       .select("companyId companyName");
+
+//     // 3️⃣ Check for duplicate companyIds
+//     const duplicates = await HostCompany.aggregate([
+//       { $group: { _id: "$companyId", count: { $sum: 1 } } },
+//       { $match: { count: { $gt: 1 } } },
+//     ]);
+
+//     console.log("Total documents:", totalCount);
+//     console.log("Highest companyId:", maxCompany?.companyId);
+//     console.log("Company name with max ID:", maxCompany?.companyName);
+
+//     if (duplicates.length > 0) {
+//       console.log("\n⚠️ Found duplicate companyIds:");
+//       duplicates.forEach((dup) => {
+//         console.log(`- companyId: ${dup._id}, count: ${dup.count}`);
+//       });
+//     } else {
+//       console.log("\n✅ No duplicate companyIds found");
+//     }
+
+//     // 🔹 Check for missing IDs with CMP prefix
+//     const allIds = await HostCompany.find({}, "companyId").sort({
+//       companyId: 1,
+//     });
+//     const numericIds = allIds.map((doc) =>
+//       parseInt(doc.companyId.replace("CMP", ""), 10)
+//     );
+
+//     const missingIds = [];
+//     const maxNumericId = Math.max(...numericIds);
+
+//     for (let i = 1; i <= maxNumericId; i++) {
+//       if (!numericIds.includes(i)) {
+//         // re-add CMP prefix and zero-padding
+//         missingIds.push(`CMP${i.toString().padStart(4, "0")}`);
+//       }
+//     }
+
+//     if (missingIds.length) {
+//       console.log("\n⚠️ Missing companyIds:", missingIds);
+//     } else {
+//       console.log("\n✅ No missing companyIds — sequence is continuous");
+//     }
+
+//     // await mongoose.disconnect();
+//   } catch (err) {
+//     console.error("❌ Error:", err.message);
+//   }
+// }
+
+// checkCompanyIds();
+
 const bulkInsertCompanies = async (req, res, next) => {
   try {
     const file = req.file;
@@ -235,8 +296,20 @@ const bulkInsertCompanies = async (req, res, next) => {
     }
 
     const companies = [];
-    const lastCompany = await HostCompany.countDocuments();
-    let newId = lastCompany + 1;
+
+    const lastCompany = await HostCompany.findOne()
+      .sort({ companyId: -1 }) // sort descending
+      .select("companyId");
+
+    // 2️⃣ Extract numeric part of the last ID
+    let newId = 1;
+    if (lastCompany && lastCompany.companyId) {
+      const numericPart = parseInt(
+        lastCompany.companyId.replace("CMP", ""),
+        10
+      );
+      newId = numericPart + 1;
+    }
 
     const stream = Readable.from(file.buffer.toString("utf-8").trim());
     stream
@@ -287,7 +360,7 @@ const bulkInsertCompanies = async (req, res, next) => {
             }
           }
 
-          const result = await TestCompany.insertMany(uniqueCompanies);
+          const result = await HostCompany.insertMany(uniqueCompanies);
 
           const insertedCount = result.length;
           const failedCount = companies.length - insertedCount;
