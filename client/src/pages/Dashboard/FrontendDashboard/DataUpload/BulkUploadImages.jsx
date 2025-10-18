@@ -138,7 +138,8 @@ const BulkUploadImages = () => {
                   setCountry(e.target.value);
                   setCompanyType("");
                   setCompanyId("");
-                }}>
+                }}
+              >
                 {countries.map((c) => (
                   <MenuItem key={c} value={c}>
                     {c}
@@ -157,7 +158,8 @@ const BulkUploadImages = () => {
                   setCompanyType(e.target.value);
                   setCompanyId("");
                 }}
-                disabled={!country}>
+                disabled={!country}
+              >
                 {types.map((t) => (
                   <MenuItem key={t} value={t}>
                     {t}
@@ -173,7 +175,8 @@ const BulkUploadImages = () => {
                 label="Company"
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
-                disabled={!companyType}>
+                disabled={!companyType}
+              >
                 {filteredCompanies.map((c) => (
                   <MenuItem key={c._id} value={c._id}>
                     {c.companyName}
@@ -193,7 +196,8 @@ const BulkUploadImages = () => {
               />
               <div
                 className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-                onClick={() => inputRef.current?.click()}>
+                onClick={() => inputRef.current?.click()}
+              >
                 <p className="font-medium">
                   {images.length
                     ? `${images.length} image(s) selected`
@@ -207,7 +211,8 @@ const BulkUploadImages = () => {
                   {previews.map((p) => (
                     <div
                       key={p.url}
-                      className="relative border rounded-lg overflow-hidden">
+                      className="relative border rounded-lg overflow-hidden"
+                    >
                       <img
                         src={p.url}
                         alt={p.name}

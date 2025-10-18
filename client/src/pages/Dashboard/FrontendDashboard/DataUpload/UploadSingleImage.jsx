@@ -133,7 +133,8 @@ const UploadSingleImage = () => {
                   setCountry(e.target.value);
                   setCompanyType("");
                   setCompanyId("");
-                }}>
+                }}
+              >
                 {countries.map((c) => (
                   <MenuItem key={c} value={c}>
                     {c}
@@ -152,7 +153,8 @@ const UploadSingleImage = () => {
                   setCompanyType(e.target.value);
                   setCompanyId("");
                 }}
-                disabled={!country}>
+                disabled={!country}
+              >
                 {types.map((t) => (
                   <MenuItem key={t} value={t}>
                     {t}
@@ -168,7 +170,8 @@ const UploadSingleImage = () => {
                 label="Company"
                 value={companyId}
                 onChange={(e) => setCompanyId(e.target.value)}
-                disabled={!companyType}>
+                disabled={!companyType}
+              >
                 {filteredCompanies.map((c) => (
                   <MenuItem key={c._id} value={c._id}>
                     {c.companyName}
@@ -184,7 +187,8 @@ const UploadSingleImage = () => {
                 label="Image Type"
                 value={imageType}
                 onChange={(e) => setImageType(e.target.value)}
-                disabled={!companyId}>
+                disabled={!companyId}
+              >
                 {["image", "logo"].map((opt) => (
                   <MenuItem key={opt} value={opt}>
                     {opt}
@@ -203,7 +207,8 @@ const UploadSingleImage = () => {
               />
               <div
                 className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-                onClick={() => inputRef.current?.click()}>
+                onClick={() => inputRef.current?.click()}
+              >
                 <p className="font-medium">
                   {file
                     ? "Change image"
