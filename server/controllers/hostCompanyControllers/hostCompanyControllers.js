@@ -325,7 +325,7 @@ const bulkInsertCompanies = async (req, res, next) => {
           companyCity: row["City"]?.trim(),
           companyState: row["State"]?.trim(),
           companyCountry: row["Country"]?.trim(),
-          industry: row["Services"]?.trim(),
+
           companySize: row["Total Seats"]?.trim(),
           type: row["Type"]?.trim(),
         };
