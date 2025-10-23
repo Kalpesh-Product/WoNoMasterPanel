@@ -7,17 +7,19 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
+import { useLocation } from "react-router-dom";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const UploadSingleImage = () => {
   const inputRef = useRef(null);
+  const location = useLocation();
 
-  const [country, setCountry] = useState("");
-  const [companyType, setCompanyType] = useState("");
+  const [country, setCountry] = useState("Thailand");
+  const [companyType, setCompanyType] = useState("hostel");
   const [companyId, setCompanyId] = useState("");
-  const [imageType, setImageType] = useState(""); // "logo" or "image"
+  const [imageType, setImageType] = useState("logo"); // "logo" or "image"
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
@@ -109,6 +111,28 @@ const UploadSingleImage = () => {
     setImageType("");
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  useEffect(() => {
+    if (isLoading || !companies.length) return;
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("autoFill") === "true") {
+      try {
+        const context = JSON.parse(
+          sessionStorage.getItem("uploadContext") || "{}"
+        );
+        if (context.companyId) {
+          setCountry(context.country);
+          setCompanyType(context.companyType);
+          setCompanyId(context.companyId);
+          setImageType("logo");
+          sessionStorage.removeItem("uploadContext");
+        }
+      } catch (err) {
+        console.error("Failed to parse upload context:", err);
+      }
+    }
+  }, [location.search, companies, isLoading]);
 
   return (
     <div className="p-0">
