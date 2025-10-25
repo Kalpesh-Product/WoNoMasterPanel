@@ -451,7 +451,7 @@ const EditNomadListing = () => {
                 <UploadMultipleFilesInput
                   {...field}
                   label="Upload New Images"
-                  maxFiles={5}
+                  maxFiles={10}
                   allowedExtensions={["jpg", "jpeg", "png", "webp"]}
                   id="images"
                 />

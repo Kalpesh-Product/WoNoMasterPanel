@@ -14,7 +14,7 @@ const UploadMultipleFilesInput = ({
   previewType = "auto", // "image", "pdf", "none", or "auto"
   name, // optional: set to include in FormData (e.g., "heroImages")
   id, // input id for htmlFor
-  maxFiles = 5,
+  maxFiles = 10,
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
