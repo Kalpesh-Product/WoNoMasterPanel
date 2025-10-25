@@ -2,18 +2,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { TextField, IconButton, Avatar, Box, Chip } from "@mui/material";
 import { LuImageUp } from "react-icons/lu";
 import { MdDelete } from "react-icons/md";
+import { AiOutlineArrowUp, AiOutlineArrowDown } from "react-icons/ai";
 import MuiModal from "./MuiModal";
 
 const UploadMultipleFilesInput = ({
-  value = [],                // Array<File>
-  onChange,                  // (files: File[]) => void
+  value = [], // Array<File>
+  onChange, // (files: File[]) => void
   disabled = false,
   label = "Upload Files",
-  allowedExtensions = ["jpg", "jpeg", "png", "pdf","webp"],
-  previewType = "auto",      // "image", "pdf", "none", or "auto"
-  name,                      // optional: set to include in FormData (e.g., "heroImages")
-  id,                        // input id for htmlFor
-  maxFiles = 5
+  allowedExtensions = ["jpg", "jpeg", "png", "pdf", "webp"],
+  previewType = "auto", // "image", "pdf", "none", or "auto"
+  name, // optional: set to include in FormData (e.g., "heroImages")
+  id, // input id for htmlFor
+  maxFiles = 5,
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
@@ -93,6 +94,15 @@ const UploadMultipleFilesInput = ({
 
   const handleClear = () => {
     onChange?.([]);
+  };
+
+  // --- Reorder helpers ---
+  const moveFile = (fromIndex, toIndex) => {
+    if (toIndex < 0 || toIndex >= value.length) return;
+    const updated = [...value];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    onChange?.(updated);
   };
 
   const renderPreviewContent = (p) => {
@@ -237,14 +247,38 @@ const UploadMultipleFilesInput = ({
                 <span className="text-xs truncate" title={p.file.name}>
                   {p.file.name}
                 </span>
-                <IconButton
-                  color="error"
-                  size="small"
-                  onClick={() => handleRemoveAt(i)}
-                  title="Remove"
-                >
-                  <MdDelete />
-                </IconButton>
+                {/* 🔽 Buttons group on the right */}
+                <div className="flex gap-1 items-center">
+                  {/* Move Up */}
+                  <IconButton
+                    size="small"
+                    onClick={() => moveFile(i, i - 1)}
+                    title="Move Up"
+                    disabled={i === 0}
+                  >
+                    <AiOutlineArrowUp size={16} />
+                  </IconButton>
+
+                  {/* Move Down */}
+                  <IconButton
+                    size="small"
+                    onClick={() => moveFile(i, i + 1)}
+                    title="Move Down"
+                    disabled={i === value.length - 1}
+                  >
+                    <AiOutlineArrowDown size={16} />
+                  </IconButton>
+
+                  {/* Delete */}
+                  <IconButton
+                    color="error"
+                    size="small"
+                    onClick={() => handleRemoveAt(i)}
+                    title="Remove"
+                  >
+                    <MdDelete />
+                  </IconButton>
+                </div>
               </div>
             </div>
           ))}
