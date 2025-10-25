@@ -7,6 +7,7 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_FILES = 12;
@@ -14,9 +15,10 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const BulkUploadImages = () => {
   const inputRef = useRef(null);
+  const navigate = useNavigate();
 
-  const [country, setCountry] = useState("");
-  const [companyType, setCompanyType] = useState("");
+  const [country, setCountry] = useState("Thailand");
+  const [companyType, setCompanyType] = useState("coworking");
   const [companyId, setCompanyId] = useState("");
   const [images, setImages] = useState([]); // store File[]
   const [previews, setPreviews] = useState([]); // store preview URLs
@@ -69,7 +71,25 @@ const BulkUploadImages = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "Upload successful");
+      // toast.success(data?.message || "Upload successful");
+
+      toast.success(data?.message || "Upload successful", {
+        duration: 5000,
+        action: {
+          label: "→ Upload Logo",
+          onClick: () => {
+            sessionStorage.setItem(
+              "uploadContext",
+              JSON.stringify({
+                country,
+                companyType,
+                companyId,
+              })
+            );
+            navigate("../upload-single-image?autoFill=true");
+          },
+        },
+      });
       setImages([]);
       setCompanyId("");
       inputRef.current.value = "";
