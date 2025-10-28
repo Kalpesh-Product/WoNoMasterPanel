@@ -23,7 +23,6 @@ wono-7a9f9-firebase-adminsdk-1vvh4-2509500cec.json
 .env.test.local
 .env.production.local
 
-
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

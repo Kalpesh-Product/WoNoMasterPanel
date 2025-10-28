@@ -33,7 +33,7 @@ const createCompanyListing = async (req, res) => {
     }
 
     const listingData = {
-      companyName: company.companyName,
+      companyName: productName,
       companyId: company.companyId,
       logo: company.logo,
       city: company.companyCity,
@@ -43,7 +43,7 @@ const createCompanyListing = async (req, res) => {
       companyType: companyType,
       ratings: ratings,
       totalReviews: totalReviews,
-      productName: productName,
+      // productName: productName,
       cost: cost,
       description: description,
       latitude: latitude,
@@ -164,7 +164,7 @@ const editCompanyListing = async (req, res) => {
       companyType,
       ratings,
       totalReviews,
-      productName,
+      companyName: productName,
       cost,
       description,
       latitude,
