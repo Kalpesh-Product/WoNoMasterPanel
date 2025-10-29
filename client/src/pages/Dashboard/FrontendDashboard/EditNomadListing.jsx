@@ -76,7 +76,8 @@ const EditNomadListing = () => {
       about: "",
       address: "",
       images: [],
-      reviews: [defaultReview],
+      // reviews: [defaultReview],
+      reviews: [],
     },
   });
 
@@ -108,14 +109,26 @@ const EditNomadListing = () => {
     const src = fetchedListing || navState.website;
     if (!src) return;
 
-    const reviews =
-      Array.isArray(src.reviews) && src.reviews.length
+    // const reviews =
+    //   Array.isArray(src.reviews) && src.reviews.length
+    //     ? src.reviews.map((r) => ({
+    //         name: r.name || "",
+    //         review: r.review || r.testimony || "",
+    //         rating: Number(r.rating ?? 5),
+    //       }))
+    //     : [defaultReview];
+
+    // The above code is to set to zero reviews temporarily. change it back to 1 by commenting it
+
+    const reviews = Array.isArray(src.reviews)
+      ? src.reviews.length
         ? src.reviews.map((r) => ({
             name: r.name || "",
             review: r.review || r.testimony || "",
             rating: Number(r.rating ?? 5),
           }))
-        : [defaultReview];
+        : []
+      : [];
 
     const inclusionsArr = Array.isArray(src.inclusions)
       ? src.inclusions
@@ -225,7 +238,8 @@ const EditNomadListing = () => {
           ref={formRef}
           encType="multipart/form-data"
           onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-2 gap-4">
+          className="grid grid-cols-2 gap-4"
+        >
           {/* Product Name */}
           <Controller
             name="productName"
@@ -259,7 +273,8 @@ const EditNomadListing = () => {
                 {companyTypes.map((type) => (
                   <MenuItem
                     key={type}
-                    value={type.toLowerCase().replace(/\s+/g, "")}>
+                    value={type.toLowerCase().replace(/\s+/g, "")}
+                  >
                     {type}
                   </MenuItem>
                 ))}
@@ -278,7 +293,8 @@ const EditNomadListing = () => {
                   {...field}
                   multiple
                   input={<OutlinedInput label="Inclusions" />}
-                  renderValue={(selected) => selected.join(", ")}>
+                  renderValue={(selected) => selected.join(", ")}
+                >
                   {inclusionOptions.map((option) => (
                     <MenuItem key={option} value={option}>
                       <Checkbox checked={field.value.indexOf(option) > -1} />
@@ -415,7 +431,8 @@ const EditNomadListing = () => {
                 {fetchedListing.images.map((img) => (
                   <div
                     key={img._id}
-                    className="relative w-24 h-24 border rounded overflow-hidden">
+                    className="relative w-24 h-24 border rounded overflow-hidden"
+                  >
                     <img
                       src={img.url}
                       alt={`Image ${img.index}`}
@@ -434,7 +451,7 @@ const EditNomadListing = () => {
                 <UploadMultipleFilesInput
                   {...field}
                   label="Upload New Images"
-                  maxFiles={5}
+                  maxFiles={10}
                   allowedExtensions={["jpg", "jpeg", "png", "webp"]}
                   id="images"
                 />
@@ -451,13 +468,15 @@ const EditNomadListing = () => {
             {reviewFields.map((field, index) => (
               <div
                 key={field.id}
-                className="rounded-lg border border-gray-300 p-4 my-3">
+                className="rounded-lg border border-gray-300 p-4 my-3"
+              >
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold">Review {index + 1}</span>
                   <button
                     type="button"
                     onClick={() => removeReview(index)}
-                    className="text-sm text-red-500">
+                    className="text-sm text-red-500"
+                  >
                     Remove
                   </button>
                 </div>
@@ -520,7 +539,8 @@ const EditNomadListing = () => {
               <button
                 type="button"
                 onClick={() => appendReview({ ...defaultReview })}
-                className="text-sm text-primary">
+                className="text-sm text-primary"
+              >
                 + Add Review
               </button>
             </div>
