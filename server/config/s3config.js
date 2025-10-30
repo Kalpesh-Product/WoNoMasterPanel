@@ -28,7 +28,11 @@ async function uploadFileToS3(route, file) {
     const command = new PutObjectCommand(uploadParams);
     await s3Client.send(command);
     const fileUrl = `https://${process.env.PROJECT_S3_BUCKET_NAME}.s3.${process.env.PROJECT_AWS_REGION}.amazonaws.com/${route}`;
-    return fileUrl;
+
+    return {
+      id: route,
+      url: fileUrl,
+    };
   } catch (error) {
     throw new Error(error);
   }

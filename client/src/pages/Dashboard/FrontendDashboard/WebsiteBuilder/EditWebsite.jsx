@@ -217,6 +217,7 @@ const EditWebsite = () => {
       const res = await axios.patch(`/api/editor/edit-website`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       return res.data;
     },
     onSuccess: (data) => {
@@ -733,7 +734,7 @@ const EditWebsite = () => {
                       {...field}
                       name="gallery"
                       label="Add Gallery Images"
-                      maxFiles={10}
+                      maxFiles={45}
                       allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
                       id="gallery"
                     />
