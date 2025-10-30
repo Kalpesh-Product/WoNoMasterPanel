@@ -84,6 +84,7 @@ const createTemplate = async (req, res, next) => {
       address: req.body.address,
       registeredCompanyName: req.body.registeredCompanyName,
       copyrightText: req.body.copyrightText,
+      isWebsiteTemplate: true,
       products: [],
       testimonials: [],
     });
@@ -168,11 +169,11 @@ const createTemplate = async (req, res, next) => {
       const route = `${baseFolder}/companyLogo/${Date.now()}_${
         logoFile.originalname
       }`;
-      const url = await uploadFileToS3(route, {
+      const data = await uploadFileToS3(route, {
         buffer,
         mimetype: "image/webp",
       });
-      template.companyLogo = { url };
+      template.companyLogo = { id: data.id, url: data.url };
     }
 
     // heroImages

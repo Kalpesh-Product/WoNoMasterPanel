@@ -45,7 +45,7 @@ const CreateWebsite = () => {
       heroImages: [],
       gallery: [],
       // about
-      about: [{text:""}],
+      about: [{ text: "" }],
       // products
       productTitle: "",
       products: [defaultProduct],
@@ -520,7 +520,7 @@ const CreateWebsite = () => {
                       {...field}
                       name="gallery"
                       label="Gallery Images"
-                      maxFiles={10}
+                      maxFiles={45}
                       allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
                       id="gallery"
                     />
@@ -570,7 +570,7 @@ const CreateWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.name`}
                         control={control}
-                         render={({ field }) => (
+                        render={({ field }) => (
                           <TextField
                             {...field}
                             size="small"
@@ -586,7 +586,6 @@ const CreateWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.jobPosition`}
                         control={control}
-                         
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -604,7 +603,6 @@ const CreateWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.rating`}
                         control={control}
-                        
                         render={({ field }) => (
                           <TextField
                             {...field}
@@ -623,7 +621,6 @@ const CreateWebsite = () => {
                       <Controller
                         name={`testimonials.${index}.testimony`}
                         control={control}
-                        
                         render={({ field }) => (
                           <TextField
                             {...field}
