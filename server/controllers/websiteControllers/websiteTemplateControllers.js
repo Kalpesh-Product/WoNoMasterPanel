@@ -84,6 +84,7 @@ const createTemplate = async (req, res, next) => {
       address: req.body.address,
       registeredCompanyName: req.body.registeredCompanyName,
       copyrightText: req.body.copyrightText,
+      isWebsiteTemplate: true,
       products: [],
       testimonials: [],
     });
@@ -168,11 +169,11 @@ const createTemplate = async (req, res, next) => {
       const route = `${baseFolder}/companyLogo/${Date.now()}_${
         logoFile.originalname
       }`;
-      const url = await uploadFileToS3(route, {
+      const data = await uploadFileToS3(route, {
         buffer,
         mimetype: "image/webp",
       });
-      template.companyLogo = { url };
+      template.companyLogo = { id: data.id, url: data.url };
     }
 
     // heroImages
@@ -450,7 +451,6 @@ const editTemplate = async (req, res, next) => {
       return res.status(404).json({ message: "Template not found" });
     }
 
-    // Helper: upload file(s)
     const uploadImages = async (files = [], folder) => {
       const arr = [];
       for (const file of files) {
@@ -470,7 +470,6 @@ const editTemplate = async (req, res, next) => {
       return arr;
     };
 
-    // Helper: Delete images from S3
     const deleteImagesFromS3 = async (images = []) => {
       const deletePromises = images.map(async (img) => {
         if (img?.url) {
@@ -484,13 +483,11 @@ const editTemplate = async (req, res, next) => {
       await Promise.all(deletePromises);
     };
 
-    // --- File map
     const filesByField = {};
     for (const f of req.files || []) {
       (filesByField[f.fieldname] ||= []).push(f);
     }
 
-    // --- Text fields
     Object.assign(template, {
       title: req.body.title ?? template.title,
       subTitle: req.body.subTitle ?? template.subTitle,
@@ -511,11 +508,9 @@ const editTemplate = async (req, res, next) => {
 
     // === COMPANY LOGO ===
     if (filesByField.companyLogo?.[0]) {
-      // Delete old logo from S3 before replacing
       if (template.companyLogo?.url) {
         await deleteImagesFromS3([template.companyLogo]);
       }
-
       const uploaded = await uploadImages(
         [filesByField.companyLogo[0]],
         `${baseFolder}/companyLogo`
@@ -526,12 +521,10 @@ const editTemplate = async (req, res, next) => {
     // === HERO IMAGES ===
     const heroKeepIds = safeParse(req.body.heroImageIds, null);
     if (heroKeepIds) {
-      // Delete images that are being removed
       const imagesToDelete = template.heroImages.filter(
         (img) => !heroKeepIds.includes(img.id)
       );
       await deleteImagesFromS3(imagesToDelete);
-
       template.heroImages = template.heroImages.filter((img) =>
         heroKeepIds.includes(img.id)
       );
@@ -547,12 +540,10 @@ const editTemplate = async (req, res, next) => {
     // === GALLERY ===
     const galleryKeepIds = safeParse(req.body.galleryImageIds, null);
     if (galleryKeepIds) {
-      // Delete images that are being removed
       const imagesToDelete = template.gallery.filter(
         (img) => !galleryKeepIds.includes(img.id)
       );
       await deleteImagesFromS3(imagesToDelete);
-
       template.gallery = template.gallery.filter((img) =>
         galleryKeepIds.includes(img.id)
       );
@@ -565,22 +556,37 @@ const editTemplate = async (req, res, next) => {
       template.gallery.push(...newGallery);
     }
 
-    // === PRODUCTS ===
+    // === PRODUCTS === (FIX: Use frontend's index mapping)
     const existingMap = new Map(
       (template.products || []).map((p) => [String(p._id), p])
     );
 
+    // Build index map matching frontend logic
+    const existingProducts = template.products || [];
+    const idxById = new Map(existingProducts.map((p, i) => [String(p._id), i]));
+    const baseLen = existingProducts.length;
+    let newCounter = 0;
+
     const updatedProducts = [];
-    for (let i = 0; i < products.length; i++) {
-      const p = products[i];
+    for (let formIdx = 0; formIdx < products.length; formIdx++) {
+      const p = products[formIdx];
       const existing = p._id ? existingMap.get(String(p._id)) : null;
+
+      // Calculate the correct file field index (matching frontend)
+      let fileFieldIndex;
+      if (p._id && idxById.has(String(p._id))) {
+        fileFieldIndex = idxById.get(String(p._id));
+      } else {
+        fileFieldIndex = baseLen + newCounter;
+        newCounter++;
+      }
+
       const uploaded = await uploadImages(
-        filesByField[`productImages_${i}`] || [],
-        `${baseFolder}/productImages/${p._id || i}`
+        filesByField[`productImages_${fileFieldIndex}`] || [],
+        `${baseFolder}/productImages/${p._id || fileFieldIndex}`
       );
 
       if (existing) {
-        // Delete images that are being removed
         const keepIds = new Set(p.imageIds || []);
         const imagesToDelete = (existing.images || []).filter(
           (img) => !keepIds.has(img.id)
@@ -607,7 +613,6 @@ const editTemplate = async (req, res, next) => {
       }
     }
 
-    // Delete images from removed products
     const updatedProductIds = new Set(
       updatedProducts.map((p) => String(p._id)).filter(Boolean)
     );
@@ -620,36 +625,49 @@ const editTemplate = async (req, res, next) => {
 
     template.products = updatedProducts;
 
-    // === TESTIMONIALS ===
+    // === TESTIMONIALS === (FIX: Use frontend's index mapping)
     const testimonialMap = new Map(
       (template.testimonials || []).map((t) => [String(t._id), t])
     );
 
+    const existingTestimonials = template.testimonials || [];
+    const tIdxById = new Map(
+      existingTestimonials.map((t, i) => [String(t._id), i])
+    );
+    const tBaseLen = existingTestimonials.length;
+    let tNewCounter = 0;
+
     const updatedTestimonials = [];
-    for (let i = 0; i < testimonials.length; i++) {
-      const t = testimonials[i];
+    for (let formIdx = 0; formIdx < testimonials.length; formIdx++) {
+      const t = testimonials[formIdx];
       const existing = t._id ? testimonialMap.get(String(t._id)) : null;
+
+      // Calculate the correct file field index (matching frontend)
+      let fileFieldIndex;
+      if (t._id && tIdxById.has(String(t._id))) {
+        fileFieldIndex = tIdxById.get(String(t._id));
+      } else {
+        fileFieldIndex = tBaseLen + tNewCounter;
+        tNewCounter++;
+      }
+
       const uploaded = await uploadImages(
-        filesByField[`testimonialImages_${i}`] || [],
+        filesByField[`testimonialImages_${fileFieldIndex}`] || [],
         `${baseFolder}/testimonialImages`
       );
 
       if (existing) {
-        // Handle image deletion/replacement
         if (t.imageId === null) {
-          // User explicitly wants to remove the image
           if (existing.image?.url) {
             await deleteImagesFromS3([existing.image]);
           }
           existing.image = null;
         } else if (uploaded[0]) {
-          // New image uploaded - delete old one
           if (existing.image?.url) {
             await deleteImagesFromS3([existing.image]);
           }
           existing.image = uploaded[0];
         }
-        // else: keep existing image (no change)
 
         existing.name = t.name ?? existing.name;
         existing.jobPosition = t.jobPosition ?? existing.jobPosition;
@@ -667,7 +685,6 @@ const editTemplate = async (req, res, next) => {
       }
     }
 
-    // Delete images from removed testimonials
     const updatedTestimonialIds = new Set(
       updatedTestimonials.map((t) => String(t._id)).filter(Boolean)
     );
@@ -696,7 +713,6 @@ const editTemplate = async (req, res, next) => {
     next(err);
   }
 };
-
 module.exports = {
   createTemplate,
   editTemplate,

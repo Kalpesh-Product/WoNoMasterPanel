@@ -561,7 +561,7 @@ const FrontendDashboard = () => {
       layout: 2,
       widgets: allowedCards
         .filter((config) => {
-          if (isWebsiteTemplate && config.title === "Create Website")
+          if (!isWebsiteTemplate && config.title === "Create Website")
             return true;
           if (isWebsiteTemplate && config.title === "Edit website") return true;
           if (config.title === "Leads") return true;
