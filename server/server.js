@@ -56,7 +56,7 @@ connectDb(process.env.DB_URL);
 app.use(credentials);
 app.use(cors(corsConfig));
 app.use(cookieParser());
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 

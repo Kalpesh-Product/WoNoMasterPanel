@@ -36,6 +36,14 @@ const createTemplate = async (req, res, next) => {
     products = safeParse(products, []);
     testimonials = safeParse(testimonials, []);
 
+    const hostCompanyExists = await HostCompany.findOne(
+      { companyName: req.body.companyName } //can't use company Id as the host signup form can't send any company Id
+    );
+
+    if (!hostCompanyExists) {
+      return res.status(400).json({ message: "Company not found" });
+    }
+
     for (const k of Object.keys(req.body)) {
       if (/^(products|testimonials)\.\d+\./.test(k)) delete req.body[k];
     }
@@ -249,7 +257,7 @@ const createTemplate = async (req, res, next) => {
     }
 
     const updateHostCompany = await HostCompany.findOneAndUpdate(
-      { companyName: req.body.companyName }, //can't use company Id as the nomads signup can't send any company Id
+      { companyName: req.body.companyName }, //can't use company Id as the host signup form can't send any company Id
       {
         isWebsiteTemplate: true,
       }
