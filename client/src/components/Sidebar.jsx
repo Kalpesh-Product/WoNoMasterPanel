@@ -36,7 +36,15 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedModule, setExpandedModule] = useState(0);
-  // const { auth } = useAuth();
+  const { auth } = useAuth(); // ✅ uncommented and used
+
+  const userEmail = auth?.user?.email;
+
+  const restrictedEmails = [
+    "shawnsilveira.wono@gmail.com",
+    "mehak.wono@gmail.com",
+    "er@gmail.com",
+  ];
 
   const allowedVisitorDeptIds = [
     "6798bae6e469e809084e24a4",
@@ -148,13 +156,6 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
         },
-        // {
-        //   id: 8,
-        //   title: "Access Control",
-        //   codeName: "Access",
-        //   icon: <FaBoxesStacked />,
-        //   route: "/dashboard/access-tree",
-        // },
       ],
     },
   ];
@@ -193,19 +194,32 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const isActive = (path) => location.pathname.startsWith(`${path}`);
   const isAppsActive = (path) => location.pathname.startsWith(`/app/${path}`);
 
+  // ✅ Filter submenus for restricted users
+  const filteredModules = restrictedEmails.includes(userEmail)
+    ? defaultModules.map((module) => ({
+        ...module,
+        submenus: module.submenus.filter(
+          (submenu) =>
+            submenu.title === "Data Upload" || submenu.title === "Profile"
+        ),
+      }))
+    : defaultModules;
+
   return (
     <div className={`flex flex-col px-2  bg-gray`}>
       <div
         className={`${
           isSidebarOpen ? "w-60" : "w-16"
-        } bg-white  text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}>
+        } bg-white  text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
+      >
         <div className="flex relative w-full">
           <div className="p-0 flex flex-col gap-2 w-full">
             <div
               className={`rounded-md  ${
                 expandedModule === 0 ? "bg-gray-200" : "bg-white"
-              }`}>
-              {defaultModules.map((module, index) => (
+              }`}
+            >
+              {filteredModules.map((module, index) => (
                 <div key={index} className="">
                   <div
                     className={`cursor-pointer text-gray-500  flex ${
@@ -224,14 +238,16 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                     }`}
                     onClick={() => {
                       navigate(module.route);
-                    }}>
+                    }}
+                  >
                     <div className="flex justify-start items-center">
                       <div
                         className={`flex items-center justify-center text-sm h-9 w-9 ${
                           expandedModule === 0
                             ? "bg-primary text-white rounded-md"
                             : ""
-                        }`}>
+                        }`}
+                      >
                         {module.icon}
                       </div>
                       {isSidebarOpen && (
@@ -243,7 +259,8 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                         onClick={() => module.submenus && toggleModule(index)}
                         className={`transition-transform duration-300 ease-in-out ${
                           expandedModule === index ? "rotate-180" : "rotate-0"
-                        }`}>
+                        }`}
+                      >
                         {expandedModule === index ? (
                           <FaChevronUp />
                         ) : (
@@ -255,7 +272,8 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                   <div
                     className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
                       expandedModule === index ? "max-h-[500px]" : "max-h-0"
-                    }`}>
+                    }`}
+                  >
                     {module.submenus && (
                       <div>
                         {module.submenus.map((submenu, idx) => (
@@ -266,17 +284,20 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                                 ? "text-[#1E3D73]"
                                 : "text-gray-500"
                             }  py-3`}
-                            onClick={() => handleMenuOpen(submenu)}>
+                            onClick={() => handleMenuOpen(submenu)}
+                          >
                             <div
                               className={`flex items-center ${
                                 isSidebarOpen
                                   ? "justify-start"
                                   : "justify-center"
-                              }`}>
+                              }`}
+                            >
                               <div
                                 className={`flex justify-center  items-center w-8 ${
                                   isSidebarOpen ? "text-sm" : "text-sm"
-                                }`}>
+                                }`}
+                              >
                                 {submenu.icon}
                               </div>
                               {isSidebarOpen && (

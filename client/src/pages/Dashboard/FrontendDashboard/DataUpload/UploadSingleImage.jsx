@@ -213,7 +213,8 @@ const UploadSingleImage = () => {
                 onChange={(e) => setImageType(e.target.value)}
                 disabled={!companyId}
               >
-                {["image", "logo"].map((opt) => (
+                {/* {["image", "logo"].map((opt) => ( */}
+                {["logo"].map((opt) => (
                   <MenuItem key={opt} value={opt}>
                     {opt}
                   </MenuItem>
