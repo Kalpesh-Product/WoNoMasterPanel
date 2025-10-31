@@ -118,37 +118,29 @@ const createTemplate = async (req, res, next) => {
     };
 
     if (req.body.companyLogo) {
-      template.companyLogo = { url: req.body.companyLogo.url };
+      template.companyLogo = {
+        url: req.body.companyLogo.url,
+        id: req.body.companyLogo.id,
+      };
     }
 
     if (req.body.heroImages) {
       template.heroImages = req.body.heroImages.map((img) => ({
         url: img.url,
+        id: img.id,
       }));
     }
 
     if (req.body.gallery) {
       template.gallery = req.body.gallery.map((img) => ({
         url: img.url,
+        id: img.id,
       }));
     }
-
-    // if (req.body.products) {
-    //   // template.products = req.body.products.map((img) => ({
-    //   //   url: img.url,
-    //   // }));
-    //   template.products = req.body.products;
-    // }
 
     if (Array.isArray(products) && products.length) {
       template.products = products;
     }
-
-    // if (req.body.testimonials) {
-    //   template.testimonials = req.body.testimonials.map((img) => ({
-    //     url: img.url,
-    //   }));
-    // }
 
     if (req.body.testimonials) {
       const parsedTestimonials = Array.isArray(req.body.testimonials)
@@ -156,7 +148,7 @@ const createTemplate = async (req, res, next) => {
         : safeParse(req.body.testimonials, []);
 
       template.testimonials = parsedTestimonials.map((t) =>
-        t?.url ? { url: t.url } : {}
+        t?.url ? { url: t.url, id: t.id } : {}
       );
     }
 

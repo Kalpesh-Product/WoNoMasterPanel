@@ -95,8 +95,9 @@ const createCompanyListing = async (req, res) => {
             const uniqueKey = `${folderPath}/images/${sanitizeFileName(
               file.originalname
             )}`;
-            return uploadFileToS3(uniqueKey, file).then((url) => ({
-              url,
+            return uploadFileToS3(uniqueKey, file).then((data) => ({
+              url: data.url,
+              id: data.id,
               index: startIndex + i + 1,
             }));
           })
@@ -109,13 +110,23 @@ const createCompanyListing = async (req, res) => {
       }
     }
 
-    const response = await axios.post(
-      "https://wononomadsbe.vercel.app/api/company/create-company",
-      listingData
-    );
+    try {
+      // const response = await axios.post(
+      //   "https://wononomadsbe.vercel.app/api/company/create-company",
+      //   listingData
+      // );
 
-    if (response.status !== 201) {
-      return res.status(400).json({ message: "Failed to add listing" });
+      const response = await axios.post(
+        "http://localhost:3001/api/company/create-company",
+        listingData
+      );
+
+      if (response.status !== 201) {
+        return res.status(400).json({ message: "Failed to add listing" });
+      }
+    } catch (err) {
+      console.error("Upstream API failed:", err.response?.data || err.message);
+      throw err;
     }
 
     return res
