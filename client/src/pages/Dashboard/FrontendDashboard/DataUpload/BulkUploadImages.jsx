@@ -8,6 +8,7 @@ import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_FILES = 12;
@@ -203,48 +204,16 @@ const BulkUploadImages = () => {
                   </MenuItem>
                 ))}
               </TextField>
-
-              {/* File input */}
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={onFileChange}
-                className="hidden"
-                id="img-input"
+              {/* File Input */}
+              <UploadMultipleFilesInput
+                value={images}
+                onChange={setImages}
+                label="Company Images"
+                maxFiles={MAX_FILES}
+                allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                id="bulk-upload-images"
+                previewType="image"
               />
-              <div
-                className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-                onClick={() => inputRef.current?.click()}
-              >
-                <p className="font-medium">
-                  {images.length
-                    ? `${images.length} image(s) selected`
-                    : "Upload company images here (click to browse)"}
-                </p>
-              </div>
-
-              {/* Preview thumbnails */}
-              {previews.length > 0 && (
-                <div className="grid grid-cols-3 gap-3">
-                  {previews.map((p) => (
-                    <div
-                      key={p.url}
-                      className="relative border rounded-lg overflow-hidden"
-                    >
-                      <img
-                        src={p.url}
-                        alt={p.name}
-                        className="w-full h-24 object-cover"
-                      />
-                      <p className="text-xs text-center truncate p-1">
-                        {p.name}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               <p className="text-xs text-gray-500">
                 Accepted type: <code>.jpg, .png</code>. Max size:{" "}
