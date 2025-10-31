@@ -210,7 +210,7 @@ const BulkUploadImages = () => {
                 onChange={setImages}
                 label="Company Images"
                 maxFiles={MAX_FILES}
-                allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                allowedExtensions={["webp"]}
                 id="bulk-upload-images"
                 previewType="image"
               />
