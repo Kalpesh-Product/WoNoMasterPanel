@@ -18,6 +18,7 @@ const UploadSingleImage = () => {
 
   const [country, setCountry] = useState("Thailand");
   const [companyType, setCompanyType] = useState("hostel");
+  const [searchTerm, setSearchTerm] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [imageType, setImageType] = useState("logo"); // "logo" or "image"
   const [file, setFile] = useState(null);
@@ -187,7 +188,7 @@ const UploadSingleImage = () => {
               </TextField>
 
               {/* Company */}
-              <TextField
+              {/* <TextField
                 select
                 size="small"
                 fullWidth
@@ -201,6 +202,54 @@ const UploadSingleImage = () => {
                     {c.companyName}
                   </MenuItem>
                 ))}
+              </TextField> */}
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label="Company"
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                disabled={!companyType}
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { maxHeight: 300 },
+                    },
+                  },
+                  renderValue: (selected) => {
+                    const company = filteredCompanies.find(
+                      (c) => c._id === selected
+                    );
+                    return company ? company.companyName : "";
+                  },
+                }}
+              >
+                {/* 🔍 Search box inside dropdown */}
+                <MenuItem disableRipple disableTouchRipple>
+                  <TextField
+                    size="small"
+                    placeholder="Search company..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()} // ✅ prevents dropdown from closing
+                    onKeyDown={(e) => e.stopPropagation()} // ✅ allows typing safely
+                  />
+                </MenuItem>
+
+                {filteredCompanies
+                  .filter((c) =>
+                    c.companyName
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())
+                  )
+                  .map((c) => (
+                    <MenuItem key={c._id} value={c._id}>
+                      {c.companyName}
+                    </MenuItem>
+                  ))}
               </TextField>
 
               {/* Image Type */}
