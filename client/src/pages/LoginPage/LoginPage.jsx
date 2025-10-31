@@ -137,7 +137,7 @@ const LoginPage = () => {
       });
       console.log(response.data.user);
       toast.success("Successfully logged in");
-      navigate("/dashboard")
+      navigate("/dashboard");
     } catch (error) {
       toast.error(error.response?.data.message);
     } finally {
@@ -188,7 +188,7 @@ const LoginPage = () => {
 
             {/* Mobile Menu Button */}
             <div className="">
-              <div className="p-4 px-0 whitespace-nowrap">
+              {/* <div className="p-4 px-0 whitespace-nowrap">
                 <button
                   onClick={() =>
                     (window.location.href = "https://nomad.wono.co")
@@ -198,7 +198,7 @@ const LoginPage = () => {
                   Become a nomad
                   <span className="absolute left-0 w-0 bottom-0 block h-[2px] bg-blue-500 transition-all duration-300 group-hover:w-full"></span>
                 </button>
-              </div>
+              </div> */}
             </div>
             {/* <div className="md:hidden">
           <div onClick={() => setDrawerOpen(true)} className="text-white">
@@ -271,7 +271,7 @@ const LoginPage = () => {
         </div>
       </Drawer>
       {/* Header */}
-      <div className="login-section loginTopPadding loginBottomPadding poppinsRegular heightPadding">
+      <div className="login-section loginTopPadding loginBottomPadding poppinsRegular heightPadding h-screen">
         <h1 className="text-center text-4xl font-bold">SIGN IN</h1>
         <div className="loginDividingContainer shrink-container">
           <div className="loginLeftContainer">
@@ -329,18 +329,18 @@ const LoginPage = () => {
                   </Grid>
                 </div>
 
-                <div className="mt-2 col-span-2 text-end">
+                {/* <div className="mt-2 col-span-2 text-end">
                   <Link
                     to="https://wono.co/forgot-password"
                     className="hover:underline text-black"
                   >
                     Forgot Password?
                   </Link>
-                </div>
+                </div> */}
                 <div className="flex">
                   <div className="flex flex-col justify-center w-full items-center gap-4 mt-4">
                     <Grid item xs={12}>
-                      <div className="centerInPhone">
+                      <div className="centerInPhone py-6">
                         <button
                           disabled={loading}
                           onClick={handleLogin}
@@ -362,7 +362,7 @@ const LoginPage = () => {
                         </button> */}
                       </div>
                     </Grid>
-                    <p className="text-[0.9rem]">
+                    {/* <p className="text-[0.9rem]">
                       Don't have an account?{" "}
                       <span
                         onClick={() =>
@@ -373,7 +373,7 @@ const LoginPage = () => {
                       >
                         Sign Up
                       </span>
-                    </p>
+                    </p> */}
                   </div>
                 </div>
               </Box>
