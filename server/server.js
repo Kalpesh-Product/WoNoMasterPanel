@@ -45,6 +45,7 @@ const logRoutes = require("./routes/logRoutes");
 const auditLogger = require("./middlewares/auditLogger");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
+const adminUserRoutes = require("./routes/adminUserRoutes");
 
 require("./listeners/logEventListener");
 const app = express();
@@ -72,6 +73,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
+app.use("/api/admin", adminUserRoutes);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
