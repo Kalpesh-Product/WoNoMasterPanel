@@ -25,6 +25,8 @@ const BulkUploadImages = () => {
   const [previews, setPreviews] = useState([]); // store preview URLs
   const [error, setError] = useState(null);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   // ✅ cleanup previews when images change
   useEffect(() => {
     if (!images.length) {
@@ -93,7 +95,7 @@ const BulkUploadImages = () => {
       });
       setImages([]);
       setCompanyId("");
-      inputRef.current.value = "";
+      if (inputRef.current) inputRef.current.value = ""; // ✅ safe reset
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || "Upload failed");
@@ -121,8 +123,15 @@ const BulkUploadImages = () => {
     setImages(files);
   }
 
+  // function handleUpload() {
+  //   if (!companyId) return setError("Please select a company first");
+  //   if (!images.length) return setError("Please select images to upload");
+  //   mutate({ companyId, images });
+  // }
+
   function handleUpload() {
-    if (!companyId) return setError("Please select a company first");
+    if (!companyId || typeof companyId !== "string")
+      return setError("Please select a valid company first");
     if (!images.length) return setError("Please select images to upload");
     mutate({ companyId, images });
   }
@@ -159,6 +168,7 @@ const BulkUploadImages = () => {
                   setCountry(e.target.value);
                   setCompanyType("");
                   setCompanyId("");
+                  setSearchTerm(""); // ✅ reset search
                 }}
               >
                 {countries.map((c) => (
@@ -178,6 +188,7 @@ const BulkUploadImages = () => {
                 onChange={(e) => {
                   setCompanyType(e.target.value);
                   setCompanyId("");
+                  setSearchTerm(""); // ✅ reset search
                 }}
                 disabled={!country}
               >
@@ -189,7 +200,7 @@ const BulkUploadImages = () => {
               </TextField>
 
               {/* Company */}
-              <TextField
+              {/* <TextField
                 select
                 size="small"
                 fullWidth
@@ -203,7 +214,56 @@ const BulkUploadImages = () => {
                     {c.companyName}
                   </MenuItem>
                 ))}
+              </TextField> */}
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label="Company"
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                disabled={!companyType}
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { maxHeight: 300 },
+                    },
+                  },
+                  renderValue: (selected) => {
+                    const company = filteredCompanies.find(
+                      (c) => c._id === selected
+                    );
+                    return company ? company.companyName : "";
+                  },
+                }}
+              >
+                {/* 🔍 Search box inside dropdown */}
+                <MenuItem disableRipple disableTouchRipple>
+                  <TextField
+                    size="small"
+                    placeholder="Search company..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()} // ✅ prevent dropdown from closing
+                    onKeyDown={(e) => e.stopPropagation()} // ✅ allow typing without closing
+                  />
+                </MenuItem>
+
+                {filteredCompanies
+                  .filter((c) =>
+                    c.companyName
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase())
+                  )
+                  .map((c) => (
+                    <MenuItem key={c._id} value={c._id}>
+                      {c.companyName}
+                    </MenuItem>
+                  ))}
               </TextField>
+
               {/* File Input */}
               <UploadMultipleFilesInput
                 value={images}
