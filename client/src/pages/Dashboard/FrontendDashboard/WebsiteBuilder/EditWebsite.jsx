@@ -478,8 +478,8 @@ const EditWebsite = () => {
                     <UploadMultipleFilesInput
                       {...field}
                       name="heroImages"
-                      label="Add Hero Images (max 10)"
-                      maxFiles={10}
+                      label="Add Hero Images (max 5)"
+                      maxFiles={5}
                       allowedExtensions={["jpg", "jpeg", "png", "webp", "pdf"]}
                       id="heroImages"
                     />
@@ -667,7 +667,7 @@ const EditWebsite = () => {
                           <UploadMultipleFilesInput
                             {...field}
                             label="Add Product Images"
-                            maxFiles={15}
+                            maxFiles={10}
                             allowedExtensions={[
                               "jpg",
                               "jpeg",
