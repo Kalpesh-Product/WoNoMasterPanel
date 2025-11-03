@@ -83,19 +83,30 @@ const BulkReuploadImages = () => {
   });
 
   // ✅ mutation for upload
-  const { mutate, isPending } = useMutation({
-    mutationFn: async ({ companyId, images }) => {
-      const form = new FormData();
-      form.append("companyId", companyId);
-      images.forEach((img) => form.append("images", img));
+  //   const { mutate, isPending } = useMutation({
+  //     mutationFn: async ({ companyId, images }) => {
+  //       const form = new FormData();
+  //       form.append("companyId", companyId);
+  //       images.forEach((img) => form.append("images", img));
 
-      const res = await axios.post(
-        `${API_BASE}/company/bulk-add-company-images`,
+  //       const res = await axios.patch(
+  //         `${API_BASE}/company/bulk-edit-company-images`,
+  //         form,
+  //         { headers: { "Content-Type": "multipart/form-data" } }
+  //       );
+  //       return res.data;
+  //     },
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async ({ form }) => {
+      const res = await axios.patch(
+        `${API_BASE}/company/bulk-edit-company-images`,
         form,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
       return res.data;
     },
+
     onSuccess: (data) => {
       // toast.success(data?.message || "Upload successful");
 
@@ -146,17 +157,28 @@ const BulkReuploadImages = () => {
     setImages(files);
   }
 
-  // function handleUpload() {
-  //   if (!companyId) return setError("Please select a company first");
-  //   if (!images.length) return setError("Please select images to upload");
-  //   mutate({ companyId, images });
-  // }
-
   function handleUpload() {
-    if (!companyId || typeof companyId !== "string")
+    const selectedCompany = companies.find((c) => c._id === companyId);
+    if (!selectedCompany)
       return setError("Please select a valid company first");
+
+    const selectedListing = Array.isArray(fetchedListing)
+      ? fetchedListing[0]
+      : null;
+
+    if (!selectedListing?.businessId)
+      return setError("No listing found for this company/type");
+
     if (!images.length) return setError("Please select images to upload");
-    mutate({ companyId, images });
+
+    const form = new FormData();
+    form.append("companyId", selectedCompany.companyId); // ✅ use CMP0001, not MongoID
+    form.append("businessId", selectedListing.businessId); // ✅ from fetched listing
+    form.append("companyType", companyType); // ✅ needed for backend path mapping
+
+    images.forEach((img) => form.append("images", img));
+
+    mutate({ form });
   }
 
   const handleReset = () => {
