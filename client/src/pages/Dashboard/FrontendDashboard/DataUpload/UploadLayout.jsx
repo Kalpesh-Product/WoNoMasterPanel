@@ -28,6 +28,7 @@ const UploadLayout = () => {
     ? tabs.filter(
         (tab) =>
           tab.label === "Bulk Upload Images" ||
+          tab.label === "Bulk Reupload Images" ||
           tab.label === "Upload Single Image"
       )
     : tabs;
