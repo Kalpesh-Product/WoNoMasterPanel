@@ -322,7 +322,7 @@ const BulkReuploadImages = () => {
               <UploadMultipleFilesInput
                 value={images}
                 onChange={setImages}
-                label="Upload New Images"
+                label="Re Upload New Images"
                 maxFiles={MAX_FILES}
                 allowedExtensions={["webp"]}
                 id="bulk-upload-images"
