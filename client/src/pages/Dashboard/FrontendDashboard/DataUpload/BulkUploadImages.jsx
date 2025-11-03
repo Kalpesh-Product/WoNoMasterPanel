@@ -149,7 +149,7 @@ const BulkUploadImages = () => {
     <div className="p-0">
       <PageFrame>
         <h2 className="font-pmedium text-title text-primary uppercase">
-          Bulk Upload Product Images
+          Bulk Upload Product Images (For First Time Upload)
         </h2>
 
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
