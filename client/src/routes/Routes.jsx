@@ -160,6 +160,7 @@ import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUplo
 import AccessTree from "../components/AccessTree";
 import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkUploadImages";
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
+import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkReuploadImages";
 
 export const routes = createBrowserRouter([
   {
@@ -245,6 +246,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "bulk-upload-images",
                         element: <BulkUploadImages />,
+                      },
+                      {
+                        path: "bulk-reupload-images",
+                        element: <BulkReuploadImages />,
                       },
                       {
                         path: "upload-single-image",

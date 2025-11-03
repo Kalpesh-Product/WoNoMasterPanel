@@ -1,6 +1,6 @@
 const { default: axios } = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
-const { uploadFileToS3 } = require("../config/s3config");
+const { uploadFileToS3, deleteFileFromS3ByUrl } = require("../config/s3config");
 
 const createCompanyListing = async (req, res) => {
   try {
@@ -364,7 +364,7 @@ const editCompanyListing = async (req, res) => {
     // ---------- REMOTE UPDATE (NO DELETION YET) ----------
     try {
       const response = await axios.patch(
-        "http://localhost:3001/api/company/update-company",
+        "https://wononomadsbe.vercel.app/api/company/update-company",
         updateData
       );
       console.log("✅ Remote update success:", response.data);

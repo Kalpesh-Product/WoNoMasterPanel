@@ -17,6 +17,7 @@ const UploadLayout = () => {
     { label: "Company Upload", path: "company-upload" },
     { label: "Products Upload", path: "product-upload" },
     { label: "Bulk Upload Images", path: "bulk-upload-images" },
+    { label: "Bulk Reupload Images", path: "bulk-reupload-images" },
     { label: "Upload Single Image", path: "upload-single-image" },
     { label: "News Upload", path: "news-upload" },
     { label: "Blogs Upload", path: "blogs-upload" },
