@@ -27,6 +27,8 @@ const BulkReuploadImages = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
 
+  const [selectedImage, setSelectedImage] = useState(null);
+
   // ✅ cleanup previews when images change
   useEffect(() => {
     if (!images.length) {
@@ -321,6 +323,7 @@ const BulkReuploadImages = () => {
               /> */}
 
               {/* Existing images preview */}
+              {/* Existing images preview */}
               {Array.isArray(fetchedListing) && fetchedListing.length > 0 && (
                 <div className="flex gap-3 flex-wrap mb-3">
                   {fetchedListing
@@ -328,7 +331,9 @@ const BulkReuploadImages = () => {
                     .map((img) => (
                       <div
                         key={img._id || img.url}
-                        className="relative w-24 h-24 border rounded overflow-hidden"
+                        className="relative w-24 h-24 border rounded overflow-hidden cursor-pointer hover:opacity-80 transition"
+                        onClick={() => setSelectedImage(img.url)}
+                        title="Click to enlarge"
                       >
                         <img
                           src={img.url}
@@ -377,6 +382,26 @@ const BulkReuploadImages = () => {
             </>
           )}
         </div>
+        {selectedImage && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+            onClick={() => setSelectedImage(null)}
+          >
+            <div className="relative max-w-4xl max-h-[90vh]">
+              <img
+                src={selectedImage}
+                alt="Preview"
+                className="max-w-full max-h-[90vh] rounded-lg shadow-lg"
+              />
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute top-2 right-2 text-white text-2xl font-bold bg-black/60 rounded-full px-3 hover:bg-black/80"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
       </PageFrame>
     </div>
   );
