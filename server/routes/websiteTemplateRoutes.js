@@ -16,7 +16,6 @@ router.post("/create-website", upload.any(), createTemplate);
 router.patch("/edit-website", upload.any(), editTemplate);
 router.patch("/activate-website", activateTemplate);
 router.patch("/delete-website", deleteTemplate);
-router.get("/get-website/:companyName", getTemplate);
 router.get("/get-websites", getTemplates);
 router.get("/get-inactive-website", getInActiveTemplate);
 router.get("/get-inactive-websites", getInActiveTemplates);

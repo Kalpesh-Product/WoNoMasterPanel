@@ -46,6 +46,9 @@ const auditLogger = require("./middlewares/auditLogger");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
+const {
+  getTemplate,
+} = require("./controllers/websiteControllers/websiteTemplateControllers");
 
 require("./listeners/logEventListener");
 const app = express();
@@ -74,6 +77,7 @@ app.get("/", (req, res) => {
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/admin", adminUserRoutes);
+app.use("/api/editor/get-website/:companyName", getTemplate); //not protected in order to be accessed by website template site (eg:biznest.wono.co)
 
 app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
@@ -95,7 +99,7 @@ app.use(
 );
 app.use("/api/notifications", verifyJwt, notificationRoutes);
 // app.use("/api/editor", websiteRoutes);
-app.use("/api/editor", websiteTemplateRoutes);
+app.use("/api/editor", verifyJwt, websiteTemplateRoutes);
 app.use("/api/users", verifyJwt, auditLogger, userRoutes);
 app.use("/api/agreement", verifyJwt, auditLogger, agreementRoutes);
 app.use("/api/roles", verifyJwt, auditLogger, roleRoutes);
