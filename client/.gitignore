@@ -16,7 +16,8 @@ dist-ssr
 
 # misc
 .env
-
+src/utils/axios.js
+/src/utils/axios.js
 
 # Editor directories and files
 .vscode/*
