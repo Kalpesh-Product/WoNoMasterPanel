@@ -111,13 +111,8 @@ const createCompanyListing = async (req, res) => {
     }
 
     try {
-      // const response = await axios.post(
-      //   "https://wononomadsbe.vercel.app/api/company/create-company",
-      //   listingData
-      // );
-
       const response = await axios.post(
-        "http://localhost:3001/api/company/create-company",
+        "https://wononomadsbe.vercel.app/api/company/create-company",
         listingData
       );
 
@@ -136,137 +131,6 @@ const createCompanyListing = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-// const editCompanyListing = async (req, res) => {
-//   try {
-//     const {
-//       businessId,
-//       companyType,
-//       ratings,
-//       totalReviews,
-//       productName,
-//       cost,
-//       description,
-//       latitude,
-//       longitude,
-//       inclusions,
-//       about,
-//       address,
-//       reviews,
-//       companyId,
-//       existingImages = [],
-//     } = req.body;
-
-//     const parsedReviews =
-//       typeof reviews === "string" ? JSON.parse(reviews) : reviews;
-
-//     if (!companyId && !businessId) {
-//       return res
-//         .status(400)
-//         .json({ message: "Missing company and business ids" });
-//     }
-//     const company = await HostCompany.findOne({
-//       companyId: req.body.companyId?.trim(),
-//     });
-
-//     if (!company) {
-//       return res.status(404).json({ message: "Company not found" });
-//     }
-
-//     const updateData = {
-//       businessId,
-//       companyType,
-//       ratings,
-//       totalReviews,
-//       companyName: company.companyName,
-//       cost,
-//       description,
-//       latitude,
-//       longitude,
-//       inclusions,
-//       about,
-//       address,
-//       reviews: parsedReviews,
-//       images: [...existingImages],
-//     };
-
-//     // ---------- IMAGE UPLOAD ----------
-//     const formatCompanyType = (type) => {
-//       const map = {
-//         hostel: "hostels",
-//         privatestay: "private-stay",
-//         meetingroom: "meetingroom",
-//         coworking: "coworking",
-//         cafe: "cafe",
-//         coliving: "coliving",
-//         workation: "workation",
-//       };
-//       return map[String(type).toLowerCase()] || "unknown";
-//     };
-
-//     const pathCompanyType = formatCompanyType(companyType);
-//     const safeCompanyName =
-//       (company.companyName || "unnamed").replace(/[^\w\- ]+/g, "").trim() ||
-//       "unnamed";
-//     const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
-
-//     if (req.files?.length) {
-//       const imageFiles = req.files.filter((f) => f.fieldname === "images");
-//       if (imageFiles.length) {
-//         const sanitize = (name) =>
-//           String(name || "file")
-//             .replace(/[/\\?%*:|"<>]/g, "_")
-//             .replace(/\s+/g, "_");
-
-//         const results = await Promise.allSettled(
-//           imageFiles.map(async (file) => {
-//             const key = `${folderPath}/images/${sanitize(file.originalname)}`;
-//             const data = await uploadFileToS3(key, file);
-//             return { url: data.url, id: data.id };
-//           })
-//         );
-
-//         const uploaded = results
-//           .filter((r) => r.status === "fulfilled")
-//           .map((r) => r.value);
-//         updateData.images.push(...uploaded);
-
-//         console.log("workation", updateData.images);
-//       }
-//     }
-
-//     // ---------- REMOTE UPDATE ----------
-//     try {
-//       const response = await axios.patch(
-//         "http://localhost:3001/api/company/update-company",
-//         updateData
-//       );
-//       console.log("✅ Remote update success:", response.data);
-//     } catch (err) {
-//       console.error(
-//         "❌ Remote update failed:",
-//         err.response?.data || err.message
-//       );
-
-//       console.log("3rd Party Error:", err);
-//       return res.status(err.response?.status || 500).json({
-//         message: "Remote company update failed",
-//         detail: err.response?.data || err.message,
-//       });
-//     }
-
-//     return res.status(200).json({
-//       message: "Listing updated successfully",
-//       data: updateData,
-//     });
-//   } catch (error) {
-//     console.error("❌ Internal error:", error);
-//     return res.status(500).json({
-//       message: "Internal server error",
-//       detail: error.message,
-//     });
-//   }
-// };
 
 const editCompanyListing = async (req, res) => {
   try {
