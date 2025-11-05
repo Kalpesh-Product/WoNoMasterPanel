@@ -130,10 +130,10 @@ const MainLayout = () => {
           </IconButton>
         )}
         <Header
-          // notifications={notifications}
-          // unseenCount={unreadCount || 0}
-          // onRefreshNotifications={refetchNotifications}
-          // isRefreshingNotifications={isNotificationsLoading}
+        // notifications={notifications}
+        // unseenCount={unreadCount || 0}
+        // onRefreshNotifications={refetchNotifications}
+        // isRefreshingNotifications={isNotificationsLoading}
         />
       </header>
 

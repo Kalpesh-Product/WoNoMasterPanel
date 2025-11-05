@@ -34,7 +34,14 @@ const inclusionOptions = [
 ];
 
 // Dummy company types
-const companyTypes = ["Coworking", "Meeting Room", "Cafe", "Private Stay"];
+const companyTypes = [
+  "Coworking",
+  "Meeting Room",
+  "Cafe",
+  "Private Stay",
+  "Workation",
+  "Coliving",
+];
 
 // ✅ Default description structure
 const defaultReview = {
@@ -85,7 +92,6 @@ const NomadListing = () => {
 
   const { mutate: createCompany, isLoading } = useMutation({
     mutationFn: async (fd) => {
-
       const res = await axios.post("/api/hosts/add-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -176,26 +182,21 @@ const NomadListing = () => {
           className="grid grid-cols-2 gap-4"
         >
           {/* Product Name */}
-          <Controller
+          {/* <Controller
             name="productName"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Product Name"
-                // type="number"
-              />
+              <TextField {...field} size="small" label="Product Name" />
             )}
-          />
+          /> */}
           {/* Cost */}
-          <Controller
+          {/* <Controller
             name="cost"
             control={control}
             render={({ field }) => (
               <TextField {...field} size="small" label="Cost" type="number" />
             )}
-          />
+          /> */}
           {/* Company Type */}
           <Controller
             name="companyType"
@@ -263,7 +264,7 @@ const NomadListing = () => {
           />
 
           {/* Description */}
-          <div className="col-span-2">
+          {/* <div className="col-span-2">
             <Controller
               name="description"
               control={control}
@@ -278,7 +279,7 @@ const NomadListing = () => {
                 />
               )}
             />
-          </div>
+          </div> */}
 
           {/* Ratings */}
           <Controller
@@ -483,7 +484,6 @@ const NomadListing = () => {
                 <Controller
                   name={`reviews.${index}.description`}
                   control={control}
-                   
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -492,7 +492,9 @@ const NomadListing = () => {
                       fullWidth
                       multiline
                       minRows={3}
-                      helperText={errors?.reviews?.[index]?.description?.message}
+                      helperText={
+                        errors?.reviews?.[index]?.description?.message
+                      }
                       error={!!errors?.reviews?.[index]?.description}
                       sx={{ mt: 2 }} // ✅ adds spacing above this input
                     />

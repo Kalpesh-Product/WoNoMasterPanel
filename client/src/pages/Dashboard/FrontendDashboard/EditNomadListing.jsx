@@ -131,7 +131,7 @@ const EditNomadListing = () => {
       ? src.reviews.length
         ? src.reviews.map((r) => ({
             name: r.name || "",
-            review: r.review || r.testimony || "",
+            review: r.review || r.description || r.testimony || "",
             rating: Number(r.rating ?? 5),
           }))
         : []
@@ -248,22 +248,22 @@ const EditNomadListing = () => {
           className="grid grid-cols-2 gap-4"
         >
           {/* Product Name */}
-          <Controller
+          {/* <Controller
             name="productName"
             control={control}
             render={({ field }) => (
               <TextField {...field} size="small" label="Product Name" />
             )}
-          />
+          /> */}
 
           {/* Cost */}
-          <Controller
+          {/* <Controller
             name="cost"
             control={control}
             render={({ field }) => (
               <TextField {...field} size="small" label="Cost" type="number" />
             )}
-          />
+          /> */}
 
           {/* Company Type */}
           <Controller
@@ -314,7 +314,7 @@ const EditNomadListing = () => {
           />
 
           {/* Description */}
-          <div className="col-span-2">
+          {/* <div className="col-span-2">
             <Controller
               name="description"
               control={control}
@@ -329,7 +329,7 @@ const EditNomadListing = () => {
                 />
               )}
             />
-          </div>
+          </div> */}
 
           {/* Ratings */}
           <Controller
