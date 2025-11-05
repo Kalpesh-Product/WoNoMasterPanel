@@ -34,7 +34,14 @@ const inclusionOptions = [
 ];
 
 // Dummy company types
-const companyTypes = ["Coworking", "Meeting Room", "Cafe", "Private Stay"];
+const companyTypes = [
+  "Coworking",
+  "Meeting Room",
+  "Cafe",
+  "Private Stay",
+  "Workation",
+  "Coliving",
+];
 
 // ✅ Default description structure
 const defaultReview = {
