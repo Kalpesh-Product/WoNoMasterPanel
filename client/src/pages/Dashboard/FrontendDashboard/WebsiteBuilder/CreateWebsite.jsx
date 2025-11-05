@@ -9,6 +9,10 @@ import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
 import UploadFileInput from "../../../../components/UploadFileInput";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useQuery } from "@tanstack/react-query";
 
 const defaultProduct = {
   type: "",
@@ -26,6 +30,10 @@ const defaultTestimonial = {
 
 const CreateWebsite = () => {
   const axios = useAxiosPrivate();
+
+  const { companyId } = useParams();
+  const selectedCompany = useSelector((state) => state.company.selectedCompany);
+
   const formRef = useRef(null);
 
   const {
@@ -33,6 +41,7 @@ const CreateWebsite = () => {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -65,6 +74,26 @@ const CreateWebsite = () => {
       copyrightText: "",
     },
   });
+
+  // fetch company name only if not available from Redux
+  const { data: companyData, isLoading: isCompanyLoading } = useQuery({
+    queryKey: ["company-name", companyId],
+    queryFn: async () => {
+      if (!companyId) return null;
+      const res = await axios.get(`/api/company/${companyId}`);
+      return res.data;
+    },
+    enabled: !!companyId && !selectedCompany,
+  });
+
+  // When data comes in, prefill company name
+  useEffect(() => {
+    if (selectedCompany?.companyName) {
+      setValue("companyName", selectedCompany.companyName);
+    } else if (companyData?.companyName) {
+      setValue("companyName", companyData.companyName);
+    }
+  }, [selectedCompany, companyData, setValue]);
 
   const {
     fields: aboutFields,
@@ -181,7 +210,7 @@ const CreateWebsite = () => {
                 <span className="text-subtitle font-pmedium">Hero Section</span>
               </div>
               <div className="grid grid-cols sm:grid-cols-1 md:grid-cols-1 gap-4 p-4 ">
-                <Controller
+                {/* <Controller
                   name="companyName"
                   control={control}
                   rules={{ required: "Company name is required" }}
@@ -195,7 +224,35 @@ const CreateWebsite = () => {
                       error={!!errors.companyName}
                     />
                   )}
+                /> */}
+                <Controller
+                  name="companyName"
+                  control={control}
+                  rules={{ required: "Company name is required" }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      size="small"
+                      label="Company Name"
+                      fullWidth
+                      helperText={errors?.companyName?.message}
+                      error={!!errors.companyName}
+                      InputProps={{
+                        readOnly: true,
+                        endAdornment: isCompanyLoading && (
+                          <CircularProgress size={16} />
+                        ),
+                      }}
+                      sx={{
+                        backgroundColor: "#f5f5f5",
+                        "& .MuiInputBase-input": {
+                          cursor: "not-allowed",
+                        },
+                      }}
+                    />
+                  )}
                 />
+
                 <Controller
                   name="title"
                   control={control}
