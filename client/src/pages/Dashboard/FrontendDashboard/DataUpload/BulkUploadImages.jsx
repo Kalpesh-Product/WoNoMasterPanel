@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
-const MAX_FILES = 12;
+const MAX_FILES = 10;
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
 const BulkUploadImages = () => {
