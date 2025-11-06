@@ -46,13 +46,14 @@ const auditLogger = require("./middlewares/auditLogger");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
+const hostUserRoutes = require("./routes/hostUserRoutes");
 const {
   getTemplate,
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 
 require("./listeners/logEventListener");
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5007;
 app.set("trust proxy", true);
 
 connectDb(process.env.DB_URL);
@@ -77,6 +78,7 @@ app.get("/", (req, res) => {
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
 app.use("/api/admin", adminUserRoutes);
+app.use("/api/host-user", hostUserRoutes);
 app.use("/api/editor/get-website/:companyName", getTemplate); //not protected in order to be accessed by website template site (eg:biznest.wono.co)
 
 app.use("/api/auth", authRoutes);
@@ -131,5 +133,9 @@ app.all("*", (req, res) => {
 app.use(errorHandler);
 
 mongoose.connection.once("open", () => {
+  console.log("process.env.PORT:", process.env.PORT);
+
   app.listen(PORT);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Connected to MongoDB: ${mongoose.connection.name}`);
 });

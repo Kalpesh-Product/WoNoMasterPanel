@@ -1,6 +1,7 @@
 # 🛠️ WoNo REST API Documentation
 
 ## 📖 Table of Contents
+
 - [Introduction](#introduction)
 - [Tech Stack](#tech-stack)
 - [Features](#features)
@@ -22,21 +23,21 @@
 
 ## 🧰 Tech Stack
 
-| Technology     | Usage                            |
-|----------------|----------------------------------|
-| Node.js        | Backend runtime environment      |
-| Express.js     | Web framework                    |
-| MongoDB + Mongoose | Database + ODM                |
-| JWT            | Authentication                   |
-| Redis (ioredis) | Caching, real-time features      |
-| Socket.IO      | Real-time communication          |
-| Cloudinary     | File/Image uploads               |
-| Multer         | Handling `multipart/form-data`   |
-| Nodemailer     | Sending emails                   |
-| dotenv         | Environment variable management  |
-| bcryptjs       | Password hashing                 |
-| sharp          | Image optimization               |
-| node-schedule  | Cron job scheduling              |
+| Technology         | Usage                           |
+| ------------------ | ------------------------------- |
+| Node.js            | Backend runtime environment     |
+| Express.js         | Web framework                   |
+| MongoDB + Mongoose | Database + ODM                  |
+| JWT                | Authentication                  |
+| Redis (ioredis)    | Caching, real-time features     |
+| Socket.IO          | Real-time communication         |
+| Cloudinary         | File/Image uploads              |
+| Multer             | Handling `multipart/form-data`  |
+| Nodemailer         | Sending emails                  |
+| dotenv             | Environment variable management |
+| bcryptjs           | Password hashing                |
+| sharp              | Image optimization              |
+| node-schedule      | Cron job scheduling             |
 
 ---
 
@@ -62,12 +63,14 @@
 ## ⚙️ Getting Started
 
 ### 1. Clone the repository:
+
 ```bash
 git clone https://github.com/your-username/client-backend.git
 cd client-backend
 ```
 
 ### 2. Install dependencies:
+
 ```bash
 npm install
 ```
@@ -75,8 +78,9 @@ npm install
 ### 3. Setup environment variables:
 
 Create a `.env` file in the root directory and add:
+
 ```env
-PORT=5000
+PORT=5007
 DB_URL=mongodb://localhost:27017/wono
 JWT_SECRET=your_jwt_secret
 REFRESH_SECRET=your_refresh_token_secret
@@ -88,6 +92,7 @@ EMAIL_PASS=your_email_password
 ```
 
 ### 4. Start the server:
+
 ```bash
 # For development
 npm run dev
@@ -118,64 +123,76 @@ npm start
 
 ## 🔐 Middleware
 
-| Middleware         | Purpose                                |
-|--------------------|----------------------------------------|
-| `verifyJwt`        | Secures routes using JWT verification  |
-| `credentials`      | Manages CORS with credential support   |
-| `errorHandler`     | Global error handling                  |
+| Middleware     | Purpose                               |
+| -------------- | ------------------------------------- |
+| `verifyJwt`    | Secures routes using JWT verification |
+| `credentials`  | Manages CORS with credential support  |
+| `errorHandler` | Global error handling                 |
 
 ---
 
 ## 📡 Available Routes
 
 ### 🔑 Auth
+
 - `POST /api/auth/login`
 - `POST /api/auth/register`
 - `GET /api/auth/refresh`
 - `POST /api/auth/logout`
 
 ### 🧍 Users & Roles
+
 - `GET /api/users`
 - `GET /api/roles`
 - `GET /api/departments`
 - `GET /api/designations`
 
 ### 🏢 Company / Admin
+
 - `GET /api/company`
 - `GET /api/administration`
 
 ### 📅 Attendance / Leave
+
 - `GET /api/attendance`
 - `GET /api/leaves`
 
 ### 🎫 Tickets & Tasks
+
 - `GET /api/tickets`
 - `GET /api/tasks`
 
 ### 📦 Inventory / Assets
+
 - `GET /api/inventory`
 - `GET /api/assets`
 
 ### 💰 Budget / Payroll / Sales
+
 - `GET /api/budget`
 - `GET /api/payroll`
 - `GET /api/sales`
 
 ### 🧑‍💼 Vendors / Visitors
+
 - `GET /api/vendors`
 - `GET /api/visitors`
 
 ### 💻 Tech Stack & Website Templates
+
 - `GET /api/tech`
 - `GET /api/editor`
 
 ### 📑 Employee Agreements
+
 - `GET /api/employee-agreements`
 
 ### 📈 Events
+
 - `GET /api/events`
 
 ### 🔒 Access Logs
+
 - `GET /api/access`
 - `GET /api/logs/:path`
 
@@ -184,10 +201,12 @@ npm start
 ## ❗ Error Handling
 
 All errors are handled by a global middleware:
+
 - Client errors return status codes like `400`, `401`, or `404`
 - Server errors default to `500` with stack trace in development
 
 Example JSON response:
+
 ```json
 {
   "message": "Invalid token",

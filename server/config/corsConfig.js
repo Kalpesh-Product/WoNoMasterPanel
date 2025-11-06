@@ -3,8 +3,12 @@ require("dotenv").config();
 
 const allowedOrigins = [
   "http://localhost:3000",
+  "http://localhost:3006",
+  "http://localhost:3007",
   "http://localhost:5001",
   "http://localhost:5000",
+  "http://localhost:5006",
+  "http://localhost:5007",
   "http://localhost:3001",
   "http://localhost:4173",
   "https://wononomadsbe.vercel.app",
