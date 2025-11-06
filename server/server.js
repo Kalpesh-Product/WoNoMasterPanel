@@ -52,7 +52,7 @@ const {
 
 require("./listeners/logEventListener");
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5007;
 app.set("trust proxy", true);
 
 connectDb(process.env.DB_URL);
@@ -131,5 +131,9 @@ app.all("*", (req, res) => {
 app.use(errorHandler);
 
 mongoose.connection.once("open", () => {
+  console.log("process.env.PORT:", process.env.PORT);
+
   app.listen(PORT);
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`Connected to MongoDB: ${mongoose.connection.name}`);
 });
