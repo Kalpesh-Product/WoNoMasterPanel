@@ -225,6 +225,40 @@ const getCompany = async (req, res, next) => {
   }
 };
 
+const uploadLogo = async (req, res, next) => {
+  try {
+    const { companyId, logo } = req.body;
+
+    if (!companyId) {
+      return res.status(400).json({ message: "company Id is required" });
+    }
+
+    if (!logo || typeof logo !== "string" || logo.trim() === "") {
+      return res
+        .status(400)
+        .json({ message: "Please provide a valid logo string (URL)" });
+    }
+
+    const updatedCompany = await HostCompany.findOneAndUpdate(
+      { companyId },
+      { $set: { logo: logo.trim() } },
+      { new: true }
+    );
+
+    if (!updatedCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Logo uploaded successfully",
+      company: updatedCompany,
+    });
+  } catch (error) {
+    console.error("Error updating logo:", error);
+    next(error);
+  }
+};
+
 // async function checkCompanyIds() {
 //   try {
 //     // 1️⃣ Count total documents
@@ -620,4 +654,5 @@ module.exports = {
   getCompany,
   bulkInsertCompanies,
   bulkInsertLogos,
+  uploadLogo,
 };
