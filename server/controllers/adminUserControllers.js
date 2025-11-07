@@ -86,7 +86,58 @@ const changePassword = async (req, res) => {
   }
 };
 
+const { default: axios } = require("axios");
+
+// const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
+const NOMADS_BASE = "http://localhost:3000/api";
+
+const TYPE_MAP = {
+  products: {
+    api: `${NOMADS_BASE}/company/bulk-insert-companies`,
+    formKey: "companies",
+  },
+  poc: { api: `${NOMADS_BASE}/poc/bulk-insert-poc`, formKey: "poc" },
+  reviews: {
+    api: `${NOMADS_BASE}/review/bulk-insert-reviews`,
+    formKey: "reviews",
+  },
+};
+
+const bulkUploadData = async (req, res) => {
+  const { kind = "data" } = req.body;
+  const file = req.file;
+
+  console.log("bulk upload hit");
+  if (!file) {
+    return res.status(400).json({ message: "No file provided" });
+  }
+
+  if (!TYPE_MAP[kind]) {
+    return res.status(400).json({ message: "Invalid upload kind" });
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append(TYPE_MAP[kind].formKey, file.buffer, file.originalname);
+
+    const response = await axios.post(TYPE_MAP[kind].api, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: response.data.message,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: log.message || "Upload failed",
+    });
+  }
+};
+
 module.exports = {
   updateProfile,
   changePassword,
+  bulkUploadData,
 };

@@ -44,7 +44,10 @@ const ProductsUpload = () => {
       const form = new FormData();
       form.append(formKey, file);
 
-      const res = await axios.post(api, form, {
+      // const res = await axios.post(api, form, {
+      //   headers: { "Content-Type": "multipart/form-data" },
+      // });
+      const res = await axios.post("/api/admin/bulk-upload-data", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
