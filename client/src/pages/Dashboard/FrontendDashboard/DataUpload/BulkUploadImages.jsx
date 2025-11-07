@@ -53,6 +53,24 @@ const BulkUploadImages = () => {
     },
   });
 
+  // ✅ Prefill from session storage if available
+  useEffect(() => {
+    if (isLoading || !companies.length) return;
+    try {
+      const context = JSON.parse(
+        sessionStorage.getItem("uploadContext") || "{}"
+      );
+      if (context.companyId && context.country && context.companyType) {
+        setCountry(context.country);
+        setCompanyType(context.companyType);
+        setCompanyId(context.companyId);
+        sessionStorage.removeItem("uploadContext");
+      }
+    } catch (err) {
+      console.error("Failed to parse upload context:", err);
+    }
+  }, [companies, isLoading]);
+
   const countries = [...new Set(companies.map((c) => c.country))];
   const types = [...new Set(companies.map((c) => c.companyType))];
   const filteredCompanies = companies.filter(
