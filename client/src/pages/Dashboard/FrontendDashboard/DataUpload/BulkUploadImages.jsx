@@ -142,7 +142,24 @@ const BulkUploadImages = () => {
       return res.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "Upload successful");
+      // toast.success(data?.message || "Upload successful");
+      toast.success(data?.message || "Upload successful", {
+        duration: 5000,
+        action: {
+          label: "→ Upload Logo",
+          onClick: () => {
+            sessionStorage.setItem(
+              "uploadContext",
+              JSON.stringify({
+                country,
+                companyType,
+                companyId,
+              })
+            );
+            navigate("../upload-single-image?autoFill=true");
+          },
+        },
+      });
       setImages([]);
       setCompanyId("");
     },
