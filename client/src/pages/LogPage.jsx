@@ -51,11 +51,11 @@ const LogPage = () => {
       field: "user",
       flex: 1,
     },
-    {
-      headerName: "Path",
-      field: "path",
-      flex: 1,
-    },
+    // {
+    //   headerName: "Path",
+    //   field: "path",
+    //   flex: 1,
+    // },
     {
       headerName: "Date",
       field: "createdAt",
@@ -63,12 +63,30 @@ const LogPage = () => {
       cellRenderer: (params) => humanDate(params.value),
     },
   ];
+  // const tableData = isLoading
+  //   ? []
+  //   : data.map((item) => ({
+  //       ...item,
+  //       user: `${item.performedBy?.firstName} ${item.performedBy?.lastName}`,
+  //       path: item.path ? item.path.split("/").splice(2).join(" > ") : "-",
+
+  //       createdAt: item.createdAt,
+  //       payload: item.payload,
+  //     }));
+
   const tableData = isLoading
     ? []
-    : data.map((item) => ({
+    : data.map((item, index) => ({
+        srNo: index + 1,
         ...item,
-        user: `${item.performedBy?.firstName} ${item.performedBy?.lastName}`,
-        path: item.path.split("/").splice(2).join(" > "),
+        user:
+          item.fullName ||
+          (item.performedBy
+            ? `${item.performedBy.firstName ?? ""} ${
+                item.performedBy.lastName ?? ""
+              }`.trim()
+            : "-"),
+        path: item.path ? item.path.split("/").splice(2).join(" > ") : "-",
         createdAt: item.createdAt,
         payload: item.payload,
       }));
