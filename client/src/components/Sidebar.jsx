@@ -156,6 +156,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
         },
+        {
+          id: 8,
+          title: "Logs",
+          codeName: "Logs",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/logs-layout",
+        },
       ],
     },
   ];
