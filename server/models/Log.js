@@ -8,7 +8,11 @@ const logSchema = new mongoose.Schema(
     },
     performedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "UserData",
+      ref: "AdminUser",
+      required: true,
+    },
+    fullName: {
+      type: String,
       required: true,
     },
     payload: {
@@ -20,9 +24,6 @@ const logSchema = new mongoose.Schema(
     statusCode: {
       type: String,
     },
-    path: {
-      type: String,
-    },
     method: {
       type: String,
     },
@@ -31,11 +32,6 @@ const logSchema = new mongoose.Schema(
     },
     responseTime: {
       type: Number, //milliseconds
-    },
-    company: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Company",
-      required: true,
     },
   },
   {

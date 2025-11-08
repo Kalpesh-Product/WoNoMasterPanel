@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
+import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_FILES = 10;
@@ -17,6 +18,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 const BulkReuploadImages = () => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const axios = useAxiosPrivate();
 
   const [country, setCountry] = useState("Thailand");
   const [companyType, setCompanyType] = useState("coworking");
@@ -119,11 +121,16 @@ const BulkReuploadImages = () => {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async ({ form }) => {
-      const res = await axios.patch(
-        `${API_BASE}/company/bulk-edit-company-images`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      // const res = await axios.patch(
+      //   `${API_BASE}/company/bulk-edit-company-images`,
+      //   form,
+      //   { headers: { "Content-Type": "multipart/form-data" } }
+      // );
+
+      const res = await axios.patch(`/api/admin/bulk-reupload-images`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       return res.data;
     },
 

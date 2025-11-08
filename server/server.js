@@ -47,6 +47,7 @@ const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
 const hostUserRoutes = require("./routes/hostUserRoutes");
+
 const {
   getTemplate,
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
@@ -77,7 +78,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
-app.use("/api/admin", adminUserRoutes);
+app.use("/api/admin", verifyJwt, auditLogger, adminUserRoutes);
 app.use("/api/host-user", hostUserRoutes);
 app.use("/api/editor/get-website/:companyName", getTemplate); //not protected in order to be accessed by website template site (eg:biznest.wono.co)
 
