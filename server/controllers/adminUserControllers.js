@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs/dist/bcrypt");
 const AdminUser = require("../models/AdminUser");
 const { default: mongoose } = require("mongoose");
+const { default: axios } = require("axios");
+const FormData = require("form-data");
 
 const updateProfile = async (req, res) => {
   try {
@@ -86,10 +88,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-const { default: axios } = require("axios");
-
-// const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
-const NOMADS_BASE = "http://localhost:3000/api";
+const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
+// const NOMADS_BASE = "http://localhost:3000/api";
 
 const TYPE_MAP = {
   products: {
@@ -105,7 +105,7 @@ const TYPE_MAP = {
 
 const bulkUploadData = async (req, res) => {
   const { kind = "data" } = req.body;
-  const file = req.file;
+  let file = req.file;
 
   console.log("bulk upload hit");
   if (!file) {
@@ -118,7 +118,10 @@ const bulkUploadData = async (req, res) => {
 
   try {
     const formData = new FormData();
-    formData.append(TYPE_MAP[kind].formKey, file.buffer, file.originalname);
+    formData.append(TYPE_MAP[kind].formKey, file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
 
     const response = await axios.post(TYPE_MAP[kind].api, formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -129,11 +132,159 @@ const bulkUploadData = async (req, res) => {
       message: response.data.message,
     });
   } catch (err) {
-    console.log("Internal server error", err);
+    const { error, message } = err.response?.data;
+    // console.log("Internal server error", err.response.data.error);
+    console.log("Internal server error", error || message);
     res.status(500).json({
       success: false,
-      message: "Upload failed",
+      message: error || message,
     });
+  }
+};
+
+const bulkUploadImages = async (req, res) => {
+  try {
+    const files = req.files;
+    const { companyId } = req.body;
+
+    console.log("bulkUploadImages hit");
+
+    if (!files || !files.length) {
+      return res.status(400).json({ message: "No image files provided" });
+    }
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Missing companyId" });
+    }
+
+    // Build multipart form
+    const formData = new FormData();
+    formData.append("companyId", companyId);
+
+    files.forEach((file) => {
+      formData.append("images", file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+    });
+
+    // Forward to Nomads backend
+    const response = await axios.post(
+      `${NOMADS_BASE}/company/bulk-add-company-images`,
+      formData,
+      { headers: formData.getHeaders() }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: response.data?.message || "Images uploaded successfully",
+    });
+  } catch (err) {
+    console.error("[bulkUploadImages] error:", err.message);
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Image upload failed";
+    return res.status(500).json({ success: false, message });
+  }
+};
+
+const bulkReuploadImages = async (req, res) => {
+  try {
+    const files = req.files;
+    const { companyId, businessId, companyType } = req.body;
+
+    console.log("bulkReuploadImages hit");
+
+    if (!files || !files.length) {
+      return res.status(400).json({ message: "No image files provided" });
+    }
+    if (!companyId || !businessId || !companyType) {
+      return res.status(400).json({
+        message: "Missing required fields (companyId, businessId, companyType)",
+      });
+    }
+
+    // Build the FormData payload
+    const formData = new FormData();
+    formData.append("companyId", companyId);
+    formData.append("businessId", businessId);
+    formData.append("companyType", companyType);
+
+    files.forEach((file) => {
+      formData.append("images", file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+    });
+
+    // Forward to Nomads backend
+    const response = await axios.patch(
+      `${NOMADS_BASE}/company/bulk-edit-company-images`,
+      formData,
+      { headers: formData.getHeaders() }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: response.data?.message || "Images reuploaded successfully",
+    });
+  } catch (err) {
+    console.error("[bulkReuploadImages] error:", err.message);
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Image reupload failed";
+    return res.status(500).json({ success: false, message });
+  }
+};
+
+const uploadCompanyLogo = async (req, res) => {
+  try {
+    const file = req.file;
+    const { companyId, type } = req.body;
+
+    console.log("uploadSingleImage hit");
+
+    if (!file) {
+      return res.status(400).json({ message: "No image provided" });
+    }
+    if (!companyId) {
+      return res.status(400).json({ message: "Missing companyId" });
+    }
+    if (!type) {
+      return res
+        .status(400)
+        .json({ message: "Missing image type (logo/image)" });
+    }
+
+    // Build FormData for Nomads
+    const formData = new FormData();
+    formData.append("companyId", companyId);
+    formData.append("type", type);
+    formData.append("image", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    // Forward to Nomads backend
+    const response = await axios.post(
+      `${NOMADS_BASE}/company/add-company-image`,
+      formData,
+      { headers: formData.getHeaders() }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: response.data?.message || "Image uploaded successfully",
+    });
+  } catch (err) {
+    console.error("[uploadSingleImage] error:", err.message);
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Image upload failed";
+    return res.status(500).json({ success: false, message });
   }
 };
 
@@ -141,4 +292,7 @@ module.exports = {
   updateProfile,
   changePassword,
   bulkUploadData,
+  bulkUploadImages,
+  bulkReuploadImages,
+  uploadCompanyLogo,
 };

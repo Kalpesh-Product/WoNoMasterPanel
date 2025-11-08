@@ -8,8 +8,7 @@ import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
-const API_BASE = "http://localhost:3000/api";
-// const API_BASE = "https://wononomadsbe.vercel.app/api";
+const API_BASE = "https://wononomadsbe.vercel.app/api";
 
 const KIND_OPTIONS = ["products", "poc", "reviews"];
 

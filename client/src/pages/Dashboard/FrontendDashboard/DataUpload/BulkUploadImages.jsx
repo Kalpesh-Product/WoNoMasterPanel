@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
+import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_FILES = 10;
@@ -17,6 +18,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 const BulkUploadImages = () => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
+  const axios = useAxiosPrivate();
 
   const [country, setCountry] = useState("Thailand");
   const [companyType, setCompanyType] = useState("coworking");
@@ -60,10 +62,11 @@ const BulkUploadImages = () => {
       const context = JSON.parse(
         sessionStorage.getItem("uploadContext") || "{}"
       );
+
       if (context.companyId && context.country && context.companyType) {
         setCountry(context.country);
         setCompanyType(context.companyType);
-        setCompanyId(context.companyId);
+        setCompanyId(context.businessId);
         sessionStorage.removeItem("uploadContext");
       }
     } catch (err) {
@@ -78,46 +81,73 @@ const BulkUploadImages = () => {
   );
 
   // ✅ mutation for upload
+  // const { mutate, isPending } = useMutation({
+  //   mutationFn: async ({ companyId, images }) => {
+  //     const form = new FormData();
+  //     form.append("companyId", companyId);
+  //     images.forEach((img) => form.append("images", img));
+
+  //     // const res = await axios.post(
+  //     //   `${API_BASE}/company/bulk-add-company-images`,
+  //     //   form,
+  //     //   { headers: { "Content-Type": "multipart/form-data" } }
+  //     // );
+
+  //     const res = await axios.post(
+  //       `api/company/bulk-add-company-images`,
+  //       form,
+  //       { headers: { "Content-Type": "multipart/form-data" } }
+  //     );
+  //     return res.data;
+  //   },
+  //   onSuccess: (data) => {
+  //     // toast.success(data?.message || "Upload successful");
+
+  //     toast.success(data?.message || "Upload successful", {
+  //       duration: 5000,
+  //       action: {
+  //         label: "→ Upload Logo",
+  //         onClick: () => {
+  //           sessionStorage.setItem(
+  //             "uploadContext",
+  //             JSON.stringify({
+  //               country,
+  //               companyType,
+  //               companyId,
+  //             })
+  //           );
+  //           navigate("../upload-single-image?autoFill=true");
+  //         },
+  //       },
+  //     });
+  //     setImages([]);
+  //     setCompanyId("");
+  //     if (inputRef.current) inputRef.current.value = ""; // ✅ safe reset
+  //   },
+  //   onError: (err) => {
+  //     toast.error(err?.response?.data?.message || "Upload failed");
+  //     setError(err?.message || "Something went wrong");
+  //   },
+  // });
+
   const { mutate, isPending } = useMutation({
     mutationFn: async ({ companyId, images }) => {
       const form = new FormData();
       form.append("companyId", companyId);
       images.forEach((img) => form.append("images", img));
 
-      const res = await axios.post(
-        `${API_BASE}/company/bulk-add-company-images`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      const res = await axios.post(`/api/admin/bulk-upload-images`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return res.data;
     },
     onSuccess: (data) => {
-      // toast.success(data?.message || "Upload successful");
-
-      toast.success(data?.message || "Upload successful", {
-        duration: 5000,
-        action: {
-          label: "→ Upload Logo",
-          onClick: () => {
-            sessionStorage.setItem(
-              "uploadContext",
-              JSON.stringify({
-                country,
-                companyType,
-                companyId,
-              })
-            );
-            navigate("../upload-single-image?autoFill=true");
-          },
-        },
-      });
+      toast.success(data?.message || "Upload successful");
       setImages([]);
       setCompanyId("");
-      if (inputRef.current) inputRef.current.value = ""; // ✅ safe reset
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || "Upload failed");
-      setError(err?.message || "Something went wrong");
     },
   });
 
