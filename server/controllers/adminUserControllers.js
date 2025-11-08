@@ -129,9 +129,10 @@ const bulkUploadData = async (req, res) => {
       message: response.data.message,
     });
   } catch (err) {
+    console.log("Internal server error", err);
     res.status(500).json({
       success: false,
-      message: log.message || "Upload failed",
+      message: "Upload failed",
     });
   }
 };

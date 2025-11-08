@@ -6,9 +6,10 @@ import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
-import axios from "axios";
+import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
-const API_BASE = "https://wononomadsbe.vercel.app/api";
+const API_BASE = "http://localhost:3000/api";
+// const API_BASE = "https://wononomadsbe.vercel.app/api";
 
 const KIND_OPTIONS = ["products", "poc", "reviews"];
 
@@ -32,6 +33,7 @@ const ProductsUpload = () => {
   const [error, setError] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [kind, setKind] = useState("products");
+  const axios = useAxiosPrivate();
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
@@ -42,11 +44,17 @@ const ProductsUpload = () => {
     mutationFn: async ({ file, kind }) => {
       const { api, formKey } = TYPE_MAP[kind];
       const form = new FormData();
-      form.append(formKey, file);
+      // form.append(formKey, file);
+
+      //new chnage for log
+      form.append("file", file);
+      form.append("kind", kind);
 
       // const res = await axios.post(api, form, {
       //   headers: { "Content-Type": "multipart/form-data" },
       // });
+
+      //new chnage for log
       const res = await axios.post("/api/admin/bulk-upload-data", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });

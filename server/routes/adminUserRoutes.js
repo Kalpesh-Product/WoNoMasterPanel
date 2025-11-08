@@ -9,6 +9,6 @@ const router = require("express").Router();
 
 router.patch("/update-profile/:userId", updateProfile);
 router.patch("/change-password/:userId", changePassword);
-router.post("/bulk-upload-data", upload.any(), bulkUploadData);
+router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
 
 module.exports = router;

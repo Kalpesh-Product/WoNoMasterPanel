@@ -38,9 +38,11 @@ const auditLogger = (req, res, next) => {
         const success = status < 400;
         const { method, ip } = req;
         const url = req.originalUrl;
+        const { firstName, lastName, _id } = req.userData;
+        const fullName = `${firstName} ${lastName}`;
 
         const { performedBy } = req.logContext || {
-          performedBy: req.user,
+          performedBy: _id,
         };
 
         const parseJSONFields = (obj) => {
@@ -115,6 +117,7 @@ const auditLogger = (req, res, next) => {
 
         const logData = {
           performedBy,
+          fullName,
           ipAddress: ip,
           action: lastSegment,
           method,

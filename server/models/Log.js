@@ -11,6 +11,10 @@ const logSchema = new mongoose.Schema(
       ref: "AdminUser",
       required: true,
     },
+    fullName: {
+      type: String,
+      required: true,
+    },
     payload: {
       type: Object,
     },
