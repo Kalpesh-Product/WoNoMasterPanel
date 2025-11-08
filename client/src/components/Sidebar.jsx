@@ -43,7 +43,7 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
-    "er@gmail.com",
+    "savita.wono@gmail.com",
   ];
 
   const allowedVisitorDeptIds = [
