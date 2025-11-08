@@ -38,10 +38,11 @@ const auditLogger = (req, res, next) => {
         const success = status < 400;
         const { method, ip } = req;
         const url = req.originalUrl;
+        const { firstName, lastName, _id } = req.userData;
+        const fullName = `${firstName} ${lastName}`;
 
-        const { performedBy, company } = req.logContext || {
-          performedBy: req.user,
-          company: req.company,
+        const { performedBy } = req.logContext || {
+          performedBy: _id,
         };
 
         const parseJSONFields = (obj) => {
@@ -88,6 +89,25 @@ const auditLogger = (req, res, next) => {
           ...(req.query || {}),
         });
 
+        // 🧩 Handle uploaded files
+        if (req.file) {
+          combinedPayload.uploadedFile = {
+            fieldName: req.file.fieldname,
+            originalName: req.file.originalname,
+            size: req.file.size,
+            mimeType: req.file.mimetype,
+          };
+        }
+
+        if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+          combinedPayload.uploadedFiles = req.files.map((f) => ({
+            fieldName: f.fieldname,
+            originalName: f.originalname,
+            size: f.size,
+            mimeType: f.mimetype,
+          }));
+        }
+
         // Mask sensitive fields before flattening
         ["password", "newPassword", "confirmPassword"].forEach((field) => {
           if (field in combinedPayload) combinedPayload[field] = "***";
@@ -97,11 +117,10 @@ const auditLogger = (req, res, next) => {
 
         const logData = {
           performedBy,
+          fullName,
           ipAddress: ip,
-          company,
           action: lastSegment,
           method,
-          path: url,
           statusCode: status,
           success,
           payload: updatedPayload,

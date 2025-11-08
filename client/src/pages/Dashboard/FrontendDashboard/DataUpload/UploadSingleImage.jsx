@@ -8,6 +8,7 @@ import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
+import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
@@ -15,6 +16,7 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 const UploadSingleImage = () => {
   const inputRef = useRef(null);
   const location = useLocation();
+  const axios = useAxiosPrivate();
 
   const [country, setCountry] = useState("Thailand");
   const [companyType, setCompanyType] = useState("hostel");
@@ -52,6 +54,36 @@ const UploadSingleImage = () => {
   );
 
   // ✅ mutation for upload
+  // const { mutate, isPending } = useMutation({
+  //   mutationFn: async ({ companyId, file, type }) => {
+  //     const form = new FormData();
+  //     form.append("companyId", companyId);
+  //     form.append("type", type);
+  //     form.append("image", file);
+
+  //     const res = await axios.post(
+  //       `${API_BASE}/company/add-company-image`,
+  //       form,
+  //       { headers: { "Content-Type": "multipart/form-data" } }
+  //     );
+  //     return res.data;
+  //   },
+  //   onSuccess: (data) => {
+  //     toast.success(data?.message || "Upload successful");
+  //     setFile(null);
+  //     setPreview(null);
+  //     setCompanyId("");
+  //     setCompanyType("");
+  //     setCountry("");
+  //     setImageType("");
+  //     if (inputRef.current) inputRef.current.value = "";
+  //   },
+  //   onError: (err) => {
+  //     toast.error(err?.response?.data?.message || "Upload failed");
+  //     setError(err?.message || "Something went wrong");
+  //   },
+  // });
+
   const { mutate, isPending } = useMutation({
     mutationFn: async ({ companyId, file, type }) => {
       const form = new FormData();
@@ -59,11 +91,9 @@ const UploadSingleImage = () => {
       form.append("type", type);
       form.append("image", file);
 
-      const res = await axios.post(
-        `${API_BASE}/company/add-company-image`,
-        form,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      const res = await axios.post(`/api/admin/upload-single-image`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return res.data;
     },
     onSuccess: (data) => {
