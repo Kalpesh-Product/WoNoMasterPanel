@@ -10,7 +10,7 @@ const UploadLayout = () => {
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
-    "er@gmail.com",
+    "savita.wono@gmail.com",
   ];
 
   const tabs = [

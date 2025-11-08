@@ -161,6 +161,7 @@ import AccessTree from "../components/AccessTree";
 import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkUploadImages";
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
 import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkReuploadImages";
+import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
 
 export const routes = createBrowserRouter([
   {
@@ -287,6 +288,20 @@ export const routes = createBrowserRouter([
                         element: <ChangePassword />,
                       },
                     ],
+                  },
+                  {
+                    path: "logs-layout",
+                    element: <LogsLayout />,
+                    // children: [
+                    //   {
+                    //     path: "my-profile",
+                    //     element: <UserDetails />,
+                    //   },
+                    //   {
+                    //     path: "change-password",
+                    //     element: <ChangePassword />,
+                    //   },
+                    // ],
                   },
 
                   {

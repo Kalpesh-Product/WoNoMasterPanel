@@ -43,7 +43,7 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
-    "er@gmail.com",
+    "savita.wono@gmail.com",
   ];
 
   const allowedVisitorDeptIds = [
@@ -155,6 +155,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           codeName: "Prof",
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
+        },
+        {
+          id: 8,
+          title: "Logs",
+          codeName: "Logs",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/logs-layout",
         },
       ],
     },
