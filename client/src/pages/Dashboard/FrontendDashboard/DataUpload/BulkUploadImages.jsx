@@ -341,7 +341,7 @@ const BulkUploadImages = () => {
               />
 
               <p className="text-xs text-gray-500">
-                Accepted type: <code>.jpg, .png</code>. Max size:{" "}
+                Accepted type: <code>.webp</code>. Max size:{" "}
                 {humanSize(MAX_BYTES)}. Max files: {MAX_FILES}.
               </p>
 
