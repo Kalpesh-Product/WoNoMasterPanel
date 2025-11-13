@@ -88,8 +88,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
-// const NOMADS_BASE = "http://localhost:3000/api";
+// const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
+const NOMADS_BASE = "http://localhost:3000/api";
 
 const TYPE_MAP = {
   products: {
@@ -129,15 +129,24 @@ const bulkUploadData = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: response.data.message,
+      message: response.data,
     });
   } catch (err) {
-    const { error, message } = err.response?.data;
-    // console.log("Internal server error", err.response.data.error);
-    console.log("Internal server error", error || message);
+    // const { error, message } = err.response?.data;
+    // // console.log("Internal server error", err.response.data.error);
+    // console.log("Internal server error", error || message);
+
+    const status = err.response?.status || 500;
+    const data = err.response?.data;
+
+    console.error("=== Bulk Upload Error ===");
+    console.error("Status:", status);
+    console.error("Data:", data);
+    console.error("Full Error:", err.toString());
+    console.error("=========================");
     res.status(500).json({
       success: false,
-      message: error || message,
+      message: data,
     });
   }
 };
