@@ -21,8 +21,8 @@ const templateSchema = new mongoose.Schema(
       type: String,
       // required: true
     },
-    title: { type: String, required: true },
-    subTitle: { type: String, required: true },
+    title: { type: String },
+    subTitle: { type: String },
     CTAButtonText: { type: String },
     heroImages: [
       {
@@ -31,7 +31,7 @@ const templateSchema = new mongoose.Schema(
       },
     ],
     //about
-    about: [{ type: String, required: true }],
+    about: [{ type: String }],
     //products
     productTitle: { type: String },
     products: [
@@ -72,8 +72,8 @@ const templateSchema = new mongoose.Schema(
     // contact
     contactTitle: { type: String },
     mapUrl: { type: String },
-    email: { type: String, required: true },
-    phone: { type: String, required: true },
+    email: { type: String },
+    phone: { type: String },
     address: { type: String },
     //footer
     registeredCompanyName: { type: String },
