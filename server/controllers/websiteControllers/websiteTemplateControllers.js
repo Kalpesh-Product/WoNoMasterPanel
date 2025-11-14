@@ -137,10 +137,6 @@ const createTemplate = async (req, res, next) => {
       }));
     }
 
-    if (Array.isArray(products) && products.length) {
-      template.products = products;
-    }
-
     if (req.body.testimonials) {
       const parsedTestimonials = Array.isArray(req.body.testimonials)
         ? req.body.testimonials
