@@ -4,9 +4,9 @@ const HostUser = require("../models/hostCompany/hostUser");
 const bulkInsertPoc = async (req, res, next) => {
   try {
     const { pocs } = req.body;
-    // console.log("POCs received:", pocs?.length || 0);
+    console.log("POCs received:", Array.isArray(pocs) ? pocs.length : 0);
 
-    if (!pocs || !Array.isArray(pocs) || pocs.length === 0) {
+    if (!Array.isArray(pocs) || pocs.length === 0) {
       return res.status(400).json({
         message: "Please provide a valid array of POCs",
         receivedType: typeof pocs,
@@ -16,60 +16,41 @@ const bulkInsertPoc = async (req, res, next) => {
 
     // Fetch companies and map them
     const companies = await HostCompany.find().lean();
-    // console.log("Found companies:", companies.length);
+    console.log("Found companies:", companies.length);
 
     const companyMap = new Map(
       companies.map((item) => [item.companyId?.trim(), item._id])
     );
 
-    // Existing POCs for duplicate detection
-    const existingPocs = await HostUser.find().select("name companyId");
-    const existingPocSet = new Set(
-      existingPocs.map(
-        (poc) =>
-          `${(poc.name || "").trim().toLowerCase()}|${poc.companyId?.trim()}`
-      )
-    );
-
     const validPocs = [];
-    const seenInRequest = new Set();
-    let skippedExisting = 0;
-    let skippedDuplicate = 0;
-    let skippedNoCompany = 0;
+    const skippedNoCompanyLogs = [];
 
     for (const poc of pocs) {
       const companyId = poc.companyId?.trim();
-      const pocName = poc.name?.trim() || ""; // allow empty string
+      const pocName = poc.name?.trim() || "";
 
       if (!companyId) {
-        console.warn("❌ Skipping POC - missing companyId:", poc);
-        skippedNoCompany++;
+        skippedNoCompanyLogs.push({
+          name: pocName,
+          reason: "Missing companyId",
+        });
         continue;
       }
 
       const companyMongoId = companyMap.get(companyId);
       if (!companyMongoId) {
-        console.warn(`❌ No HostCompany found for companyId: ${companyId}`);
-        skippedNoCompany++;
+        skippedNoCompanyLogs.push({
+          name: pocName,
+          companyId,
+          reason: "No matching HostCompany found",
+        });
         continue;
       }
 
-      const pocKey = `${pocName.toLowerCase()}|${companyId}`;
-
-      if (existingPocSet.has(pocKey)) {
-        skippedExisting++;
-        continue;
-      }
-
-      if (seenInRequest.has(pocKey)) {
-        skippedDuplicate++;
-        continue;
-      }
-
-      const pocData = {
+      validPocs.push({
         company: companyMongoId,
         companyId,
-        name: pocName, // empty string allowed
+        name: pocName,
         designation: poc.designation || "",
         email: poc.email?.toLowerCase() || "",
         phone: poc.phone || "",
@@ -78,34 +59,35 @@ const bulkInsertPoc = async (req, res, next) => {
         address: poc.address || "",
         profileImage: poc.profileImage || "",
         isActive: true,
-      };
-
-      seenInRequest.add(pocKey);
-      validPocs.push(pocData);
-    }
-
-    // console.log("✅ Valid POCs to insert:", validPocs.length);
-
-    if (validPocs.length === 0) {
-      return res.status(400).json({
-        message: "No valid POC data found.",
-        skippedExisting,
-        skippedDuplicate,
-        skippedNoCompany,
       });
     }
 
-    await HostUser.insertMany(validPocs);
+    // Log skipped for debugging
+    if (skippedNoCompanyLogs.length) {
+      console.log("\n=== SKIPPED POCs (NO COMPANY FOUND) ===");
+      console.table(skippedNoCompanyLogs);
+    }
+
+    if (validPocs.length === 0) {
+      return res.status(400).json({
+        message: "No valid POC data found (all missing company references).",
+        skippedNoCompany: skippedNoCompanyLogs.length,
+        skippedNoCompanyLogs,
+      });
+    }
+
+    console.log("Inserting POCs into HostUser...");
+    const inserted = await HostUser.insertMany(validPocs);
+    console.log(`Inserted ${inserted.length} POCs successfully.`);
 
     res.status(201).json({
-      message: `${validPocs.length} POCs inserted successfully.`,
-      inserted: validPocs.length,
-      skippedExisting,
-      skippedDuplicate,
-      skippedNoCompany,
+      message: `${inserted.length} POCs inserted successfully.`,
+      inserted: inserted.length,
+      skippedNoCompany: skippedNoCompanyLogs.length,
+      skippedNoCompanyLogs,
     });
   } catch (error) {
-    console.error("Master panel error:", error);
+    console.error("Master panel bulkInsertPoc error:", error);
     next(error);
   }
 };
