@@ -14,15 +14,12 @@ const {
 const HostCompany = require("../../models/hostCompany/hostCompany");
 
 const createTemplate = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     const { company } = req.query;
 
     // `products` might arrive as a JSON string in multipart. Normalize it.
 
-    let { products, testimonials, about } = req.body;
+    let { products, testimonials, about, source = "Master Panel" } = req.body;
 
     const safeParse = (val, fallback) => {
       try {
@@ -40,7 +37,7 @@ const createTemplate = async (req, res, next) => {
       { companyName: req.body.companyName } //can't use company Id as the host signup form can't send any company Id
     );
 
-    if (!hostCompanyExists) {
+    if (!hostCompanyExists && source !== "Nomad") {
       return res.status(400).json({ message: "Company not found" });
     }
 
@@ -50,25 +47,27 @@ const createTemplate = async (req, res, next) => {
 
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+
+      const trimmed = name.trim().toLowerCase();
+
+      const invalids = ["n/a", "na", "none", "undefined", "null", "-"];
+      if (invalids.includes(trimmed)) return "";
+
+      return trimmed.split("-")[0].replace(/\s+/g, "");
     };
 
     const searchKey = formatCompanyName(req.body.companyName);
     const baseFolder = `hosts/template/${searchKey}`;
 
     if (searchKey === "") {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(400).json({ message: "Provide a valid company name" });
     }
 
-    let template = await WebsiteTemplate.findOne({ searchKey }).session(
-      session
-    );
+    console.log("searchkey", searchKey);
+
+    let template = await WebsiteTemplate.findOne({ searchKey });
 
     if (template) {
-      await session.abortTransaction();
-      session.endSession();
       return res
         .status(400)
         .json({ message: "Template for this company already exists" });
@@ -136,10 +135,6 @@ const createTemplate = async (req, res, next) => {
         url: img.url,
         id: img.id,
       }));
-    }
-
-    if (Array.isArray(products) && products.length) {
-      template.products = products;
     }
 
     if (req.body.testimonials) {
@@ -242,53 +237,52 @@ const createTemplate = async (req, res, next) => {
       rating: t.rating,
     }));
 
-    const savedTemplate = await template.save({ session });
+    const savedTemplate = await template.save();
 
     if (!savedTemplate) {
       return res.status(400).json({ message: "Failed to create template" });
     }
 
-    const updateHostCompany = await HostCompany.findOneAndUpdate(
-      { companyName: req.body.companyName }, //can't use company Id as the host signup form can't send any company Id
-      {
-        isWebsiteTemplate: true,
-      }
-    );
-
-    if (!updateHostCompany) {
-      return res.status(400).json({ message: "Company not found" });
-    }
-
-    try {
-      const updatedCompany = await axios.patch(
-        "https://wononomadsbe.vercel.app/api/company/add-template-link",
+    if (source !== "Nomad") {
+      const updateHostCompany = await HostCompany.findOneAndUpdate(
+        { companyName: req.body.companyName }, //can't use company Id as the host signup form can't send any company Id
         {
-          companyName: req.body.companyName,
-          link: `https://${savedTemplate.searchKey}.wono.co/`,
+          isWebsiteTemplate: true,
         }
       );
 
-      if (!updatedCompany) {
-        return res
-          .status(400)
-          .json({ message: "Failed to add website template link" });
+      if (!updateHostCompany) {
+        return res.status(400).json({ message: "Company not found" });
       }
-      await session.commitTransaction();
-      session.endSession();
-    } catch (error) {
-      if (error.response?.status !== 200) {
-        return res.status(201).json({
-          message:
-            "Failed to add link.Check if the company is listed in Nomads.",
-          error: error.message,
-        });
+
+      try {
+        const updatedCompany = await axios.patch(
+          "https://wononomadsbe.vercel.app/api/company/add-template-link",
+          {
+            companyName: req.body.companyName,
+            link: `https://${savedTemplate.searchKey}.wono.co/`,
+          }
+        );
+
+        if (!updatedCompany) {
+          return res
+            .status(400)
+            .json({ message: "Failed to add website template link" });
+        }
+      } catch (error) {
+        if (error.response?.status !== 200) {
+          return res.status(201).json({
+            message:
+              "Failed to add link.Check if the company is listed in Nomads.",
+            error: error.message,
+          });
+        }
       }
     }
 
+    console.log("template created!!");
     return res.status(201).json({ message: "Template created", template });
   } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
     next(error);
   }
 };

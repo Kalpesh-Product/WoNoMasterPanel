@@ -37,6 +37,10 @@ const hostCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    companyContinent: {
+      type: String,
+      trim: true,
+    },
     websiteLink: {
       type: String,
       trim: true,

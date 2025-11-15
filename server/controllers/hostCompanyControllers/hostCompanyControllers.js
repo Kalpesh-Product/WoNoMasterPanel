@@ -39,6 +39,7 @@ const createCompany = async (req, res, next) => {
       companyCity: payload.companyCity,
       companyState: payload.companyState,
       companyCountry: payload.companyCountry,
+      companyContinent: payload.companyContinent,
       websiteLink: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
       selectedServices: payload.selectedServices || [],
@@ -320,6 +321,126 @@ const uploadLogo = async (req, res, next) => {
 
 // checkCompanyIds();
 
+// const bulkInsertCompanies = async (req, res, next) => {
+//   try {
+//     const file = req.file;
+//     if (!file) {
+//       return res
+//         .status(400)
+//         .json({ message: "Please provide a valid CSV file" });
+//     }
+
+//     const companies = [];
+
+//     // Get the last company ID
+//     const lastCompany = await HostCompany.findOne()
+//       .sort({ companyId: -1 })
+//       .select("companyId");
+
+//     let newId = 1;
+//     if (lastCompany && lastCompany.companyId) {
+//       const numericPart = parseInt(
+//         lastCompany.companyId.replace("CMP", ""),
+//         10
+//       );
+//       newId = numericPart + 1;
+//     }
+
+//     // Fetch ALL existing company names to check for duplicates
+//     const existingCompanies = await HostCompany.find().select("companyName");
+//     const existingNames = new Set(
+//       existingCompanies.map((c) => c.companyName?.toLowerCase()).filter(Boolean)
+//     );
+
+//     const stream = Readable.from(file.buffer.toString("utf-8").trim());
+//     stream
+//       .pipe(csvParser())
+//       .on("data", (row) => {
+//         const companyId = `CMP${String(newId).padStart(4, "0")}`;
+
+//         const company = {
+//           companyName: row["Business Name"]?.trim(),
+//           companyId,
+//           registeredEntityName: row["Registered Entity Name"]?.trim(),
+//           websiteLink: row["Website"]?.trim(),
+//           address: row["Address"]?.trim(),
+//           companyCity: row["City"]?.trim(),
+//           companyState: row["State"]?.trim(),
+//           companyCountry: row["Country"]?.trim(),
+//           companyContinent: row["Continent"]?.trim(),
+//           companySize: row["Total Seats"]?.trim(),
+//         };
+//         newId++;
+//         companies.push(company);
+//       })
+//       .on("end", async () => {
+//         try {
+//           const seenInCSV = new Set();
+//           const uniqueCompanies = [];
+//           let skippedExisting = 0;
+//           let skippedDuplicateInCSV = 0;
+
+//           for (const company of companies) {
+//             if (!company.companyName) continue;
+
+//             const name = company.companyName.toLowerCase();
+
+//             // Check if this company already exists in DB
+//             if (existingNames.has(name)) {
+//               skippedExisting++;
+//               continue;
+//             }
+
+//             // Check for duplicates within the CSV
+//             if (!seenInCSV.has(name)) {
+//               seenInCSV.add(name);
+//               uniqueCompanies.push(company);
+//             } else {
+//               // Duplicate company name in CSV → skip
+//               skippedDuplicateInCSV++;
+//               continue;
+//             }
+//           }
+
+//           const result = await HostCompany.insertMany(uniqueCompanies);
+
+//           const insertedCount = result.length;
+
+//           res.status(200).json({
+//             message: "Bulk insert completed",
+//             total: companies.length,
+//             inserted: insertedCount,
+//             skippedExisting,
+//             skippedDuplicateInCSV,
+//           });
+//         } catch (insertError) {
+//           if (insertError.name === "BulkWriteError") {
+//             const insertedCount = insertError.result?.nInserted || 0;
+
+//             res.status(200).json({
+//               message: "Bulk insert completed with partial failure",
+//               total: companies.length,
+//               inserted: insertedCount,
+//               writeErrors: insertError.writeErrors?.map((e) => ({
+//                 index: e.index,
+//                 errmsg: e.errmsg,
+//                 code: e.code,
+//               })),
+//             });
+//           } else {
+//             res.status(500).json({
+//               message: "Unexpected error during bulk insert",
+//               error: insertError.message,
+//             });
+//           }
+//         }
+//       });
+//   } catch (error) {
+//     console.log(error);
+//     next(error);
+//   }
+// };
+
 const bulkInsertCompanies = async (req, res, next) => {
   try {
     const file = req.file;
@@ -345,27 +466,39 @@ const bulkInsertCompanies = async (req, res, next) => {
       newId = numericPart + 1;
     }
 
-    // Fetch ALL existing company names to check for duplicates
-    const existingCompanies = await HostCompany.find().select("companyName");
-    const existingNames = new Set(
-      existingCompanies.map((c) => c.companyName?.toLowerCase()).filter(Boolean)
+    // Fetch existing companies from DB to check for duplicates
+    const existingCompanies = await HostCompany.find().select(
+      "companyName companyCity companyState companyCountry"
     );
 
+    // Create a Set of composite keys for existing companies
+    const existingKeys = new Set(
+      existingCompanies.map(
+        (c) =>
+          `${c.companyName?.trim().toLowerCase()}|${c.companyCity
+            ?.trim()
+            .toLowerCase()}|${c.companyState
+            ?.trim()
+            .toLowerCase()}|${c.companyCountry?.trim().toLowerCase()}`
+      )
+    );
+
+    // Parse CSV
     const stream = Readable.from(file.buffer.toString("utf-8").trim());
     stream
       .pipe(csvParser())
       .on("data", (row) => {
         const companyId = `CMP${String(newId).padStart(4, "0")}`;
-
         const company = {
-          companyName: row["Business Name"]?.trim(),
           companyId,
+          companyName: row["Business Name"]?.trim(),
           registeredEntityName: row["Registered Entity Name"]?.trim(),
           websiteLink: row["Website"]?.trim(),
           address: row["Address"]?.trim(),
           companyCity: row["City"]?.trim(),
           companyState: row["State"]?.trim(),
           companyCountry: row["Country"]?.trim(),
+          companyContinent: row["Continent"]?.trim(),
           companySize: row["Total Seats"]?.trim(),
         };
         newId++;
@@ -375,41 +508,70 @@ const bulkInsertCompanies = async (req, res, next) => {
         try {
           const seenInCSV = new Set();
           const uniqueCompanies = [];
-          let skippedExisting = 0;
-          let skippedDuplicateInCSV = 0;
+          const duplicateExistingLogs = [];
+          const duplicateCSVLogs = [];
 
           for (const company of companies) {
-            if (!company.companyName) continue;
+            const name = company.companyName?.trim()?.toLowerCase();
+            const city = company.companyCity?.trim()?.toLowerCase();
+            const state = company.companyState?.trim()?.toLowerCase();
+            const country = company.companyCountry?.trim()?.toLowerCase();
 
-            const name = company.companyName.toLowerCase();
+            if (!name || !city || !state || !country) continue;
 
-            // Check if this company already exists in DB
-            if (existingNames.has(name)) {
-              skippedExisting++;
+            const key = `${name}|${city}|${state}|${country}`;
+
+            // 1️⃣ Check if already exists in DB
+            if (existingKeys.has(key)) {
+              duplicateExistingLogs.push({
+                companyId: company.companyId,
+                companyName: company.companyName,
+                city: company.companyCity,
+                state: company.companyState,
+                country: company.companyCountry,
+                reason: "Already exists in DB",
+              });
               continue;
             }
 
-            // Check for duplicates within the CSV
-            if (!seenInCSV.has(name)) {
-              seenInCSV.add(name);
-              uniqueCompanies.push(company);
-            } else {
-              // Duplicate company name in CSV → skip
-              skippedDuplicateInCSV++;
+            // 2️⃣ Check for duplicates within the same CSV
+            if (seenInCSV.has(key)) {
+              duplicateCSVLogs.push({
+                companyId: company.companyId,
+                companyName: company.companyName,
+                city: company.companyCity,
+                state: company.companyState,
+                country: company.companyCountry,
+                reason: "Duplicate within same CSV",
+              });
               continue;
             }
+
+            seenInCSV.add(key);
+            uniqueCompanies.push(company);
+          }
+
+          // Optional: print duplicate tables in console
+          if (duplicateExistingLogs.length) {
+            console.log("\n=== EXISTING COMPANIES IN DB ===");
+            console.table(duplicateExistingLogs);
+          }
+          if (duplicateCSVLogs.length) {
+            console.log("\n=== DUPLICATES FOUND IN SAME CSV ===");
+            console.table(duplicateCSVLogs);
           }
 
           const result = await HostCompany.insertMany(uniqueCompanies);
-
           const insertedCount = result.length;
 
           res.status(200).json({
             message: "Bulk insert completed",
             total: companies.length,
             inserted: insertedCount,
-            skippedExisting,
-            skippedDuplicateInCSV,
+            skippedExisting: duplicateExistingLogs.length,
+            skippedDuplicateInCSV: duplicateCSVLogs.length,
+            duplicateExistingLogs,
+            duplicateCSVLogs,
           });
         } catch (insertError) {
           if (insertError.name === "BulkWriteError") {
@@ -434,7 +596,7 @@ const bulkInsertCompanies = async (req, res, next) => {
         }
       });
   } catch (error) {
-    console.log(error);
+    console.error("Unexpected error:", error);
     next(error);
   }
 };
@@ -481,7 +643,7 @@ const bulkInsertLogos = async (req, res, next) => {
             },
           }));
 
-          const result = await TestCompany.bulkWrite(operations);
+          const result = await HostCompany.bulkWrite(operations);
 
           const updatedCount = result.length;
           const failedCount = companies.length - updatedCount;

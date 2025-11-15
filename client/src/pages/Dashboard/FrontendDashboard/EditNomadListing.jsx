@@ -56,10 +56,12 @@ const EditNomadListing = () => {
   const formRef = useRef(null);
   const location = useLocation();
   const navState = location?.state || {};
+  console.log("navState", navState.website.companyType);
 
   // Pull IDs from state or sessionStorage (works after refresh/back)
   const companyId =
     navState.companyId || sessionStorage.getItem("companyId") || "";
+  const companyType = navState.website.companyType || "";
   const businessId =
     navState.website?.businessId || sessionStorage.getItem("businessId") || "";
 
@@ -103,7 +105,7 @@ const EditNomadListing = () => {
     enabled: !!companyId && !!businessId, // <- changed
     queryFn: async () => {
       const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`
+        `http://localhost:3000/api/company/get-listings/${companyId}?companyType=${companyType}`
       );
       const all = Array.isArray(res.data) ? res.data : [];
       return all.find((x) => x.businessId === businessId) || null;
