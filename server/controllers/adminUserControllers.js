@@ -107,7 +107,7 @@ const bulkUploadData = async (req, res) => {
   const { kind = "data" } = req.body;
   let file = req.file;
 
-  console.log("bulk upload hit");
+  console.log("bulk upload hit", kind);
   if (!file) {
     return res.status(400).json({ message: "No file provided" });
   }

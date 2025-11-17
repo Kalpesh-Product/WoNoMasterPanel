@@ -18,7 +18,7 @@ const hostUserSchema = new mongoose.Schema(
     },
     companyId: {
       type: String,
-      unique: true,
+      // unique: true,
       required: true,
       trim: true,
     },
