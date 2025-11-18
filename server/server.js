@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const multer = require("multer");
 const path = require("path");
 const mongoose = require("mongoose");
 require("dotenv").config();
@@ -63,8 +64,8 @@ connectDb(process.env.DB_URL);
 app.use(credentials);
 app.use(cors(corsConfig));
 app.use(cookieParser());
-app.use(express.json({ limit: "15mb" }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/", (req, res) => {
@@ -131,6 +132,26 @@ app.all("*", (req, res) => {
   } else {
     res.type("text").status(404).send("404 Not found");
   }
+});
+
+app.use((err, req, res, next) => {
+  // Multer: file too large
+  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(413).json({
+      message:
+        "Some files are too large. Please keep images under the allowed size and try again.",
+    });
+  }
+
+  // express.json() or express.urlencoded(): body too large
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      message:
+        "The data you’re sending is too large. Please reduce the size and try again.",
+    });
+  }
+
+  next(err);
 });
 
 app.use(errorHandler);
