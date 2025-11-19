@@ -3,12 +3,14 @@ const multer = require("multer");
 const storage = multer.memoryStorage();
 // const upload = multer({ storage });
 
-//Although bulk upload images is limited to 10MB,
-//30MB considers the website template payload as well
+//Although bulk upload images is limited to 5MB,
+//20MB considers the website template payload as well
+
+//Multer config for any file uploads except bulk upload images
 const upload = multer({
   storage,
   limits: {
-    fileSize: 30 * 1024 * 1024, // 30 MB
+    fileSize: 20 * 1024 * 1024, // 20 MB
   },
 
   fileFilter: (req, file, cb) => {
@@ -26,4 +28,22 @@ const upload = multer({
   },
 });
 
+//Multer config for bulk upload Images
+const uploadImages = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  // limits: { fileSize: 2 * 1024 }, // 2 KB
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === "image/jpeg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/webp"
+    ) {
+      return cb(null, true);
+    }
+    cb(new Error("Only .jpeg, .png, and .webp images are allowed"), false);
+  },
+});
+
 module.exports = upload;
+module.exports.uploadImages = uploadImages;
