@@ -13,7 +13,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_FILES = 10;
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const BulkUploadImages = () => {
   const inputRef = useRef(null);

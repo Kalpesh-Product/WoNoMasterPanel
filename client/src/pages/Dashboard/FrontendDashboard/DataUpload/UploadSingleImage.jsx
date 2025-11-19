@@ -11,7 +11,7 @@ import { useLocation } from "react-router-dom";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const UploadSingleImage = () => {
   const inputRef = useRef(null);

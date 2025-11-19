@@ -240,6 +240,27 @@ const EditNomadListing = () => {
     reset();
   };
 
+  const resetFormToEmpty = () => {
+    formRef.current?.reset(); // clears native inputs like file upload
+
+    reset({
+      businessId: "",
+      companyType: "",
+      ratings: "",
+      totalReviews: "",
+      productName: "",
+      cost: "",
+      description: "",
+      latitude: "",
+      longitude: "",
+      inclusions: [],
+      about: "",
+      address: "",
+      images: [],
+      reviews: [],
+    });
+  };
+
   return (
     <div className="p-4">
       <PageFrame>
@@ -526,7 +547,7 @@ const EditNomadListing = () => {
                 <Controller
                   name={`reviews.${index}.review`}
                   control={control}
-                  rules={{ required: "Review is required" }}
+                  // rules={{ required: "Review is required" }}
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -558,7 +579,14 @@ const EditNomadListing = () => {
           {/* Submit / Reset */}
           <div className="col-span-2 flex items-center justify-center gap-4">
             <PrimaryButton type="submit" title="Submit" isLoading={isLoading} />
-            <SecondaryButton handleSubmit={handleReset} title="Reset" />
+            {/* <SecondaryButton handleSubmit={handleReset} title="Reset" /> */}
+            <button
+              type="button"
+              onClick={resetFormToEmpty}
+              className="px-6 py-2 bg-gray-200 text-black rounded-md"
+            >
+              Reset
+            </button>
           </div>
         </form>
       </PageFrame>
