@@ -1,6 +1,6 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
-const { uploadImages } = upload;
+
 const {
   createCompany,
   getCompany,
@@ -34,8 +34,8 @@ router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);
 
 //listing
-router.post("/add-company-listing", uploadImages.any(), createCompanyListing);
-router.patch("/edit-company-listing", uploadImages.any(), editCompanyListing);
+router.post("/add-company-listing", upload.any(), createCompanyListing);
+router.patch("/edit-company-listing", upload.any(), editCompanyListing);
 router.get("/get-companies-listings", getAllCompanyListings);
 router.get("/get-company-listings", getCompanyListings);
 
