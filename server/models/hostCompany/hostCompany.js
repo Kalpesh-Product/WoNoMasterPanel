@@ -28,18 +28,22 @@ const hostCompanySchema = new mongoose.Schema(
     companyCity: {
       type: String,
       trim: true,
+      required: true,
     },
     companyState: {
       type: String,
       trim: true,
+      required: true,
     },
     companyCountry: {
       type: String,
       trim: true,
+      required: true,
     },
     companyContinent: {
       type: String,
       trim: true,
+      required: true,
     },
     websiteLink: {
       type: String,
