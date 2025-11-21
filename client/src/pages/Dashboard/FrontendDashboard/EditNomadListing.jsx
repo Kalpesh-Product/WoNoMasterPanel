@@ -39,9 +39,10 @@ const companyTypes = [
   "Coworking",
   "Meeting Room",
   "Cafe",
-  "Private Stay",
+  // "Private Stay",
   "Workation",
   "Coliving",
+  "Hostel",
 ];
 
 // ✅ Default review structure

@@ -7,7 +7,6 @@ const {
   uploadCompanyLogo,
 } = require("../controllers/adminUserControllers");
 const upload = require("../config/multerConfig");
-const { uploadImages } = upload;
 
 const router = require("express").Router();
 
@@ -16,20 +15,12 @@ router.patch("/change-password/:userId", changePassword);
 // router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
 
 router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
-router.post(
-  "/bulk-upload-images",
-  uploadImages.array("images"),
-  bulkUploadImages
-);
+router.post("/bulk-upload-images", upload.array("images"), bulkUploadImages);
 router.patch(
   "/bulk-reupload-images",
-  uploadImages.array("images"),
+  upload.array("images"),
   bulkReuploadImages
 );
-router.post(
-  "/upload-single-image",
-  uploadImages.single("image"),
-  uploadCompanyLogo
-);
+router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
 
 module.exports = router;

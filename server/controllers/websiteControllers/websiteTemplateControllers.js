@@ -442,10 +442,10 @@ const createTemplate = async (req, res, next) => {
       });
     }
 
-    // Hero Images: max 5
+    // Carousel Images: max 5
     if (heroFiles.length > 5) {
       return res.status(400).json({
-        message: `Cannot exceed 5 hero images (received ${heroFiles.length}).`,
+        message: `Cannot exceed 5 carousel images (received ${heroFiles.length}).`,
       });
     }
 
@@ -838,7 +838,7 @@ const editTemplate = async (req, res, next) => {
       template.companyLogo = uploaded[0];
     }
 
-    // === HERO IMAGES ===
+    // === CAROUSEL IMAGES ===
     const heroKeepIds = safeParse(req.body.heroImageIds, null);
     if (heroKeepIds) {
       const imagesToDelete = template.heroImages.filter(

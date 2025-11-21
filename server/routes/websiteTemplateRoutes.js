@@ -1,5 +1,6 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
+const { uploadImages } = upload;
 
 const {
   createTemplate,
@@ -12,8 +13,8 @@ const {
   deleteTemplate,
 } = require("../controllers/websiteControllers/websiteTemplateControllers");
 
-router.post("/create-website", upload.any(), createTemplate);
-router.patch("/edit-website", upload.any(), editTemplate);
+router.post("/create-website", uploadImages.any(), createTemplate);
+router.patch("/edit-website", uploadImages.any(), editTemplate);
 router.patch("/activate-website", activateTemplate);
 router.patch("/delete-website", deleteTemplate);
 router.get("/get-websites", getTemplates);
