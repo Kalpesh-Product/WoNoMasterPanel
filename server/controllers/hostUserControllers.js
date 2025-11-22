@@ -234,7 +234,7 @@ const bulkInsertPoc = async (req, res, next) => {
     let failedDocs = [];
 
     try {
-      inserted = await HostUser.insertMany(finalPocs, { ordered: false });
+      inserted = await TestHostUser.insertMany(finalPocs, { ordered: false });
 
       const successfulKeys = new Set(
         inserted.map((i) => `${i.email}|${i.companyId}`)
