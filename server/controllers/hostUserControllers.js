@@ -1,5 +1,6 @@
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostUser = require("../models/hostCompany/hostUser");
+const TestHostUser = require("../models/hostCompany/TestHostUser");
 
 //Duplicate & existing pocs check
 //Currently can't implement coz diff company types of same company can have same POC and company type isn't stored in Master Panel
