@@ -1,5 +1,6 @@
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostUser = require("../models/hostCompany/hostUser");
+const TestHostUser = require("../models/hostCompany/TestHostUser");
 
 //Duplicate & existing pocs check
 //Currently can't implement coz diff company types of same company can have same POC and company type isn't stored in Master Panel
@@ -234,7 +235,7 @@ const bulkInsertPoc = async (req, res, next) => {
     let failedDocs = [];
 
     try {
-      inserted = await TestHostUser.insertMany(finalPocs, { ordered: false });
+      inserted = await HostUser.insertMany(finalPocs, { ordered: false });
 
       const successfulKeys = new Set(
         inserted.map((i) => `${i.email}|${i.companyId}`)
