@@ -245,23 +245,68 @@ const createTemplate = async (req, res, next) => {
     }
 
     if (Array.isArray(products) && products.length) {
+      console.log("=== PROCESSING PRODUCTS ===");
+      console.log("Source:", source);
+      console.log("Number of products:", products.length);
       for (let i = 0; i < products.length; i++) {
         const p = products[i] || {};
         const pFiles = filesByField[`productImages_${i}`] || [];
-        const uploaded = await uploadImages(
-          pFiles,
-          `${baseFolder}/productImages/${i}`
-        );
+
+        console.log(`\nProduct ${i}:`);
+        console.log("- Name:", p.name);
+        console.log("- New files to upload:", pFiles.length);
+        console.log("- Pre-existing images:", p.images?.length || 0);
+        let productImages = [];
+
+        // SCENARIO 1: New files being uploaded (from Master Panel)
+        if (pFiles.length > 0) {
+          productImages = await uploadImages(
+            pFiles,
+            `${baseFolder}/productImages/${i}`
+          );
+          console.log(
+            `Uploaded ${productImages.length} new images for product ${i}`
+          );
+        }
+        // SCENARIO 2: Pre-existing URLs (from Nomad website)
+        else if (p.images && Array.isArray(p.images) && p.images.length > 0) {
+          productImages = p.images.map((img) => ({
+            url: img.url,
+            id: img.id,
+          }));
+          console.log(
+            `Using ${productImages.length} pre-existing images for product ${i}`
+          );
+        }
 
         template.products.push({
           type: p.type,
           name: p.name,
           cost: p.cost,
           description: p.description,
-          images: uploaded,
+          images: productImages, // Now handles both scenarios
         });
       }
     }
+    // if (Array.isArray(products) && products.length) {
+    //   console.log("Entered Products")
+    //   for (let i = 0; i < products.length; i++) {
+    //     const p = products[i] || {};
+    //     const pFiles = filesByField[`productImages_${i}`] || [];
+    //     const uploaded = await uploadImages(
+    //       pFiles,
+    //       `${baseFolder}/productImages/${i}`
+    //     );
+
+    //     template.products.push({
+    //       type: p.type,
+    //       name: p.name,
+    //       cost: p.cost,
+    //       description: p.description,
+    //       images: uploaded,
+    //     });
+    //   }
+    // }
 
     // TESTIMONIALS: objects + flat testimonialImages array (zip by index)
     let tUploads = [];
