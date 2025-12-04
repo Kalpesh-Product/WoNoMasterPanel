@@ -53,7 +53,7 @@ const BulkReuploadImages = () => {
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies"],
     queryFn: async () => {
-      const res = await axios.get(`${API_BASE}/company/companies`);
+      const res = await axios.get(`${API_BASE}/company/companiesma`);
       return res.data;
     },
   });
