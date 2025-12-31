@@ -44,6 +44,7 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
     "savita.wono@gmail.com",
+    "gourish.wono@gmail.com",
   ];
 
   const allowedVisitorDeptIds = [

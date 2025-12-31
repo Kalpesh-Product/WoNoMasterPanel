@@ -61,12 +61,16 @@ const ProductsUpload = () => {
     },
     onSuccess: (data) => {
       setError(null);
-      toast.success(data?.message || "Upload successful");
+
+      toast.success("Upload successful");
+
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (err) => {
-      toast.error(err?.response?.data?.message || "Upload failed");
+      console.log(err);
+
+      toast.error(err?.data?.message || "Upload failed");
       setError(err?.message || "Something went wrong");
     },
   });
