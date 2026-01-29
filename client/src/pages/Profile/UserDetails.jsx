@@ -82,37 +82,39 @@ const UserDetails = () => {
       </span>
 
       {/* Header Card */}
-      <div className="flex items-center gap-8 w-full border-2 border-gray-200 p-4 rounded-xl">
-        <Avatar
-          style={{
-            backgroundColor: "#1976d2",
-            width: "100px",
-            height: "100px",
-            fontSize: "2rem",
-          }}
-        >
-          {user.firstName?.charAt(0) || "U"}
-        </Avatar>
+      <div className="flex flex-col md:flex-row items-center gap-8 w-full border-2 border-gray-200 p-4 rounded-xl ">
+        <div className="">
+          <Avatar
+            style={{
+              backgroundColor: "#1976d2",
+              width: "100px",
+              height: "100px",
+              fontSize: "2rem",
+            }}
+          >
+            {user.firstName?.charAt(0) || "U"}
+          </Avatar>
+        </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 ">
           <span className="text-title">
             {user.firstName} {user.lastName}
           </span>
           <span className="text-subtitle text-gray-500">{user.email}</span>
         </div>
 
-        <div className="ml-auto">
+        {/* <div className="ml-auto">
           <Chip
             label={"Active"}
             sx={{ backgroundColor: "green", color: "white" }}
           />
-        </div>
+        </div> */}
       </div>
 
       {/* Editable Form */}
       <PageFrame>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             {/* First Name */}
             <Controller
               name="firstName"
