@@ -29,7 +29,7 @@ export default function NomadListingsOverview() {
     queryKey: ["nomad-listings", companyId],
     queryFn: async () => {
       const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`
+        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`,
       );
 
       return res.data || [];
@@ -70,14 +70,29 @@ export default function NomadListingsOverview() {
 
   // ✅ Table columns
   const columns = [
-    { headerName: "SR NO", field: "srNo", width: 100 },
-    // { headerName: "Business ID", field: "businessId", flex: 1 },
-    { headerName: "Company Name", field: "companyName", flex: 1 },
-    { headerName: "Company Type", field: "companyType", flex: 1 },
+    {
+      headerName: "SR NO",
+      field: "srNo",
+      width: 100,
+      minWidth: 80,
+    },
+    {
+      headerName: "Company Name",
+      field: "companyName",
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      headerName: "Company Type",
+      field: "companyType",
+      flex: 1,
+      minWidth: 160,
+    },
     {
       headerName: "Status",
       field: "isActive",
       flex: 1,
+      minWidth: 140,
       cellRenderer: (params) => (
         <StatusChip status={params.value ? "Active" : "Inactive"} />
       ),
@@ -86,6 +101,7 @@ export default function NomadListingsOverview() {
       headerName: "Actions",
       field: "actions",
       flex: 1,
+      minWidth: 140,
       cellRenderer: (params) => {
         return (
           <ThreeDotMenu
@@ -94,49 +110,45 @@ export default function NomadListingsOverview() {
               {
                 label: "Edit",
                 onClick: () => {
-                  // persist for backward/refresh navigation
                   sessionStorage.setItem("companyId", companyId || "");
                   sessionStorage.setItem(
                     "companyName",
-                    params?.data?.companyName || ""
+                    params?.data?.companyName || "",
                   );
                   sessionStorage.setItem(
                     "businessId",
-                    params?.data?.businessId || ""
+                    params?.data?.businessId || "",
                   );
                   navigate(
                     `/dashboard/companies/${slugify(
-                      params?.data?.companyName
+                      params?.data?.companyName,
                     )}/nomad-listings/${slugify(params?.data?.companyName)}`,
                     {
                       state: {
                         website: params.data,
-                        companyId, // still pass companyId
+                        companyId,
                         isLoading: isPending,
                       },
-                    }
+                    },
                   );
                 },
               },
-
               params?.data?.isActive
                 ? {
                     label: "Mark As Inactive",
-                    onClick: () => {
+                    onClick: () =>
                       toggleStatus({
                         businessId: params?.data?.businessId,
-                        status: false, // deactivate
-                      });
-                    },
+                        status: false,
+                      }),
                   }
                 : {
                     label: "Mark As Active",
-                    onClick: () => {
+                    onClick: () =>
                       toggleStatus({
                         businessId: params?.data?.businessId,
-                        status: true, // activate
-                      });
-                    },
+                        status: true,
+                      }),
                   },
             ]}
           />
