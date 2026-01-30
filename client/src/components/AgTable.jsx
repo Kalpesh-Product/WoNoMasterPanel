@@ -46,6 +46,7 @@ const AgTableComponent = React.memo(
     const [appliedFilters, setAppliedFilters] = useState({});
     const [isFilterDrawerOpen, setFilterDrawerOpen] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]); // ✅ Track selected rows
+    const [isSmallScreen, setIsSmallScreen] = useState(false);
     const gridRef = useRef(null);
 
     useEffect(() => {
@@ -60,10 +61,34 @@ const AgTableComponent = React.memo(
       }
     }, [gridRef, tableRef]);
 
+    useEffect(() => {
+      const mediaQuery = window.matchMedia("(max-width: 640px)");
+      const handleChange = (event) => {
+        setIsSmallScreen(event.matches);
+      };
+
+      setIsSmallScreen(mediaQuery.matches);
+
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener("change", handleChange);
+      } else {
+        mediaQuery.addListener(handleChange);
+      }
+
+      return () => {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener("change", handleChange);
+        } else {
+          mediaQuery.removeListener(handleChange);
+        }
+      };
+    }, []);
+
     const defaultColDef = {
       resizable: true,
       sortable: true,
       autoHeight: true,
+      ...(isSmallScreen ? { minWidth: 140 } : {}),
     };
 
     // Get unique values for dropdown columns
@@ -84,8 +109,8 @@ const AgTableComponent = React.memo(
       }
       const filtered = data.filter((row) =>
         Object.values(row).some((value) =>
-          value?.toString().toLowerCase().includes(query)
-        )
+          value?.toString().toLowerCase().includes(query),
+        ),
       );
       setFilteredData(filtered);
     };
@@ -141,7 +166,7 @@ const AgTableComponent = React.memo(
           onSelectionChange(rows);
         }
       },
-      [onSelectionChange]
+      [onSelectionChange],
     );
 
     const handleActionClick = () => {
@@ -268,7 +293,7 @@ const AgTableComponent = React.memo(
                 label={`${field}: ${appliedFilters[field]}`}
                 onDelete={() => removeFilter(field)}
               />
-            ) : null
+            ) : null,
           )}
         </div>
 
@@ -311,7 +336,7 @@ const AgTableComponent = React.memo(
                   handleFilterChange(column.field, e.target.value)
                 }
               />
-            )
+            ),
           )}
           <div className="flex items-center gap-4 justify-center py-4">
             <PrimaryButton title="Apply Filters" handleSubmit={applyFilters} />
@@ -361,7 +386,7 @@ const AgTableComponent = React.memo(
         )} */}
       </div>
     );
-  }
+  },
 );
 
 AgTableComponent.displayName = "AgTable";
