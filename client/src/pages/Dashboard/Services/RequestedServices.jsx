@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
-import { Chip, CircularProgress } from "@mui/material";
+import { Chip, CircularProgress, useMediaQuery } from "@mui/material";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
 // ✅ helper to make slugs URL-safe (kept, if needed later)
@@ -18,6 +18,7 @@ const RequestedServices = () => {
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
   const location = useLocation(); // 👈 track current location
+  const isPhone = useMediaQuery("(max-width:600px)");
 
   // ✅ fetch companies from backend
   const {
@@ -44,19 +45,19 @@ const RequestedServices = () => {
       ];
 
       const requestedCount = allServices.filter(
-        (s) => s.isRequested === true
+        (s) => s.isRequested === true,
       ).length;
       const activeCount = allServices.filter((s) => s.isActive === true).length;
 
       // 🔹 check if this company has any service with BOTH true
       const hasBothTrue = allServices.some(
-        (s) => s.isRequested === true && s.isActive === true
+        (s) => s.isRequested === true && s.isActive === true,
       );
 
       // 🟢 Log only if BOTH true exists AND requestedCount > 3 AND requestedCount > activeCount
       if (hasBothTrue && requestedCount > 3 && requestedCount > activeCount) {
         console.log(
-          `Company: ${c.companyName} (${c.companyId}) → Requested: ${requestedCount}, Active: ${activeCount}`
+          `Company: ${c.companyName} (${c.companyId}) → Requested: ${requestedCount}, Active: ${activeCount}`,
         );
       }
 
@@ -83,6 +84,7 @@ const RequestedServices = () => {
         field: "logo",
         headerName: "Logo",
         width: 80,
+        minWidth: isPhone ? 80 : undefined,
         cellRenderer: (params) =>
           params.value ? (
             <img
@@ -98,6 +100,7 @@ const RequestedServices = () => {
         field: "companyName",
         headerName: "Company Name",
         flex: 1,
+        minWidth: isPhone ? 180 : undefined,
         cellRenderer: (params) => (
           <span
             onClick={() =>
@@ -105,10 +108,11 @@ const RequestedServices = () => {
                 `/dashboard/requested-services/${params.data.companyId}`,
                 {
                   state: { companyName: params.data.companyName },
-                }
+                },
               )
             }
-            className="text-blue-600 hover:underline cursor-pointer">
+            className="text-blue-600 hover:underline cursor-pointer"
+          >
             {params.value}
           </span>
         ),
@@ -117,6 +121,7 @@ const RequestedServices = () => {
         field: "noOfServices",
         headerName: "No of Requested Services",
         flex: 1,
+        minWidth: isPhone ? 210 : undefined,
       },
       // {
       //   field: "registration",
@@ -143,7 +148,7 @@ const RequestedServices = () => {
       //   },
       // },
     ],
-    [navigate]
+    [isPhone, navigate],
   );
 
   if (isLoading) {
