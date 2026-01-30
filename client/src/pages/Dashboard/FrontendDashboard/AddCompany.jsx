@@ -25,7 +25,7 @@ const AddCompany = () => {
       companyCountry: "",
       selectedServices: [], // will need checkboxes / multi-select later
 
-            pocName: "",
+      pocName: "",
       pocDesignation: "",
       pocEmail: "",
       pocPhone: "",
@@ -41,7 +41,10 @@ const AddCompany = () => {
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
       console.log(fd);
-      const response = await axios.post("http://localhost:5000/api/hosts/onboard-company", fd);
+      const response = await axios.post(
+        "http://localhost:5000/api/hosts/onboard-company",
+        fd,
+      );
       return response.data;
     },
     onSuccess: () => {
@@ -53,7 +56,7 @@ const AddCompany = () => {
     },
   });
 
- const onSubmit = (data) => {
+  const onSubmit = (data) => {
     // split languages from comma string → array
     const formattedData = {
       ...data,
@@ -72,7 +75,7 @@ const AddCompany = () => {
           Add Company
         </h1>
         <form
-          className="grid grid-cols-2 gap-4"
+          className="grid grid-cols-1 gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(onSubmit)}
         >
           {/* Personal Details */}
@@ -341,7 +344,7 @@ const AddCompany = () => {
             render={({ field, fieldState }) => {
               const companyCountryName = watch("companyCountry");
               const companyCountryObj = Country.getAllCountries().find(
-                (c) => c.name === companyCountryName
+                (c) => c.name === companyCountryName,
               );
               const states = companyCountryObj
                 ? State.getStatesOfCountry(companyCountryObj.isoCode)
@@ -382,19 +385,19 @@ const AddCompany = () => {
               const companyStateName = watch("companyState");
 
               const companyCountryObj = Country.getAllCountries().find(
-                (c) => c.name === companyCountryName
+                (c) => c.name === companyCountryName,
               );
               const companyStateObj =
                 companyCountryObj &&
                 State.getStatesOfCountry(companyCountryObj.isoCode).find(
-                  (s) => s.name === companyStateName
+                  (s) => s.name === companyStateName,
                 );
 
               const cities =
                 companyCountryObj && companyStateObj
                   ? City.getCitiesOfState(
                       companyCountryObj.isoCode,
-                      companyStateObj.isoCode
+                      companyStateObj.isoCode,
                     )
                   : [];
 
@@ -420,8 +423,8 @@ const AddCompany = () => {
             }}
           />
 
-                   {/* ------------------- POC SECTION ------------------- */}
-          <div className="col-span-2 mt-6">
+          {/* ------------------- POC SECTION ------------------- */}
+          <div className="col-span-1 mt-6 md:col-span-2">
             <h2 className="text-title font-pmedium text-primary mb-2">
               Point of Contact (POC) Details
             </h2>
@@ -566,7 +569,7 @@ const AddCompany = () => {
           />
 
           {/* Later: selectedServices → you may want checkboxes or multi-select */}
-          <div className="flex justify-center items-center w-full col-span-1 lg:col-span-2">
+          <div className="flex justify-center items-center w-full col-span-1 md:col-span-2">
             <PrimaryButton
               externalStyles={""}
               title={"Submit"}
