@@ -25,6 +25,7 @@ const YearWiseTable = ({
   key,
   exportData,
   dropdownColumns = [],
+  filterExcludeColumns = [],
   handleBatchAction,
   batchButton,
   isRowSelectable,
@@ -308,6 +309,7 @@ const YearWiseTable = ({
             tableRef={agGridRef}
             exportData={exportTable}
             dropdownColumns={dropdownColumns}
+            filterExcludeColumns={filterExcludeColumns}
             checkAll={checkAll}
             tableTitle={tableTitle}
             tableHeight={tableHeight || 300}
