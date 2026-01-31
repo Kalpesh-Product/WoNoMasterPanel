@@ -158,6 +158,7 @@ const Companies = () => {
           buttonTitle={"Add Company"}
           handleClick={() => navigate("add-company")}
           filterExcludeColumns={["logo"]}
+          loading={isLoading}
         />
       </PageFrame>
     </div>

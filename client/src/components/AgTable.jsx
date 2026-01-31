@@ -40,6 +40,7 @@ const AgTableComponent = React.memo(
     tableRef,
     onSelectionChange,
     filterExcludeColumns = [],
+    loading = false,
   }) => {
     const [filteredData, setFilteredData] = useState(data);
     const [searchQuery, setSearchQuery] = useState("");
@@ -51,9 +52,7 @@ const AgTableComponent = React.memo(
     const gridRef = useRef(null);
 
     useEffect(() => {
-      if (data && data.length > 0) {
-        setFilteredData(data);
-      }
+      setFilteredData(data || []);
     }, [data]);
 
     useEffect(() => {
@@ -191,6 +190,12 @@ const AgTableComponent = React.memo(
         (column) => !filterExcludeColumns.includes(column.field),
       );
     }, [columns, filterExcludeColumns]);
+
+    const showLoadingMessage =
+      loading && (!filteredData || filteredData.length === 0);
+    const noRowsMessage = showLoadingMessage
+      ? "Loading Data"
+      : "No Rows To Show";
 
     return (
       <div className="border-b-[1px] border-borderGray">
@@ -362,6 +367,7 @@ const AgTableComponent = React.memo(
             rowData={filteredData}
             columnDefs={modifiedColumns} // ✅ Use modified columns with checkboxes
             defaultColDef={defaultColDef}
+            overlayNoRowsTemplate={`<span class="ag-overlay-loading-center">${noRowsMessage}</span>`}
             pagination={false}
             isRowSelectable={isRowSelectable}
             paginationPageSize={paginationPageSize}

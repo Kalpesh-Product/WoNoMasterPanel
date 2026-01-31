@@ -175,6 +175,7 @@ const RequestedServices = () => {
           // buttonTitle={"Add Request"}
           handleClick={() => navigate("add-request")}
           filterExcludeColumns={["logo"]}
+          loading={isLoading}
         />
       </PageFrame>
     </div>
