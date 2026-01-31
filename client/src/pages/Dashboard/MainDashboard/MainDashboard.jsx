@@ -6,8 +6,15 @@ import { useNavigate } from "react-router-dom";
 import LazyDashboardWidget from "../../../components/Optimization/LazyDashboardWidget";
 import ClockInOutAttendance from "../../../components/ClockInOutAttendance";
 import AttendanceTimeline from "../../../components/AttendanceTimeline";
+import { useEffect } from "react";
 
 const MainDashboard = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate("/dashboard/companies", { replace: true });
+  }, [navigate]);
+
   const mainWidgets = [
     {
       layout: 1,
@@ -17,7 +24,8 @@ const MainDashboard = () => {
             <WidgetSection
               layout={1}
               border
-              title={"Clock In / Out Attendance"}>
+              title={"Clock In / Out Attendance"}
+            >
               <ClockInOutAttendance />
             </WidgetSection>
           </div>
