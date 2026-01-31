@@ -133,7 +133,7 @@ const YearWiseTable = ({
     return filteredData.reduce((sum, item) => {
       const rawValue = item[totalKey];
       const numericValue = parseFloat(
-        String(rawValue || "0").replace(/,/g, "")
+        String(rawValue || "0").replace(/,/g, ""),
       );
       return sum + (isNaN(numericValue) ? 0 : numericValue);
     }, 0);
@@ -146,8 +146,8 @@ const YearWiseTable = ({
       const amt = parseFloat(
         String(item.actualAmount || item.projectedAmount || "0").replace(
           /,/g,
-          ""
-        )
+          "",
+        ),
       );
       return sum + (isNaN(amt) ? 0 : amt);
     }, 0);
@@ -208,6 +208,9 @@ const YearWiseTable = ({
             open={open}
             anchorEl={anchorEl}
             onClose={handleCloseCalendar}
+            PaperProps={{
+              className: "yearwise-date-range-popover",
+            }}
             anchorOrigin={{
               vertical: "bottom",
               horizontal: "left",
@@ -290,7 +293,7 @@ const YearWiseTable = ({
           </div>
         </div>
       )}
-{/* 
+      {/* 
       <div className="px-6 py-1 rounded-md border-green-600 border-[1px] bg-green-50 text-green-800 font-semibold">
         Total: INR {rangeTotal.toLocaleString("en-IN")}
       </div> */}
