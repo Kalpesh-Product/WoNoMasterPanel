@@ -174,6 +174,7 @@ const RequestedServices = () => {
           tableHeight={500}
           // buttonTitle={"Add Request"}
           handleClick={() => navigate("add-request")}
+          filterExcludeColumns={["logo"]}
         />
       </PageFrame>
     </div>
