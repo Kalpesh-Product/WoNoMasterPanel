@@ -123,25 +123,15 @@ const AgTableComponent = React.memo(
       }));
     };
 
-    const removeFilter = (field) => {
-      setAppliedFilters((prev) => {
-        const updatedFilters = { ...prev };
-        delete updatedFilters[field];
-        return updatedFilters;
-      });
-      setFilters((prev) => {
-        const updatedFilters = { ...prev };
-        delete updatedFilters[field];
-        return updatedFilters;
-      });
-      applyFilters();
-    };
-
-    const applyFilters = () => {
-      setAppliedFilters(filters);
+    const applyFilters = (nextFilters = filters) => {
+      if (typeof nextFilters?.preventDefault === "function") {
+        nextFilters.preventDefault();
+        nextFilters = filters;
+      }
+      setAppliedFilters(nextFilters);
       const filtered = data.filter((row) => {
-        return Object.keys(filters).every((field) => {
-          const filterValue = filters[field]?.toLowerCase();
+        return Object.keys(nextFilters).every((field) => {
+          const filterValue = nextFilters[field]?.toLowerCase();
           return (
             !filterValue ||
             row[field]?.toString().toLowerCase().includes(filterValue)
@@ -150,6 +140,13 @@ const AgTableComponent = React.memo(
       });
       setFilteredData(filtered);
       setFilterDrawerOpen(false);
+    };
+
+    const removeFilter = (field) => {
+      const updatedFilters = { ...filters };
+      delete updatedFilters[field];
+      setFilters(updatedFilters);
+      applyFilters(updatedFilters);
     };
 
     const clearFilters = () => {
