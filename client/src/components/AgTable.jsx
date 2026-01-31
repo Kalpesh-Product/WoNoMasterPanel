@@ -39,6 +39,7 @@ const AgTableComponent = React.memo(
     hideTitle,
     tableRef,
     onSelectionChange,
+    filterExcludeColumns = [],
   }) => {
     const [filteredData, setFilteredData] = useState(data);
     const [searchQuery, setSearchQuery] = useState("");
@@ -187,6 +188,13 @@ const AgTableComponent = React.memo(
       ];
     }, [columns, enableCheckbox, checkAll]);
 
+    const filterableColumns = useMemo(() => {
+      if (!filterExcludeColumns.length) return columns;
+      return columns.filter(
+        (column) => !filterExcludeColumns.includes(column.field),
+      );
+    }, [columns, filterExcludeColumns]);
+
     return (
       <div className="border-b-[1px] border-borderGray">
         <div className=" flex gap-4 items-center">
@@ -302,7 +310,7 @@ const AgTableComponent = React.memo(
           onClose={() => setFilterDrawerOpen(false)}
           title="Advanced Filter"
         >
-          {columns.map((column) =>
+          {filterableColumns.map((column) =>
             dropdownColumns.includes(column.field) ? (
               <TextField
                 key={column.field}
