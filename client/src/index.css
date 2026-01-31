@@ -116,6 +116,24 @@
 }
 /* Date Range selector */
 
+@media (max-width: 640px) {
+  .yearwise-date-range-popover {
+    width: 90vw !important;
+    max-width: 90vw !important;
+  }
+
+  .yearwise-date-range-popover .rdrDateRangePickerWrapper,
+  .yearwise-date-range-popover .rdrCalendarWrapper,
+  .yearwise-date-range-popover .rdrMonth {
+    width: 100% !important;
+  }
+
+  .yearwise-date-range-popover .rdrDefinedRangesWrapper {
+    display: none !important;
+  }
+}
+
+
 .hideScrollBar::-webkit-scrollbar {
   display: none !important /* Hide scrollbar for WebKit browsers (Chrome, Safari, etc.) */
 }

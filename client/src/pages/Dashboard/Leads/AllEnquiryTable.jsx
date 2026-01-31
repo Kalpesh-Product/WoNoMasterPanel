@@ -14,7 +14,7 @@ const AllEnquiryTable = () => {
     queryKey: ["leadCompany"],
     queryFn: async () => {
       const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/all-leads`
+        `https://wononomadsbe.vercel.app/api/company/all-leads`,
       );
       return response?.data;
     },
@@ -37,7 +37,15 @@ const AllEnquiryTable = () => {
     { field: "createdAt", headerName: "Submitted At" },
   ];
 
-  return <AgTable data={data} columns={columns} search tableHeight={350} />;
+  return (
+    <AgTable
+      data={data}
+      columns={columns}
+      search
+      tableHeight={350}
+      loading={isPending}
+    />
+  );
 };
 
 export default AllEnquiryTable;

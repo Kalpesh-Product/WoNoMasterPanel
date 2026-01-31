@@ -63,7 +63,7 @@ const BulkReuploadImages = () => {
     if (isLoading || !companies.length) return;
     try {
       const context = JSON.parse(
-        sessionStorage.getItem("uploadContext") || "{}"
+        sessionStorage.getItem("uploadContext") || "{}",
       );
       if (context.companyId && context.country && context.companyType) {
         setCountry(context.country);
@@ -79,7 +79,7 @@ const BulkReuploadImages = () => {
   const countries = [...new Set(companies.map((c) => c.country))];
   const types = [...new Set(companies.map((c) => c.companyType))];
   const filteredCompanies = companies.filter(
-    (c) => c.country === country && c.companyType === companyType
+    (c) => c.country === country && c.companyType === companyType,
   );
 
   //   Fetch company Images
@@ -95,12 +95,12 @@ const BulkReuploadImages = () => {
       if (!company?.companyId) return [];
 
       const res = await axios.get(
-        `${API_BASE}/company/get-listings/${company.companyId}`
+        `${API_BASE}/company/get-listings/${company.companyId}`,
       );
       // ✅ Filter only by selected companyType
       const all = Array.isArray(res.data) ? res.data : [];
       return all.filter(
-        (item) => item.companyType === companyType.toLowerCase()
+        (item) => item.companyType === companyType.toLowerCase(),
       );
     },
   });
@@ -149,7 +149,7 @@ const BulkReuploadImages = () => {
                 country,
                 companyType,
                 companyId,
-              })
+              }),
             );
             navigate("../upload-single-image?autoFill=true");
           },
@@ -172,7 +172,7 @@ const BulkReuploadImages = () => {
     const tooLarge = files.find((f) => f.size > MAX_BYTES);
     if (tooLarge) {
       setError(
-        `File ${tooLarge.name} is too large (max ${humanSize(MAX_BYTES)})`
+        `File ${tooLarge.name} is too large (max ${humanSize(MAX_BYTES)})`,
       );
       return;
     }
@@ -225,7 +225,7 @@ const BulkReuploadImages = () => {
           Bulk Re Upload Product Images (For Editing Images)
         </h2>
 
-        <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+        <div className="py-6 px-0 sm:p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           {isLoading ? (
             <p>Loading companies...</p>
           ) : (
@@ -304,7 +304,7 @@ const BulkReuploadImages = () => {
                   },
                   renderValue: (selected) => {
                     const company = filteredCompanies.find(
-                      (c) => c._id === selected
+                      (c) => c._id === selected,
                     );
                     return company ? company.companyName : "";
                   },
@@ -328,7 +328,7 @@ const BulkReuploadImages = () => {
                   .filter((c) =>
                     c.companyName
                       .toLowerCase()
-                      .includes(searchTerm.toLowerCase())
+                      .includes(searchTerm.toLowerCase()),
                   )
                   .map((c) => (
                     <MenuItem key={c._id} value={c._id}>

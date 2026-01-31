@@ -145,11 +145,11 @@ const NomadListing = () => {
     const inclusionsArr = Array.isArray(values.inclusions)
       ? values.inclusions
       : typeof values.inclusions === "string"
-      ? values.inclusions
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+        ? values.inclusions
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
     fd.set("inclusions", inclusionsArr.join(", "));
 
     // ✅ reviews unchanged
@@ -204,7 +204,13 @@ const NomadListing = () => {
             control={control}
             rules={{ required: "Company Type is required" }}
             render={({ field }) => (
-              <TextField {...field} select size="small" label="Company Type">
+              <TextField
+                {...field}
+                select
+                size="small"
+                label="Company Type"
+                className="col-span-2 md:col-span-1"
+              >
                 {companyTypes.map((type) => (
                   <MenuItem key={type} value={type.toLowerCase()}>
                     {type}
@@ -219,7 +225,7 @@ const NomadListing = () => {
             name="inclusions"
             control={control}
             render={({ field }) => (
-              <FormControl size="small">
+              <FormControl size="small" className="col-span-2 md:col-span-1">
                 <InputLabel>Inclusions</InputLabel>
                 {/* <Select
                   {...field}
@@ -240,8 +246,8 @@ const NomadListing = () => {
                     Array.isArray(field.value)
                       ? field.value
                       : field.value
-                      ? [field.value]
-                      : []
+                        ? [field.value]
+                        : []
                   }
                   input={<OutlinedInput label="Inclusions" />}
                   renderValue={(selected) =>
@@ -292,6 +298,7 @@ const NomadListing = () => {
                 size="small"
                 label="Ratings"
                 type="number"
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -306,6 +313,7 @@ const NomadListing = () => {
                 size="small"
                 label="Total Reviews"
                 type="number"
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -315,7 +323,12 @@ const NomadListing = () => {
             name="latitude"
             control={control}
             render={({ field }) => (
-              <TextField {...field} size="small" label="Latitude" />
+              <TextField
+                {...field}
+                size="small"
+                label="Latitude"
+                className="col-span-2 md:col-span-1"
+              />
             )}
           />
 
@@ -324,7 +337,12 @@ const NomadListing = () => {
             name="longitude"
             control={control}
             render={({ field }) => (
-              <TextField {...field} size="small" label="Longitude" />
+              <TextField
+                {...field}
+                size="small"
+                label="Longitude"
+                className="col-span-2 md:col-span-1"
+              />
             )}
           />
 
@@ -341,6 +359,7 @@ const NomadListing = () => {
                 multiline
                 minRows={3}
                 fullWidth
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -359,6 +378,7 @@ const NomadListing = () => {
                 multiline
                 minRows={3}
                 fullWidth
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -370,13 +390,15 @@ const NomadListing = () => {
             name="images"
             control={control}
             render={({ field }) => (
-              <UploadMultipleFilesInput
-                {...field}
-                label="Product Images"
-                maxFiles={5}
-                allowedExtensions={["jpg", "jpeg", "png", "webp"]}
-                id="images"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <UploadMultipleFilesInput
+                  {...field}
+                  label="Product Images"
+                  maxFiles={5}
+                  allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                  id="images"
+                />
+              </div>
             )}
           />
           {/* </div> */}
@@ -420,6 +442,7 @@ const NomadListing = () => {
                 fullWidth
                 helperText={errors?.mapUrl?.message}
                 error={!!errors.mapUrl}
+                className="col-span-2 md:col-span-1"
               />
             )}
           />

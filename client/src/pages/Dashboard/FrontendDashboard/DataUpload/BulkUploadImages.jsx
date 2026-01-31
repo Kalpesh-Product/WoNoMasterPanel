@@ -61,7 +61,7 @@ const BulkUploadImages = () => {
     if (isLoading || !companies.length) return;
     try {
       const context = JSON.parse(
-        sessionStorage.getItem("uploadContext") || "{}"
+        sessionStorage.getItem("uploadContext") || "{}",
       );
 
       if (context.companyId && context.country && context.companyType) {
@@ -78,7 +78,7 @@ const BulkUploadImages = () => {
   const countries = [...new Set(companies.map((c) => c.country))];
   const types = [...new Set(companies.map((c) => c.companyType))];
   const filteredCompanies = companies.filter(
-    (c) => c.country === country && c.companyType === companyType
+    (c) => c.country === country && c.companyType === companyType,
   );
 
   // ✅ mutation for upload
@@ -155,7 +155,7 @@ const BulkUploadImages = () => {
                 country,
                 companyType,
                 companyId,
-              })
+              }),
             );
             navigate("../upload-single-image?autoFill=true");
           },
@@ -176,7 +176,7 @@ const BulkUploadImages = () => {
     const tooLarge = files.find((f) => f.size > MAX_BYTES);
     if (tooLarge) {
       setError(
-        `File ${tooLarge.name} is too large (max ${humanSize(MAX_BYTES)})`
+        `File ${tooLarge.name} is too large (max ${humanSize(MAX_BYTES)})`,
       );
       return;
     }
@@ -218,7 +218,7 @@ const BulkUploadImages = () => {
           Bulk Upload Product Images (For First Time Upload)
         </h2>
 
-        <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+        <div className="py-6 px-0 sm:p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           {isLoading ? (
             <p>Loading companies...</p>
           ) : (
@@ -297,7 +297,7 @@ const BulkUploadImages = () => {
                   },
                   renderValue: (selected) => {
                     const company = filteredCompanies.find(
-                      (c) => c._id === selected
+                      (c) => c._id === selected,
                     );
                     return company ? company.companyName : "";
                   },
@@ -321,7 +321,7 @@ const BulkUploadImages = () => {
                   .filter((c) =>
                     c.companyName
                       .toLowerCase()
-                      .includes(searchTerm.toLowerCase())
+                      .includes(searchTerm.toLowerCase()),
                   )
                   .map((c) => (
                     <MenuItem key={c._id} value={c._id}>

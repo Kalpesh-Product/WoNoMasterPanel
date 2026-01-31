@@ -21,7 +21,7 @@ const TabLayout = ({
   // 🧠 Filter tabs based on permissions
   const filteredTabs = useMemo(() => {
     return tabs.filter(
-      (tab) => !tab.permission || userPermissions.includes(tab.permission)
+      (tab) => !tab.permission || userPermissions.includes(tab.permission),
     );
   }, [tabs, userPermissions]);
 
@@ -37,7 +37,7 @@ const TabLayout = ({
   }, [location, navigate, basePath, defaultTabPath, filteredTabs]); // 🆕
 
   const activeTab = filteredTabs.findIndex((tab) =>
-    location.pathname.includes(tab.path)
+    location.pathname.includes(tab.path),
   ); // 🆕 use filteredTabs
   const tabPercent = 100 / filteredTabs.length; // 🆕
 
@@ -46,11 +46,12 @@ const TabLayout = ({
     !hideTabsOnPaths.some((path) => location.pathname.includes(path));
 
   return (
-    <div className="p-4">
+    <div className="p-4 lg:w-[80vw]">
       {showTabs && (
         <Tabs
           value={activeTab}
-          variant={isMobile ? "scrollable" : "fullWidth"}
+          // variant={isMobile ? "scrollable" : "fullWidth"}
+          variant={isMobile ? "scrollable" : "scrollable"}
           scrollButtons={isMobile ? "auto" : false}
           TabIndicatorProps={{ style: { display: "none" } }}
           sx={{
@@ -74,7 +75,7 @@ const TabLayout = ({
           {filteredTabs.map(
             (
               tab,
-              index // 🆕 use filteredTabs
+              index, // 🆕 use filteredTabs
             ) => (
               <NavLink
                 key={index}
@@ -87,12 +88,13 @@ const TabLayout = ({
                   padding: "12px 16px",
                   display: "block",
                   backgroundColor: isActive ? "#1E3D73" : "white",
-                  minWidth: isMobile ? "70%" : `${tabPercent}%`,
+                  // minWidth: isMobile ? "70%" : `${tabPercent}%`,
+                  minWidth: isMobile ? "70%" : "30%",
                 })}
               >
                 {tab.label}
               </NavLink>
-            )
+            ),
           )}
         </Tabs>
       )}

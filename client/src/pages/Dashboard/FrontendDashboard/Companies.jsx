@@ -34,7 +34,7 @@ const Companies = () => {
         return response.data; // backend should return an array of companies
       } catch (error) {
         throw new Error(
-          error.response?.data?.message || "Failed to fetch companies"
+          error.response?.data?.message || "Failed to fetch companies",
         );
       }
     },
@@ -81,10 +81,11 @@ const Companies = () => {
                       companyId: params.data.companyId,
                       companyName: params.data.companyName,
                     },
-                  }
+                  },
                 );
               }}
-              className="text-blue-600 hover:underline cursor-pointer">
+              className="text-blue-600 hover:underline cursor-pointer"
+            >
               {params.value}
             </span>
           );
@@ -130,7 +131,7 @@ const Companies = () => {
         },
       },
     ],
-    [navigate]
+    [navigate],
   );
 
   // ✅ sort companies: Active first, then Inactive
@@ -156,6 +157,8 @@ const Companies = () => {
           tableHeight={500}
           buttonTitle={"Add Company"}
           handleClick={() => navigate("add-company")}
+          filterExcludeColumns={["logo"]}
+          loading={isLoading}
         />
       </PageFrame>
     </div>

@@ -162,6 +162,10 @@ import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/Bu
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
 import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkReuploadImages";
 import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
+import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
+import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
+import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
+import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
 
 export const routes = createBrowserRouter([
   {
@@ -191,6 +195,24 @@ export const routes = createBrowserRouter([
                   {
                     path: "all-leads",
                     element: <AllLeads />,
+                    children: [
+                      {
+                        path: "all-enquiry",
+                        element: <AllEnquiryTable />,
+                      },
+                      {
+                        path: "all-poc-contact",
+                        element: <AllPOCContactTable />,
+                      },
+                      {
+                        path: "connect-with-us",
+                        element: <ConnectWithUsTable />,
+                      },
+                      {
+                        path: "job-applications",
+                        element: <JobApplicationsTable />,
+                      },
+                    ],
                   },
                   {
                     path: "access-tree",

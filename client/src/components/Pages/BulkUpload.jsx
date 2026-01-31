@@ -23,7 +23,7 @@ export default function BulkUpload() {
   const [modalMode, setModalMode] = useState("");
 
   const departmentFilter = bulkInsertRoutes?.find(
-    (item) => item.department === deptDetails?._id
+    (item) => item.department === deptDetails?._id,
   );
   const departmentDrop = departmentFilter?.bulkInsertRoutes;
   console.log("drops : ", departmentDrop);
@@ -33,7 +33,7 @@ export default function BulkUpload() {
       queryKey: ["department-templates"],
       queryFn: async () => {
         const response = await axios.get(
-          `/api/company/department-templates/${deptDetails._id}`
+          `/api/company/department-templates/${deptDetails._id}`,
         );
         return response.data;
       },
@@ -52,9 +52,8 @@ export default function BulkUpload() {
   });
   const selectedDoc = watch("documentName");
   const selectedTemplate = departmentDrop?.find(
-    (item) => item.route === selectedDoc
+    (item) => item.route === selectedDoc,
   );
-
 
   const { mutate: uploadDocument, isPending: isUploading } = useMutation({
     mutationFn: async ({ file, documentName }) => {
@@ -162,6 +161,7 @@ export default function BulkUpload() {
             setModalMode("add");
             setOpenModal(true);
           }}
+          loading={isTemplatesPending}
         />
       </PageFrame>
       <MuiModal

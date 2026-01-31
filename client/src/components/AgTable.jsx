@@ -39,6 +39,8 @@ const AgTableComponent = React.memo(
     hideTitle,
     tableRef,
     onSelectionChange,
+    filterExcludeColumns = [],
+    loading = false,
   }) => {
     const [filteredData, setFilteredData] = useState(data);
     const [searchQuery, setSearchQuery] = useState("");
@@ -46,12 +48,11 @@ const AgTableComponent = React.memo(
     const [appliedFilters, setAppliedFilters] = useState({});
     const [isFilterDrawerOpen, setFilterDrawerOpen] = useState(false);
     const [selectedRows, setSelectedRows] = useState([]); // ✅ Track selected rows
+    const [isSmallScreen, setIsSmallScreen] = useState(false);
     const gridRef = useRef(null);
 
     useEffect(() => {
-      if (data && data.length > 0) {
-        setFilteredData(data);
-      }
+      setFilteredData(data || []);
     }, [data]);
 
     useEffect(() => {
@@ -60,10 +61,34 @@ const AgTableComponent = React.memo(
       }
     }, [gridRef, tableRef]);
 
+    useEffect(() => {
+      const mediaQuery = window.matchMedia("(max-width: 640px)");
+      const handleChange = (event) => {
+        setIsSmallScreen(event.matches);
+      };
+
+      setIsSmallScreen(mediaQuery.matches);
+
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener("change", handleChange);
+      } else {
+        mediaQuery.addListener(handleChange);
+      }
+
+      return () => {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener("change", handleChange);
+        } else {
+          mediaQuery.removeListener(handleChange);
+        }
+      };
+    }, []);
+
     const defaultColDef = {
       resizable: true,
       sortable: true,
       autoHeight: true,
+      ...(isSmallScreen ? { minWidth: 140 } : {}),
     };
 
     // Get unique values for dropdown columns
@@ -84,8 +109,8 @@ const AgTableComponent = React.memo(
       }
       const filtered = data.filter((row) =>
         Object.values(row).some((value) =>
-          value?.toString().toLowerCase().includes(query)
-        )
+          value?.toString().toLowerCase().includes(query),
+        ),
       );
       setFilteredData(filtered);
     };
@@ -97,25 +122,15 @@ const AgTableComponent = React.memo(
       }));
     };
 
-    const removeFilter = (field) => {
-      setAppliedFilters((prev) => {
-        const updatedFilters = { ...prev };
-        delete updatedFilters[field];
-        return updatedFilters;
-      });
-      setFilters((prev) => {
-        const updatedFilters = { ...prev };
-        delete updatedFilters[field];
-        return updatedFilters;
-      });
-      applyFilters();
-    };
-
-    const applyFilters = () => {
-      setAppliedFilters(filters);
+    const applyFilters = (nextFilters = filters) => {
+      if (typeof nextFilters?.preventDefault === "function") {
+        nextFilters.preventDefault();
+        nextFilters = filters;
+      }
+      setAppliedFilters(nextFilters);
       const filtered = data.filter((row) => {
-        return Object.keys(filters).every((field) => {
-          const filterValue = filters[field]?.toLowerCase();
+        return Object.keys(nextFilters).every((field) => {
+          const filterValue = nextFilters[field]?.toLowerCase();
           return (
             !filterValue ||
             row[field]?.toString().toLowerCase().includes(filterValue)
@@ -124,6 +139,13 @@ const AgTableComponent = React.memo(
       });
       setFilteredData(filtered);
       setFilterDrawerOpen(false);
+    };
+
+    const removeFilter = (field) => {
+      const updatedFilters = { ...filters };
+      delete updatedFilters[field];
+      setFilters(updatedFilters);
+      applyFilters(updatedFilters);
     };
 
     const clearFilters = () => {
@@ -141,7 +163,7 @@ const AgTableComponent = React.memo(
           onSelectionChange(rows);
         }
       },
-      [onSelectionChange]
+      [onSelectionChange],
     );
 
     const handleActionClick = () => {
@@ -161,6 +183,19 @@ const AgTableComponent = React.memo(
         ...columns,
       ];
     }, [columns, enableCheckbox, checkAll]);
+
+    const filterableColumns = useMemo(() => {
+      if (!filterExcludeColumns.length) return columns;
+      return columns.filter(
+        (column) => !filterExcludeColumns.includes(column.field),
+      );
+    }, [columns, filterExcludeColumns]);
+
+    const showLoadingMessage =
+      loading && (!filteredData || filteredData.length === 0);
+    const noRowsMessage = showLoadingMessage
+      ? "Loading Data"
+      : "No Rows To Show";
 
     return (
       <div className="border-b-[1px] border-borderGray">
@@ -268,7 +303,7 @@ const AgTableComponent = React.memo(
                 label={`${field}: ${appliedFilters[field]}`}
                 onDelete={() => removeFilter(field)}
               />
-            ) : null
+            ) : null,
           )}
         </div>
 
@@ -277,7 +312,7 @@ const AgTableComponent = React.memo(
           onClose={() => setFilterDrawerOpen(false)}
           title="Advanced Filter"
         >
-          {columns.map((column) =>
+          {filterableColumns.map((column) =>
             dropdownColumns.includes(column.field) ? (
               <TextField
                 key={column.field}
@@ -311,7 +346,7 @@ const AgTableComponent = React.memo(
                   handleFilterChange(column.field, e.target.value)
                 }
               />
-            )
+            ),
           )}
           <div className="flex items-center gap-4 justify-center py-4">
             <PrimaryButton title="Apply Filters" handleSubmit={applyFilters} />
@@ -332,6 +367,7 @@ const AgTableComponent = React.memo(
             rowData={filteredData}
             columnDefs={modifiedColumns} // ✅ Use modified columns with checkboxes
             defaultColDef={defaultColDef}
+            overlayNoRowsTemplate={`<span class="ag-overlay-loading-center">${noRowsMessage}</span>`}
             pagination={false}
             isRowSelectable={isRowSelectable}
             paginationPageSize={paginationPageSize}
@@ -361,7 +397,7 @@ const AgTableComponent = React.memo(
         )} */}
       </div>
     );
-  }
+  },
 );
 
 AgTableComponent.displayName = "AgTable";

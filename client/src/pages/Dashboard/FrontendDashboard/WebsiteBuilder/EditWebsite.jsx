@@ -279,7 +279,7 @@ const EditWebsite = () => {
 
     fd.append(
       "companyLogoId",
-      JSON.stringify(vals.companyLogoExisting?.id ?? null)
+      JSON.stringify(vals.companyLogoExisting?.id ?? null),
     );
     fd.append("products", JSON.stringify(productsMeta));
     fd.append("testimonials", JSON.stringify(testimonialsMeta));
@@ -315,7 +315,7 @@ const EditWebsite = () => {
     // --- Map testimonial image by FINAL index ---
     const existingTestimonials = tpl?.testimonials || [];
     const tIdxById = new Map(
-      existingTestimonials.map((t, i) => [String(t._id), i])
+      existingTestimonials.map((t, i) => [String(t._id), i]),
     );
     const tBaseLen = existingTestimonials.length;
     let tNewCounter = 0;
@@ -363,7 +363,7 @@ const EditWebsite = () => {
           encType="multipart/form-data"
           onSubmit={handleSubmit(onSubmit)}
         >
-          <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4 md:grid md:grid-cols-2">
             {/* HERO / COMPANY */}
             <div>
               <div className="py-4 border-b-default border-borderGray">
@@ -467,7 +467,7 @@ const EditWebsite = () => {
                     queueDelete(
                       "heroImagesExisting",
                       "deletedHeroImageIds",
-                      img
+                      img,
                     )
                   }
                 />
@@ -656,7 +656,7 @@ const EditWebsite = () => {
                           queueDelete(
                             `products.${index}.images`,
                             "deletedProductImages",
-                            img
+                            img,
                           )
                         }
                       />
@@ -711,7 +711,7 @@ const EditWebsite = () => {
                     queueDelete(
                       "galleryExisting",
                       "deletedGalleryImageIds",
-                      img
+                      img,
                     )
                   }
                 />
@@ -864,7 +864,7 @@ const EditWebsite = () => {
                           queueDelete(
                             `testimonials.${index}.image`,
                             "deletedTestimonialImageIds",
-                            img
+                            img,
                           )
                         }
                       />

@@ -106,7 +106,7 @@ const EditNomadListing = () => {
     enabled: !!companyId && !!businessId, // <- changed
     queryFn: async () => {
       const res = await axios.get(
-        `http://wononomads.vercel.app/api/company/get-listings/${companyId}?companyType=${companyType}`
+        `http://wononomads.vercel.app/api/company/get-listings/${companyId}?companyType=${companyType}`,
       );
       const all = Array.isArray(res.data) ? res.data : [];
       return all.find((x) => x.businessId === businessId) || null;
@@ -143,11 +143,11 @@ const EditNomadListing = () => {
     const inclusionsArr = Array.isArray(src.inclusions)
       ? src.inclusions
       : typeof src.inclusions === "string" && src.inclusions.trim()
-      ? src.inclusions
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+        ? src.inclusions
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
 
     reset({
       businessId: src.businessId || businessId || `BIZ_${Date.now()}`,
@@ -207,11 +207,11 @@ const EditNomadListing = () => {
     const inclusionsArr = Array.isArray(values.inclusions)
       ? values.inclusions
       : typeof values.inclusions === "string"
-      ? values.inclusions
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+        ? values.inclusions
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
     fd.set("inclusions", inclusionsArr.join(", "));
 
     // ✅ reviews: rating → starCount
@@ -295,7 +295,13 @@ const EditNomadListing = () => {
             control={control}
             rules={{ required: "Company Type is required" }}
             render={({ field }) => (
-              <TextField {...field} select size="small" label="Company Type">
+              <TextField
+                {...field}
+                select
+                size="small"
+                label="Company Type"
+                className="col-span-2 md:col-span-1"
+              >
                 {/* {companyTypes.map((type) => (
                   <MenuItem key={type} value={type.toLowerCase()}>
                     {type}
@@ -318,7 +324,7 @@ const EditNomadListing = () => {
             name="inclusions"
             control={control}
             render={({ field }) => (
-              <FormControl size="small">
+              <FormControl size="small" className="col-span-2 md:col-span-1">
                 <InputLabel>Inclusions</InputLabel>
                 <Select
                   {...field}
@@ -365,6 +371,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Ratings"
                 type="number"
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -379,6 +386,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Total Reviews"
                 type="number"
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -388,7 +396,12 @@ const EditNomadListing = () => {
             name="latitude"
             control={control}
             render={({ field }) => (
-              <TextField {...field} size="small" label="Latitude" />
+              <TextField
+                {...field}
+                size="small"
+                label="Latitude"
+                className="col-span-2 md:col-span-1"
+              />
             )}
           />
 
@@ -397,7 +410,12 @@ const EditNomadListing = () => {
             name="longitude"
             control={control}
             render={({ field }) => (
-              <TextField {...field} size="small" label="Longitude" />
+              <TextField
+                {...field}
+                size="small"
+                label="Longitude"
+                className="col-span-2 md:col-span-1"
+              />
             )}
           />
 
@@ -414,6 +432,7 @@ const EditNomadListing = () => {
                 multiline
                 minRows={3}
                 fullWidth
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
@@ -432,6 +451,7 @@ const EditNomadListing = () => {
                 multiline
                 minRows={3}
                 fullWidth
+                className="col-span-2 md:col-span-1"
               />
             )}
           />
