@@ -42,6 +42,26 @@ const InactiveWebsites = () => {
       console.error(error);
     },
   });
+
+  const { mutate: softDeleteWebsite } = useMutation({
+    mutationKey: ["softDeleteWebsite"],
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/editor/delete-website", null, {
+        params: {
+          searchKey: data,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "WEBSITE DELETED");
+      queryClient.invalidateQueries({ queryKey: ["inactive-websites"] });
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
+
   const tableData = isPending
     ? []
     : data.map((item) => ({
@@ -91,6 +111,9 @@ const InactiveWebsites = () => {
               },
               {
                 label: "Soft Delete",
+                onClick: () => {
+                  softDeleteWebsite(params.data.searchKey);
+                },
               },
             ]}
           />
