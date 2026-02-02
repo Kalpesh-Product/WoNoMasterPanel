@@ -160,7 +160,7 @@ const Companies = () => {
           tableHeight={500}
           buttonTitle={"Add Company"}
           handleClick={() => navigate("add-company")}
-          filterExcludeColumns={["logo"]}
+          filterExcludeColumns={["logo", "isRegistered"]}
           loading={isLoading}
         />
       </PageFrame>
