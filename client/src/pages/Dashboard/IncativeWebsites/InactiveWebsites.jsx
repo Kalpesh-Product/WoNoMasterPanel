@@ -24,12 +24,13 @@ const InactiveWebsites = () => {
       }
     },
   });
-  const { mutate: markAsActive, isPending: isActivePending } = useMutation({
+  const { mutate: markAsActive } = useMutation({
     mutationKey: ["activateWebsite"],
     mutationFn: async (data) => {
-      console.log("data from label", data);
-      const response = await axios.patch("/api/editor/activate-website", {
-        searchKey: data,
+      const response = await axios.patch("/api/editor/activate-website", null, {
+        params: {
+          searchKey: data,
+        },
       });
       return response.data;
     },
@@ -84,7 +85,7 @@ const InactiveWebsites = () => {
                         website: params.data,
                         isLoading: isPending,
                       },
-                    }
+                    },
                   );
                 },
               },
