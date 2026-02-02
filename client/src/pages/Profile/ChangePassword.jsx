@@ -28,6 +28,9 @@ const ChangePassword = ({ pageTitle }) => {
     }));
     setErrorMessage(""); // Clear errors on input change
     setSuccessMessage(""); // Clear success message on input change
+    if (field === "currentPassword") {
+      setPasswordVerified(false);
+    }
   };
 
   const handlePasswordCheck = async () => {
@@ -42,13 +45,20 @@ const ChangePassword = ({ pageTitle }) => {
         return;
       }
       const response = await axios.patch(
-        `/api/profile/verify-password/${userId}`,
+        `/api/admin/verify-password/${userId}`,
         {
           currentPassword: formData.currentPassword,
         },
       );
-      toast.success(response.data.message);
-      setPasswordVerified(true);
+      if (response.data?.success) {
+        toast.success(response.data.message);
+        setPasswordVerified(true);
+      } else {
+        const message = response.data?.message || "Failed to verify password.";
+        toast.error(message);
+        setErrorMessage(message);
+        setPasswordVerified(false);
+      }
       setErrorMessage("");
     } catch (error) {
       const message =
@@ -90,10 +100,9 @@ const ChangePassword = ({ pageTitle }) => {
       }
 
       // Simulate password change success
-      await axios.patch(`/api/profile/change-password/${userId}`, {
-        currentPassword: formData.currentPassword,
+      await axios.patch(`/api/admin/change-password/${userId}`, {
+        oldPassword: formData.currentPassword,
         newPassword: formData.newPassword,
-        confirmPassword: formData.confirmPassword,
       });
       setSuccessMessage("Password changed successfully!");
       setFormData({
