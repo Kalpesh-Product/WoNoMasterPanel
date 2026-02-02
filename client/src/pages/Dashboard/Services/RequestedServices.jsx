@@ -85,16 +85,19 @@ const RequestedServices = () => {
         headerName: "Logo",
         width: 80,
         minWidth: isPhone ? 80 : undefined,
-        cellRenderer: (params) =>
-          params.value ? (
+        cellRenderer: (params) => {
+          const logoUrl =
+            typeof params.value === "string" ? params.value : params.value?.url;
+          return logoUrl ? (
             <img
-              src={params.value}
+              src={logoUrl}
               alt="logo"
               className="h-10 w-10 object-contain rounded"
             />
           ) : (
             "-"
-          ),
+          );
+        },
       },
       {
         field: "companyName",

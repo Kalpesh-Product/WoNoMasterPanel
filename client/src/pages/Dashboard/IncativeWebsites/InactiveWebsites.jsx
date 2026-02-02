@@ -24,12 +24,13 @@ const InactiveWebsites = () => {
       }
     },
   });
-  const { mutate: markAsActive, isPending: isActivePending } = useMutation({
+  const { mutate: markAsActive } = useMutation({
     mutationKey: ["activateWebsite"],
     mutationFn: async (data) => {
-      console.log("data from label", data);
-      const response = await axios.patch("/api/editor/activate-website", {
-        searchKey: data,
+      const response = await axios.patch("/api/editor/activate-website", null, {
+        params: {
+          searchKey: data,
+        },
       });
       return response.data;
     },
@@ -41,11 +42,33 @@ const InactiveWebsites = () => {
       console.error(error);
     },
   });
+
+  const { mutate: softDeleteWebsite } = useMutation({
+    mutationKey: ["softDeleteWebsite"],
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/editor/delete-website", null, {
+        params: {
+          searchKey: data,
+        },
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "WEBSITE DELETED");
+      queryClient.invalidateQueries({ queryKey: ["inactive-websites"] });
+    },
+    onError: (error) => {
+      console.error(error);
+    },
+  });
+
   const tableData = isPending
     ? []
-    : data.map((item) => ({
-        ...item,
-      }));
+    : data
+        .filter((item) => item.isDeleted !== true)
+        .map((item) => ({
+          ...item,
+        }));
 
   const tableColumns = [
     { headerName: "SrNo", field: "srNo", flex: 1 },
@@ -84,12 +107,15 @@ const InactiveWebsites = () => {
                         website: params.data,
                         isLoading: isPending,
                       },
-                    }
+                    },
                   );
                 },
               },
               {
                 label: "Soft Delete",
+                onClick: () => {
+                  softDeleteWebsite(params.data.searchKey);
+                },
               },
             ]}
           />

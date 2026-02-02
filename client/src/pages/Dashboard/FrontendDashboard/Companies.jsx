@@ -47,16 +47,19 @@ const Companies = () => {
         field: "logo",
         headerName: "Logo",
         width: 80,
-        cellRenderer: (params) =>
-          params.value ? (
+        cellRenderer: (params) => {
+          const logoUrl =
+            typeof params.value === "string" ? params.value : params.value?.url;
+          return logoUrl ? (
             <img
-              src={params.value}
+              src={logoUrl}
               alt="logo"
               className="h-10 w-10 object-contain rounded"
             />
           ) : (
             "-"
-          ),
+          );
+        },
       },
       {
         field: "companyName",
@@ -96,10 +99,7 @@ const Companies = () => {
         field: "location",
         headerName: "Location",
         flex: 1,
-        valueGetter: (params) =>
-          `${params.data.companyCity || ""}, ${
-            params.data.companyCountry || ""
-          }`,
+        cellRenderer: (params) => params.value || "-",
       },
       {
         field: "isRegistered",
@@ -142,6 +142,15 @@ const Companies = () => {
     });
   }, [companies]);
 
+  const displayCompanies = useMemo(() => {
+    return sortedCompanies.map((company) => ({
+      ...company,
+      location: [company.companyCity, company.companyCountry]
+        .filter(Boolean)
+        .join(", "),
+    }));
+  }, [sortedCompanies]);
+
   if (isLoading) return <div className="p-6">Loading companies…</div>;
   if (isError)
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -150,14 +159,14 @@ const Companies = () => {
     <div className="p-4">
       <PageFrame>
         <AgTable
-          data={sortedCompanies}
+          data={displayCompanies}
           columns={columns}
           search={true}
           tableTitle={"Companies"}
           tableHeight={500}
           buttonTitle={"Add Company"}
           handleClick={() => navigate("add-company")}
-          filterExcludeColumns={["logo"]}
+          filterExcludeColumns={["logo", "isRegistered"]}
           loading={isLoading}
         />
       </PageFrame>
