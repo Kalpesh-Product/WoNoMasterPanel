@@ -99,10 +99,7 @@ const Companies = () => {
         field: "location",
         headerName: "Location",
         flex: 1,
-        valueGetter: (params) =>
-          `${params.data.companyCity || ""}, ${
-            params.data.companyCountry || ""
-          }`,
+        cellRenderer: (params) => params.value || "-",
       },
       {
         field: "isRegistered",
@@ -145,6 +142,15 @@ const Companies = () => {
     });
   }, [companies]);
 
+  const displayCompanies = useMemo(() => {
+    return sortedCompanies.map((company) => ({
+      ...company,
+      location: [company.companyCity, company.companyCountry]
+        .filter(Boolean)
+        .join(", "),
+    }));
+  }, [sortedCompanies]);
+
   if (isLoading) return <div className="p-6">Loading companies…</div>;
   if (isError)
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -153,7 +159,7 @@ const Companies = () => {
     <div className="p-4">
       <PageFrame>
         <AgTable
-          data={sortedCompanies}
+          data={displayCompanies}
           columns={columns}
           search={true}
           tableTitle={"Companies"}
