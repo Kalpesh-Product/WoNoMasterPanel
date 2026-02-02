@@ -64,9 +64,11 @@ const InactiveWebsites = () => {
 
   const tableData = isPending
     ? []
-    : data.map((item) => ({
-        ...item,
-      }));
+    : data
+        .filter((item) => item.isDeleted !== true)
+        .map((item) => ({
+          ...item,
+        }));
 
   const tableColumns = [
     { headerName: "SrNo", field: "srNo", flex: 1 },
