@@ -90,7 +90,7 @@ const hostCompanySchema = new mongoose.Schema(
       },
     },
     logo: {
-      type: String,
+      type: { url: String, id: String },
     },
     isRegistered: {
       type: Boolean,
@@ -101,7 +101,7 @@ const hostCompanySchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const HostCompany = mongoose.model("HostCompany", hostCompanySchema);

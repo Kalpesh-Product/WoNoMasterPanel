@@ -41,6 +41,47 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const verifyPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { currentPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is required.",
+      });
+    }
+
+    const user = await AdminUser.findById(userId).select("+password");
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect current password.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Password verified.",
+    });
+  } catch (error) {
+    console.error("Password Verification Error:", error);
+    res.status(400).json({
+      success: false,
+      message: error.message || "Failed to verify password.",
+    });
+  }
+};
+
 const changePassword = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -52,6 +93,38 @@ const changePassword = async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    if (newPassword.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 8 characters long" });
+    }
+    if (newPassword.length > 72) {
+      return res
+        .status(400)
+        .json({ message: "Password cannot exceed 72 characters" });
+    }
+
+    // must contain at least one lowercase and one uppercase letter
+    const hasUpperAndLower = /(?=.*[a-z])(?=.*[A-Z])/;
+
+    // must contain at least one number OR one special character
+    const hasNumberOrSpecial = /(?=.*[\d\W])/;
+
+    if (!hasUpperAndLower.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must include both uppercase and lowercase letters.",
+      });
+    }
+
+    if (!hasNumberOrSpecial.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Password must include at least one number or special character.",
+      });
     }
 
     if (!oldPassword || !newPassword) {
@@ -181,7 +254,7 @@ const bulkUploadImages = async (req, res) => {
     const response = await axios.post(
       `${NOMADS_BASE}/company/bulk-add-company-images`,
       formData,
-      { headers: formData.getHeaders() }
+      { headers: formData.getHeaders() },
     );
 
     return res.status(200).json({
@@ -231,7 +304,7 @@ const bulkReuploadImages = async (req, res) => {
     const response = await axios.patch(
       `${NOMADS_BASE}/company/bulk-edit-company-images`,
       formData,
-      { headers: formData.getHeaders() }
+      { headers: formData.getHeaders() },
     );
 
     return res.status(200).json({
@@ -280,7 +353,7 @@ const uploadCompanyLogo = async (req, res) => {
     const response = await axios.post(
       `${NOMADS_BASE}/company/add-company-image`,
       formData,
-      { headers: formData.getHeaders() }
+      { headers: formData.getHeaders() },
     );
 
     return res.status(200).json({
@@ -299,6 +372,7 @@ const uploadCompanyLogo = async (req, res) => {
 
 module.exports = {
   updateProfile,
+  verifyPassword,
   changePassword,
   bulkUploadData,
   bulkUploadImages,
