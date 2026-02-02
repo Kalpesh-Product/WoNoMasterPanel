@@ -10,6 +10,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["blogs"];
 const TYPE_MAP = {
+  // api: "http://localhost:3000/api/blogs/bulk-insert-blogs",
   api: "https://wononomadsbe.vercel.app/api/blogs/bulk-insert-blogs",
   formKey: "blog-file",
 };
@@ -67,7 +68,7 @@ const BlogUpload = () => {
 
     quickPeek(f).then(
       (ok) =>
-        !ok && setError("This doesn’t look like a CSV (no commas in header).")
+        !ok && setError("This doesn’t look like a CSV (no commas in header)."),
     );
   }
 
@@ -138,7 +139,8 @@ const BlogUpload = () => {
           />
           <div
             className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-            onClick={() => inputRef.current?.click()}>
+            onClick={() => inputRef.current?.click()}
+          >
             <p className="font-medium">
               {file ? "Change file" : "Upload your CSV here (click to browse)"}
             </p>
