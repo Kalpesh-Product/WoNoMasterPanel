@@ -19,7 +19,8 @@ const BreadCrumbComponent = () => {
       : location.pathname
           .split("/")
           .filter(
-            (segment) => segment && segment !== "app" && segment !== "dashboard"
+            (segment) =>
+              segment && segment !== "app" && segment !== "dashboard",
           );
 
   // Generate breadcrumb links
@@ -36,7 +37,8 @@ const BreadCrumbComponent = () => {
     // Capitalize for display
     const displayText = decodeURIComponent(segment)
       .replace(/-/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+      .replace(/\bPoc\b/g, "POC");
 
     return isLast ? (
       <Typography key={index} color="text.primary">
@@ -60,7 +62,7 @@ const BreadCrumbComponent = () => {
     breadcrumbs.push(
       <Typography key={`param-${index}`} color="text.primary">
         {`${value}`}
-      </Typography>
+      </Typography>,
     );
   });
 
