@@ -479,7 +479,7 @@ const EditWebsite = () => {
                     <UploadMultipleFilesInput
                       {...field}
                       name="heroImages"
-                      label="Add Carousel Images (max 5)"
+                      label="Add Carousel Images"
                       maxFiles={5}
                       allowedExtensions={["jpg", "jpeg", "png", "webp", "pdf"]}
                       id="heroImages"
@@ -735,7 +735,7 @@ const EditWebsite = () => {
                       {...field}
                       name="gallery"
                       label="Add Gallery Images"
-                      maxFiles={45}
+                      maxFiles={40}
                       allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
                       id="gallery"
                     />
@@ -918,17 +918,17 @@ const EditWebsite = () => {
                 <Controller
                   name="mapUrl"
                   control={control}
-                  rules={{
-                    required: "Map URL is required",
-                    validate: (val) => {
-                      const rgx =
-                        /^https?:\/\/(www\.)?(google\.com|maps\.google\.com)\/maps\/embed/i;
-                      const v = (val || "").trim();
-                      return (
-                        rgx.test(v) || "Enter a valid Google Maps embed URL"
-                      );
-                    },
-                  }}
+                  // rules={{
+                  //   // required: "Map URL is required",
+                  //   validate: (val) => {
+                  //     const rgx =
+                  //       /^https?:\/\/(www\.)?(google\.com|maps\.google\.com)\/maps\/embed/i;
+                  //     const v = (val || "").trim();
+                  //     return (
+                  //       rgx.test(v) || "Enter a valid Google Maps embed URL"
+                  //     );
+                  //   },
+                  // }}
                   render={({ field }) => (
                     <TextField
                       {...field}
@@ -1018,7 +1018,7 @@ const EditWebsite = () => {
                 <Controller
                   name="copyrightText"
                   control={control}
-                  rules={{ required: "Copyright text is required" }}
+                  // rules={{ required: "Copyright text is required" }}
                   render={({ field }) => (
                     <TextField
                       {...field}
