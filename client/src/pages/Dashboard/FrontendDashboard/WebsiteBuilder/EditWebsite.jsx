@@ -38,6 +38,15 @@ const defaultTestimonial = {
 
 const fileUrl = (file) => (file ? URL.createObjectURL(file) : "");
 
+const hasExceededMax = (existingCount, newCount, max) =>
+  existingCount + newCount > max;
+const renderMaxLimitError = (existingCount, newCount, max) =>
+  hasExceededMax(existingCount, newCount, max) ? (
+    <p className="text-xs text-red-600 mt-1">
+      The images uploaded are more than the max limit.
+    </p>
+  ) : null;
+
 const EditWebsite = () => {
   const axios = useAxiosPrivate();
   const { state } = useLocation();
@@ -476,14 +485,27 @@ const EditWebsite = () => {
                   name="heroImages"
                   control={control}
                   render={({ field }) => (
-                    <UploadMultipleFilesInput
-                      {...field}
-                      name="heroImages"
-                      label="Add Carousel Images"
-                      maxFiles={5}
-                      allowedExtensions={["jpg", "jpeg", "png", "webp", "pdf"]}
-                      id="heroImages"
-                    />
+                    <>
+                      <UploadMultipleFilesInput
+                        {...field}
+                        name="heroImages"
+                        label="Add Carousel Images"
+                        maxFiles={5}
+                        allowedExtensions={[
+                          "jpg",
+                          "jpeg",
+                          "png",
+                          "webp",
+                          "pdf",
+                        ]}
+                        id="heroImages"
+                      />
+                      {renderMaxLimitError(
+                        values.heroImagesExisting?.length || 0,
+                        values.heroImages?.length || 0,
+                        5,
+                      )}
+                    </>
                   )}
                 />
               </div>
@@ -665,19 +687,26 @@ const EditWebsite = () => {
                         name={`products.${index}.files`}
                         control={control}
                         render={({ field }) => (
-                          <UploadMultipleFilesInput
-                            {...field}
-                            label="Add Product Images"
-                            maxFiles={10}
-                            allowedExtensions={[
-                              "jpg",
-                              "jpeg",
-                              "png",
-                              "webp",
-                              "pdf",
-                            ]}
-                            id={`products.${index}.files`}
-                          />
+                          <>
+                            <UploadMultipleFilesInput
+                              {...field}
+                              label="Add Product Images"
+                              maxFiles={10}
+                              allowedExtensions={[
+                                "jpg",
+                                "jpeg",
+                                "png",
+                                "webp",
+                                "pdf",
+                              ]}
+                              id={`products.${index}.files`}
+                            />
+                            {renderMaxLimitError(
+                              values?.products?.[index]?.images?.length || 0,
+                              values?.products?.[index]?.files?.length || 0,
+                              10,
+                            )}
+                          </>
                         )}
                       />
                     </div>
@@ -731,14 +760,27 @@ const EditWebsite = () => {
                   name="gallery"
                   control={control}
                   render={({ field }) => (
-                    <UploadMultipleFilesInput
-                      {...field}
-                      name="gallery"
-                      label="Add Gallery Images"
-                      maxFiles={40}
-                      allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
-                      id="gallery"
-                    />
+                    <>
+                      <UploadMultipleFilesInput
+                        {...field}
+                        name="gallery"
+                        label="Add Gallery Images"
+                        maxFiles={40}
+                        allowedExtensions={[
+                          "jpg",
+                          "jpeg",
+                          "png",
+                          "pdf",
+                          "webp",
+                        ]}
+                        id="gallery"
+                      />
+                      {renderMaxLimitError(
+                        values.galleryExisting?.length || 0,
+                        values.gallery?.length || 0,
+                        40,
+                      )}
+                    </>
                   )}
                 />
               </div>
