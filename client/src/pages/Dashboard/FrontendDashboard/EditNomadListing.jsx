@@ -57,12 +57,15 @@ const EditNomadListing = () => {
   const formRef = useRef(null);
   const location = useLocation();
   const navState = location?.state || {};
-  console.log("navState", navState.website.companyType);
+  console.log("navState", navState.website?.companyType);
 
   // Pull IDs from state or sessionStorage (works after refresh/back)
   const companyId =
     navState.companyId || sessionStorage.getItem("companyId") || "";
-  const companyType = navState.website.companyType || "";
+  const companyType =
+    navState.website?.companyType ||
+    sessionStorage.getItem("companyType") ||
+    "";
   const businessId =
     navState.website?.businessId || sessionStorage.getItem("businessId") || "";
 
@@ -101,12 +104,19 @@ const EditNomadListing = () => {
   // ---- Prefill logic -------------------------------------------------
 
   // 1) Always fetch the full listing (don't gate on navState.website)
+
+  useEffect(() => {
+    if (navState.website?.companyType) {
+      sessionStorage.setItem("companyType", navState.website.companyType);
+    }
+  }, [navState.website?.companyType]);
+
   const { data: fetchedListing } = useQuery({
     queryKey: ["nomad-listing-detail", companyId, businessId],
     enabled: !!companyId && !!businessId, // <- changed
     queryFn: async () => {
       const res = await axios.get(
-        `http://wononomads.vercel.app/api/company/get-listings/${companyId}?companyType=${companyType}`,
+        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}?companyType=${companyType}`,
       );
       const all = Array.isArray(res.data) ? res.data : [];
       return all.find((x) => x.businessId === businessId) || null;
