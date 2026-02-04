@@ -3,24 +3,84 @@ const Employee = require("../../models/hostCompany/employees");
 const HostCompany = require("../../models/hostCompany/hostCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
+const { v4: uuidv4 } = require("uuid");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const TestCompany = require("../../models/hostCompany/testCompany");
+const HostUser = require("../../models/hostCompany/hostUser");
+
+const serviceOptions = [
+  {
+    items: [
+      "tickets",
+      "meetings",
+      "tasks",
+      "performance",
+      "visitors",
+      "assets",
+    ],
+  },
+  {
+    items: ["finance", "sales", "hr", "admin", "maintenance", "it"],
+  },
+  {
+    items: ["websiteBuilder", "leadGeneration", "automatedGoogleSheets"],
+  },
+];
+
+const validApps = new Set(serviceOptions[0].items);
+const validModules = new Set(serviceOptions[1].items);
+const validDefaults = new Set(serviceOptions[2].items);
+
+const validateServices = (selectedServices = {}) => {
+  const errors = [];
+
+  const apps = selectedServices.apps || [];
+  const modules = selectedServices.modules || [];
+  const defaults = selectedServices.defaults || [];
+
+  const invalidApps = apps.filter((a) => !validApps.has(a.appName));
+
+  const invalidModules = modules.filter((m) => !validModules.has(m.moduleName));
+
+  const invalidDefaults = defaults.filter((d) => !validDefaults.has(d.name));
+
+  if (invalidApps.length) {
+    errors.push({
+      type: "apps",
+      invalid: invalidApps.map((a) => a.appName),
+    });
+  }
+
+  if (invalidModules.length) {
+    errors.push({
+      type: "modules",
+      invalid: invalidModules.map((m) => m.moduleName),
+    });
+  }
+
+  if (invalidDefaults.length) {
+    errors.push({
+      type: "defaults",
+      invalid: invalidDefaults.map((d) => d.name),
+    });
+  }
+
+  return errors;
+};
 
 const createCompany = async (req, res, next) => {
   try {
     const payload = req.body;
 
-    const lastCompany = await HostCompany.findOne()
-      .sort({ createdAt: -1 })
-      .lean();
-    let newIdNumber = 1;
+    const lastCompany = await HostCompany.findOne({
+      companyName: payload.companyName,
+    }).lean();
 
-    if (lastCompany && lastCompany?.companyId) {
-      const lastNumber = parseInt(lastCompany.companyId.replace("CMP", ""), 10);
-      newIdNumber = lastNumber + 1;
+    if (lastCompany) {
+      return res.status(400).json({ message: "Company already exists" });
     }
 
-    const companyId = `CMP${String(newIdNumber).padStart(4, "0")}`;
+    // const companyId = `CMP${String(newIdNumber).padStart(4, "0")}`;
 
     const formatCompanyName = (name) => {
       if (!name) return "";
@@ -31,9 +91,32 @@ const createCompany = async (req, res, next) => {
 
     const isWebsiteTemplate = await WebsiteTemplate.findOne({ searchKey });
 
+    const validationErrors = validateServices(payload.selectedServices);
+
+    if (validationErrors.length) {
+      return res.status(400).json({
+        message: "Invalid services provided",
+        errors: validationErrors,
+      });
+    }
+
+    payload.selectedServices?.apps?.forEach((app) => {
+      app.isActive = true;
+    });
+
+    payload.selectedServices?.modules?.forEach((mod) => {
+      mod.isActive = true;
+    });
+
+    payload.selectedServices?.defaults?.forEach((def) => {
+      def.isActive = true;
+    });
+
+    const companyId = uuidv4();
     const companyData = {
       companyId,
       companyName: payload.companyName,
+      registeredEntityName: payload.registeredEntityName,
       industry: payload.industry,
       companySize: payload.companySize,
       companyCity: payload.companyCity,
@@ -45,6 +128,7 @@ const createCompany = async (req, res, next) => {
       selectedServices: payload.selectedServices || [],
       isRegistered: true,
       isWebsiteTemplate: isWebsiteTemplate ? true : false,
+      logo: isWebsiteTemplate ? { url: isWebsiteTemplate.logo, id: "" } : null,
     };
 
     //Store company data in company collection (master panel)
@@ -53,41 +137,51 @@ const createCompany = async (req, res, next) => {
 
     //Store employee in employee collection (master panel)
 
-    const employee = await Employee.findOne({ email: payload.email });
+    const employee = await HostUser.findOne({
+      companyId,
+    });
 
     if (employee) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
-    const newEmployee = new Employee({
-      name: payload.pocName,
+    const employeeObj = {
+      name: payload?.pocName,
       email: payload?.pocEmail,
       phone: payload?.pocPhone,
       linkedInProfile: payload?.pocLinkedInProfile,
-      languages: payload?.pocLanguages || [],
+      languagesSpoken: payload?.pocLanguages || [],
       address: payload?.pocAddress,
       profileImage: payload?.pocProfileImage,
       designation: payload?.pocDesignation,
       isActive: payload?.isActive ?? true,
-      company: savedCompany._id,
-    });
+      company: savedCompany._id.toString(),
+      companyId: companyId,
+    };
+
+    const newEmployee = new HostUser(employeeObj);
 
     await newEmployee.save();
 
     //Store POC data in poc collection (nomads)
-    await axios.post("https://wononomadsbe.vercel.app/api/poc/create-poc", {
-      companyId: companyId,
-      name: payload?.pocName,
-      designation: payload?.pocDesignation,
-      email: payload?.pocEmail,
-      phone: payload?.pocPhone,
-      linkedInProfile: payload?.pocLinkedInProfile,
-      languages: payload?.pocLanguages || [],
-      address: payload?.pocAddress,
-      profileImage: payload?.pocProfileImage,
-      isActive: payload?.isActive ?? true,
-      availibilityTime: payload?.pocAvailabilityTime,
-    });
+
+    try {
+      // await axios.post(
+      //   "https://wononomadsbe.vercel.app/api/poc/create-poc",
+      //   employeeObj,
+      // );
+
+      await axios.post("http://localhost:3000/api/poc/create-poc", employeeObj);
+    } catch (err) {
+      console.error(
+        "❌ Remote update failed:",
+        err.response?.data || err.message,
+      );
+      //Remote company update failed
+      return res.status(err.response?.status || 500).json({
+        message: err.response?.data.message || err.message,
+      });
+    }
 
     return res.status(201).json({
       message: "Company created successfully",
@@ -96,25 +190,6 @@ const createCompany = async (req, res, next) => {
     next(error);
   }
 };
-
-const serviceOptions = [
-  {
-    items: [
-      "Tickets",
-      "Meetings",
-      "Tasks",
-      "Performance",
-      "Visitors",
-      "Assets",
-    ],
-  },
-  {
-    items: ["Finance", "Sales", "HR", "Admin", "Maintenance", "IT"],
-  },
-];
-
-const validApps = new Set(serviceOptions[0].items);
-const validModules = new Set(serviceOptions[1].items);
 
 const updateServices = async (req, res, next) => {
   try {
@@ -180,7 +255,7 @@ const activateProduct = async (req, res, next) => {
       {
         businessId,
         status,
-      }
+      },
     );
 
     if (response.status !== 200) {
@@ -243,7 +318,7 @@ const uploadLogo = async (req, res, next) => {
     const updatedCompany = await HostCompany.findOneAndUpdate(
       { companyId },
       { $set: { logo: logo.trim() } },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedCompany) {
@@ -453,22 +528,22 @@ const bulkInsertCompanies = async (req, res, next) => {
     const companies = [];
 
     // Get the last company ID
-    const lastCompany = await HostCompany.findOne()
-      .sort({ companyId: -1 })
-      .select("companyId");
+    // const lastCompany = await HostCompany.findOne()
+    //   .sort({ companyId: -1 })
+    //   .select("companyId");
 
-    let newId = 1;
-    if (lastCompany && lastCompany.companyId) {
-      const numericPart = parseInt(
-        lastCompany.companyId.replace("CMP", ""),
-        10
-      );
-      newId = numericPart + 1;
-    }
+    // let newId = 1;
+    // if (lastCompany && lastCompany.companyId) {
+    //   const numericPart = parseInt(
+    //     lastCompany.companyId.replace("CMP", ""),
+    //     10,
+    //   );
+    //   newId = numericPart + 1;
+    // }
 
     // Fetch existing companies from DB to check for duplicates
     const existingCompanies = await HostCompany.find().select(
-      "companyName companyCity companyState companyCountry"
+      "companyName companyCity companyState companyCountry",
     );
 
     // Create a Set of composite keys for existing companies
@@ -479,8 +554,8 @@ const bulkInsertCompanies = async (req, res, next) => {
             ?.trim()
             .toLowerCase()}|${c.companyState
             ?.trim()
-            .toLowerCase()}|${c.companyCountry?.trim().toLowerCase()}`
-      )
+            .toLowerCase()}|${c.companyCountry?.trim().toLowerCase()}`,
+      ),
     );
 
     // Parse CSV
@@ -488,7 +563,9 @@ const bulkInsertCompanies = async (req, res, next) => {
     stream
       .pipe(csvParser())
       .on("data", (row) => {
-        const companyId = `CMP${String(newId).padStart(4, "0")}`;
+        // const companyId = `CMP${String(newId).padStart(4, "0")}`;
+        const companyId = uuidv4();
+
         const company = {
           companyId,
           companyName: row["Business Name"]?.trim(),
@@ -501,7 +578,7 @@ const bulkInsertCompanies = async (req, res, next) => {
           companyContinent: row["Continent"]?.trim(),
           companySize: row["Total Seats"]?.trim(),
         };
-        newId++;
+        // newId++;
         companies.push(company);
       })
       .on("end", async () => {
@@ -614,7 +691,7 @@ const bulkInsertLogos = async (req, res, next) => {
 
     //fetch companies from master panel
     const productCompanies = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies"
+      "https://wononomadsbe.vercel.app/api/company/companies",
     );
 
     const companyMap = new Map();

@@ -23,7 +23,7 @@ const {
 router.post(
   "/bulk-insert-companies",
   upload.single("companies"),
-  bulkInsertCompanies
+  bulkInsertCompanies,
 );
 // router.patch("/bulk-insert-logos", upload.single("logos"), bulkInsertLogos);
 router.post("/onboard-company", createCompany);
