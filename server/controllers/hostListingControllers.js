@@ -93,14 +93,14 @@ const createCompanyListing = async (req, res) => {
         const results = await Promise.allSettled(
           imageFiles.map((file, i) => {
             const uniqueKey = `${folderPath}/images/${sanitizeFileName(
-              file.originalname
+              file.originalname,
             )}`;
             return uploadFileToS3(uniqueKey, file).then((data) => ({
               url: data.url,
               id: data.id,
               index: startIndex + i + 1,
             }));
-          })
+          }),
         );
 
         const successes = results
@@ -113,7 +113,7 @@ const createCompanyListing = async (req, res) => {
     try {
       const response = await axios.post(
         "https://wononomadsbe.vercel.app/api/company/create-company",
-        listingData
+        listingData,
       );
 
       if (response.status !== 201) {
@@ -213,15 +213,13 @@ const editCompanyListing = async (req, res) => {
             const key = `${folderPath}/images/${sanitize(file.originalname)}`;
             const data = await uploadFileToS3(key, file);
             return { url: data.url, id: data.id };
-          })
+          }),
         );
 
         const uploaded = results
           .filter((r) => r.status === "fulfilled")
           .map((r) => r.value);
         updateData.images.push(...uploaded);
-
-        console.log("✅ Total images after upload:", updateData.images.length);
       }
     }
 
@@ -229,13 +227,12 @@ const editCompanyListing = async (req, res) => {
     try {
       const response = await axios.patch(
         "https://wononomadsbe.vercel.app/api/company/update-company",
-        updateData
+        updateData,
       );
-      console.log("✅ Remote update success:", response.data);
     } catch (err) {
       console.error(
         "❌ Remote update failed:",
-        err.response?.data || err.message
+        err.response?.data || err.message,
       );
 
       // If remote update fails, delete the newly uploaded images to maintain consistency
@@ -243,13 +240,13 @@ const editCompanyListing = async (req, res) => {
         const imageFiles = req.files.filter((f) => f.fieldname === "images");
         if (imageFiles.length) {
           console.log(
-            "🧹 Cleaning up newly uploaded images due to remote failure..."
+            "🧹 Cleaning up newly uploaded images due to remote failure...",
           );
           const newlyUploadedUrls = updateData.images.slice(
-            existingImages.length
+            existingImages.length,
           );
           await Promise.allSettled(
-            newlyUploadedUrls.map((img) => deleteFileFromS3ByUrl(img.url))
+            newlyUploadedUrls.map((img) => deleteFileFromS3ByUrl(img.url)),
           );
         }
       }
@@ -276,7 +273,7 @@ const editCompanyListing = async (req, res) => {
 const getAllCompanyListings = async (req, res) => {
   try {
     const response = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies"
+      "https://wononomadsbe.vercel.app/api/company/companies",
     );
 
     if (!response.data) {
@@ -292,7 +289,7 @@ const getAllCompanyListings = async (req, res) => {
 const getCompanyListings = async (req, res) => {
   try {
     const response = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies"
+      "https://wononomadsbe.vercel.app/api/company/companies",
     );
 
     if (!response.data) {
