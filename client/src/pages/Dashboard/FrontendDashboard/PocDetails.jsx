@@ -4,7 +4,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
-import { Avatar, TextField } from "@mui/material";
+import { Avatar, CircularProgress, TextField } from "@mui/material";
 
 // ---------- UI helpers ----------
 const ReadOnlyField = ({ label, value }) => (
@@ -46,7 +46,7 @@ async function fetchPocAxios(companyId, signal) {
   try {
     const res = await axios.get(
       `https://wononomadsbe.vercel.app/api/poc/poc?companyId=${companyId}`,
-      { signal }
+      { signal },
     );
     const data = res.data;
     return Array.isArray(data) && data.length ? data[0] : data || null;
@@ -63,11 +63,11 @@ const PocDetails = () => {
 
   // const companyId = getCompanyId(selectedCompany);
 
-  const companyId = selectedCompany.companyId;
+  const companyId = selectedCompany?.companyId;
 
   const pocFromCompany = selectedCompany?.poc || null; // instant fill if present
 
-  const { data: fetchedPoc = null } = useQuery({
+  const { data: fetchedPoc = null, isFetching } = useQuery({
     queryKey: ["pocDetails", companyId],
     // enabled: !!companyId && !pocFromCompany, // skip query if we already have POC in Redux
     enabled: !!companyId,
@@ -85,8 +85,8 @@ const PocDetails = () => {
     (Array.isArray(poc?.languagesSpoken) && poc.languagesSpoken.length
       ? poc.languagesSpoken
       : Array.isArray(poc?.languages) && poc.languages?.length
-      ? poc.languages
-      : []) || [];
+        ? poc.languages
+        : []) || [];
 
   const view = {
     fullName: poc?.name ?? "—",
@@ -103,6 +103,16 @@ const PocDetails = () => {
     languages: languagesArr.length ? languagesArr.join(", ") : "—",
     avatarUrl: poc?.avatarUrl ?? "",
   };
+
+  if (isFetching && !pocFromCompany && !fetchedPoc) {
+    return (
+      <PageFrame>
+        <div className="w-full flex justify-center items-center py-60">
+          <CircularProgress />
+        </div>
+      </PageFrame>
+    );
+  }
 
   return (
     <div className="p-4">
@@ -126,7 +136,8 @@ const PocDetails = () => {
           <div className="flex flex-col md:flex-row md:items-center gap-6 border border-gray-200 rounded-xl p-4">
             <Avatar
               src={view.avatarUrl}
-              sx={{ width: 96, height: 96, fontSize: "2rem" }}>
+              sx={{ width: 96, height: 96, fontSize: "2rem" }}
+            >
               {String(view.fullName || "P").charAt(0)}
             </Avatar>
 
