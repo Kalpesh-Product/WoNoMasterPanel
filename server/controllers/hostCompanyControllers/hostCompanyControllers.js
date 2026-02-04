@@ -141,7 +141,6 @@ const createCompany = async (req, res, next) => {
       companyId,
     });
 
-    console.log("employee", employee);
     if (employee) {
       return res.status(400).json({ message: "Email already exists" });
     }
@@ -162,9 +161,8 @@ const createCompany = async (req, res, next) => {
 
     const newEmployee = new HostUser(employeeObj);
 
-    console.log("before saving");
     await newEmployee.save();
-    console.log("after saving");
+
     //Store POC data in poc collection (nomads)
 
     try {
