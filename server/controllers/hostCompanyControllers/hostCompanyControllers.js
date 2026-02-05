@@ -166,12 +166,12 @@ const createCompany = async (req, res, next) => {
     //Store POC data in poc collection (nomads)
 
     try {
-      // await axios.post(
-      //   "https://wononomadsbe.vercel.app/api/poc/create-poc",
-      //   employeeObj,
-      // );
+      await axios.post(
+        "https://wononomadsbe.vercel.app/api/poc/create-poc",
+        employeeObj,
+      );
 
-      await axios.post("http://localhost:3000/api/poc/create-poc", employeeObj);
+      // await axios.post("http://localhost:3000/api/poc/create-poc", employeeObj);
     } catch (err) {
       console.error(
         "❌ Remote update failed:",
@@ -629,14 +629,14 @@ const bulkInsertCompanies = async (req, res, next) => {
           }
 
           // Optional: print duplicate tables in console
-          if (duplicateExistingLogs.length) {
-            console.log("\n=== EXISTING COMPANIES IN DB ===");
-            console.table(duplicateExistingLogs);
-          }
-          if (duplicateCSVLogs.length) {
-            console.log("\n=== DUPLICATES FOUND IN SAME CSV ===");
-            console.table(duplicateCSVLogs);
-          }
+          // if (duplicateExistingLogs.length) {
+          //   console.log("\n=== EXISTING COMPANIES IN DB ===");
+          //   console.table(duplicateExistingLogs);
+          // }
+          // if (duplicateCSVLogs.length) {
+          //   console.log("\n=== DUPLICATES FOUND IN SAME CSV ===");
+          //   console.table(duplicateCSVLogs);
+          // }
 
           const result = await HostCompany.insertMany(uniqueCompanies);
           const insertedCount = result.length;

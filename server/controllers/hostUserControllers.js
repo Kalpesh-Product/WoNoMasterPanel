@@ -195,7 +195,7 @@ const bulkInsertPoc = async (req, res, next) => {
     // Fetch companies
     const companies = await HostCompany.find().lean();
     const companyMap = new Map(
-      companies.map((item) => [item.companyId?.trim(), item._id])
+      companies.map((item) => [item.companyId?.trim(), item._id]),
     );
 
     const missingCompanyRows = [];
@@ -238,11 +238,11 @@ const bulkInsertPoc = async (req, res, next) => {
       inserted = await HostUser.insertMany(finalPocs, { ordered: false });
 
       const successfulKeys = new Set(
-        inserted.map((i) => `${i.email}|${i.companyId}`)
+        inserted.map((i) => `${i.email}|${i.companyId}`),
       );
 
       failedDocs = finalPocs.filter(
-        (doc) => !successfulKeys.has(`${doc.email}|${doc.companyId}`)
+        (doc) => !successfulKeys.has(`${doc.email}|${doc.companyId}`),
       );
     } catch (err) {
       console.error("Insert error:", err);
