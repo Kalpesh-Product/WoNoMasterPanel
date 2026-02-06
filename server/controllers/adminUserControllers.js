@@ -162,8 +162,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
-// const NOMADS_BASE = "http://localhost:3000/api";
+// const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
+const NOMADS_BASE = "http://localhost:3000/api";
 
 const TYPE_MAP = {
   products: {

@@ -426,7 +426,7 @@ const uploadLogo = async (req, res, next) => {
       return res.status(400).json({ message: "company Id is required" });
     }
 
-    if (!logo || typeof logo !== "string" || logo.trim() === "") {
+    if (!logo) {
       return res
         .status(400)
         .json({ message: "Please provide a valid logo string (URL)" });
@@ -434,7 +434,14 @@ const uploadLogo = async (req, res, next) => {
 
     const updatedCompany = await HostCompany.findOneAndUpdate(
       { companyId },
-      { $set: { logo: logo.trim() } },
+      {
+        $set: {
+          logo: {
+            url: logo.url,
+            id: logo.id,
+          },
+        },
+      },
       { new: true },
     );
 
