@@ -12,6 +12,7 @@ const UploadLayout = () => {
     "mehak.wono@gmail.com",
     "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
+    "vishal.wono@gmail.com",
   ];
 
   const tabs = [
@@ -30,7 +31,7 @@ const UploadLayout = () => {
         (tab) =>
           tab.label === "Bulk Upload Images" ||
           tab.label === "Bulk Reupload Images" ||
-          tab.label === "Upload Single Image"
+          tab.label === "Upload Single Image",
       )
     : tabs;
 

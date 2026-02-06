@@ -1,5 +1,5 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -8,6 +8,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import { Chip } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
+import useAuth from "../../../hooks/useAuth";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -21,6 +22,24 @@ const Companies = () => {
   const axiosPrivate = useAxiosPrivate();
   const dispatch = useDispatch();
 
+  const { auth } = useAuth();
+
+  const userEmail = auth?.user?.email;
+  const restrictedEmails = [
+    "shawnsilveira.wono@gmail.com",
+    "mehak.wono@gmail.com",
+    "savita.wono@gmail.com",
+    "gourish.wono@gmail.com",
+    "vishal.wono@gmail.com",
+  ];
+  const isRestrictedUser = restrictedEmails.includes(userEmail);
+
+  useEffect(() => {
+    if (isRestrictedUser) {
+      navigate("/dashboard/data-upload/bulk-upload-images", { replace: true });
+    }
+  }, [isRestrictedUser, navigate]);
+
   // ✅ fetch companies from API
   const {
     data: companies = [],
@@ -28,6 +47,7 @@ const Companies = () => {
     isError,
   } = useQuery({
     queryKey: ["companiesList"],
+    enabled: !isRestrictedUser,
     queryFn: async () => {
       try {
         const response = await axiosPrivate.get("/api/hosts/companies");
