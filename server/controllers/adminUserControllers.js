@@ -4,6 +4,7 @@ const { default: mongoose } = require("mongoose");
 // const { default: axios } = require("axios");
 const axios = require("axios");
 const FormData = require("form-data");
+const HostCompany = require("../models/hostCompany/hostCompany");
 
 const updateProfile = async (req, res) => {
   try {
@@ -426,6 +427,35 @@ const updateReviewStatus = async (req, res, next) => {
   }
 };
 
+const updateRegistrationStatus = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { status } = req.body;
+
+    if (!companyId || typeof status !== "boolean") {
+      return res
+        .status(400)
+        .json({ message: "Missing or invalid required fields" });
+    }
+
+    const updateCompany = await HostCompany.findOneAndUpdate(
+      { companyId },
+      { isRegistered: status },
+      { new: true },
+    ).lean();
+
+    if (!updateCompany) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    return res.status(200).json({
+      message: `Company ${status ? "registered" : "unregistered"} successfully`,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   updateProfile,
   verifyPassword,
@@ -435,4 +465,5 @@ module.exports = {
   bulkReuploadImages,
   uploadCompanyLogo,
   updateReviewStatus,
+  updateRegistrationStatus,
 };
