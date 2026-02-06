@@ -132,6 +132,7 @@ const ChangePassword = ({ pageTitle }) => {
             Change password
           </span>
         </div>
+
         <div>
           {/* Current Password Field */}
           <div className="mb-4 w-full flex flex-col md:flex-row md:justify-start items-start md:items-center gap-2 md:gap-4">
