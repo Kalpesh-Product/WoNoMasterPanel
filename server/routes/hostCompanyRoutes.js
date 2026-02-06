@@ -10,6 +10,7 @@ const {
   activateProduct,
   bulkInsertLogos,
   uploadLogo,
+  editCompany,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -27,6 +28,7 @@ router.post(
 );
 // router.patch("/bulk-insert-logos", upload.single("logos"), bulkInsertLogos);
 router.post("/onboard-company", createCompany);
+router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/update-services", updateServices);
 router.get("/companies", getCompanies);

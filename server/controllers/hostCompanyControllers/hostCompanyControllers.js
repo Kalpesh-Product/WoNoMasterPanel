@@ -7,6 +7,10 @@ const { v4: uuidv4 } = require("uuid");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const TestCompany = require("../../models/hostCompany/testCompany");
 const HostUser = require("../../models/hostCompany/hostUser");
+const {
+  uploadFileToS3,
+  deleteFileFromS3ByUrl,
+} = require("../../config/s3config");
 
 const serviceOptions = [
   {
@@ -185,6 +189,118 @@ const createCompany = async (req, res, next) => {
 
     return res.status(201).json({
       message: "Company created successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const editCompany = async (req, res, next) => {
+  try {
+    const { companyId, selectedServices, ...payload } = JSON.parse(
+      req.body.data,
+    );
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (typeof payload.logo !== "undefined") {
+      return res.status(400).json({
+        message:
+          "Logo URL cannot be edited directly. Please upload logo file in 'logo' field",
+      });
+    }
+
+    const company = await HostCompany.findOne({ companyId });
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    if (
+      payload.companyName &&
+      payload.companyName.trim().toLowerCase() !==
+        company.companyName?.trim().toLowerCase()
+    ) {
+      const existingCompany = await HostCompany.findOne({
+        companyName: payload.companyName,
+        companyId: { $ne: companyId },
+      }).lean();
+
+      if (existingCompany) {
+        return res.status(400).json({ message: "Company already exists" });
+      }
+    }
+
+    if (selectedServices) {
+      const parsedSelectedServices =
+        typeof selectedServices === "string"
+          ? JSON.parse(selectedServices)
+          : selectedServices;
+
+      const validationErrors = validateServices(parsedSelectedServices);
+
+      if (validationErrors.length) {
+        return res.status(400).json({
+          message: "Invalid services provided",
+          errors: validationErrors,
+        });
+      }
+
+      payload.selectedServices = parsedSelectedServices;
+    }
+
+    const updateData = {
+      companyName: payload.companyName,
+      registeredEntityName: payload.registeredEntityName,
+      industry: payload.industry,
+      companySize: payload.companySize,
+      companyCity: payload.companyCity,
+      companyState: payload.companyState,
+      companyCountry: payload.companyCountry,
+      companyContinent: payload.companyContinent,
+      websiteLink: payload.websiteURL ?? payload.websiteLink,
+      linkedinURL: payload.linkedinURL,
+      selectedServices: payload.selectedServices,
+    };
+
+    if (req.file) {
+      const sanitizeFileName = (name) =>
+        String(name || "logo")
+          .replace(/[/\\?%*:|"<>]/g, "_")
+          .replace(/\s+/g, "_");
+
+      const logoKey = `hosts/companies/${payload.companyName.trim()}/logo/${sanitizeFileName(
+        req.file.originalname,
+      )}`;
+
+      const uploadResult = await uploadFileToS3(logoKey, req.file);
+
+      if (company.logo?.url && company.logo.url.includes(".amazonaws.com/")) {
+        await deleteFileFromS3ByUrl(company.logo.url);
+      }
+
+      updateData.logo = {
+        url: uploadResult.url,
+        id: uploadResult.id,
+      };
+    }
+
+    Object.keys(updateData).forEach((key) => {
+      if (typeof updateData[key] === "undefined") {
+        delete updateData[key];
+      }
+    });
+
+    const updatedCompany = await HostCompany.findOneAndUpdate(
+      { companyId },
+      { $set: updateData },
+      { new: true },
+    );
+
+    return res.status(200).json({
+      message: "Company updated successfully",
+      company: updatedCompany,
     });
   } catch (error) {
     next(error);
@@ -767,6 +883,7 @@ const bulkInsertLogos = async (req, res, next) => {
 
 module.exports = {
   createCompany,
+  editCompany,
   activateProduct,
   updateServices,
   getCompanies,
