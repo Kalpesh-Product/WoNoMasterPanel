@@ -3,7 +3,8 @@ const Employee = require("../../models/hostCompany/employees");
 const HostCompany = require("../../models/hostCompany/hostCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
-const { v4: uuidv4 } = require("uuid");
+// const { v4: uuidv4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const TestCompany = require("../../models/hostCompany/testCompany");
 const HostUser = require("../../models/hostCompany/hostUser");
@@ -112,7 +113,7 @@ const createCompany = async (req, res, next) => {
       def.isActive = true;
     });
 
-    const companyId = uuidv4();
+    const companyId = randomUUID();
     const companyData = {
       companyId,
       companyName: payload.companyName,
@@ -564,7 +565,7 @@ const bulkInsertCompanies = async (req, res, next) => {
       .pipe(csvParser())
       .on("data", (row) => {
         // const companyId = `CMP${String(newId).padStart(4, "0")}`;
-        const companyId = uuidv4();
+        const companyId = randomUUID();
 
         const company = {
           companyId,
