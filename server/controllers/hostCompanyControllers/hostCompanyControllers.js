@@ -409,7 +409,7 @@ const getCompany = async (req, res, next) => {
     const company = await HostCompany.findOne({ companyId: companyId });
 
     if (!company) {
-      return res.status(200).json([]);
+      return res.status(200).json({});
     }
 
     return res.status(200).json(company);

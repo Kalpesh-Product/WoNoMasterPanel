@@ -429,9 +429,9 @@ const updateReviewStatus = async (req, res, next) => {
 
 const getReviewsByCompany = async (req, res, next) => {
   try {
-    const { companyId, companyType, status = "" } = req.query;
+    const { companyId, companyType = "", status = "" } = req.query;
 
-    if (!companyId || !companyType) {
+    if (!companyId) {
       return res.status(400).json({
         message: "companyId and companyType are required",
       });
