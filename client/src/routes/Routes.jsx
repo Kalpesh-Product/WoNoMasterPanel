@@ -166,6 +166,7 @@ import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
+import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 
 export const routes = createBrowserRouter([
   {
@@ -324,6 +325,10 @@ export const routes = createBrowserRouter([
                     //     element: <ChangePassword />,
                     //   },
                     // ],
+                  },
+                  {
+                    path: "company-reviews",
+                    element: <CompanyReviews />,
                   },
 
                   {
