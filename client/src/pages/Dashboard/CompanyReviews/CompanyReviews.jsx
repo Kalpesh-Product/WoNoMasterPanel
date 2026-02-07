@@ -29,7 +29,9 @@ const CompanyReviews = () => {
         `${reviewAdminApiBaseUrl}/api/admin/reviews?companyId=${selectedCompany?.companyId}&companyType=meetingroom&status=approved`,
         { headers: { "Cache-Control": "no-cache" } },
       );
-      const reviews = response?.data?.data ?? response?.data;
+      const payload = response?.data;
+      const reviews =
+        payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
       return Array.isArray(reviews) ? reviews : [];
     },
   });
@@ -70,7 +72,10 @@ const CompanyReviews = () => {
       field: "rating",
       headerName: "Rating",
       valueGetter: (params) =>
-        params.data.rating ?? params.data.ratingValue ?? "-",
+        params.data.rating ??
+        params.data.ratingValue ??
+        params.data.starCount ??
+        "-",
     },
     {
       field: "status",
