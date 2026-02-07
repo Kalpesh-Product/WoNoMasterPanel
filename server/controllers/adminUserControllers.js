@@ -394,15 +394,15 @@ const updateReviewStatus = async (req, res, next) => {
 
     let response = {};
     try {
-      const response = await axios.post(
-        `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
-        data,
-      );
-
-      // response = await axios.patch(
-      //   `http://localhost:3000/api/review/${reviewId}`,
+      // const response = await axios.post(
+      //   `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
       //   data,
       // );
+
+      response = await axios.patch(
+        `http://localhost:3000/api/review/${reviewId}`,
+        data,
+      );
 
       if (![200, 204].includes(response.status)) {
         return res
