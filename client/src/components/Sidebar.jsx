@@ -165,6 +165,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/logs-layout",
         },
+        {
+          id: 9,
+          title: "Reviews",
+          codeName: "Rev",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/company-reviews",
+        },
       ],
     },
   ];
@@ -209,7 +216,7 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
         ...module,
         submenus: module.submenus.filter(
           (submenu) =>
-            submenu.title === "Data Upload" || submenu.title === "Profile"
+            submenu.title === "Data Upload" || submenu.title === "Profile",
         ),
       }))
     : defaultModules;
@@ -235,8 +242,8 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                       expandedModule === null && isSidebarOpen
                         ? "justify-between pr-2"
                         : expandedModule === 0 && isSidebarOpen
-                        ? "justify-between text-[#1E3D73] pr-2"
-                        : "justify-center pr-0"
+                          ? "justify-between text-[#1E3D73] pr-2"
+                          : "justify-center pr-0"
                     } items-center   ${
                       expandedModule === 0 &&
                       "bg-gray-200 rounded-t-md text-black"
