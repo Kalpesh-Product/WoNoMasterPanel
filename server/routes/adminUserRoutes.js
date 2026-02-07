@@ -8,6 +8,7 @@ const {
   uploadCompanyLogo,
   updateReviewStatus,
   updateRegistrationStatus,
+  getReviewsByCompany,
 } = require("../controllers/adminUserControllers");
 const upload = require("../config/multerConfig");
 
@@ -30,6 +31,7 @@ router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
 
 //Review Routes
 router.patch("/review/:reviewId", updateReviewStatus);
+router.get("/reviews", getReviewsByCompany);
 
 //
 router.patch("/registration/:companyId", updateRegistrationStatus);
