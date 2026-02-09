@@ -14,9 +14,6 @@ const CompanyReviews = () => {
   const [openModal, setOpenModal] = useState(false);
   const [activeReview, setActiveReview] = useState(null);
 
-  const reviewAdminApiBaseUrl =
-    import.meta.env.VITE_REVIEW_ADMIN_API_BASE_URL || "http://localhost:5007";
-
   const {
     data = [],
     isPending,
@@ -24,13 +21,17 @@ const CompanyReviews = () => {
   } = useQuery({
     queryKey: ["companyReviews", selectedCompany?.companyId],
     // enabled: !!selectedCompany?.companyId,
-    enabled: true,
 
     queryFn: async () => {
-      const response = await axiosPrivate.get(
-        `${reviewAdminApiBaseUrl}/api/admin/reviews?companyId=${selectedCompany?.companyId}&companyType=meetingroom&status=approved`,
-        { headers: { "Cache-Control": "no-cache" } },
-      );
+      const response = await axiosPrivate.get("/api/admin/reviews", {
+        params: {
+          // companyId: selectedCompany?.companyId,
+          companyId: "CMP0001",
+          // companyType: "meetingroom",
+          status: "approved",
+        },
+        headers: { "Cache-Control": "no-cache" },
+      });
       const payload = response?.data;
       const reviews =
         payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
