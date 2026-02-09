@@ -24,12 +24,12 @@ const CompanyReviews = () => {
 
     queryFn: async () => {
       const response = await axiosPrivate.get("/api/admin/reviews", {
-        params: {
-          // companyId: selectedCompany?.companyId,
-          // companyId: "CMP0001",
-          // companyType: "meetingroom",
-          status: "pending",
-        },
+        // params: {
+        // companyId: selectedCompany?.companyId,
+        // companyId: "CMP0001",
+        // companyType: "meetingroom",
+        // status: "pending",
+        // },
         headers: { "Cache-Control": "no-cache" },
       });
       const payload = response?.data;
