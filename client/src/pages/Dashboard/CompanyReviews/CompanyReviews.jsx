@@ -23,7 +23,9 @@ const CompanyReviews = () => {
     isError,
   } = useQuery({
     queryKey: ["companyReviews", selectedCompany?.companyId],
-    enabled: !!selectedCompany?.companyId,
+    // enabled: !!selectedCompany?.companyId,
+    enabled: true,
+
     queryFn: async () => {
       const response = await axiosPrivate.get(
         `${reviewAdminApiBaseUrl}/api/admin/reviews?companyId=${selectedCompany?.companyId}&companyType=meetingroom&status=approved`,
