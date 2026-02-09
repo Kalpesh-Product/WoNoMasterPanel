@@ -26,9 +26,9 @@ const CompanyReviews = () => {
       const response = await axiosPrivate.get("/api/admin/reviews", {
         params: {
           // companyId: selectedCompany?.companyId,
-          companyId: "CMP0001",
+          // companyId: "CMP0001",
           // companyType: "meetingroom",
-          status: "approved",
+          status: "pending",
         },
         headers: { "Cache-Control": "no-cache" },
       });
