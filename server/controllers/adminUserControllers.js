@@ -429,18 +429,19 @@ const updateReviewStatus = async (req, res, next) => {
 
 const getReviewsByCompany = async (req, res, next) => {
   try {
-    const { companyId, companyType = "", status = "" } = req.query;
+    const { companyId, companyType = "", status = "pending" } = req.query;
 
-    if (!companyId) {
-      return res.status(400).json({
-        message: "companyId and companyType are required",
-      });
-    }
     let response = {};
     try {
-      // const response = await axios.get(
-      //   `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
-      //   data,
+      // response = await axios.get(
+      //   `https://wononomadsbe.vercel.app/api/reviews/`,
+      //   {
+      //     params: {
+      //       companyId,
+      //       companyType,
+      //       status,
+      //     },
+      //   },
       // );
 
       response = await axios.get("http://localhost:3000/api/review", {
@@ -462,7 +463,6 @@ const getReviewsByCompany = async (req, res, next) => {
           "Failed to fetch reviews",
       });
     }
-    console.log("response", response.data);
 
     return res.status(200).json({
       reviews: response.data.data,
