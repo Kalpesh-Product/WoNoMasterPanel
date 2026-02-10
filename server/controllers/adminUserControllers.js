@@ -393,7 +393,6 @@ const updateReviewStatus = async (req, res, next) => {
       data = { ...data, userId: req.userData._id, date: new Date() };
     }
 
-    console.log("user", req);
     let response = {};
     try {
       // const response = await axios.post(
