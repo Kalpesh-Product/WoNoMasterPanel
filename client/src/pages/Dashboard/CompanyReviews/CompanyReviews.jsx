@@ -106,6 +106,47 @@ const CompanyReviews = () => {
     [statusOverrides],
   );
 
+  const getReviewerActionByName = useCallback(
+    (review) => {
+      const extractName = (user) => {
+        if (!user) return "";
+        if (typeof user === "string") return user;
+
+        return (
+          user?.fullName ||
+          user?.name ||
+          user?.firstName ||
+          user?.username ||
+          user?.email ||
+          ""
+        );
+      };
+
+      const status = String(getEffectiveStatus(review) || review?.status || "")
+        .toLowerCase()
+        .trim();
+
+      if (status === "approved") {
+        return (
+          extractName(review?.approvedByName) ||
+          extractName(review?.approvedBy) ||
+          "-"
+        );
+      }
+
+      if (status === "rejected") {
+        return (
+          extractName(review?.rejectedByName) ||
+          extractName(review?.rejectedBy) ||
+          "-"
+        );
+      }
+
+      return "-";
+    },
+    [getEffectiveStatus],
+  );
+
   const updateReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, status }) => {
       const response = await axiosPrivate.patch(
@@ -277,6 +318,11 @@ const CompanyReviews = () => {
           </button>
         </div>
       ),
+    },
+    {
+      field: "approvedOrRejectedBy",
+      headerName: "Approved/Rejected by",
+      valueGetter: (params) => getReviewerActionByName(params.data),
     },
   ];
 
