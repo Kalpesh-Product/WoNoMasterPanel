@@ -87,12 +87,19 @@ const CompanyReviews = () => {
     },
     {
       field: "comment",
+
       headerName: "Description",
       cellRenderer: (params) => (
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <IconButton onClick={() => handleOpenModal(params.data)}>
+          {/* <IconButton onClick={() => handleOpenModal(params.data)}>
             <MdOutlineRateReview />
-          </IconButton>
+          </IconButton> */}
+          <button
+            className="text-blue-500 underline font-semibold"
+            onClick={() => handleOpenModal(params.data)}
+          >
+            View Description
+          </button>
         </div>
       ),
     },
