@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import { MenuItem, TextField } from "@mui/material";
 import YearWiseTable from "../../../components/Tables/YearWiseTable";
@@ -10,6 +10,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 const CompanyReviews = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
+  const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [activeReview, setActiveReview] = useState(null);
   const [statusOverrides, setStatusOverrides] = useState({});
@@ -67,6 +68,23 @@ const CompanyReviews = () => {
     [statusOverrides],
   );
 
+  const updateReviewStatusMutation = useMutation({
+    mutationFn: async ({ reviewId, status }) => {
+      const response = await axiosPrivate.patch(
+        `/api/admin/review/${reviewId}`,
+        {
+          status,
+        },
+      );
+      return response?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["companyReviews", selectedCompany?.companyId],
+      });
+    },
+  });
+
   const handleStatusChange = (review, newStatus) => {
     const reviewId = review?._id || review?.id;
     if (!reviewId) return;
@@ -75,6 +93,10 @@ const CompanyReviews = () => {
       ...prev,
       [reviewId]: newStatus,
     }));
+
+    if (newStatus === "approved" || newStatus === "rejected") {
+      updateReviewStatusMutation.mutate({ reviewId, status: newStatus });
+    }
   };
 
   const rows = useMemo(() => {
@@ -160,6 +182,7 @@ const CompanyReviews = () => {
                 select
                 size="small"
                 value={value}
+                disabled={updateReviewStatusMutation.isPending}
                 onChange={(e) =>
                   handleStatusChange(params.data, e.target.value.toLowerCase())
                 }
