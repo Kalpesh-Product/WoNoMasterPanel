@@ -24,19 +24,57 @@ const CompanyReviews = () => {
     // enabled: !!selectedCompany?.companyId,
 
     queryFn: async () => {
-      const response = await axiosPrivate.get("/api/admin/reviews", {
-        // params: {
-        // companyId: selectedCompany?.companyId,
-        // companyId: "CMP0001",
-        // companyType: "meetingroom",
-        // status: "pending",
-        // },
-        headers: { "Cache-Control": "no-cache" },
+      const extractReviews = (response) => {
+        const payload = response?.data;
+        const reviews =
+          payload?.reviews ??
+          payload?.data?.reviews ??
+          payload?.data ??
+          payload;
+        return Array.isArray(reviews) ? reviews : [];
+      };
+
+      const buildParams = (status) => ({
+        ...(selectedCompany?.companyId
+          ? { companyId: selectedCompany.companyId }
+          : {}),
+        ...(selectedCompany?.companyType
+          ? { companyType: selectedCompany.companyType }
+          : {}),
+        status,
       });
-      const payload = response?.data;
-      const reviews =
-        payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
-      return Array.isArray(reviews) ? reviews : [];
+
+      const [pendingResponse, rejectedResponse, approvedResponse] =
+        await Promise.all([
+          axiosPrivate.get("/api/admin/reviews", {
+            params: buildParams("pending"),
+            headers: { "Cache-Control": "no-cache" },
+          }),
+          axiosPrivate.get("/api/admin/reviews", {
+            params: buildParams("rejected"),
+            headers: { "Cache-Control": "no-cache" },
+          }),
+          axiosPrivate.get("/api/admin/reviews", {
+            params: buildParams("approved"),
+            headers: { "Cache-Control": "no-cache" },
+          }),
+        ]);
+
+      const mergedReviews = [
+        ...extractReviews(pendingResponse),
+        ...extractReviews(rejectedResponse),
+        ...extractReviews(approvedResponse),
+      ];
+
+      const uniqueReviews = new Map();
+      mergedReviews.forEach((review, index) => {
+        const reviewId = review?._id || review?.id;
+        if (!reviewId || !uniqueReviews.has(reviewId)) {
+          uniqueReviews.set(reviewId || `review-${index}`, review);
+        }
+      });
+
+      return Array.from(uniqueReviews.values());
     },
   });
 
