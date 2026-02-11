@@ -34,37 +34,11 @@ const CompanyReviews = () => {
         return Array.isArray(reviews) ? reviews : [];
       };
 
-      const buildParams = (status) => ({
-        ...(selectedCompany?.companyId
-          ? { companyId: selectedCompany.companyId }
-          : {}),
-        ...(selectedCompany?.companyType
-          ? { companyType: selectedCompany.companyType }
-          : {}),
-        status,
+      const response = await axiosPrivate.get("/api/admin/reviews", {
+        headers: { "Cache-Control": "no-cache" },
       });
 
-      const [pendingResponse, rejectedResponse, approvedResponse] =
-        await Promise.all([
-          axiosPrivate.get("/api/admin/reviews", {
-            params: buildParams("pending"),
-            headers: { "Cache-Control": "no-cache" },
-          }),
-          axiosPrivate.get("/api/admin/reviews", {
-            params: buildParams("rejected"),
-            headers: { "Cache-Control": "no-cache" },
-          }),
-          axiosPrivate.get("/api/admin/reviews", {
-            params: buildParams("approved"),
-            headers: { "Cache-Control": "no-cache" },
-          }),
-        ]);
-
-      const mergedReviews = [
-        ...extractReviews(pendingResponse),
-        ...extractReviews(rejectedResponse),
-        ...extractReviews(approvedResponse),
-      ];
+      const mergedReviews = extractReviews(response);
 
       const uniqueReviews = new Map();
       mergedReviews.forEach((review, index) => {
