@@ -482,7 +482,7 @@ const getReviewsByCompany = async (req, res, next) => {
           .select("_id firstName lastName email")
           .lean(),
         HostUser.find({ _id: { $in: [...hostIds] } })
-          .select("_id firstName lastName email")
+          .select("_id name phone email")
           .lean(),
       ]);
 
