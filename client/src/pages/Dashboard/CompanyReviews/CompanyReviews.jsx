@@ -112,14 +112,42 @@ const CompanyReviews = () => {
         if (!user) return "";
         if (typeof user === "string") return user;
 
+        const firstName = user?.firstName || "";
+        const lastName = user?.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim();
+
         return (
+          fullName ||
           user?.fullName ||
           user?.name ||
-          user?.firstName ||
           user?.username ||
           user?.email ||
           ""
         );
+      };
+
+      const extractActionUserName = (actionBy) => {
+        if (!actionBy) return "";
+        if (typeof actionBy === "string") return actionBy;
+
+        const userType = String(actionBy?.userType || "").toUpperCase();
+        const nestedUser = actionBy?.user;
+
+        if (userType === "MASTER") {
+          const masterName = `${nestedUser?.firstName || ""} ${
+            nestedUser?.lastName || ""
+          }`.trim();
+
+          return masterName || extractName(nestedUser) || extractName(actionBy);
+        }
+
+        if (userType === "HOST") {
+          return (
+            nestedUser?.name || extractName(nestedUser) || extractName(actionBy)
+          );
+        }
+
+        return extractName(nestedUser) || extractName(actionBy);
       };
 
       const status = String(getEffectiveStatus(review) || review?.status || "")
@@ -129,7 +157,7 @@ const CompanyReviews = () => {
       if (status === "approved") {
         return (
           extractName(review?.approvedByName) ||
-          extractName(review?.approvedBy) ||
+          extractActionUserName(review?.approvedBy) ||
           "-"
         );
       }
@@ -137,7 +165,7 @@ const CompanyReviews = () => {
       if (status === "rejected") {
         return (
           extractName(review?.rejectedByName) ||
-          extractName(review?.rejectedBy) ||
+          extractActionUserName(review?.rejectedBy) ||
           "-"
         );
       }
