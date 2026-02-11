@@ -164,8 +164,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
-// const NOMADS_BASE = "http://localhost:3000/api";
+const NOMADS_BASE =
+  process.env.NOMADS_BASE_URL || "https://wononomadsbe.vercel.app/api";
 
 const TYPE_MAP = {
   products: {
@@ -395,15 +395,7 @@ const updateReviewStatus = async (req, res, next) => {
 
     let response = {};
     try {
-      // const response = await axios.post(
-      //   `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
-      //   data,
-      // );
-
-      response = await axios.patch(
-        `http://localhost:3000/api/review/${reviewId}`,
-        data,
-      );
+      response = await axios.patch(`${NOMADS_BASE}/review/${reviewId}`, data);
 
       if (![200, 204].includes(response.status)) {
         return res
@@ -435,18 +427,7 @@ const getReviewsByCompany = async (req, res, next) => {
     let response;
     let enrichedReviews;
     try {
-      // response = await axios.get(
-      //   `https://wononomadsbe.vercel.app/api/reviews/`,
-      //   {
-      //     params: {
-      //       companyId,
-      //       companyType,
-      //       status,
-      //     },
-      //   },
-      // );
-
-      response = await axios.get("http://localhost:3000/api/review", {
+      response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
           companyId,
           companyType,
