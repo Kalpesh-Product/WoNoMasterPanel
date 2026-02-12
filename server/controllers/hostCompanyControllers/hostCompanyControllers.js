@@ -688,7 +688,7 @@ const bulkInsertCompanies = async (req, res, next) => {
       .pipe(csvParser())
       .on("data", (row) => {
         // const companyId = `CMP${String(newId).padStart(4, "0")}`;
-        const companyId = randomUUID();
+        const companyId = `${randomUUID()}-${Date.now()}`;
 
         const company = {
           companyId,
