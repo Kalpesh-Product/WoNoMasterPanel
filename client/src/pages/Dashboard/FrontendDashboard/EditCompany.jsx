@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { Controller, useForm } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
 import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
 import axios from "axios";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
+import { useParams } from "react-router-dom";
+import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
 const parseCommaSeparatedList = (value = "") =>
   value
@@ -15,6 +17,9 @@ const parseCommaSeparatedList = (value = "") =>
     .filter(Boolean);
 
 const EditCompany = () => {
+  const { companyId } = useParams();
+  const axiosPrivate = useAxiosPrivate();
+
   const { control, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
       // name: "",
@@ -48,6 +53,77 @@ const EditCompany = () => {
       isActive: true,
     },
   });
+
+  const {
+    data: company,
+    isLoading: isCompanyLoading,
+    isError: isCompanyError,
+    error: companyError,
+  } = useQuery({
+    queryKey: ["companyDetails", companyId],
+    enabled: Boolean(companyId),
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/hosts/company", {
+        params: { companyId },
+      });
+
+      return response?.data?.data || response?.data;
+    },
+  });
+
+  useEffect(() => {
+    if (!companyId) {
+      toast.error("Invalid company id");
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    if (!company) return;
+
+    const selectedServices = company?.selectedServices || {};
+    reset({
+      companyName: company.companyName || "",
+      registeredEntityName: company.registeredEntityName || "",
+      industry: company.industry || "",
+      companySize: company.companySize || "",
+      companyCity: company.companyCity || "",
+      companyState: company.companyState || "",
+      companyCountry: company.companyCountry || "",
+      companyContinent: company.companyContinent || "",
+      websiteURL: company.websiteURL || "",
+      linkedinURL: company.linkedinURL || "",
+      selectedApps: (selectedServices.apps || [])
+        .map((item) => item?.appName)
+        .filter(Boolean)
+        .join(", "),
+      selectedModules: (selectedServices.modules || [])
+        .map((item) => item?.moduleName)
+        .filter(Boolean)
+        .join(", "),
+      selectedDefaults: (selectedServices.defaults || [])
+        .map((item) => item?.name)
+        .filter(Boolean)
+        .join(", "),
+      pocName: company.pocName || "",
+      pocDesignation: company.pocDesignation || "",
+      pocEmail: company.pocEmail || "",
+      pocPhone: company.pocPhone || "",
+      pocLinkedInProfile: company.pocLinkedInProfile || "",
+      pocLanguages: (company.pocLanguages || []).join(", "),
+      pocAddress: company.pocAddress || "",
+      pocProfileImage: company.pocProfileImage || "",
+      isActive: company.isActive ?? true,
+    });
+  }, [company, reset]);
+
+  useEffect(() => {
+    if (isCompanyError) {
+      toast.error(
+        companyError?.response?.data?.message ||
+          "Failed to fetch company details",
+      );
+    }
+  }, [isCompanyError, companyError]);
 
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
@@ -115,6 +191,7 @@ const EditCompany = () => {
         <h1 className="text-title text-primary font-pmedium uppercase mb-4">
           Edit Company
         </h1>
+        {isCompanyLoading ? <p>Loading company details...</p> : null}
         <form
           className="grid grid-cols-1 gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(onSubmit)}
