@@ -300,34 +300,28 @@ const createCompanyListing = async (req, res) => {
 //   }
 // };
 
+///// Edit listing Note /////
+
+// Reviews
+// News Reviews get added without deleting existing ones
+// Existing reviews can be edited properly
+// Avoid duplicate reviews
+
+// Images
+// New Image get's added without deleting existing ones
+// Intended images get deleted from DB & S3
+
+// Note: Should send review objects with review._id for the existing reviews to avoid deleting them similarly for images as well
+
 const editCompanyListing = async (req, res) => {
   try {
-    const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
-
-    const {
-      businessId,
-      companyId,
-      companyType,
-      companyTitle,
-      ratings,
-      totalReviews,
-      productName,
-      cost,
-      description,
-      latitude,
-      longitude,
-      inclusions,
-      about,
-      address,
-      reviews,
-      existingImages = [],
-    } = payload;
+    // const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
 
     // const {
     //   businessId,
     //   companyId,
-    //   companyTitle,
     //   companyType,
+    //   companyTitle,
     //   ratings,
     //   totalReviews,
     //   productName,
@@ -340,7 +334,26 @@ const editCompanyListing = async (req, res) => {
     //   address,
     //   reviews,
     //   existingImages = [],
-    // } = req.body;
+    // } = payload;
+
+    const {
+      businessId,
+      companyId,
+      companyTitle,
+      companyType,
+      ratings,
+      totalReviews,
+      productName,
+      cost,
+      description,
+      latitude,
+      longitude,
+      inclusions,
+      about,
+      address,
+      reviews,
+      existingImages = [],
+    } = req.body;
 
     console.log("listing hit🔥");
 
@@ -443,15 +456,15 @@ const editCompanyListing = async (req, res) => {
 
     // ---------- REMOTE UPDATE (NO DELETION YET) ----------
     try {
-      // const response = await axios.patch(
-      //   "https://wononomadsbe.vercel.app/api/company/update-company",
-      //   updateData,
-      // );
-
       const response = await axios.patch(
-        "http://localhost:3000/api/company/update-company",
+        "https://wononomadsbe.vercel.app/api/company/update-company",
         updateData,
       );
+
+      // const response = await axios.patch(
+      //   "http://localhost:3000/api/company/update-company",
+      //   updateData,
+      // );
       console.log("✅ Remote update success:", response.data);
     } catch (err) {
       console.error(
