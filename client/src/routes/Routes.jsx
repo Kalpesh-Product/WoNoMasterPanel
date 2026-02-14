@@ -167,6 +167,7 @@ import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
+import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 
 export const routes = createBrowserRouter([
   {
@@ -341,6 +342,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "add-company",
                         element: <AddCompany />, // ✅ NEW intermediate page
+                      },
+                      {
+                        path: "edit-company/:companyId",
+                        element: <EditCompany />, // ✅ NEW intermediate page
                       },
                       {
                         path: ":companyId",
