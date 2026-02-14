@@ -138,8 +138,26 @@ const Companies = () => {
       },
       // { field: "companyType", headerName: "Type", flex: 1 },
       {
-        field: "location",
-        headerName: "Location",
+        field: "companyContinent",
+        headerName: "Continent",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyCountry",
+        headerName: "Country",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyState",
+        headerName: "State",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyCity",
+        headerName: "City",
         flex: 1,
         cellRenderer: (params) => params.value || "-",
       },
@@ -237,15 +255,6 @@ const Companies = () => {
     });
   }, [companies]);
 
-  const displayCompanies = useMemo(() => {
-    return sortedCompanies.map((company) => ({
-      ...company,
-      location: [company.companyCity, company.companyCountry]
-        .filter(Boolean)
-        .join(", "),
-    }));
-  }, [sortedCompanies]);
-
   if (isLoading) return <div className="p-6">Loading companies…</div>;
   if (isError)
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -254,7 +263,7 @@ const Companies = () => {
     <div className="p-4">
       <PageFrame>
         <AgTable
-          data={displayCompanies}
+          data={sortedCompanies}
           columns={columns}
           search={true}
           tableTitle={"Companies"}
