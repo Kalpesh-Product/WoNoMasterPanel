@@ -1,12 +1,13 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { Controller, useForm } from "react-hook-form";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
-import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
-import axios from "axios";
+import { toast } from "sonner";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
+import { useParams } from "react-router-dom";
+import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
 const parseCommaSeparatedList = (value = "") =>
   value
@@ -14,7 +15,10 @@ const parseCommaSeparatedList = (value = "") =>
     .map((item) => item.trim())
     .filter(Boolean);
 
-const AddCompany = () => {
+const EditCompany = () => {
+  const { companyId } = useParams();
+  const axiosPrivate = useAxiosPrivate();
+
   const { control, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
       // name: "",
@@ -49,25 +53,103 @@ const AddCompany = () => {
     },
   });
 
-  const { mutate: register, isLoading: isRegisterLoading } = useMutation({
-    mutationFn: async (fd) => {
-      const response = await axios.post(
-        "http://localhost:5007/api/hosts/onboard-company",
-        fd,
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Company added successfully");
-      reset();
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || "Something went wrong");
+  const {
+    data: company,
+    isLoading: isCompanyLoading,
+    isError: isCompanyError,
+    error: companyError,
+  } = useQuery({
+    queryKey: ["companyDetails", companyId],
+    enabled: Boolean(companyId),
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/hosts/company", {
+        params: { companyId },
+      });
+
+      return response?.data?.data || response?.data;
     },
   });
 
+  useEffect(() => {
+    if (!companyId) {
+      toast.error("Invalid company id");
+    }
+  }, [companyId]);
+
+  useEffect(() => {
+    if (!company) return;
+
+    const selectedServices = company?.selectedServices || {};
+    reset({
+      companyName: company.companyName || "",
+      registeredEntityName: company.registeredEntityName || "",
+      industry: company.industry || "",
+      companySize: company.companySize || "",
+      companyCity: company.companyCity || "",
+      companyState: company.companyState || "",
+      companyCountry: company.companyCountry || "",
+      companyContinent: company.companyContinent || "",
+      websiteURL: company.websiteURL || "",
+      linkedinURL: company.linkedinURL || "",
+      selectedApps: (selectedServices.apps || [])
+        .map((item) => item?.appName)
+        .filter(Boolean)
+        .join(", "),
+      selectedModules: (selectedServices.modules || [])
+        .map((item) => item?.moduleName)
+        .filter(Boolean)
+        .join(", "),
+      selectedDefaults: (selectedServices.defaults || [])
+        .map((item) => item?.name)
+        .filter(Boolean)
+        .join(", "),
+      pocName: company.pocName || "",
+      pocDesignation: company.pocDesignation || "",
+      pocEmail: company.pocEmail || "",
+      pocPhone: company.pocPhone || "",
+      pocLinkedInProfile: company.pocLinkedInProfile || "",
+      pocLanguages: (company.pocLanguages || []).join(", "),
+      pocAddress: company.pocAddress || "",
+      pocProfileImage: company.pocProfileImage || "",
+      isActive: company.isActive ?? true,
+    });
+  }, [company, reset]);
+
+  useEffect(() => {
+    if (isCompanyError) {
+      toast.error(
+        companyError?.response?.data?.message ||
+          "Failed to fetch company details",
+      );
+    }
+  }, [isCompanyError, companyError]);
+
+  const { mutate: updateCompany, isPending: isUpdateCompanyLoading } =
+    useMutation({
+      mutationFn: async (payload) => {
+        const response = await axiosPrivate.patch(
+          "/api/hosts/edit-company",
+          payload,
+        );
+
+        return response.data;
+      },
+      onSuccess: () => {
+        toast.success("Company updated successfully");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Something went wrong");
+      },
+    });
+
   const onSubmit = (data) => {
+    if (!companyId) {
+      toast.error("Invalid company id");
+      return;
+    }
+
     const formattedData = {
+      companyId,
       companyName: data.companyName,
       registeredEntityName: data.registeredEntityName,
       industry: data.industry,
@@ -95,26 +177,18 @@ const AddCompany = () => {
           }),
         ),
       },
-      pocName: data.pocName,
-      pocEmail: data.pocEmail,
-      pocPhone: data.pocPhone,
-      pocDesignation: data.pocDesignation,
-      pocLinkedInProfile: data.pocLinkedInProfile,
-      pocLanguages: parseCommaSeparatedList(data.pocLanguages),
-      pocAddress: data.pocAddress,
-      pocProfileImage: data.pocProfileImage,
-      isActive: data.isActive,
     };
 
-    register(formattedData);
+    updateCompany(formattedData);
   };
 
   return (
     <div className="p-4">
       <PageFrame>
         <h1 className="text-title text-primary font-pmedium uppercase mb-4">
-          Add Company
+          Edit Company
         </h1>
+        {isCompanyLoading ? <p>Loading company details...</p> : null}
         <form
           className="grid grid-cols-1 gap-4 md:grid-cols-2"
           onSubmit={handleSubmit(onSubmit)}
@@ -715,8 +789,8 @@ const AddCompany = () => {
               externalStyles={""}
               title={"Submit"}
               type={"submit"}
-              isLoading={isRegisterLoading}
-              disabled={isRegisterLoading}
+              isLoading={isUpdateCompanyLoading}
+              disabled={isUpdateCompanyLoading}
             />
           </div>
         </form>
@@ -725,4 +799,4 @@ const AddCompany = () => {
   );
 };
 
-export default AddCompany;
+export default EditCompany;
