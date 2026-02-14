@@ -1,7 +1,7 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -9,6 +9,9 @@ import { Chip } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
 import useAuth from "../../../hooks/useAuth";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import { toast } from "sonner";
+import { queryClient } from "../../../main";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -23,6 +26,25 @@ const Companies = () => {
   const dispatch = useDispatch();
 
   const { auth } = useAuth();
+
+  const { mutate: toggleCompanyStatus } = useMutation({
+    mutationFn: async ({ companyId, status }) => {
+      const response = await axiosPrivate.patch("/api/hosts/activate-company", {
+        companyId,
+        status,
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "COMPANY STATUS UPDATED");
+      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to update company status",
+      );
+    },
+  });
 
   const userEmail = auth?.user?.email;
   const restrictedEmails = [
@@ -150,8 +172,61 @@ const Companies = () => {
           );
         },
       },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 120,
+        cellRenderer: (params) => (
+          <ThreeDotMenu
+            rowId={
+              params?.data?.companyId ||
+              params?.data?._id ||
+              params?.data?.companyName
+            }
+            menuItems={[
+              params?.data?.isRegistered
+                ? {
+                    label: "Mark As Inactive",
+                    onClick: () =>
+                      toggleCompanyStatus({
+                        companyId: params?.data?.companyId,
+                        status: false,
+                      }),
+                  }
+                : {
+                    label: "Mark As Active",
+                    onClick: () =>
+                      toggleCompanyStatus({
+                        companyId: params?.data?.companyId,
+                        status: true,
+                      }),
+                  },
+              {
+                label: "Edit",
+                onClick: () => {
+                  dispatch(setSelectedCompany(params.data));
+                  sessionStorage.setItem("companyId", params.data.companyId);
+                  sessionStorage.setItem(
+                    "companyName",
+                    params.data.companyName,
+                  );
+                  navigate(
+                    `/dashboard/companies/${slugify(params.data.companyName)}`,
+                    {
+                      state: {
+                        companyId: params.data.companyId,
+                        companyName: params.data.companyName,
+                      },
+                    },
+                  );
+                },
+              },
+            ]}
+          />
+        ),
+      },
     ],
-    [navigate],
+    [dispatch, navigate, toggleCompanyStatus],
   );
 
   // ✅ sort companies: Active first, then Inactive
