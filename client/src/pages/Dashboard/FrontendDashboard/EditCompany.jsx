@@ -113,7 +113,7 @@ const EditCompany = () => {
     <div className="p-4">
       <PageFrame>
         <h1 className="text-title text-primary font-pmedium uppercase mb-4">
-          Add Company
+          Edit Company
         </h1>
         <form
           className="grid grid-cols-1 gap-4 md:grid-cols-2"
