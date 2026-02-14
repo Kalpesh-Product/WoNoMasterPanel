@@ -7,6 +7,7 @@ const createCompanyListing = async (req, res) => {
     const {
       companyId,
       companyType,
+      companyTitle,
       ratings,
       totalReviews,
       productName,
@@ -34,6 +35,7 @@ const createCompanyListing = async (req, res) => {
 
     const listingData = {
       companyName: productName,
+      companyTitle: companyTitle ? companyTitle : company.companyName,
       companyId: company.companyId,
       logo: company.logo,
       city: company.companyCity,
@@ -132,10 +134,212 @@ const createCompanyListing = async (req, res) => {
   }
 };
 
+// const editCompanyListing = async (req, res) => {
+//   try {
+//     const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
+
+//     const {
+//       businessId,
+//       companyType,
+//       companyTitle,
+//       companyId,
+//       ratings,
+//       totalReviews,
+//       productName,
+//       cost,
+//       description,
+//       latitude,
+//       longitude,
+//       inclusions,
+//       about,
+//       address,
+//       reviews,
+//       existingImages = [],
+//     } = payload;
+
+//     // const {
+//     //   businessId,
+//     //   companyType,
+//     //companyTitle,
+//     //companyId,
+//     //   ratings,
+//     //   totalReviews,
+//     //   productName,
+//     //   cost,
+//     //   description,
+//     //   latitude,
+//     //   longitude,
+//     //   inclusions,
+//     //   about,
+//     //   address,
+//     //   reviews,
+//     //   existingImages = [],
+//     // } = req.body;
+
+//     const parsedReviews =
+//       typeof reviews === "string" ? JSON.parse(reviews) : reviews;
+
+//     if (!companyId || !businessId || !companyType) {
+//       return res.status(404).json({ message: "Missing required fields" });
+//     }
+
+//     // FIX: Search by both businessId and companyId
+//     const company = await HostCompany.findOne({
+//       companyId: req.body.companyId?.trim(),
+//     });
+
+//     if (!company) {
+//       return res.status(404).json({ message: "Company not found" });
+//     }
+
+//     const updateData = {
+//       businessId,
+//       companyType,
+//       ratings,
+//       totalReviews,
+//       companyName: company.companyName,
+//       companyTitle: companyTitle ? companyTitle : company.companyName,
+//       cost,
+//       description,
+//       latitude,
+//       longitude,
+//       inclusions,
+//       about,
+//       address,
+//       reviews: parsedReviews,
+//       images: [...existingImages], // Start with existing images
+//     };
+
+//     // ---------- IMAGE UPLOAD (NO DELETION HERE) ----------
+//     const formatCompanyType = (type) => {
+//       const map = {
+//         hostel: "hostels",
+//         privatestay: "private-stay",
+//         meetingroom: "meetingroom",
+//         coworking: "coworking",
+//         cafe: "cafe",
+//         coliving: "coliving",
+//         workation: "workation",
+//       };
+//       return map[String(type).toLowerCase()] || "unknown";
+//     };
+
+//     const pathCompanyType = formatCompanyType(companyType);
+//     const safeCompanyName =
+//       (company.companyName || "unnamed").replace(/[^\w\- ]+/g, "").trim() ||
+//       "unnamed";
+//     const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
+
+//     if (req.files?.length) {
+//       const imageFiles = req.files.filter((f) => f.fieldname === "images");
+//       if (imageFiles.length) {
+//         const sanitize = (name) =>
+//           String(name || "file")
+//             .replace(/[/\\?%*:|"<>]/g, "_")
+//             .replace(/\s+/g, "_");
+
+//         const results = await Promise.allSettled(
+//           imageFiles.map(async (file) => {
+//             const key = `${folderPath}/images/${sanitize(file.originalname)}`;
+//             const data = await uploadFileToS3(key, file);
+//             return { url: data.url, id: data.id };
+//           }),
+//         );
+
+//         const uploaded = results
+//           .filter((r) => r.status === "fulfilled")
+//           .map((r) => r.value);
+//         updateData.images.push(...uploaded);
+//       }
+//     }
+
+//     // ---------- REMOTE UPDATE (NO DELETION YET) ----------
+//     try {
+//       const response = await axios.patch(
+//         "https://wononomadsbe.vercel.app/api/company/update-company",
+//         updateData,
+//       );
+//     } catch (err) {
+//       console.error(
+//         "❌ Remote update failed:",
+//         err.response?.data || err.message,
+//       );
+
+//       // If remote update fails, delete the newly uploaded images to maintain consistency
+//       if (req.files?.length) {
+//         const imageFiles = req.files.filter((f) => f.fieldname === "images");
+//         if (imageFiles.length) {
+//           console.log(
+//             "🧹 Cleaning up newly uploaded images due to remote failure...",
+//           );
+//           const newlyUploadedUrls = updateData.images.slice(
+//             existingImages.length,
+//           );
+//           await Promise.allSettled(
+//             newlyUploadedUrls.map((img) => deleteFileFromS3ByUrl(img.url)),
+//           );
+//         }
+//       }
+
+//       return res.status(err.response?.status || 500).json({
+//         message: "Remote company update failed",
+//         detail: err.response?.data || err.message,
+//       });
+//     }
+
+//     return res.status(200).json({
+//       message: "Listing updated successfully",
+//       data: updateData,
+//     });
+//   } catch (error) {
+//     console.error("❌ Internal error:", error);
+//     return res.status(500).json({
+//       message: "Internal server error",
+//       detail: error.message,
+//     });
+//   }
+// };
+
+///// Edit listing Note /////
+
+// Reviews
+// News Reviews get added without deleting existing ones
+// Existing reviews can be edited properly
+// Avoid duplicate reviews
+
+// Images
+// New Image get's added without deleting existing ones
+// Intended images get deleted from DB & S3
+
+// Note: Should send review objects with review._id for the existing reviews to avoid deleting them similarly for images as well
+
 const editCompanyListing = async (req, res) => {
   try {
+    // const payload = req.body.data ? JSON.parse(req.body.data) : req.body;
+
+    // const {
+    //   businessId,
+    //   companyId,
+    //   companyType,
+    //   companyTitle,
+    //   ratings,
+    //   totalReviews,
+    //   productName,
+    //   cost,
+    //   description,
+    //   latitude,
+    //   longitude,
+    //   inclusions,
+    //   about,
+    //   address,
+    //   reviews,
+    //   existingImages = [],
+    // } = payload;
+
     const {
       businessId,
+      companyId,
+      companyTitle,
       companyType,
       ratings,
       totalReviews,
@@ -151,24 +355,28 @@ const editCompanyListing = async (req, res) => {
       existingImages = [],
     } = req.body;
 
+    console.log("listing hit🔥");
+
+    if (!companyId || !businessId || !companyType) {
+      return res.status(404).json({ message: "Missing required fields" });
+    }
+
     const parsedReviews =
       typeof reviews === "string" ? JSON.parse(reviews) : reviews;
 
     // FIX: Search by both businessId and companyId
     const company = await HostCompany.findOne({
-      companyId: req.body.companyId?.trim(),
+      companyId: companyId?.trim(),
     });
 
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
 
-    const updateData = {
-      businessId,
-      companyType,
+    const allowedFields = {
+      companyTitle,
       ratings,
       totalReviews,
-      companyName: company.companyName,
       cost,
       description,
       latitude,
@@ -177,6 +385,20 @@ const editCompanyListing = async (req, res) => {
       about,
       address,
       reviews: parsedReviews,
+    };
+
+    let updateData = {};
+    Object.entries(allowedFields).forEach(([key, value]) => {
+      if (value !== undefined) {
+        updateData[key] = value;
+      }
+    });
+
+    updateData = {
+      ...updateData,
+      businessId,
+      companyType,
+      companyName: company.companyName,
       images: [...existingImages], // Start with existing images
     };
 
@@ -198,10 +420,17 @@ const editCompanyListing = async (req, res) => {
     const safeCompanyName =
       (company.companyName || "unnamed").replace(/[^\w\- ]+/g, "").trim() ||
       "unnamed";
+
     const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
 
     if (req.files?.length) {
       const imageFiles = req.files.filter((f) => f.fieldname === "images");
+
+      const totalImages = imageFiles.length + existingImages.length;
+      if (totalImages > 10) {
+        return res.status(400).json({ message: "Maximum 10 images allowed" });
+      }
+
       if (imageFiles.length) {
         const sanitize = (name) =>
           String(name || "file")
@@ -220,6 +449,8 @@ const editCompanyListing = async (req, res) => {
           .filter((r) => r.status === "fulfilled")
           .map((r) => r.value);
         updateData.images.push(...uploaded);
+
+        console.log("✅ Total images after upload:", updateData.images.length);
       }
     }
 
@@ -229,6 +460,12 @@ const editCompanyListing = async (req, res) => {
         "https://wononomadsbe.vercel.app/api/company/update-company",
         updateData,
       );
+
+      // const response = await axios.patch(
+      //   "http://localhost:3000/api/company/update-company",
+      //   updateData,
+      // );
+      console.log("✅ Remote update success:", response.data);
     } catch (err) {
       console.error(
         "❌ Remote update failed:",
@@ -251,9 +488,9 @@ const editCompanyListing = async (req, res) => {
         }
       }
 
+      //Remote company update failed
       return res.status(err.response?.status || 500).json({
-        message: "Remote company update failed",
-        detail: err.response?.data || err.message,
+        message: err.response?.data.message || err.message,
       });
     }
 
