@@ -8,6 +8,12 @@ import axios from "axios";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 
+const parseCommaSeparatedList = (value = "") =>
+  value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const AddCompany = () => {
   const { control, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
@@ -18,12 +24,18 @@ const AddCompany = () => {
       // state: "",
       // city: "",
       companyName: "",
+      registeredEntityName: "",
       industry: "",
       companySize: "",
       companyCity: "",
       companyState: "",
       companyCountry: "",
-      selectedServices: [], // will need checkboxes / multi-select later
+      companyContinent: "",
+      websiteURL: "",
+      linkedinURL: "",
+      selectedApps: "",
+      selectedModules: "",
+      selectedDefaults: "",
 
       pocName: "",
       pocDesignation: "",
@@ -33,16 +45,14 @@ const AddCompany = () => {
       pocLanguages: "",
       pocAddress: "",
       pocProfileImage: "",
-      pocIsActive: true,
-      pocAvailabilityTime: "",
+      isActive: true,
     },
   });
 
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
-      console.log(fd);
       const response = await axios.post(
-        "http://localhost:5000/api/hosts/onboard-company",
+        "http://localhost:5007/api/hosts/onboard-company",
         fd,
       );
       return response.data;
@@ -57,12 +67,43 @@ const AddCompany = () => {
   });
 
   const onSubmit = (data) => {
-    // split languages from comma string → array
     const formattedData = {
-      ...data,
-      pocLanguages: data.pocLanguages
-        ? data.pocLanguages.split(",").map((l) => l.trim())
-        : [],
+      companyName: data.companyName,
+      registeredEntityName: data.registeredEntityName,
+      industry: data.industry,
+      companySize: data.companySize,
+      companyCity: data.companyCity,
+      companyState: data.companyState,
+      companyCountry: data.companyCountry,
+      companyContinent: data.companyContinent,
+      websiteURL: data.websiteURL,
+      linkedinURL: data.linkedinURL,
+      selectedServices: {
+        apps: parseCommaSeparatedList(data.selectedApps).map((appName) => ({
+          appName,
+          isActive: true,
+        })),
+        modules: parseCommaSeparatedList(data.selectedModules).map(
+          (moduleName) => ({
+            moduleName,
+            isActive: true,
+          }),
+        ),
+        defaults: parseCommaSeparatedList(data.selectedDefaults).map(
+          (name) => ({
+            name,
+          }),
+        ),
+      },
+      pocName: data.pocName,
+      pocEmail: data.pocEmail,
+      pocPhone: data.pocPhone,
+      pocDesignation: data.pocDesignation,
+      pocLinkedInProfile: data.pocLinkedInProfile,
+      pocLanguages: parseCommaSeparatedList(data.pocLanguages),
+      pocAddress: data.pocAddress,
+      pocProfileImage: data.pocProfileImage,
+      isActive: data.isActive,
     };
 
     register(formattedData);
@@ -293,6 +334,19 @@ const AddCompany = () => {
               />
             )}
           />
+          <Controller
+            name="registeredEntityName"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Registered Entity Name"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
 
           {/* <Controller
             name="companyType"
@@ -421,6 +475,93 @@ const AddCompany = () => {
                 </TextField>
               );
             }}
+          />
+
+          <Controller
+            name="companyContinent"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Company Continent"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="websiteURL"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Website URL"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="linkedinURL"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Company LinkedIn URL"
+                fullWidth
+                margin="normal"
+                variant="standard"
+              />
+            )}
+          />
+
+          <Controller
+            name="selectedApps"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Apps (comma separated)"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                helperText="Allowed: tickets, meetings, tasks, performance, visitors, assets"
+              />
+            )}
+          />
+
+          <Controller
+            name="selectedModules"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Modules (comma separated)"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                helperText="Allowed: finance, sales, hr, admin, maintenance, it"
+              />
+            )}
+          />
+
+          <Controller
+            name="selectedDefaults"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Defaults (comma separated)"
+                fullWidth
+                margin="normal"
+                variant="standard"
+                helperText="Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets"
+              />
+            )}
           />
 
           {/* ------------------- POC SECTION ------------------- */}
@@ -554,7 +695,7 @@ const AddCompany = () => {
             )}
           />
 
-          <Controller
+          {/* <Controller
             name="pocAvailabilityTime"
             control={control}
             render={({ field }) => (
@@ -566,7 +707,7 @@ const AddCompany = () => {
                 variant="standard"
               />
             )}
-          />
+          /> */}
 
           {/* Later: selectedServices → you may want checkboxes or multi-select */}
           <div className="flex justify-center items-center w-full col-span-1 md:col-span-2">
