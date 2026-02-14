@@ -3,8 +3,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
-import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
-import axios from "axios";
+import { toast } from "sonner";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 import { useParams } from "react-router-dom";
@@ -125,25 +124,32 @@ const EditCompany = () => {
     }
   }, [isCompanyError, companyError]);
 
-  const { mutate: register, isLoading: isRegisterLoading } = useMutation({
-    mutationFn: async (fd) => {
-      const response = await axios.post(
-        "http://localhost:5007/api/hosts/onboard-company",
-        fd,
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      toast.success("Company added successfully");
-      reset();
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.message || "Something went wrong");
-    },
-  });
+  const { mutate: updateCompany, isPending: isUpdateCompanyLoading } =
+    useMutation({
+      mutationFn: async (payload) => {
+        const response = await axiosPrivate.post(
+          "/api/hosts/edit-company",
+          payload,
+        );
+
+        return response.data;
+      },
+      onSuccess: () => {
+        toast.success("Company updated successfully");
+      },
+      onError: (error) => {
+        toast.error(error.response?.data?.message || "Something went wrong");
+      },
+    });
 
   const onSubmit = (data) => {
+    if (!companyId) {
+      toast.error("Invalid company id");
+      return;
+    }
+
     const formattedData = {
+      companyId,
       companyName: data.companyName,
       registeredEntityName: data.registeredEntityName,
       industry: data.industry,
@@ -171,18 +177,9 @@ const EditCompany = () => {
           }),
         ),
       },
-      pocName: data.pocName,
-      pocEmail: data.pocEmail,
-      pocPhone: data.pocPhone,
-      pocDesignation: data.pocDesignation,
-      pocLinkedInProfile: data.pocLinkedInProfile,
-      pocLanguages: parseCommaSeparatedList(data.pocLanguages),
-      pocAddress: data.pocAddress,
-      pocProfileImage: data.pocProfileImage,
-      isActive: data.isActive,
     };
 
-    register(formattedData);
+    updateCompany(formattedData);
   };
 
   return (
@@ -792,8 +789,8 @@ const EditCompany = () => {
               externalStyles={""}
               title={"Submit"}
               type={"submit"}
-              isLoading={isRegisterLoading}
-              disabled={isRegisterLoading}
+              isLoading={isUpdateCompanyLoading}
+              disabled={isUpdateCompanyLoading}
             />
           </div>
         </form>
