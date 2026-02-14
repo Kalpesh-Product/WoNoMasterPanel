@@ -29,20 +29,44 @@ const Companies = () => {
 
   const { mutate: toggleCompanyStatus } = useMutation({
     mutationFn: async ({ companyId, status }) => {
-      const response = await axiosPrivate.patch("/api/hosts/activate-company", {
-        companyId,
-        status,
-      });
+      const response = await axiosPrivate.patch(
+        `/api/admin/registration/${companyId}`,
+        {
+          status,
+        },
+      );
       return response.data;
+    },
+    onMutate: async ({ companyId, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["companiesList"] });
+
+      const previousCompanies = queryClient.getQueryData(["companiesList"]);
+
+      queryClient.setQueryData(["companiesList"], (oldCompanies = []) => {
+        return oldCompanies.map((company) =>
+          company.companyId === companyId
+            ? { ...company, isRegistered: status }
+            : company,
+        );
+      });
+
+      return { previousCompanies };
     },
     onSuccess: (data) => {
       toast.success(data?.message || "COMPANY STATUS UPDATED");
       queryClient.invalidateQueries({ queryKey: ["companiesList"] });
     },
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      if (context?.previousCompanies) {
+        queryClient.setQueryData(["companiesList"], context.previousCompanies);
+      }
+
       toast.error(
         error?.response?.data?.message || "Failed to update company status",
       );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
     },
   });
 
