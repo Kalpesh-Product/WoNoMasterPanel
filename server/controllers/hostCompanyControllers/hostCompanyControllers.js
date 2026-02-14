@@ -198,9 +198,10 @@ const createCompany = async (req, res, next) => {
 
 const editCompany = async (req, res, next) => {
   try {
-    const { companyId, selectedServices, ...payload } = JSON.parse(
-      req.body.data,
-    );
+    const parsedBody = req.body?.data
+      ? JSON.parse(req.body.data)
+      : req.body || {};
+    const { companyId, selectedServices, ...payload } = parsedBody;
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });

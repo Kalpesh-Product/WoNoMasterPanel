@@ -127,7 +127,7 @@ const EditCompany = () => {
   const { mutate: updateCompany, isPending: isUpdateCompanyLoading } =
     useMutation({
       mutationFn: async (payload) => {
-        const response = await axiosPrivate.post(
+        const response = await axiosPrivate.patch(
           "/api/hosts/edit-company",
           payload,
         );
