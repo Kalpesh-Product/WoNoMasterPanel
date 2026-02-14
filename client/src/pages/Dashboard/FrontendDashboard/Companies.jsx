@@ -229,7 +229,7 @@ const Companies = () => {
                     params.data.companyName,
                   );
                   navigate(
-                    `/dashboard/companies/${slugify(params.data.companyName)}`,
+                    `/dashboard/companies/edit-company/${params.data.companyId}`,
                     {
                       state: {
                         companyId: params.data.companyId,
