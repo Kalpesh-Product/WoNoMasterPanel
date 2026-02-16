@@ -76,7 +76,7 @@ const Companies = () => {
     "mehak.wono@gmail.com",
     "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
-    "vishal.wono@gmail.com",
+    // "vishal.wono@gmail.com",
   ];
   const isRestrictedUser = restrictedEmails.includes(userEmail);
 
