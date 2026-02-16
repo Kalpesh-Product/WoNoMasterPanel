@@ -168,6 +168,7 @@ import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
+import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 
 export const routes = createBrowserRouter([
   {
@@ -333,7 +334,29 @@ export const routes = createBrowserRouter([
                   },
                   {
                     path: "BlogsAndNews",
-                    element: <BlogsAndNews />,
+                    children: [
+                      {
+                        index: true,
+                        element: <BlogsAndNews />,
+                      },
+                      {
+                        path: ":locationType",
+                        children: [
+                          {
+                            index: true,
+                            element: <BlogsAndNews />,
+                          },
+                          {
+                            path: "add",
+                            element: <EditBlogNews />,
+                          },
+                          {
+                            path: "edit",
+                            element: <EditBlogNews />,
+                          },
+                        ]
+                      },
+                    ],
                   },
                   {
                     path: "companies",
