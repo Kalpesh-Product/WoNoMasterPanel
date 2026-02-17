@@ -169,6 +169,7 @@ import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable"
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
+import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 
 export const routes = createBrowserRouter([
   {
@@ -368,6 +369,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "add-company",
                         element: <AddCompany />, // ✅ NEW intermediate page
+                      },
+                      {
+                        path: "edit-company/:companyId",
+                        element: <EditCompany />, // ✅ NEW intermediate page
                       },
                       {
                         path: ":companyId",

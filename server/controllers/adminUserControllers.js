@@ -5,6 +5,7 @@ const { default: mongoose } = require("mongoose");
 const axios = require("axios");
 const FormData = require("form-data");
 const HostCompany = require("../models/hostCompany/hostCompany");
+const HostUser = require("../models/hostCompany/hostUser");
 
 const updateProfile = async (req, res) => {
   try {
@@ -163,8 +164,8 @@ const changePassword = async (req, res) => {
   }
 };
 
-const NOMADS_BASE = "https://wononomadsbe.vercel.app/api";
-// const NOMADS_BASE = "http://localhost:3000/api";
+const NOMADS_BASE =
+  process.env.NOMADS_BASE_URL || "https://wononomadsbe.vercel.app/api";
 
 const TYPE_MAP = {
   products: {
@@ -375,7 +376,7 @@ const updateReviewStatus = async (req, res, next) => {
   try {
     const { reviewId } = req.params;
     const { status } = req.body;
-    let data = { status };
+    let data = { status, userType: "MASTER" };
 
     if (!reviewId) {
       return res.status(400).json({ message: "Review id is required" });
@@ -387,22 +388,14 @@ const updateReviewStatus = async (req, res, next) => {
     }
 
     if (status === "approved") {
-      data = { ...data, userId: req.user, date: new Date() };
+      data = { ...data, userId: req.userData._id, date: new Date() };
     } else {
-      data = { ...data, userId: req.user, date: new Date() };
+      data = { ...data, userId: req.userData._id, date: new Date() };
     }
 
     let response = {};
     try {
-      // const response = await axios.post(
-      //   `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
-      //   data,
-      // );
-
-      response = await axios.patch(
-        `http://localhost:3000/api/review/${reviewId}`,
-        data,
-      );
+      response = await axios.patch(`${NOMADS_BASE}/review/${reviewId}`, data);
 
       if (![200, 204].includes(response.status)) {
         return res
@@ -429,21 +422,12 @@ const updateReviewStatus = async (req, res, next) => {
 
 const getReviewsByCompany = async (req, res, next) => {
   try {
-    const { companyId, companyType = "", status = "" } = req.query;
+    const { companyId, companyType = "", status = "pending" } = req.query;
 
-    if (!companyId) {
-      return res.status(400).json({
-        message: "companyId and companyType are required",
-      });
-    }
-    let response = {};
+    let response;
+    let enrichedReviews;
     try {
-      // const response = await axios.get(
-      //   `https://wononomadsbe.vercel.app/api/reviews/${reviewId}`,
-      //   data,
-      // );
-
-      response = await axios.get("http://localhost:3000/api/review", {
+      response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
           companyId,
           companyType,
@@ -454,6 +438,63 @@ const getReviewsByCompany = async (req, res, next) => {
       if (![200, 204].includes(response.status)) {
         return res.status(400).json({ message: `Failed to fetch reviews` });
       }
+
+      const reviews = response.data.data;
+
+      const adminIds = new Set();
+      const hostIds = new Set();
+
+      for (const r of reviews) {
+        if (r.approvedBy?.userId) {
+          r.approvedBy.userType === "MASTER"
+            ? adminIds.add(r.approvedBy.userId)
+            : hostIds.add(r.approvedBy.userId);
+        }
+
+        if (r.rejectedBy?.userId) {
+          r.rejectedBy.userType === "MASTER"
+            ? adminIds.add(r.rejectedBy.userId)
+            : hostIds.add(r.rejectedBy.userId);
+        }
+      }
+
+      const [admins, hosts] = await Promise.all([
+        AdminUser.find({ _id: { $in: [...adminIds] } })
+          .select("_id firstName lastName email")
+          .lean(),
+        HostUser.find({ _id: { $in: [...hostIds] } })
+          .select("_id name phone email")
+          .lean(),
+      ]);
+
+      const adminMap = Object.fromEntries(
+        admins.map((a) => [a._id.toString(), a]),
+      );
+      const hostMap = Object.fromEntries(
+        hosts.map((h) => [h._id.toString(), h]),
+      );
+
+      enrichedReviews = reviews.map((r) => ({
+        ...r,
+        approvedBy: r.approvedBy
+          ? {
+              ...r.approvedBy,
+              user:
+                r.approvedBy.userType === "MASTER"
+                  ? adminMap[r.approvedBy.userId]
+                  : hostMap[r.approvedBy.userId],
+            }
+          : null,
+        rejectedBy: r.rejectedBy
+          ? {
+              ...r.rejectedBy,
+              user:
+                r.rejectedBy.userType === "MASTER"
+                  ? adminMap[r.rejectedBy.userId]
+                  : hostMap[r.rejectedBy.userId],
+            }
+          : null,
+      }));
     } catch (err) {
       return res.status(err.response?.status || 500).json({
         message:
@@ -462,10 +503,10 @@ const getReviewsByCompany = async (req, res, next) => {
           "Failed to fetch reviews",
       });
     }
-    console.log("response", response.data);
 
     return res.status(200).json({
-      reviews: response.data.data,
+      // reviews: response.data.data,
+      reviews: enrichedReviews,
     });
   } catch (error) {
     next(error);

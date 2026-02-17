@@ -1,7 +1,7 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
 import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -9,6 +9,9 @@ import { Chip } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
 import useAuth from "../../../hooks/useAuth";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import { toast } from "sonner";
+import { queryClient } from "../../../main";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -24,13 +27,56 @@ const Companies = () => {
 
   const { auth } = useAuth();
 
+  const { mutate: toggleCompanyStatus } = useMutation({
+    mutationFn: async ({ companyId, status }) => {
+      const response = await axiosPrivate.patch(
+        `/api/admin/registration/${companyId}`,
+        {
+          status,
+        },
+      );
+      return response.data;
+    },
+    onMutate: async ({ companyId, status }) => {
+      await queryClient.cancelQueries({ queryKey: ["companiesList"] });
+
+      const previousCompanies = queryClient.getQueryData(["companiesList"]);
+
+      queryClient.setQueryData(["companiesList"], (oldCompanies = []) => {
+        return oldCompanies.map((company) =>
+          company.companyId === companyId
+            ? { ...company, isRegistered: status }
+            : company,
+        );
+      });
+
+      return { previousCompanies };
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "COMPANY STATUS UPDATED");
+      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousCompanies) {
+        queryClient.setQueryData(["companiesList"], context.previousCompanies);
+      }
+
+      toast.error(
+        error?.response?.data?.message || "Failed to update company status",
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
+    },
+  });
+
   const userEmail = auth?.user?.email;
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
     "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
-    "vishal.wono@gmail.com",
+    // "vishal.wono@gmail.com",
   ];
   const isRestrictedUser = restrictedEmails.includes(userEmail);
 
@@ -116,8 +162,26 @@ const Companies = () => {
       },
       // { field: "companyType", headerName: "Type", flex: 1 },
       {
-        field: "location",
-        headerName: "Location",
+        field: "companyContinent",
+        headerName: "Continent",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyCountry",
+        headerName: "Country",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyState",
+        headerName: "State",
+        flex: 1,
+        cellRenderer: (params) => params.value || "-",
+      },
+      {
+        field: "companyCity",
+        headerName: "City",
         flex: 1,
         cellRenderer: (params) => params.value || "-",
       },
@@ -150,8 +214,61 @@ const Companies = () => {
           );
         },
       },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 120,
+        cellRenderer: (params) => (
+          <ThreeDotMenu
+            rowId={
+              params?.data?.companyId ||
+              params?.data?._id ||
+              params?.data?.companyName
+            }
+            menuItems={[
+              params?.data?.isRegistered
+                ? {
+                    label: "Mark As Inactive",
+                    onClick: () =>
+                      toggleCompanyStatus({
+                        companyId: params?.data?.companyId,
+                        status: false,
+                      }),
+                  }
+                : {
+                    label: "Mark As Active",
+                    onClick: () =>
+                      toggleCompanyStatus({
+                        companyId: params?.data?.companyId,
+                        status: true,
+                      }),
+                  },
+              {
+                label: "Edit",
+                onClick: () => {
+                  dispatch(setSelectedCompany(params.data));
+                  sessionStorage.setItem("companyId", params.data.companyId);
+                  sessionStorage.setItem(
+                    "companyName",
+                    params.data.companyName,
+                  );
+                  navigate(
+                    `/dashboard/companies/edit-company/${params.data.companyId}`,
+                    {
+                      state: {
+                        companyId: params.data.companyId,
+                        companyName: params.data.companyName,
+                      },
+                    },
+                  );
+                },
+              },
+            ]}
+          />
+        ),
+      },
     ],
-    [navigate],
+    [dispatch, navigate, toggleCompanyStatus],
   );
 
   // ✅ sort companies: Active first, then Inactive
@@ -162,15 +279,6 @@ const Companies = () => {
     });
   }, [companies]);
 
-  const displayCompanies = useMemo(() => {
-    return sortedCompanies.map((company) => ({
-      ...company,
-      location: [company.companyCity, company.companyCountry]
-        .filter(Boolean)
-        .join(", "),
-    }));
-  }, [sortedCompanies]);
-
   if (isLoading) return <div className="p-6">Loading companies…</div>;
   if (isError)
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -179,7 +287,7 @@ const Companies = () => {
     <div className="p-4">
       <PageFrame>
         <AgTable
-          data={displayCompanies}
+          data={sortedCompanies}
           columns={columns}
           search={true}
           tableTitle={"Companies"}

@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useCallback, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { IconButton, TextField } from "@mui/material";
-import { MdOutlineRateReview } from "react-icons/md";
+import { MenuItem, TextField } from "@mui/material";
 import YearWiseTable from "../../../components/Tables/YearWiseTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import MuiModal from "../../../components/MuiModal";
@@ -11,11 +10,10 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 const CompanyReviews = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
+  const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [activeReview, setActiveReview] = useState(null);
-
-  const reviewAdminApiBaseUrl =
-    import.meta.env.VITE_REVIEW_ADMIN_API_BASE_URL || "http://localhost:5007";
+  const [statusOverrides, setStatusOverrides] = useState({});
 
   const {
     data = [],
@@ -23,27 +21,45 @@ const CompanyReviews = () => {
     isError,
   } = useQuery({
     queryKey: ["companyReviews", selectedCompany?.companyId],
-    enabled: !!selectedCompany?.companyId,
+    // enabled: !!selectedCompany?.companyId,
+
     queryFn: async () => {
-      const response = await axiosPrivate.get(
-        `${reviewAdminApiBaseUrl}/api/admin/reviews?companyId=${selectedCompany?.companyId}&companyType=meetingroom&status=approved`,
-        { headers: { "Cache-Control": "no-cache" } },
-      );
-      const payload = response?.data;
-      const reviews =
-        payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
-      return Array.isArray(reviews) ? reviews : [];
+      const extractReviews = (response) => {
+        const payload = response?.data;
+        const reviews =
+          payload?.reviews ??
+          payload?.data?.reviews ??
+          payload?.data ??
+          payload;
+        return Array.isArray(reviews) ? reviews : [];
+      };
+
+      const response = await axiosPrivate.get("/api/admin/reviews", {
+        headers: { "Cache-Control": "no-cache" },
+      });
+
+      const mergedReviews = extractReviews(response);
+
+      const uniqueReviews = new Map();
+      mergedReviews.forEach((review, index) => {
+        const reviewId = review?._id || review?.id;
+        if (!reviewId || !uniqueReviews.has(reviewId)) {
+          uniqueReviews.set(reviewId || `review-${index}`, review);
+        }
+      });
+
+      return Array.from(uniqueReviews.values());
     },
   });
 
-  const rows = useMemo(
-    () =>
-      (Array.isArray(data) ? data : []).map((review, index) => ({
-        ...review,
-        srNo: index + 1,
-      })),
-    [data],
-  );
+  // const rows = useMemo(
+  //   () =>
+  //     (Array.isArray(data) ? data : []).map((review, index) => ({
+  //       ...review,
+  //       srNo: index + 1,
+  //     })),
+  //   [data],
+  // );
 
   const handleOpenModal = (review) => {
     setActiveReview(review);
@@ -55,6 +71,141 @@ const CompanyReviews = () => {
     const normalized = String(status).toLowerCase();
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
   };
+
+  const getEffectiveStatus = useCallback(
+    (review) => {
+      const reviewId = review?._id || review?.id;
+      return statusOverrides[reviewId] || review?.status;
+    },
+    [statusOverrides],
+  );
+
+  const getReviewerActionByName = useCallback(
+    (review) => {
+      const extractName = (user) => {
+        if (!user) return "";
+        if (typeof user === "string") return user;
+
+        const firstName = user?.firstName || "";
+        const lastName = user?.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim();
+
+        return (
+          fullName ||
+          user?.fullName ||
+          user?.name ||
+          user?.username ||
+          user?.email ||
+          ""
+        );
+      };
+
+      const extractActionUserName = (actionBy) => {
+        if (!actionBy) return "";
+        if (typeof actionBy === "string") return actionBy;
+
+        const userType = String(actionBy?.userType || "").toUpperCase();
+        const nestedUser = actionBy?.user;
+
+        if (userType === "MASTER") {
+          const masterName = `${nestedUser?.firstName || ""} ${
+            nestedUser?.lastName || ""
+          }`.trim();
+
+          return masterName || extractName(nestedUser) || extractName(actionBy);
+        }
+
+        if (userType === "HOST") {
+          return (
+            nestedUser?.name || extractName(nestedUser) || extractName(actionBy)
+          );
+        }
+
+        return extractName(nestedUser) || extractName(actionBy);
+      };
+
+      const status = String(getEffectiveStatus(review) || review?.status || "")
+        .toLowerCase()
+        .trim();
+
+      if (status === "approved") {
+        return (
+          extractName(review?.approvedByName) ||
+          extractActionUserName(review?.approvedBy) ||
+          "-"
+        );
+      }
+
+      if (status === "rejected") {
+        return (
+          extractName(review?.rejectedByName) ||
+          extractActionUserName(review?.rejectedBy) ||
+          "-"
+        );
+      }
+
+      return "-";
+    },
+    [getEffectiveStatus],
+  );
+
+  const updateReviewStatusMutation = useMutation({
+    mutationFn: async ({ reviewId, status }) => {
+      const response = await axiosPrivate.patch(
+        `/api/admin/review/${reviewId}`,
+        {
+          status,
+        },
+      );
+      return response?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["companyReviews", selectedCompany?.companyId],
+      });
+    },
+  });
+
+  const handleStatusChange = (review, newStatus) => {
+    const reviewId = review?._id || review?.id;
+    if (!reviewId) return;
+
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [reviewId]: newStatus,
+    }));
+
+    if (newStatus === "approved" || newStatus === "rejected") {
+      updateReviewStatusMutation.mutate({ reviewId, status: newStatus });
+    }
+  };
+
+  const rows = useMemo(() => {
+    const statusOrder = {
+      pending: 0,
+      rejected: 1,
+      approved: 2,
+    };
+
+    return (Array.isArray(data) ? data : [])
+      .slice()
+      .sort((a, b) => {
+        const aStatus = String(
+          getEffectiveStatus(a) || "pending",
+        ).toLowerCase();
+        const bStatus = String(
+          getEffectiveStatus(b) || "pending",
+        ).toLowerCase();
+        const aRank = statusOrder[aStatus] ?? Number.MAX_SAFE_INTEGER;
+        const bRank = statusOrder[bStatus] ?? Number.MAX_SAFE_INTEGER;
+        return aRank - bRank;
+      })
+      .map((review, index) => ({
+        ...review,
+        srNo: index + 1,
+        status: getEffectiveStatus(review) || review?.status,
+      }));
+  }, [data, getEffectiveStatus]);
 
   const columns = [
     { field: "srNo", headerName: "SrNo", width: 100 },
@@ -80,18 +231,100 @@ const CompanyReviews = () => {
     {
       field: "status",
       headerName: "Status",
-      valueGetter: (params) => formatStatusLabel(params.data.status),
+      cellRenderer: (params) => {
+        const value = formatStatusLabel(params.data.status);
+        const isFinalStatus = value === "Approved" || value === "Rejected";
+
+        const statusStyles = {
+          Pending: { bg: "#FEF3C7", color: "#F59E0B" },
+          Approved: { bg: "#D1FAE5", color: "#10B981" },
+          Rejected: { bg: "#FEE2E2", color: "#EF4444" },
+        };
+
+        const badgeStyles = {
+          borderRadius: "9999px",
+          padding: "4px 16px",
+          fontWeight: 600,
+          fontSize: "0.85rem",
+          backgroundColor: statusStyles[value]?.bg,
+          color: statusStyles[value]?.color,
+          lineHeight: 1.5,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        };
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            {isFinalStatus ? (
+              <span style={badgeStyles}>{value}</span>
+            ) : (
+              <TextField
+                select
+                size="small"
+                value={value}
+                disabled={updateReviewStatusMutation.isPending}
+                onChange={(e) =>
+                  handleStatusChange(params.data, e.target.value.toLowerCase())
+                }
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "9999px",
+                    px: 1.5,
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    backgroundColor: statusStyles[value]?.bg,
+                    color: statusStyles[value]?.color,
+                    "& fieldset": { border: "none" },
+                  },
+                  "& .MuiSelect-select": {
+                    textAlign: "center",
+                  },
+                }}
+              >
+                {["Pending", "Approved", "Rejected"].map((option) => (
+                  <MenuItem
+                    key={option}
+                    value={option}
+                    sx={{
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                      borderRadius: "9999px",
+                      my: 0.5,
+                    }}
+                  >
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          </div>
+        );
+      },
     },
     {
       field: "comment",
+
       headerName: "Description",
       cellRenderer: (params) => (
         <div style={{ display: "flex", justifyContent: "center" }}>
-          <IconButton onClick={() => handleOpenModal(params.data)}>
+          {/* <IconButton onClick={() => handleOpenModal(params.data)}>
             <MdOutlineRateReview />
-          </IconButton>
+          </IconButton> */}
+          <button
+            className="text-blue-500 underline font-semibold"
+            onClick={() => handleOpenModal(params.data)}
+          >
+            View Description
+          </button>
         </div>
       ),
+    },
+    {
+      field: "approvedOrRejectedBy",
+      headerName: "Approved/Rejected by",
+      valueGetter: (params) => getReviewerActionByName(params.data),
     },
   ];
 
