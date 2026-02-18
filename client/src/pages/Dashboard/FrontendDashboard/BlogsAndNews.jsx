@@ -287,7 +287,7 @@ const BlogsAndNews = () => {
       const endpoint = itemType === "blog" ? "blogs" : "news";
       const newStatus = !currentStatus;
 
-      const response = await axios.patch(`/${endpoint}/${id}`, {
+      const response = await axios.patch(`/api/${endpoint}/${id}`, {
         isActive: newStatus,
       });
 
