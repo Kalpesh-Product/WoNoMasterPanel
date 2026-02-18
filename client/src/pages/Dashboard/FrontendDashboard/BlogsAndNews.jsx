@@ -9,21 +9,19 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import StatusChip from "../../../components/StatusChip";
 import { queryClient } from "../../../main";
 
-const MASTER_PANEL_BACKEND = import.meta.env.MASTER_PANEL_BACKEND;
-
 const BLOG_ENDPOINTS = [
-  `${MASTER_PANEL_BACKEND}/blogs`,
-  `${MASTER_PANEL_BACKEND}/blogs/all-blogs`,
-  `${MASTER_PANEL_BACKEND}/blogs/get-all-blogs`,
+  "/api/blogs",
+  "/api/blogs/all-blogs",
+  "/api/blogs/get-all-blogs",
 ];
 
 const NEWS_ENDPOINTS = [
-  `${MASTER_PANEL_BACKEND}/news`,
-  `${MASTER_PANEL_BACKEND}/news/all-news`,
-  `${MASTER_PANEL_BACKEND}/news/get-all-news`,
+  "/api/news",
+  "/api/news/all-news",
+  "/api/news/get-all-news",
 ];
 
-const COMPANY_ENDPOINTS = [`${MASTER_PANEL_BACKEND}/hosts/companies`];
+const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -289,12 +287,9 @@ const BlogsAndNews = () => {
       const endpoint = itemType === "blog" ? "blogs" : "news";
       const newStatus = !currentStatus;
 
-      const response = await axios.patch(
-        `${MASTER_PANEL_BACKEND}/${endpoint}/${id}`,
-        {
-          isActive: newStatus,
-        },
-      );
+      const response = await axios.patch(`/${endpoint}/${id}`, {
+        isActive: newStatus,
+      });
 
       return response.data;
     },
