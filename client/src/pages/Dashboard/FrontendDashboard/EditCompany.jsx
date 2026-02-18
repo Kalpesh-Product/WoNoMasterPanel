@@ -8,6 +8,7 @@ import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 import { useParams } from "react-router-dom";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+// import UploadFileInput from "../../../components/UploadFileInput";
 
 const parseCommaSeparatedList = (value = "") =>
   value
@@ -119,7 +120,7 @@ const EditCompany = () => {
     if (isCompanyError) {
       toast.error(
         companyError?.response?.data?.message ||
-          "Failed to fetch company details",
+        "Failed to fetch company details",
       );
     }
   }, [isCompanyError, companyError]);
@@ -381,6 +382,20 @@ const EditCompany = () => {
             )}
           />
 
+          {/* companyLogo (single)
+          <Controller
+            name="companyLogo"
+            control={control}
+            render={({ field }) => (
+              <UploadFileInput
+                id="companyLogo"
+                value={field.value}
+                label="Add/Replace Company Logo"
+                onChange={field.onChange}
+              />
+            )}
+          /> */}
+
           <Controller
             name="industry"
             control={control}
@@ -524,9 +539,9 @@ const EditCompany = () => {
               const cities =
                 companyCountryObj && companyStateObj
                   ? City.getCitiesOfState(
-                      companyCountryObj.isoCode,
-                      companyStateObj.isoCode,
-                    )
+                    companyCountryObj.isoCode,
+                    companyStateObj.isoCode,
+                  )
                   : [];
 
               return (
