@@ -9,7 +9,7 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import StatusChip from "../../../components/StatusChip";
 import { queryClient } from "../../../main";
 
-const API_BASE = "https://wononomadsbe.vercel.app/api";
+const API_BASE = "http://localhost:5007/api/hosts/";
 const VITE_DEV_LINK = "http://localhost:5007/api";
 
 const BLOG_ENDPOINTS = [
@@ -25,7 +25,7 @@ const NEWS_ENDPOINTS = [
 ];
 
 const COMPANY_ENDPOINTS = [
-    `${API_BASE}/company/companies`,
+    `${API_BASE}/companies`,
 ];
 
 const toArray = (payload) => {

@@ -8,7 +8,7 @@ import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 import { useParams } from "react-router-dom";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-// import UploadFileInput from "../../../components/UploadFileInput";
+import UploadFileInput from "../../../components/UploadFileInput";
 
 const parseCommaSeparatedList = (value = "") =>
   value
@@ -382,7 +382,8 @@ const EditCompany = () => {
             )}
           />
 
-          {/* companyLogo (single)
+          {/* companyLogo (single) */}
+          {/* logo preview */}
           <Controller
             name="companyLogo"
             control={control}
@@ -394,7 +395,7 @@ const EditCompany = () => {
                 onChange={field.onChange}
               />
             )}
-          /> */}
+          />
 
           <Controller
             name="industry"
