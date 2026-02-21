@@ -8,7 +8,8 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
-const VITE_DEV_LINK = "http://localhost:5007/api";
+// const VITE_DEV_LINK = "http://localhost:5007/api";
+const VITE_PROD_LINK = "https://wonomasterbe.vercel.app/api";
 
 const EditBlogNews = () => {
     const location = useLocation();
@@ -86,8 +87,8 @@ const EditBlogNews = () => {
             const resourceType = type === "blog" ? "blogs" : "news";
 
             const url = isEdit
-                ? `${VITE_DEV_LINK}/${resourceType}/${item._id}`
-                : `${VITE_DEV_LINK}/${resourceType}`;
+                ? `${VITE_PROD_LINK}/${resourceType}/${item._id}`
+                : `${VITE_PROD_LINK}/${resourceType}`;
 
             const method = isEdit ? "PATCH" : "POST";
 
@@ -103,7 +104,7 @@ const EditBlogNews = () => {
                 method,
                 url,
                 data: cleanData,
-                baseURL: VITE_DEV_LINK,
+                baseURL: VITE_PROD_LINK,
             });
 
             return response.data;
