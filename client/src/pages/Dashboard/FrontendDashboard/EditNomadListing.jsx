@@ -88,6 +88,7 @@ const EditNomadListing = () => {
       inclusions: [],
       about: "",
       address: "",
+      googleMap: "",
       images: [],
       // reviews: [defaultReview],
       companyTitle: "",
@@ -176,6 +177,7 @@ const EditNomadListing = () => {
       inclusions: inclusionsArr,
       about: src.about || "",
       address: src.address || "",
+      googleMap: src.googleMap || "",
       images: [], // cannot prefill file inputs
       companyTitle: src.companyTitle || "",
       companyName: src.companyName || "",
@@ -216,6 +218,7 @@ const EditNomadListing = () => {
     fd.set("longitude", values.longitude);
     fd.set("about", values.about);
     fd.set("address", values.address);
+    fd.set("googleMap", values.googleMap);
     fd.set("companyTitle", values.companyTitle);
     fd.set("companyName", values.companyName);
 
@@ -273,6 +276,7 @@ const EditNomadListing = () => {
       inclusions: [],
       about: "",
       address: "",
+      googleMap: "",
       images: [],
       reviews: [],
       companyTitle: "",
@@ -486,21 +490,32 @@ const EditNomadListing = () => {
 
           {/* Address */}
           {/* <div className="col-span-2"> */}
-          <Controller
-            name="address"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Address"
-                multiline
-                minRows={3}
-                fullWidth
-                className="col-span-2 md:col-span-1"
-              />
-            )}
-          />
+          <div className="grid grid-row-2 gap-2">
+            <Controller
+              name="address"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Address"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
+            <Controller
+              name="googleMap"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Google Map Url"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
+          </div>
           {/* </div> */}
 
           {/* Images Upload */}
@@ -657,7 +672,7 @@ const EditNomadListing = () => {
           </div>
         </form>
       </PageFrame>
-    </div>
+    </div >
   );
 };
 
