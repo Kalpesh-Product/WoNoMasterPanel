@@ -88,8 +88,11 @@ const EditNomadListing = () => {
       inclusions: [],
       about: "",
       address: "",
+      googleMap: "",
       images: [],
       // reviews: [defaultReview],
+      companyTitle: "",
+      companyName: "",
       reviews: [],
     },
   });
@@ -143,10 +146,10 @@ const EditNomadListing = () => {
     const reviews = Array.isArray(src.reviews)
       ? src.reviews.length
         ? src.reviews.map((r) => ({
-            name: r.name || "",
-            review: r.review || r.description || r.testimony || "",
-            rating: Number(r.rating ?? 5),
-          }))
+          name: r.name || "",
+          review: r.review || r.description || r.testimony || "",
+          rating: Number(r.rating ?? 5),
+        }))
         : []
       : [];
 
@@ -154,9 +157,9 @@ const EditNomadListing = () => {
       ? src.inclusions
       : typeof src.inclusions === "string" && src.inclusions.trim()
         ? src.inclusions
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
         : [];
 
     reset({
@@ -174,7 +177,10 @@ const EditNomadListing = () => {
       inclusions: inclusionsArr,
       about: src.about || "",
       address: src.address || "",
+      googleMap: src.googleMap || "",
       images: [], // cannot prefill file inputs
+      companyTitle: src.companyTitle || "",
+      companyName: src.companyName || "",
       reviews,
     });
   }, [navState.website, fetchedListing, businessId, reset]);
@@ -212,15 +218,18 @@ const EditNomadListing = () => {
     fd.set("longitude", values.longitude);
     fd.set("about", values.about);
     fd.set("address", values.address);
+    fd.set("googleMap", values.googleMap);
+    fd.set("companyTitle", values.companyTitle);
+    fd.set("companyName", values.companyName);
 
     // ✅ inclusions always string
     const inclusionsArr = Array.isArray(values.inclusions)
       ? values.inclusions
       : typeof values.inclusions === "string"
         ? values.inclusions
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
         : [];
     fd.set("inclusions", inclusionsArr.join(", "));
 
@@ -267,8 +276,10 @@ const EditNomadListing = () => {
       inclusions: [],
       about: "",
       address: "",
+      googleMap: "",
       images: [],
       reviews: [],
+      companyTitle: "",
     });
   };
 
@@ -370,36 +381,65 @@ const EditNomadListing = () => {
               )}
             />
           </div> */}
+          <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Title */}
+            <Controller
+              name="companyName"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Company Name"
+                  className="col-span-2 md:col-span-1"
+                  disabled
+                />
+              )}
+            />
+            {/* Title */}
+            <Controller
+              name="companyTitle"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Company Title"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
 
-          {/* Ratings */}
-          <Controller
-            name="ratings"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Ratings"
-                type="number"
-                className="col-span-2 md:col-span-1"
-              />
-            )}
-          />
+            {/* Ratings */}
+            <Controller
+              name="ratings"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Ratings"
+                  type="number"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
 
-          {/* Total Reviews */}
-          <Controller
-            name="totalReviews"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Total Reviews"
-                type="number"
-                className="col-span-2 md:col-span-1"
-              />
-            )}
-          />
+            {/* Total Reviews */}
+            <Controller
+              name="totalReviews"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Total Reviews"
+                  type="number"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
+          </div>
 
           {/* Latitude */}
           <Controller
@@ -450,21 +490,32 @@ const EditNomadListing = () => {
 
           {/* Address */}
           {/* <div className="col-span-2"> */}
-          <Controller
-            name="address"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Address"
-                multiline
-                minRows={3}
-                fullWidth
-                className="col-span-2 md:col-span-1"
-              />
-            )}
-          />
+          <div className="grid grid-row-2 gap-2">
+            <Controller
+              name="address"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Address"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
+            <Controller
+              name="googleMap"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Google Map Url"
+                  className="col-span-2 md:col-span-1"
+                />
+              )}
+            />
+          </div>
           {/* </div> */}
 
           {/* Images Upload */}
@@ -621,7 +672,7 @@ const EditNomadListing = () => {
           </div>
         </form>
       </PageFrame>
-    </div>
+    </div >
   );
 };
 

@@ -55,17 +55,17 @@ export default function NomadListingsOverview() {
   // ✅ Table data
   const tableData = !isPending
     ? listings?.map((item, index) => ({
-        ...item,
-        srNo: index + 1,
-        businessId: item.businessId,
-        companyName: item.companyName,
-        companyType: item.companyType,
-        city: item.city,
-        state: item.state,
-        country: item.country,
-        ratings: item.ratings,
-        totalReviews: item.totalReviews,
-      }))
+      ...item,
+      srNo: index + 1,
+      businessId: item.businessId,
+      companyName: item.companyName,
+      companyType: item.companyType,
+      city: item.city,
+      state: item.state,
+      country: item.country,
+      ratings: item.ratings,
+      totalReviews: item.totalReviews,
+    }))
     : [];
 
   // ✅ Table columns
@@ -79,6 +79,12 @@ export default function NomadListingsOverview() {
     {
       headerName: "Company Name",
       field: "companyName",
+      flex: 1,
+      minWidth: 200,
+    },
+    {
+      headerName: "Company Title",
+      field: "companyTitle",
       flex: 1,
       minWidth: 200,
     },
@@ -135,21 +141,21 @@ export default function NomadListingsOverview() {
               },
               params?.data?.isActive
                 ? {
-                    label: "Mark As Inactive",
-                    onClick: () =>
-                      toggleStatus({
-                        businessId: params?.data?.businessId,
-                        status: false,
-                      }),
-                  }
+                  label: "Mark As Inactive",
+                  onClick: () =>
+                    toggleStatus({
+                      businessId: params?.data?.businessId,
+                      status: false,
+                    }),
+                }
                 : {
-                    label: "Mark As Active",
-                    onClick: () =>
-                      toggleStatus({
-                        businessId: params?.data?.businessId,
-                        status: true,
-                      }),
-                  },
+                  label: "Mark As Active",
+                  onClick: () =>
+                    toggleStatus({
+                      businessId: params?.data?.businessId,
+                      status: true,
+                    }),
+                },
             ]}
           />
         );

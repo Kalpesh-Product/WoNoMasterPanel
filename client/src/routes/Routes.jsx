@@ -167,6 +167,8 @@ import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
+import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
+import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 
 export const routes = createBrowserRouter([
@@ -331,7 +333,32 @@ export const routes = createBrowserRouter([
                     path: "company-reviews",
                     element: <CompanyReviews />,
                   },
-
+                  {
+                    path: "BlogsAndNews",
+                    children: [
+                      {
+                        index: true,
+                        element: <BlogsAndNews />,
+                      },
+                      {
+                        path: ":locationType",
+                        children: [
+                          {
+                            index: true,
+                            element: <BlogsAndNews />,
+                          },
+                          {
+                            path: "add",
+                            element: <EditBlogNews />,
+                          },
+                          {
+                            path: "edit",
+                            element: <EditBlogNews />,
+                          },
+                        ]
+                      },
+                    ],
+                  },
                   {
                     path: "companies",
                     children: [

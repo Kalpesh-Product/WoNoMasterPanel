@@ -48,6 +48,8 @@ const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
 const hostUserRoutes = require("./routes/hostUserRoutes");
+const blogRoutes = require("./routes/blogRoutes");
+const newsRoutes = require("./routes/newsRoutes");
 
 const {
   getTemplate,
@@ -88,6 +90,8 @@ app.post("/api/editor/create-website", createTemplate); //not protected in order
 app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
 app.use("/api/company", verifyJwt, auditLogger, companyRoutes);
+app.use("/api/blogs", verifyJwt, auditLogger, blogRoutes);
+app.use("/api/news", verifyJwt, auditLogger, newsRoutes);
 app.use("/api/budget", verifyJwt, auditLogger, budgetRoutes);
 app.use("/api/departments", verifyJwt, auditLogger, departmentsRoutes);
 app.use("/api/designations", verifyJwt, auditLogger, designationRoutes);
