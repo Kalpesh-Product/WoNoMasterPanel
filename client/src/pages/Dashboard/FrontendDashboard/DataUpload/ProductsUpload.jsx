@@ -1,5 +1,5 @@
 // src/pages/Dashboard/FrontendDashboard/ProductsUpload.jsx
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useMemo, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
 import PageFrame from "../../../../components/Pages/PageFrame";
@@ -27,6 +27,7 @@ const TYPE_MAP = {
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const ProductsUpload = () => {
+  const audioRef = useRef(null);
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
@@ -64,6 +65,10 @@ const ProductsUpload = () => {
 
       toast.success("Upload successful");
 
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
     },
@@ -71,6 +76,10 @@ const ProductsUpload = () => {
       console.log(err);
 
       toast.error(err?.data?.message || "Upload failed");
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play().catch(() => {});
+      }
       setError(err?.message || "Something went wrong");
     },
   });
@@ -92,7 +101,7 @@ const ProductsUpload = () => {
 
     quickPeek(f).then(
       (ok) =>
-        !ok && setError("This doesn’t look like a CSV (no commas in header).")
+        !ok && setError("This doesn’t look like a CSV (no commas in header)."),
     );
   }
 
@@ -136,6 +145,13 @@ const ProductsUpload = () => {
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  // useEffect(() => {
+  //   if (audioRef.current) {
+  //     audioRef.current.currentTime = 0;
+  //     audioRef.current.play().catch(() => {});
+  //   }
+  // }, []);
 
   return (
     <div className="p-0">
@@ -201,8 +217,8 @@ const ProductsUpload = () => {
               {dragActive
                 ? "Drop your file here"
                 : file
-                ? "Change file"
-                : "Upload your CSV here (click to browse)"}
+                  ? "Change file"
+                  : "Upload your CSV here (click to browse)"}
             </p>
             {filename && (
               <p className="text-sm text-gray-600">
@@ -234,6 +250,7 @@ const ProductsUpload = () => {
           </div>
         </div>
       </PageFrame>
+      <audio ref={audioRef} src="/audio/successAudio.mp3" preload="auto" />
     </div>
   );
 };
