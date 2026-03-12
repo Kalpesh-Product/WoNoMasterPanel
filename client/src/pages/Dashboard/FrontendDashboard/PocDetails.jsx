@@ -151,8 +151,8 @@ const PocDetails = () => {
   const { mutate: updatePoc, isPending: isUpdating } = useMutation({
     mutationFn: async (payload) => {
       const res = await axios.put(
-        // `https://wononomadsbe.vercel.app/api/poc/poc/${endpointCompanyId}`,
-        `http://localhost:3000/api/poc/poc/${endpointCompanyId}`,
+        `https://wononomadsbe.vercel.app/api/poc/poc/${endpointCompanyId}`,
+        // `http://localhost:3000/api/poc/poc/${endpointCompanyId}`,
         payload,
       );
       return res.data;
