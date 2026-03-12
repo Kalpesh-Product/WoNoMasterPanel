@@ -10,8 +10,8 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["news"];
 const TYPE_MAP = {
-  // api: "http://localhost:3000/api/news/bulk-insert-news",
-  api: "https://wononomadsbe.vercel.app/api/news/bulk-insert-news",
+  // api: "http://localhost:3000/api/news/bulk-insert",
+  api: "https://wononomadsbe.vercel.app/api/news/bulk-insert",
   formKey: "news-file",
 };
 
