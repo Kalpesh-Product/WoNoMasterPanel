@@ -9,11 +9,11 @@ import {
   Button,
   CircularProgress,
   FormControlLabel,
-  MenuItem,
   Switch,
   TextField,
 } from "@mui/material";
 import { toast } from "sonner";
+import PrimaryButton from "../../../components/PrimaryButton";
 
 // ---------- UI helpers ----------
 const ReadOnlyField = ({ label, value }) => (
@@ -273,26 +273,7 @@ const PocDetails = () => {
               })}
             </TextField>
           )} */}
-          <div className="flex items-center gap-2">
-            {isEditMode ? (
-              <>
-                <Button variant="outlined" onClick={handleCancelEdit}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="contained"
-                  onClick={handleSave}
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? "Saving..." : "Save"}
-                </Button>
-              </>
-            ) : (
-              <Button variant="contained" onClick={handleEditToggle}>
-                Edit
-              </Button>
-            )}
-          </div>
+
           {selectedCompany?.companyName && (
             <span className="text-sm text-gray-500">
               Company:{" "}
@@ -429,6 +410,34 @@ const PocDetails = () => {
                 />
                 <ReadOnlyField label="Active" value={view.isActive} />
               </>
+            )}
+          </div>
+                    <div className="mt-8 flex justify-center gap-3">
+            {isEditMode ? (
+              <>
+                <Button
+                  variant="outlined"
+                  onClick={handleCancelEdit}
+                  disabled={isUpdating}
+                >
+                  Cancel
+                </Button>
+                <PrimaryButton
+                  title={isUpdating ? "Saving..." : "Save Changes"}
+                  type="button"
+                  handleSubmit={handleSave}
+                  isLoading={isUpdating}
+                  disabled={isUpdating}
+                  padding="px-8 py-2"
+                />
+              </>
+            ) : (
+              <PrimaryButton
+                title="Edit"
+                type="button"
+                handleSubmit={handleEditToggle}
+                padding="px-8 py-2"
+              />
             )}
           </div>
         </div>
