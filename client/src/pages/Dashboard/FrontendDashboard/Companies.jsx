@@ -78,13 +78,20 @@ const Companies = () => {
     "gourish.wono@gmail.com",
     // "vishal.wono@gmail.com",
   ];
+  const companiesAccessAllowedEmails = [
+    "gourish.wono@gmail.com",
+    "savita.wono@gmail.com",
+  ];
+
   const isRestrictedUser = restrictedEmails.includes(userEmail);
+  const canAccessCompanies = companiesAccessAllowedEmails.includes(userEmail);
+  const shouldRedirectFromCompanies = isRestrictedUser && !canAccessCompanies;
 
   useEffect(() => {
-    if (isRestrictedUser) {
+    if (shouldRedirectFromCompanies) {
       navigate("/dashboard/data-upload/bulk-upload-images", { replace: true });
     }
-  }, [isRestrictedUser, navigate]);
+  }, [shouldRedirectFromCompanies, navigate]);
 
   // ✅ fetch companies from API
   const {
@@ -93,7 +100,7 @@ const Companies = () => {
     isError,
   } = useQuery({
     queryKey: ["companiesList"],
-    enabled: !isRestrictedUser,
+    enabled: !shouldRedirectFromCompanies,
     queryFn: async () => {
       try {
         const response = await axiosPrivate.get("/api/hosts/companies");

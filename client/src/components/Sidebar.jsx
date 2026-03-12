@@ -48,6 +48,11 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
     // "vishal.wono@gmail.com",
   ];
 
+  const companiesAccessAllowedEmails = [
+    "gourish.wono@gmail.com",
+    "savita.wono@gmail.com",
+  ];
+
   const allowedVisitorDeptIds = [
     "6798bae6e469e809084e24a4",
     "67b2cf85b9b6ed5cedeb9a2e",
@@ -218,14 +223,21 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const isAppsActive = (path) => location.pathname.startsWith(`/app/${path}`);
 
   // ✅ Filter submenus for restricted users
-  const filteredModules = restrictedEmails.includes(userEmail)
+  const isRestrictedUser = restrictedEmails.includes(userEmail);
+  const canAccessCompanies = companiesAccessAllowedEmails.includes(userEmail);
+
+  const restrictedVisibleSubmenuTitles = [
+    "Data Upload",
+    "Profile",
+    "Blogs and news",
+    ...(canAccessCompanies ? ["Companies"] : []),
+  ];
+
+  const filteredModules = isRestrictedUser
     ? defaultModules.map((module) => ({
         ...module,
-        submenus: module.submenus.filter(
-          (submenu) =>
-            submenu.title === "Data Upload" ||
-            submenu.title === "Profile" ||
-            submenu.title === "Blogs and news",
+        submenus: module.submenus.filter((submenu) =>
+          restrictedVisibleSubmenuTitles.includes(submenu.title),
         ),
       }))
     : defaultModules;
