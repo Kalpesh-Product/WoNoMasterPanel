@@ -4,7 +4,9 @@ import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
-const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/world-ranking/all";
+const WORLD_RANKING_ENDPOINT =
+  "https://wononomadsbe.vercel.app/api/world-ranking/all";
+// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/world-ranking/all";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
