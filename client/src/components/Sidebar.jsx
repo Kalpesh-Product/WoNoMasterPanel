@@ -184,6 +184,13 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
           icon: <FaBoxesStacked />,
           route: "/dashboard/BlogsAndNews",
         },
+        {
+          id: 11,
+          title: "World Ranking Weights",
+          codeName: "WorldRankingWeights",
+          icon: <FaChartLine />,
+          route: "/dashboard/world-ranking-weights",
+        },
       ],
     },
   ];
