@@ -1,12 +1,26 @@
-import React, { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  TextField,
+} from "@mui/material";
+import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { queryClient } from "../../../main";
 
 // const WORLD_RANKING_ENDPOINT =
 //   "https://wononomadsbe.vercel.app/api/state-wise-weight";
 const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
+const WORLD_RANKING_UPDATE_ENDPOINT =
+  "http://localhost:3000/api/state-wise-weight/69de2f5bb9f6fa20de7f1271";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -22,6 +36,13 @@ const fmtNumber = (value, digits = 2) => {
   if (Number.isNaN(num)) return "-";
   return num.toFixed(digits);
 };
+
+const toNumericOrFallback = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) return fallback;
+  const numericValue = Number(value);
+  return Number.isNaN(numericValue) ? fallback : numericValue;
+};
+
 
 const weightColumns = [
   { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
@@ -131,6 +152,9 @@ const weightColumns = [
 
 const WorldRankingWeights = () => {
   const axios = useAxiosPrivate();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [editMode, setEditMode] = useState(false);
 
   const {
     data: rows = [],
@@ -143,6 +167,81 @@ const WorldRankingWeights = () => {
       return toRows(response.data);
     },
   });
+
+  const { mutate: updateWeights, isPending: isUpdating } = useMutation({
+    mutationFn: async (payload) => {
+      const response = await axios.patch(WORLD_RANKING_UPDATE_ENDPOINT, payload);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "World ranking weight updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
+      setIsEditOpen(false);
+      setEditForm(null);
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to update world ranking weight",
+      );
+    },
+  });
+
+  const handleOpenEdit = (row) => {
+    const rowWeights = row?.weight || row?.weights || {};
+    const initialForm = {
+      rank: row?.rank ?? "",
+      continent: row?.continent ?? "",
+      country: row?.country ?? "",
+      state: row?.state ?? "",
+      weight: {},
+    };
+
+    weightColumns.forEach((column) => {
+      initialForm.weight[column.field] =
+        rowWeights?.[column.field] ?? row?.[column.field] ?? "";
+    });
+
+    setEditForm(initialForm);
+    setIsEditOpen(true);
+  };
+
+  const handleFormFieldChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleWeightFieldChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      weight: {
+        ...prev.weight,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleUpdateSubmit = () => {
+    if (!editForm) return;
+
+    const payload = {
+      rank: toNumericOrFallback(editForm.rank, 0),
+      continent: editForm.continent,
+      country: editForm.country,
+      state: editForm.state,
+      weight: {},
+    };
+
+    weightColumns.forEach((column) => {
+      payload.weight[column.field] = toNumericOrFallback(
+        editForm.weight?.[column.field],
+        0,
+      );
+    });
+
+    updateWeights(payload);
+  };
 
   const rowData = useMemo(
     () =>
@@ -163,6 +262,25 @@ const WorldRankingWeights = () => {
         field: "state",
         headerName: "State",
         minWidth: 170,
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 110,
+        pinned: "right",
+        lockPinned: true,
+        suppressMovable: true,
+        cellRenderer: (params) => (
+          <ThreeDotMenu
+            rowId={params?.data?._id || params?.data?.state || params?.data?.srNo}
+            menuItems={[
+              {
+                label: "Edit",
+                onClick: () => handleOpenEdit(params.data),
+              },
+            ]}
+          />
+        ),
       },
       ...weightColumns.map((column) => ({
         ...column,
@@ -194,6 +312,109 @@ const WorldRankingWeights = () => {
           </p>
         ) : null}
       </PageFrame>
+
+      <Dialog
+        open={isEditOpen}
+        onClose={() => {
+          if (!isUpdating) {
+            setIsEditOpen(false);
+            setEditForm(null);
+          }
+        }}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle>Edit Weights of {editForm?.state} State</DialogTitle>
+        <DialogContent>
+          {editForm ? (
+            <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+              <TextField
+                label="Rank"
+                type="number"
+                disabled
+                value={editForm.rank}
+                onChange={(event) =>
+                  handleFormFieldChange("rank", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="Continent"
+                disabled
+                value={editForm.continent}
+                onChange={(event) =>
+                  handleFormFieldChange("continent", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="Country"
+                disabled
+                value={editForm.country}
+                onChange={(event) =>
+                  handleFormFieldChange("country", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="State"
+                disabled
+                value={editForm.state}
+                onChange={(event) =>
+                  handleFormFieldChange("state", event.target.value)
+                }
+                fullWidth
+              />
+
+              {weightColumns.map((column) => (
+                <TextField
+                  key={column.field}
+                  label={column.headerName}
+                  type="number"
+                  value={editForm?.weight?.[column.field] ?? ""}
+                  onChange={(event) =>
+                    handleWeightFieldChange(column.field, event.target.value)
+                  }
+                  fullWidth
+                />
+              ))}
+            </Box>
+          ) : null}
+        </DialogContent>
+        {editMode ? (
+          <DialogActions sx={{ justifyContent: 'center', gap: 2 }}>
+            <Button
+              onClick={() => {
+                // setIsEditOpen(false);
+                // setEditForm(null);
+                setEditMode(false)
+              }}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={() => {
+                handleUpdateSubmit();
+                setEditMode(false);
+              }}
+              disabled={isUpdating || !editForm}
+            >
+              {isUpdating ? "Updating..." : "Update"}
+            </Button>
+          </DialogActions>
+        ) : (
+          <DialogActions sx={{ justifyContent: 'center', gap: 2 }}>
+            <Button
+              onClick={() => setEditMode(true)}
+              variant="contained"
+            >
+              Edit
+            </Button>
+          </DialogActions>
+        )}
+      </Dialog>
     </div>
   );
 };
