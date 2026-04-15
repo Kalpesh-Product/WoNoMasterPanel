@@ -3,11 +3,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Box,
   Button,
-  IconButton,
   TextField,
 } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
-import CloseIcon from "@mui/icons-material/Close";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -19,7 +17,7 @@ import { queryClient } from "../../../main";
 //   "https://wononomadsbe.vercel.app/api/state-wise-weight";
 const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 const WORLD_RANKING_UPDATE_ENDPOINT =
-  "http://localhost:3000/api/state-wise-weight/69de2f5bb9f6fa20de7f1271";
+  "http://localhost:3000/api/state-wise-weight/${id}";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -204,6 +202,12 @@ const WorldRankingWeights = () => {
     setIsEditOpen(true);
   };
 
+  const handleCloseEditModal = () => {
+    if (isUpdating) return;
+    setIsEditOpen(false);
+    setEditForm(null);
+  };
+
   const handleFormFieldChange = (field, value) => {
     setEditForm((prev) => ({
       ...prev,
@@ -329,52 +333,16 @@ const WorldRankingWeights = () => {
 
       <MuiModal
         open={isEditOpen}
-        onClose={() => {
-          if (!isUpdating) {
-            setIsEditOpen(false);
-            setEditForm(null);
-          }
-        }}
+        onClose={handleCloseEditModal}
+        title={`Edit Weights of ${editForm?.state || ""} State`}
       >
         <Box
           sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "95%", md: "88%" },
-            maxWidth: 1100,
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            boxShadow: 24,
-            p: 3,
+            width: "100%",
             maxHeight: "90vh",
             overflowY: "auto",
           }}
         >
-          <Box sx={{ position: "relative", mb: 2, pr: 5 }}>
-            <h2 className="text-lg font-semibold">
-              Edit Weights of {editForm?.state} State
-            </h2>
-            <IconButton
-              aria-label="close"
-              onClick={() => {
-                if (!isUpdating) {
-                  setIsEditOpen(false);
-                  setEditForm(null);
-                }
-              }}
-              sx={{
-                position: "absolute",
-                right: 0,
-                top: -4,
-              }}
-              disabled={isUpdating}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
           {editForm ? (
             <Box className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-1 mb-4">
               <TextField
@@ -432,22 +400,12 @@ const WorldRankingWeights = () => {
 
           {editMode ? (
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <Button
-                onClick={() => {
-                  // setIsEditOpen(false);
-                  // setEditForm(null);
-                  setEditMode(false)
-                }}
-                disabled={isUpdating}
-              >
+              <Button onClick={() => setEditMode(false)} disabled={isUpdating}>
                 Cancel
               </Button>
               <Button
                 variant="contained"
-                onClick={() => {
-                  handleUpdateSubmit();
-                  setEditMode(false);
-                }}
+                onClick={handleUpdateSubmit}
                 disabled={isUpdating || !editForm}
               >
                 {isUpdating ? "Updating..." : "Update"}
