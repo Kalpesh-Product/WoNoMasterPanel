@@ -3,12 +3,11 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Box,
   Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  IconButton,
   TextField,
 } from "@mui/material";
+import MuiModal from "../../../components/MuiModal";
+import CloseIcon from "@mui/icons-material/Close";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -254,14 +253,29 @@ const WorldRankingWeights = () => {
 
   const columns = useMemo(
     () => [
-      { field: "srNo", headerName: "Sr No", width: 90 },
-      { field: "rank", headerName: "Rank", width: 90 },
-      { field: "continent", headerName: "Continent", minWidth: 130 },
-      { field: "country", headerName: "Country", minWidth: 140 },
+      {
+        field: "srNo",
+        headerName: "Sr No",
+        width: 90,
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
+      },
+      {
+        field: "rank",
+        headerName: "Rank",
+        width: 90,
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
+      },
       {
         field: "state",
         headerName: "State",
         minWidth: 170,
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
       },
       {
         field: "actions",
@@ -313,7 +327,7 @@ const WorldRankingWeights = () => {
         ) : null}
       </PageFrame>
 
-      <Dialog
+      <MuiModal
         open={isEditOpen}
         onClose={() => {
           if (!isUpdating) {
@@ -321,13 +335,48 @@ const WorldRankingWeights = () => {
             setEditForm(null);
           }
         }}
-        fullWidth
-        maxWidth="lg"
       >
-        <DialogTitle>Edit Weights of {editForm?.state} State</DialogTitle>
-        <DialogContent>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "95%", md: "88%" },
+            maxWidth: 1100,
+            bgcolor: "background.paper",
+            borderRadius: 2,
+            boxShadow: 24,
+            p: 3,
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+        >
+          <Box sx={{ position: "relative", mb: 2, pr: 5 }}>
+            <h2 className="text-lg font-semibold">
+              Edit Weights of {editForm?.state} State
+            </h2>
+            <IconButton
+              aria-label="close"
+              onClick={() => {
+                if (!isUpdating) {
+                  setIsEditOpen(false);
+                  setEditForm(null);
+                }
+              }}
+              sx={{
+                position: "absolute",
+                right: 0,
+                top: -4,
+              }}
+              disabled={isUpdating}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
           {editForm ? (
-            <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
+            <Box className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-1 mb-4">
               <TextField
                 label="Rank"
                 type="number"
@@ -380,41 +429,42 @@ const WorldRankingWeights = () => {
               ))}
             </Box>
           ) : null}
-        </DialogContent>
-        {editMode ? (
-          <DialogActions sx={{ justifyContent: 'center', gap: 2 }}>
-            <Button
-              onClick={() => {
-                // setIsEditOpen(false);
-                // setEditForm(null);
-                setEditMode(false)
-              }}
-              disabled={isUpdating}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => {
-                handleUpdateSubmit();
-                setEditMode(false);
-              }}
-              disabled={isUpdating || !editForm}
-            >
-              {isUpdating ? "Updating..." : "Update"}
-            </Button>
-          </DialogActions>
-        ) : (
-          <DialogActions sx={{ justifyContent: 'center', gap: 2 }}>
-            <Button
-              onClick={() => setEditMode(true)}
-              variant="contained"
-            >
-              Edit
-            </Button>
-          </DialogActions>
-        )}
-      </Dialog>
+
+          {editMode ? (
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button
+                onClick={() => {
+                  // setIsEditOpen(false);
+                  // setEditForm(null);
+                  setEditMode(false)
+                }}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  handleUpdateSubmit();
+                  setEditMode(false);
+                }}
+                disabled={isUpdating || !editForm}
+              >
+                {isUpdating ? "Updating..." : "Update"}
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button
+                onClick={() => setEditMode(true)}
+                variant="contained"
+              >
+                Edit
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </MuiModal>
     </div>
   );
 };
