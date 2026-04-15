@@ -4,9 +4,9 @@ import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
-const WORLD_RANKING_ENDPOINT =
-  "https://wononomadsbe.vercel.app/api/world-ranking/all";
-// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/world-ranking/all";
+// const WORLD_RANKING_ENDPOINT =
+// "https://wononomadsbe.vercel.app/api/world-ranking/all";
+const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -51,18 +51,17 @@ const WorldRankingWeights = () => {
     () => [
       { field: "srNo", headerName: "Sr No", width: 90 },
       { field: "rank", headerName: "Rank", width: 90 },
+      { field: "continent", headerName: "Continent", minWidth: 130 },
       { field: "country", headerName: "Country", minWidth: 140 },
       {
-        field: "destination",
-        headerName: "State / Destination",
+        field: "state",
+        headerName: "State",
         minWidth: 170,
       },
-      { field: "continent", headerName: "Continent", minWidth: 130 },
       {
-        field: "overallScore",
-        headerName: "Overall Score",
+        field: "costOfLiving",
+        headerName: "Cost Of Living",
         minWidth: 130,
-        valueFormatter: (params) => fmtNumber(params.value, 3),
       },
       {
         headerName: "Cost of Living Score",
