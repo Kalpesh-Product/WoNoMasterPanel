@@ -23,6 +23,112 @@ const fmtNumber = (value, digits = 2) => {
   return num.toFixed(digits);
 };
 
+const weightColumns = [
+  { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
+  { field: "internet", headerName: "Internet", minWidth: 120 },
+  { field: "safety", headerName: "Safety", minWidth: 120 },
+  { field: "nomadCommunity", headerName: "Nomad Community", minWidth: 170 },
+  {
+    field: "workInfrastructure",
+    headerName: "Work Infrastructure",
+    minWidth: 180,
+  },
+  { field: "qualityOfLife", headerName: "Quality of Life", minWidth: 150 },
+  { field: "visaFlexibility", headerName: "Visa Flexibility", minWidth: 160 },
+  {
+    field: "lifestyleEntertainment",
+    headerName: "Lifestyle & Entertainment",
+    minWidth: 220,
+  },
+  {
+    field: "climateEnvironment",
+    headerName: "Climate & Environment",
+    minWidth: 190,
+  },
+  { field: "accessibility", headerName: "Accessibility", minWidth: 140 },
+  { field: "airQualityIndex", headerName: "Air Quality Index", minWidth: 160 },
+  {
+    field: "startupEcosystemScore",
+    headerName: "Startup Ecosystem Score",
+    minWidth: 210,
+  },
+  {
+    field: "airportConnectivity",
+    headerName: "Airport Connectivity",
+    minWidth: 190,
+  },
+  {
+    field: "directInternationalFlights",
+    headerName: "Direct International Flights",
+    minWidth: 230,
+  },
+  {
+    field: "taxFriendly",
+    headerName: "Lower Taxes - Tax Friendly",
+    minWidth: 220,
+  },
+  { field: "purchasingPower", headerName: "Purchasing Power", minWidth: 160 },
+  {
+    field: "inflationStability",
+    headerName: "Inflation Stability",
+    minWidth: 170,
+  },
+  {
+    field: "startupSetupCost",
+    headerName: "Startup Setup Cost",
+    minWidth: 170,
+  },
+  {
+    field: "ventureCapital",
+    headerName: "Venture Capital Presence",
+    minWidth: 190,
+  },
+  {
+    field: "incubators",
+    headerName: "Startup Incubators & Accelerators",
+    minWidth: 250,
+  },
+  {
+    field: "techTalentDensity",
+    headerName: "Tech Talent Density",
+    minWidth: 170,
+  },
+  { field: "conferences", headerName: "Conferences & Events", minWidth: 180 },
+  { field: "remoteJobs", headerName: "Remote Job Availability", minWidth: 200 },
+  { field: "founderNomads", headerName: "Founder Nomads", minWidth: 150 },
+  { field: "meetupsEvents", headerName: "Meetups & Events", minWidth: 160 },
+  { field: "soloNomad", headerName: "Solo Nomad Traveller", minWidth: 180 },
+  {
+    field: "familyNomads",
+    headerName: "Family Nomad Traveller",
+    minWidth: 190,
+  },
+  { field: "femaleNomads", headerName: "Girl Nomad Traveller", minWidth: 170 },
+  {
+    field: "coupleNomads",
+    headerName: "Couple Nomad Travelletrs",
+    minWidth: 200,
+  },
+  {
+    field: "partyLifestyle",
+    headerName: "Party & Events Nomad Traveller",
+    minWidth: 250,
+  },
+  { field: "nature", headerName: "Nature Nomad Travelling", minWidth: 200 },
+  {
+    field: "adventure",
+    headerName: "Adventure Nomad Travelling",
+    minWidth: 220,
+  },
+  { field: "nightlife", headerName: "Nightlife & Pubs", minWidth: 150 },
+  { field: "yoga", headerName: "Yoga", minWidth: 100 },
+  {
+    field: "healthcareCostIndex",
+    headerName: "Healthcare Cost Index",
+    minWidth: 190,
+  },
+];
+
 const WorldRankingWeights = () => {
   const axios = useAxiosPrivate();
 
@@ -58,119 +164,14 @@ const WorldRankingWeights = () => {
         headerName: "State",
         minWidth: 170,
       },
-      {
-        field: "costOfLiving",
-        headerName: "Cost Of Living",
-        minWidth: 130,
-      },
-      {
-        headerName: "Cost of Living Score",
-        minWidth: 170,
-        valueGetter: (params) => params.data?.scores?.costOfLiving,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Cost of Living Weight",
-        minWidth: 170,
-        valueGetter: (params) => params.data?.weights?.costOfLiving,
+      ...weightColumns.map((column) => ({
+        ...column,
+        valueGetter: (params) =>
+          params.data?.weight?.[column.field] ??
+          params.data?.weights?.[column.field] ??
+          params.data?.[column.field],
         valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Internet Score",
-        minWidth: 140,
-        valueGetter: (params) => params.data?.scores?.internet,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Internet Weight",
-        minWidth: 140,
-        valueGetter: (params) => params.data?.weights?.internet,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Work Infra Score",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.scores?.workInfrastructure,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Work Infra Weight",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.weights?.workInfrastructure,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Safety Score",
-        minWidth: 130,
-        valueGetter: (params) => params.data?.scores?.safety,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Safety Weight",
-        minWidth: 130,
-        valueGetter: (params) => params.data?.weights?.safety,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Visa Flexibility Score",
-        minWidth: 180,
-        valueGetter: (params) => params.data?.scores?.visaFlexibility,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Visa Flexibility Weight",
-        minWidth: 180,
-        valueGetter: (params) => params.data?.weights?.visaFlexibility,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Nomad Community Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.nomadCommunity,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Nomad Community Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.nomadCommunity,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Healthcare Cost Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.healthcareCostIndex,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Healthcare Cost Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.healthcareCostIndex,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Startup Ecosystem Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.startupEcosystemScore,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Startup Ecosystem Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.startupEcosystemScore,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Air Quality Score",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.scores?.airQualityIndex,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Air Quality Weight",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.weights?.airQualityIndex,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
+      })),
     ],
     [],
   );
