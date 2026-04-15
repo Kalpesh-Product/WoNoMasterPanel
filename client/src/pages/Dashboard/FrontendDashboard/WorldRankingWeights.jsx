@@ -16,8 +16,6 @@ import { queryClient } from "../../../main";
 // const WORLD_RANKING_ENDPOINT =
 //   "https://wononomadsbe.vercel.app/api/state-wise-weight";
 const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
-const WORLD_RANKING_UPDATE_ENDPOINT =
-  "http://localhost:3000/api/state-wise-weight/${id}";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -166,8 +164,11 @@ const WorldRankingWeights = () => {
   });
 
   const { mutate: updateWeights, isPending: isUpdating } = useMutation({
-    mutationFn: async (payload) => {
-      const response = await axios.patch(WORLD_RANKING_UPDATE_ENDPOINT, payload);
+    mutationFn: async ({ id, payload }) => {
+      const response = await axios.patch(
+        `${WORLD_RANKING_ENDPOINT}/${id}`,
+        payload,
+      );
       return response.data;
     },
     onSuccess: (data) => {
@@ -186,6 +187,7 @@ const WorldRankingWeights = () => {
   const handleOpenEdit = (row) => {
     const rowWeights = row?.weight || row?.weights || {};
     const initialForm = {
+      id: row?._id ?? "",
       rank: row?.rank ?? "",
       continent: row?.continent ?? "",
       country: row?.country ?? "",
@@ -243,7 +245,12 @@ const WorldRankingWeights = () => {
       );
     });
 
-    updateWeights(payload);
+    if (!editForm.id) {
+      toast.error("Unable to update weight: missing record id");
+      return;
+    }
+
+    updateWeights({ id: editForm.id, payload });
   };
 
   const rowData = useMemo(
@@ -344,7 +351,7 @@ const WorldRankingWeights = () => {
           }}
         >
           {editForm ? (
-            <Box className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-1 mb-4">
+            <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-1 mb-4">
               <TextField
                 label="Rank"
                 type="number"
@@ -388,6 +395,7 @@ const WorldRankingWeights = () => {
                   key={column.field}
                   label={column.headerName}
                   type="number"
+                  disabled={!editMode}
                   value={editForm?.weight?.[column.field] ?? ""}
                   onChange={(event) =>
                     handleWeightFieldChange(column.field, event.target.value)
