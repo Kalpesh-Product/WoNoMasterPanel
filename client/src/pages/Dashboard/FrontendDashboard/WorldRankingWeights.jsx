@@ -1,12 +1,21 @@
-import React, { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useMemo, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  Box,
+  Button,
+  TextField,
+} from "@mui/material";
+import MuiModal from "../../../components/MuiModal";
+import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { queryClient } from "../../../main";
 
-const WORLD_RANKING_ENDPOINT =
-  "https://wononomadsbe.vercel.app/api/world-ranking/all";
-// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/world-ranking/all";
+// const WORLD_RANKING_ENDPOINT =
+//   "https://wononomadsbe.vercel.app/api/state-wise-weight";
+const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -23,8 +32,124 @@ const fmtNumber = (value, digits = 2) => {
   return num.toFixed(digits);
 };
 
+const toNumericOrFallback = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) return fallback;
+  const numericValue = Number(value);
+  return Number.isNaN(numericValue) ? fallback : numericValue;
+};
+
+
+const weightColumns = [
+  { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
+  { field: "internet", headerName: "Internet", minWidth: 120 },
+  { field: "safety", headerName: "Safety", minWidth: 120 },
+  { field: "nomadCommunity", headerName: "Nomad Community", minWidth: 170 },
+  {
+    field: "workInfrastructure",
+    headerName: "Work Infrastructure",
+    minWidth: 180,
+  },
+  { field: "qualityOfLife", headerName: "Quality of Life", minWidth: 150 },
+  { field: "visaFlexibility", headerName: "Visa Flexibility", minWidth: 160 },
+  {
+    field: "lifestyleEntertainment",
+    headerName: "Lifestyle & Entertainment",
+    minWidth: 220,
+  },
+  {
+    field: "climateEnvironment",
+    headerName: "Climate & Environment",
+    minWidth: 190,
+  },
+  { field: "accessibility", headerName: "Accessibility", minWidth: 140 },
+  { field: "airQualityIndex", headerName: "Air Quality Index", minWidth: 160 },
+  {
+    field: "startupEcosystemScore",
+    headerName: "Startup Ecosystem Score",
+    minWidth: 210,
+  },
+  {
+    field: "airportConnectivity",
+    headerName: "Airport Connectivity",
+    minWidth: 190,
+  },
+  {
+    field: "directInternationalFlights",
+    headerName: "Direct International Flights",
+    minWidth: 230,
+  },
+  {
+    field: "taxFriendly",
+    headerName: "Lower Taxes - Tax Friendly",
+    minWidth: 220,
+  },
+  { field: "purchasingPower", headerName: "Purchasing Power", minWidth: 160 },
+  {
+    field: "inflationStability",
+    headerName: "Inflation Stability",
+    minWidth: 170,
+  },
+  {
+    field: "startupSetupCost",
+    headerName: "Startup Setup Cost",
+    minWidth: 170,
+  },
+  {
+    field: "ventureCapital",
+    headerName: "Venture Capital Presence",
+    minWidth: 190,
+  },
+  {
+    field: "incubators",
+    headerName: "Startup Incubators & Accelerators",
+    minWidth: 250,
+  },
+  {
+    field: "techTalentDensity",
+    headerName: "Tech Talent Density",
+    minWidth: 170,
+  },
+  { field: "conferences", headerName: "Conferences & Events", minWidth: 180 },
+  { field: "remoteJobs", headerName: "Remote Job Availability", minWidth: 200 },
+  { field: "founderNomads", headerName: "Founder Nomads", minWidth: 150 },
+  { field: "meetupsEvents", headerName: "Meetups & Events", minWidth: 160 },
+  { field: "soloNomad", headerName: "Solo Nomad Traveller", minWidth: 180 },
+  {
+    field: "familyNomads",
+    headerName: "Family Nomad Traveller",
+    minWidth: 190,
+  },
+  { field: "femaleNomads", headerName: "Girl Nomad Traveller", minWidth: 170 },
+  {
+    field: "coupleNomads",
+    headerName: "Couple Nomad Travelletrs",
+    minWidth: 200,
+  },
+  {
+    field: "partyLifestyle",
+    headerName: "Party & Events Nomad Traveller",
+    minWidth: 250,
+  },
+  { field: "nature", headerName: "Nature Nomad Travelling", minWidth: 200 },
+  {
+    field: "adventure",
+    headerName: "Adventure Nomad Travelling",
+    minWidth: 220,
+  },
+  { field: "nightlife", headerName: "Nightlife & Pubs", minWidth: 150 },
+  { field: "yoga", headerName: "Yoga", minWidth: 100 },
+  {
+    field: "healthcareCostIndex",
+    headerName: "Healthcare Cost Index",
+    minWidth: 190,
+  },
+];
+
 const WorldRankingWeights = () => {
   const axios = useAxiosPrivate();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [editMode, setEditMode] = useState(false);
 
   const {
     data: rows = [],
@@ -38,6 +163,96 @@ const WorldRankingWeights = () => {
     },
   });
 
+  const { mutate: updateWeights, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      const response = await axios.patch(
+        `${WORLD_RANKING_ENDPOINT}/${id}`,
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "World ranking weight updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
+      setIsEditOpen(false);
+      setEditForm(null);
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to update world ranking weight",
+      );
+    },
+  });
+
+  const handleOpenEdit = (row) => {
+    const rowWeights = row?.weight || row?.weights || {};
+    const initialForm = {
+      id: row?._id ?? "",
+      rank: row?.rank ?? "",
+      continent: row?.continent ?? "",
+      country: row?.country ?? "",
+      state: row?.state ?? "",
+      weight: {},
+    };
+
+    weightColumns.forEach((column) => {
+      initialForm.weight[column.field] =
+        rowWeights?.[column.field] ?? row?.[column.field] ?? "";
+    });
+
+    setEditForm(initialForm);
+    setIsEditOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    if (isUpdating) return;
+    setIsEditOpen(false);
+    setEditForm(null);
+  };
+
+  const handleFormFieldChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleWeightFieldChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      weight: {
+        ...prev.weight,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleUpdateSubmit = () => {
+    if (!editForm) return;
+
+    const payload = {
+      rank: toNumericOrFallback(editForm.rank, 0),
+      continent: editForm.continent,
+      country: editForm.country,
+      state: editForm.state,
+      weight: {},
+    };
+
+    weightColumns.forEach((column) => {
+      payload.weight[column.field] = toNumericOrFallback(
+        editForm.weight?.[column.field],
+        0,
+      );
+    });
+
+    if (!editForm.id) {
+      toast.error("Unable to update weight: missing record id");
+      return;
+    }
+
+    updateWeights({ id: editForm.id, payload });
+  };
+
   const rowData = useMemo(
     () =>
       rows.map((item, index) => ({
@@ -49,129 +264,57 @@ const WorldRankingWeights = () => {
 
   const columns = useMemo(
     () => [
-      { field: "srNo", headerName: "Sr No", width: 90 },
-      { field: "rank", headerName: "Rank", width: 90 },
-      { field: "country", headerName: "Country", minWidth: 140 },
       {
-        field: "destination",
-        headerName: "State / Destination",
+        field: "srNo",
+        headerName: "Sr No",
+        width: 90,
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
+      },
+      {
+        field: "rank",
+        headerName: "Rank",
+        width: 90,
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
+      },
+      {
+        field: "state",
+        headerName: "State",
         minWidth: 170,
-      },
-      { field: "continent", headerName: "Continent", minWidth: 130 },
-      {
-        field: "overallScore",
-        headerName: "Overall Score",
-        minWidth: 130,
-        valueFormatter: (params) => fmtNumber(params.value, 3),
+        pinned: "left",
+        lockPinned: true,
+        suppressMovable: true,
       },
       {
-        headerName: "Cost of Living Score",
-        minWidth: 170,
-        valueGetter: (params) => params.data?.scores?.costOfLiving,
-        valueFormatter: (params) => fmtNumber(params.value),
+        field: "actions",
+        headerName: "Actions",
+        width: 110,
+        pinned: "right",
+        lockPinned: true,
+        suppressMovable: true,
+        cellRenderer: (params) => (
+          <ThreeDotMenu
+            rowId={params?.data?._id || params?.data?.state || params?.data?.srNo}
+            menuItems={[
+              {
+                label: "Edit",
+                onClick: () => handleOpenEdit(params.data),
+              },
+            ]}
+          />
+        ),
       },
-      {
-        headerName: "Cost of Living Weight",
-        minWidth: 170,
-        valueGetter: (params) => params.data?.weights?.costOfLiving,
+      ...weightColumns.map((column) => ({
+        ...column,
+        valueGetter: (params) =>
+          params.data?.weight?.[column.field] ??
+          params.data?.weights?.[column.field] ??
+          params.data?.[column.field],
         valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Internet Score",
-        minWidth: 140,
-        valueGetter: (params) => params.data?.scores?.internet,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Internet Weight",
-        minWidth: 140,
-        valueGetter: (params) => params.data?.weights?.internet,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Work Infra Score",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.scores?.workInfrastructure,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Work Infra Weight",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.weights?.workInfrastructure,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Safety Score",
-        minWidth: 130,
-        valueGetter: (params) => params.data?.scores?.safety,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Safety Weight",
-        minWidth: 130,
-        valueGetter: (params) => params.data?.weights?.safety,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Visa Flexibility Score",
-        minWidth: 180,
-        valueGetter: (params) => params.data?.scores?.visaFlexibility,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Visa Flexibility Weight",
-        minWidth: 180,
-        valueGetter: (params) => params.data?.weights?.visaFlexibility,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Nomad Community Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.nomadCommunity,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Nomad Community Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.nomadCommunity,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Healthcare Cost Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.healthcareCostIndex,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Healthcare Cost Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.healthcareCostIndex,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Startup Ecosystem Score",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.scores?.startupEcosystemScore,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Startup Ecosystem Weight",
-        minWidth: 190,
-        valueGetter: (params) => params.data?.weights?.startupEcosystemScore,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
-      {
-        headerName: "Air Quality Score",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.scores?.airQualityIndex,
-        valueFormatter: (params) => fmtNumber(params.value),
-      },
-      {
-        headerName: "Air Quality Weight",
-        minWidth: 150,
-        valueGetter: (params) => params.data?.weights?.airQualityIndex,
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      },
+      })),
     ],
     [],
   );
@@ -194,6 +337,100 @@ const WorldRankingWeights = () => {
           </p>
         ) : null}
       </PageFrame>
+
+      <MuiModal
+        open={isEditOpen}
+        onClose={handleCloseEditModal}
+        title={`Edit Weights of ${editForm?.state || ""} State`}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            maxHeight: "90vh",
+            overflowY: "auto",
+          }}
+        >
+          {editForm ? (
+            <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-1 mb-4">
+              <TextField
+                label="Rank"
+                type="number"
+                disabled
+                value={editForm.rank}
+                onChange={(event) =>
+                  handleFormFieldChange("rank", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="Continent"
+                disabled
+                value={editForm.continent}
+                onChange={(event) =>
+                  handleFormFieldChange("continent", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="Country"
+                disabled
+                value={editForm.country}
+                onChange={(event) =>
+                  handleFormFieldChange("country", event.target.value)
+                }
+                fullWidth
+              />
+              <TextField
+                label="State"
+                disabled
+                value={editForm.state}
+                onChange={(event) =>
+                  handleFormFieldChange("state", event.target.value)
+                }
+                fullWidth
+              />
+
+              {weightColumns.map((column) => (
+                <TextField
+                  key={column.field}
+                  label={column.headerName}
+                  type="number"
+                  disabled={!editMode}
+                  value={editForm?.weight?.[column.field] ?? ""}
+                  onChange={(event) =>
+                    handleWeightFieldChange(column.field, event.target.value)
+                  }
+                  fullWidth
+                />
+              ))}
+            </Box>
+          ) : null}
+
+          {editMode ? (
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button onClick={() => setEditMode(false)} disabled={isUpdating}>
+                Cancel
+              </Button>
+              <Button
+                variant="contained"
+                onClick={handleUpdateSubmit}
+                disabled={isUpdating || !editForm}
+              >
+                {isUpdating ? "Updating..." : "Update"}
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+              <Button
+                onClick={() => setEditMode(true)}
+                variant="contained"
+              >
+                Edit
+              </Button>
+            </Box>
+          )}
+        </Box>
+      </MuiModal>
     </div>
   );
 };
