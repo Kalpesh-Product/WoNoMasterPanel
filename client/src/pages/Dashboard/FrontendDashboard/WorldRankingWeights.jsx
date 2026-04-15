@@ -5,7 +5,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 
 // const WORLD_RANKING_ENDPOINT =
-// "https://wononomadsbe.vercel.app/api/world-ranking/all";
+//   "https://wononomadsbe.vercel.app/api/state-wise-weight";
 const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 
 const toRows = (payload) => {
