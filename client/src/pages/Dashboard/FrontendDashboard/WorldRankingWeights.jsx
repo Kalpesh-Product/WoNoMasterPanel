@@ -351,59 +351,64 @@ const WorldRankingWeights = () => {
           }}
         >
           {editForm ? (
-            <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-1 mb-4">
-              <TextField
-                label="Rank"
-                type="number"
-                disabled
-                value={editForm.rank}
-                onChange={(event) =>
-                  handleFormFieldChange("rank", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Continent"
-                disabled
-                value={editForm.continent}
-                onChange={(event) =>
-                  handleFormFieldChange("continent", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Country"
-                disabled
-                value={editForm.country}
-                onChange={(event) =>
-                  handleFormFieldChange("country", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="State"
-                disabled
-                value={editForm.state}
-                onChange={(event) =>
-                  handleFormFieldChange("state", event.target.value)
-                }
-                fullWidth
-              />
-
-              {weightColumns.map((column) => (
+            <>
+              <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1 mb-4">
                 <TextField
-                  key={column.field}
-                  label={column.headerName}
+                  label="Rank"
                   type="number"
-                  disabled={!editMode}
-                  value={editForm?.weight?.[column.field] ?? ""}
+                  disabled
+                  value={editForm.rank}
                   onChange={(event) =>
-                    handleWeightFieldChange(column.field, event.target.value)
+                    handleFormFieldChange("rank", event.target.value)
                   }
                   fullWidth
                 />
-              ))}
-            </Box>
+                <TextField
+                  label="Continent"
+                  disabled
+                  value={editForm.continent}
+                  onChange={(event) =>
+                    handleFormFieldChange("continent", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="Country"
+                  disabled
+                  value={editForm.country}
+                  onChange={(event) =>
+                    handleFormFieldChange("country", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="State"
+                  disabled
+                  value={editForm.state}
+                  onChange={(event) =>
+                    handleFormFieldChange("state", event.target.value)
+                  }
+                  fullWidth
+                />
+              </Box>
+
+              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
+                {weightColumns.map((column) => (
+                  <TextField
+                    key={column.field}
+                    label={column.headerName}
+                    type="number"
+                    disabled={!editMode}
+                    value={editForm?.weight?.[column.field] ?? ""}
+                    onChange={(event) =>
+                      handleWeightFieldChange(column.field, event.target.value)
+                    }
+                    fullWidth
+                  />
+                ))}
+              </Box>
+
+            </>
           ) : null}
 
           {editMode ? (
@@ -431,7 +436,7 @@ const WorldRankingWeights = () => {
           )}
         </Box>
       </MuiModal>
-    </div>
+    </div >
   );
 };
 
