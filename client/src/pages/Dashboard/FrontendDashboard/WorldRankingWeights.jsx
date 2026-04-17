@@ -1,10 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Box,
-  Button,
-  TextField,
-} from "@mui/material";
+import { Box, Button, MenuItem, Typography, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
@@ -37,7 +33,6 @@ const toNumericOrFallback = (value, fallback = 0) => {
   const numericValue = Number(value);
   return Number.isNaN(numericValue) ? fallback : numericValue;
 };
-
 
 const weightColumns = [
   { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
@@ -172,14 +167,17 @@ const WorldRankingWeights = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "World ranking weight updated successfully");
+      toast.success(
+        data?.message || "World ranking weight updated successfully",
+      );
       queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
       setIsEditOpen(false);
       setEditForm(null);
     },
     onError: (error) => {
       toast.error(
-        error?.response?.data?.message || "Failed to update world ranking weight",
+        error?.response?.data?.message ||
+        "Failed to update world ranking weight",
       );
     },
   });
@@ -192,6 +190,10 @@ const WorldRankingWeights = () => {
       continent: row?.continent ?? "",
       country: row?.country ?? "",
       state: row?.state ?? "",
+      isActive:
+        row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
+      imageUrl: row?.imageUrl ?? row?.image ?? "",
+      imageFile: null,
       weight: {},
     };
 
@@ -235,6 +237,13 @@ const WorldRankingWeights = () => {
       continent: editForm.continent,
       country: editForm.country,
       state: editForm.state,
+      isActive:
+        editForm.isActive === "true"
+          ? true
+          : editForm.isActive === "false"
+            ? false
+            : editForm.isActive,
+      imageUrl: editForm.imageUrl || "",
       weight: {},
     };
 
@@ -250,8 +259,55 @@ const WorldRankingWeights = () => {
       return;
     }
 
+    if (editForm.imageFile) {
+      const formData = new FormData();
+      formData.append("rank", String(payload.rank));
+      formData.append("continent", payload.continent || "");
+      formData.append("country", payload.country || "");
+      formData.append("state", payload.state || "");
+      formData.append("isActive", String(payload.isActive ?? ""));
+      formData.append("image", editForm.imageFile);
+      formData.append("weight", JSON.stringify(payload.weight));
+
+      updateWeights({ id: editForm.id, payload: formData });
+      return;
+    }
+
     updateWeights({ id: editForm.id, payload });
   };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setEditForm((prev) => ({
+      ...prev,
+      imageUrl: previewUrl,
+      imageFile: file,
+    }));
+    // toast.success("Image added successfully");
+  };
+
+  useEffect(() => {
+    if (!isEditOpen) {
+      setEditMode(false);
+    }
+  }, [isEditOpen]);
+
+  useEffect(() => {
+    const previewUrl = editForm?.imageUrl;
+    if (!previewUrl || !previewUrl.startsWith("blob:")) return undefined;
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [editForm?.imageUrl]);
 
   const rowData = useMemo(
     () =>
@@ -297,7 +353,9 @@ const WorldRankingWeights = () => {
         suppressMovable: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
-            rowId={params?.data?._id || params?.data?.state || params?.data?.srNo}
+            rowId={
+              params?.data?._id || params?.data?.state || params?.data?.srNo
+            }
             menuItems={[
               {
                 label: "Edit",
@@ -346,64 +404,130 @@ const WorldRankingWeights = () => {
         <Box
           sx={{
             width: "100%",
-            maxHeight: "90vh",
-            overflowY: "auto",
           }}
         >
           {editForm ? (
-            <Box className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-1 mb-4">
-              <TextField
-                label="Rank"
-                type="number"
-                disabled
-                value={editForm.rank}
-                onChange={(event) =>
-                  handleFormFieldChange("rank", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Continent"
-                disabled
-                value={editForm.continent}
-                onChange={(event) =>
-                  handleFormFieldChange("continent", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="Country"
-                disabled
-                value={editForm.country}
-                onChange={(event) =>
-                  handleFormFieldChange("country", event.target.value)
-                }
-                fullWidth
-              />
-              <TextField
-                label="State"
-                disabled
-                value={editForm.state}
-                onChange={(event) =>
-                  handleFormFieldChange("state", event.target.value)
-                }
-                fullWidth
-              />
-
-              {weightColumns.map((column) => (
-                <TextField
-                  key={column.field}
-                  label={column.headerName}
-                  type="number"
+            <>
+              <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
+                <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
+                  {/* <TextField
+                  label="Image URL"
                   disabled={!editMode}
-                  value={editForm?.weight?.[column.field] ?? ""}
+                  value={editForm.imageUrl || ""}
                   onChange={(event) =>
-                    handleWeightFieldChange(column.field, event.target.value)
+                    handleFormFieldChange("imageUrl", event.target.value)
+                  }
+                  fullWidth
+                /> */}
+                  {editForm.imageUrl ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, textAlign: "center" }}
+                      >
+                        Image Preview
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={editForm.imageUrl}
+                        alt={`${editForm.state || "State"} preview`}
+                        sx={{
+                          width: "100%",
+                          maxWidth: 360,
+                          maxHeight: 220,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          border: "1px solid #e5e7eb",
+                        }}
+                      />
+                    </Box>
+                  ) : null}
+                  {editMode ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Button variant="outlined" component="label">
+                        Upload Image
+                        <input
+                          hidden
+                          accept="image/*"
+                          type="file"
+                          onChange={handleImageUpload}
+                        />
+                      </Button>
+                    </Box>
+                  ) : null}
+                </Box>
+              </Box>
+              <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1 mb-4">
+                <TextField
+                  label="Rank"
+                  type="number"
+                  disabled
+                  value={editForm.rank}
+                  onChange={(event) =>
+                    handleFormFieldChange("rank", event.target.value)
                   }
                   fullWidth
                 />
-              ))}
-            </Box>
+                <TextField
+                  label="Continent"
+                  disabled
+                  value={editForm.continent}
+                  onChange={(event) =>
+                    handleFormFieldChange("continent", event.target.value)
+                  }
+                  fullWidth
+                />
+              </Box>
+              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
+                <TextField
+                  label="Country"
+                  disabled
+                  value={editForm.country}
+                  onChange={(event) =>
+                    handleFormFieldChange("country", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="State"
+                  disabled
+                  value={editForm.state}
+                  onChange={(event) =>
+                    handleFormFieldChange("state", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="isActive"
+                  select
+                  value={editForm.isActive}
+                  disabled={!editMode}
+                  onChange={(event) =>
+                    handleFormFieldChange("isActive", event.target.value)
+                  }
+                  fullWidth
+                >
+                  <MenuItem value="true">true</MenuItem>
+                  <MenuItem value="false">false</MenuItem>
+                </TextField>
+              </Box>
+
+              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
+                {weightColumns.map((column) => (
+                  <TextField
+                    key={column.field}
+                    label={column.headerName}
+                    type="number"
+                    disabled={!editMode}
+                    value={editForm?.weight?.[column.field] ?? ""}
+                    onChange={(event) =>
+                      handleWeightFieldChange(column.field, event.target.value)
+                    }
+                    fullWidth
+                  />
+                ))}
+              </Box>
+            </>
           ) : null}
 
           {editMode ? (
@@ -421,10 +545,7 @@ const WorldRankingWeights = () => {
             </Box>
           ) : (
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <Button
-                onClick={() => setEditMode(true)}
-                variant="contained"
-              >
+              <Button onClick={() => setEditMode(true)} variant="contained">
                 Edit
               </Button>
             </Box>
