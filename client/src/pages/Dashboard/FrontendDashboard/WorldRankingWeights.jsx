@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Box,
   Button,
+  Typography,
   TextField,
 } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
@@ -192,6 +193,7 @@ const WorldRankingWeights = () => {
       continent: row?.continent ?? "",
       country: row?.country ?? "",
       state: row?.state ?? "",
+      imageUrl: row?.imageUrl ?? row?.image ?? "",
       weight: {},
     };
 
@@ -235,6 +237,7 @@ const WorldRankingWeights = () => {
       continent: editForm.continent,
       country: editForm.country,
       state: editForm.state,
+      imageUrl: editForm.imageUrl || "",
       weight: {},
     };
 
@@ -252,6 +255,33 @@ const WorldRankingWeights = () => {
 
     updateWeights({ id: editForm.id, payload });
   };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload a valid image file");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64Image = typeof reader.result === "string" ? reader.result : "";
+      handleFormFieldChange("imageUrl", base64Image);
+      toast.success("Image added successfully");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    if (!isEditOpen) {
+      setEditMode(false);
+    }
+  }, [isEditOpen]);
 
   const rowData = useMemo(
     () =>
@@ -352,6 +382,52 @@ const WorldRankingWeights = () => {
         >
           {editForm ? (
             <>
+              <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
+                <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
+                  {/* <TextField
+                  label="Image URL"
+                  disabled={!editMode}
+                  value={editForm.imageUrl || ""}
+                  onChange={(event) =>
+                    handleFormFieldChange("imageUrl", event.target.value)
+                  }
+                  fullWidth
+                /> */}
+                  {editForm.imageUrl ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1, textAlign: "center" }}>
+                        Image Preview
+                      </Typography>
+                      <Box
+                        component="img"
+                        src={editForm.imageUrl}
+                        alt={`${editForm.state || "State"} preview`}
+                        sx={{
+                          width: "100%",
+                          maxWidth: 360,
+                          maxHeight: 220,
+                          objectFit: "cover",
+                          borderRadius: 1,
+                          border: "1px solid #e5e7eb",
+                        }}
+                      />
+                    </Box>
+                  ) : null}
+                  {editMode ? (
+                    <Box sx={{ mt: 2 }}>
+                      <Button variant="outlined" component="label">
+                        Upload Image
+                        <input
+                          hidden
+                          accept="image/*"
+                          type="file"
+                          onChange={handleImageUpload}
+                        />
+                      </Button>
+                    </Box>
+                  ) : null}
+                </Box>
+              </Box>
               <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1 mb-4">
                 <TextField
                   label="Rank"
