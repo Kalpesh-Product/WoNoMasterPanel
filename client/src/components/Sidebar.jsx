@@ -53,6 +53,10 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
     "savita.wono@gmail.com",
   ];
 
+  const worldRankingWeightsAccessAllowedEmails = [
+    "shawnsilveira.wono@gmail.com",
+  ];
+
   const allowedVisitorDeptIds = [
     "6798bae6e469e809084e24a4",
     "67b2cf85b9b6ed5cedeb9a2e",
@@ -233,11 +237,15 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
   const isRestrictedUser = restrictedEmails.includes(userEmail);
   const canAccessCompanies = companiesAccessAllowedEmails.includes(userEmail);
 
+  const canAccessWorldRankingWeights =
+    worldRankingWeightsAccessAllowedEmails.includes(userEmail);
+
   const restrictedVisibleSubmenuTitles = [
     "Data Upload",
     "Profile",
     "Blogs and news",
     ...(canAccessCompanies ? ["Companies"] : []),
+    ...(canAccessWorldRankingWeights ? ["World Ranking Weights"] : []),
   ];
 
   const filteredModules = isRestrictedUser
