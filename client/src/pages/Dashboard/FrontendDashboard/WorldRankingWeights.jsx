@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Box, Button, Typography, TextField } from "@mui/material";
+import { Box, Button, MenuItem, Typography, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
@@ -190,7 +190,8 @@ const WorldRankingWeights = () => {
       continent: row?.continent ?? "",
       country: row?.country ?? "",
       state: row?.state ?? "",
-      isActive: row?.isActive ?? "",
+      isActive:
+        row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
       imageUrl: row?.imageUrl ?? row?.image ?? "",
       imageFile: null,
       weight: {},
@@ -236,7 +237,12 @@ const WorldRankingWeights = () => {
       continent: editForm.continent,
       country: editForm.country,
       state: editForm.state,
-      isActive: editForm.isActive,
+      isActive:
+        editForm.isActive === "true"
+          ? true
+          : editForm.isActive === "false"
+            ? false
+            : editForm.isActive,
       imageUrl: editForm.imageUrl || "",
       weight: {},
     };
@@ -259,7 +265,7 @@ const WorldRankingWeights = () => {
       formData.append("continent", payload.continent || "");
       formData.append("country", payload.country || "");
       formData.append("state", payload.state || "");
-      formData.append("isActive", payload.isActive || "");
+      formData.append("isActive", String(payload.isActive ?? ""));
       formData.append("image", editForm.imageFile);
       formData.append("weight", JSON.stringify(payload.weight));
 
@@ -493,13 +499,17 @@ const WorldRankingWeights = () => {
                 />
                 <TextField
                   label="isActive"
+                  select
                   value={editForm.isActive}
                   disabled={!editMode}
                   onChange={(event) =>
                     handleFormFieldChange("isActive", event.target.value)
                   }
                   fullWidth
-                />
+                >
+                  <MenuItem value="true">true</MenuItem>
+                  <MenuItem value="false">false</MenuItem>
+                </TextField>
               </Box>
 
               <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
