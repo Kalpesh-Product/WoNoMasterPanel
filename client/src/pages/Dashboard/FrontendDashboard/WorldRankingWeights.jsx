@@ -177,7 +177,7 @@ const WorldRankingWeights = () => {
     onError: (error) => {
       toast.error(
         error?.response?.data?.message ||
-          "Failed to update world ranking weight",
+        "Failed to update world ranking weight",
       );
     },
   });
@@ -190,6 +190,7 @@ const WorldRankingWeights = () => {
       continent: row?.continent ?? "",
       country: row?.country ?? "",
       state: row?.state ?? "",
+      isActive: row?.isActive ?? "",
       imageUrl: row?.imageUrl ?? row?.image ?? "",
       imageFile: null,
       weight: {},
@@ -235,6 +236,7 @@ const WorldRankingWeights = () => {
       continent: editForm.continent,
       country: editForm.country,
       state: editForm.state,
+      isActive: editForm.isActive,
       imageUrl: editForm.imageUrl || "",
       weight: {},
     };
@@ -257,6 +259,7 @@ const WorldRankingWeights = () => {
       formData.append("continent", payload.continent || "");
       formData.append("country", payload.country || "");
       formData.append("state", payload.state || "");
+      formData.append("isActive", payload.isActive || "");
       formData.append("image", editForm.imageFile);
       formData.append("weight", JSON.stringify(payload.weight));
 
@@ -468,6 +471,8 @@ const WorldRankingWeights = () => {
                   }
                   fullWidth
                 />
+              </Box>
+              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
                 <TextField
                   label="Country"
                   disabled
@@ -483,6 +488,15 @@ const WorldRankingWeights = () => {
                   value={editForm.state}
                   onChange={(event) =>
                     handleFormFieldChange("state", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="isActive"
+                  value={editForm.isActive}
+                  disabled={!editMode}
+                  onChange={(event) =>
+                    handleFormFieldChange("isActive", event.target.value)
                   }
                   fullWidth
                 />
