@@ -376,8 +376,6 @@ const WorldRankingWeights = () => {
         <Box
           sx={{
             width: "100%",
-            maxHeight: "90vh",
-            overflowY: "auto",
           }}
         >
           {editForm ? (
