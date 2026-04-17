@@ -282,7 +282,7 @@ const WorldRankingWeights = () => {
       imageUrl: previewUrl,
       imageFile: file,
     }));
-    toast.success("Image added successfully");
+    // toast.success("Image added successfully");
   };
 
   useEffect(() => {
