@@ -1,11 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Box,
-  Button,
-  Typography,
-  TextField,
-} from "@mui/material";
+import { Box, Button, Typography, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
@@ -38,7 +33,6 @@ const toNumericOrFallback = (value, fallback = 0) => {
   const numericValue = Number(value);
   return Number.isNaN(numericValue) ? fallback : numericValue;
 };
-
 
 const weightColumns = [
   { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
@@ -173,14 +167,17 @@ const WorldRankingWeights = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "World ranking weight updated successfully");
+      toast.success(
+        data?.message || "World ranking weight updated successfully",
+      );
       queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
       setIsEditOpen(false);
       setEditForm(null);
     },
     onError: (error) => {
       toast.error(
-        error?.response?.data?.message || "Failed to update world ranking weight",
+        error?.response?.data?.message ||
+          "Failed to update world ranking weight",
       );
     },
   });
@@ -194,6 +191,7 @@ const WorldRankingWeights = () => {
       country: row?.country ?? "",
       state: row?.state ?? "",
       imageUrl: row?.imageUrl ?? row?.image ?? "",
+      imageFile: null,
       weight: {},
     };
 
@@ -253,6 +251,19 @@ const WorldRankingWeights = () => {
       return;
     }
 
+    if (editForm.imageFile) {
+      const formData = new FormData();
+      formData.append("rank", String(payload.rank));
+      formData.append("continent", payload.continent || "");
+      formData.append("country", payload.country || "");
+      formData.append("state", payload.state || "");
+      formData.append("image", editForm.imageFile);
+      formData.append("weight", JSON.stringify(payload.weight));
+
+      updateWeights({ id: editForm.id, payload: formData });
+      return;
+    }
+
     updateWeights({ id: editForm.id, payload });
   };
 
@@ -265,16 +276,13 @@ const WorldRankingWeights = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64Image = typeof reader.result === "string" ? reader.result : "";
-      handleFormFieldChange("imageUrl", base64Image);
-      toast.success("Image added successfully");
-    };
-    reader.onerror = () => {
-      toast.error("Failed to read image file");
-    };
-    reader.readAsDataURL(file);
+    const previewUrl = URL.createObjectURL(file);
+    setEditForm((prev) => ({
+      ...prev,
+      imageUrl: previewUrl,
+      imageFile: file,
+    }));
+    toast.success("Image added successfully");
   };
 
   useEffect(() => {
@@ -282,6 +290,15 @@ const WorldRankingWeights = () => {
       setEditMode(false);
     }
   }, [isEditOpen]);
+
+  useEffect(() => {
+    const previewUrl = editForm?.imageUrl;
+    if (!previewUrl || !previewUrl.startsWith("blob:")) return undefined;
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [editForm?.imageUrl]);
 
   const rowData = useMemo(
     () =>
@@ -327,7 +344,9 @@ const WorldRankingWeights = () => {
         suppressMovable: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
-            rowId={params?.data?._id || params?.data?.state || params?.data?.srNo}
+            rowId={
+              params?.data?._id || params?.data?.state || params?.data?.srNo
+            }
             menuItems={[
               {
                 label: "Edit",
@@ -393,7 +412,10 @@ const WorldRankingWeights = () => {
                 /> */}
                   {editForm.imageUrl ? (
                     <Box sx={{ mt: 2 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1, textAlign: "center" }}>
+                      <Typography
+                        variant="subtitle2"
+                        sx={{ mb: 1, textAlign: "center" }}
+                      >
                         Image Preview
                       </Typography>
                       <Box
@@ -481,7 +503,6 @@ const WorldRankingWeights = () => {
                   />
                 ))}
               </Box>
-
             </>
           ) : null}
 
@@ -500,17 +521,14 @@ const WorldRankingWeights = () => {
             </Box>
           ) : (
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <Button
-                onClick={() => setEditMode(true)}
-                variant="contained"
-              >
+              <Button onClick={() => setEditMode(true)} variant="contained">
                 Edit
               </Button>
             </Box>
           )}
         </Box>
       </MuiModal>
-    </div >
+    </div>
   );
 };
 
