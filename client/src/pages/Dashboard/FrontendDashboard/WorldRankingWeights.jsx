@@ -9,9 +9,9 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 
-// const WORLD_RANKING_ENDPOINT =
-//   "https://wononomadsbe.vercel.app/api/state-wise-weight";
-const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
+const WORLD_RANKING_ENDPOINT =
+  "https://wononomadsbe.vercel.app/api/state-wise-weight";
+// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -177,7 +177,7 @@ const WorldRankingWeights = () => {
     onError: (error) => {
       toast.error(
         error?.response?.data?.message ||
-        "Failed to update world ranking weight",
+          "Failed to update world ranking weight",
       );
     },
   });
@@ -191,7 +191,11 @@ const WorldRankingWeights = () => {
       country: row?.country ?? "",
       state: row?.state ?? "",
       isActive:
-        row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
+        row?.isActive === true
+          ? "true"
+          : row?.isActive === false
+            ? "false"
+            : "",
       imageUrl: row?.imageUrl ?? row?.image ?? "",
       imageFile: null,
       weight: {},
