@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Box, Button, MenuItem, Typography, TextField } from "@mui/material";
+import { Box, Button, IconButton, MenuItem, Typography, TextField } from "@mui/material";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
@@ -27,6 +28,8 @@ const normalizeImageUrls = (source) => {
   if (typeof source === "string" && source.trim()) return [source.trim()];
   return [];
 };
+
+const MAX_IMAGES = 3;
 
 const getImageUrlsFromRow = (row = {}) =>
   normalizeImageUrls(
@@ -481,7 +484,7 @@ const getInitialForm = (row = {}) => {
     isActive:
       row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
     imageUrls: getImageUrlsFromRow(row),
-    imageFile: null,
+    imageFiles: [],
     weight: {},
     labels: {},
   };
@@ -501,7 +504,9 @@ const getInitialForm = (row = {}) => {
 };
 
 const buildPayload = (form) => {
-  const normalizedImageUrls = normalizeImageUrls(form.imageUrls);
+  const normalizedImageUrls = normalizeImageUrls(form.imageUrls).filter(
+    (url) => !url.startsWith("blob:"),
+  );
   const payload = {
     rank: toNumericOrFallback(form.rank, 0),
     continent: form.continent,
@@ -717,7 +722,7 @@ const WorldRankingWeights = () => {
       return;
     }
 
-    if (editForm.imageFile) {
+    if (editForm.imageFiles?.length) {
       const formData = new FormData();
       formData.append("rank", String(payload.rank));
       formData.append("continent", payload.continent || "");
@@ -725,8 +730,9 @@ const WorldRankingWeights = () => {
       formData.append("state", payload.state || "");
       formData.append("isActive", String(payload.isActive ?? ""));
       formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
-      formData.append("images", editForm.imageFile);
+      editForm.imageFiles.forEach((file) => formData.append("images", file));
       formData.append("weight", JSON.stringify(payload.weight));
+      formData.append("labels", JSON.stringify(payload.labels));
 
       updateWeights({ id: editForm.id, payload: formData });
       return;
@@ -748,46 +754,73 @@ const WorldRankingWeights = () => {
     formData.append("weight", JSON.stringify(payload.weight));
     formData.append("labels", JSON.stringify(payload.labels));
 
-    if (addForm.imageFile) {
-      formData.append("images", addForm.imageFile);
-    }
+    (addForm.imageFiles || []).forEach((file) => formData.append("images", file));
 
     createWeight(formData);
   };
 
-  const handleImageUpload = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImageUpload = (event, formType = "edit") => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload a valid image file");
+    const invalid = files.find((file) => !file.type.startsWith("image/"));
+    if (invalid) {
+      toast.error("Please upload valid image files");
+      event.target.value = "";
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    setEditForm((prev) => ({
-      ...prev,
-      imageUrls: [previewUrl],
-      imageFile: file,
-    }));
-    // toast.success("Image added successfully");
+    const setForm = formType === "edit" ? setEditForm : setAddForm;
+    setForm((prev) => {
+      const existingUrls = normalizeImageUrls(prev?.imageUrls);
+      const remainingSlots = Math.max(0, MAX_IMAGES - existingUrls.length);
+
+      if (remainingSlots <= 0) {
+        toast.error(`You can upload a maximum of ${MAX_IMAGES} images`);
+        return prev;
+      }
+
+      const acceptedFiles = files.slice(0, remainingSlots);
+      if (acceptedFiles.length < files.length) {
+        toast.error(`Only ${MAX_IMAGES} images are allowed`);
+      }
+
+      const previewUrls = acceptedFiles.map((file) => URL.createObjectURL(file));
+
+      return {
+        ...prev,
+        imageUrls: [...existingUrls, ...previewUrls],
+        imageFiles: [...(prev?.imageFiles || []), ...acceptedFiles],
+      };
+    });
+
+    event.target.value = "";
   };
 
-  const handleImageUploadAdd = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleImageDelete = (index, formType = "edit") => {
+    const setForm = formType === "edit" ? setEditForm : setAddForm;
+    setForm((prev) => {
+      const currentUrls = normalizeImageUrls(prev?.imageUrls);
+      const targetUrl = currentUrls[index];
+      if (!targetUrl) return prev;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload a valid image file");
-      return;
-    }
+      const nextUrls = currentUrls.filter((_, i) => i !== index);
+      let nextFiles = [...(prev?.imageFiles || [])];
 
-    const previewUrl = URL.createObjectURL(file);
-    setAddForm((prev) => ({
-      ...prev,
-      imageUrls: [previewUrl],
-      imageFile: file,
-    }));
+      if (targetUrl.startsWith("blob:")) {
+        const blobIndex = currentUrls
+          .slice(0, index + 1)
+          .filter((url) => url.startsWith("blob:")).length - 1;
+        nextFiles = nextFiles.filter((_, i) => i !== blobIndex);
+        URL.revokeObjectURL(targetUrl);
+      }
+
+      return {
+        ...prev,
+        imageUrls: nextUrls,
+        imageFiles: nextFiles,
+      };
+    });
   };
 
   useEffect(() => {
@@ -800,10 +833,12 @@ const WorldRankingWeights = () => {
   useEffect(() => {
     return () => {
       // Cleanup on unmount only — prevents premature revocation during re-renders
-      const editUrl = editForm?.imageUrls?.[0];
-      const addUrl = addForm?.imageUrls?.[0];
-      if (editUrl?.startsWith("blob:")) URL.revokeObjectURL(editUrl);
-      if (addUrl?.startsWith("blob:")) URL.revokeObjectURL(addUrl);
+      (editForm?.imageUrls || []).forEach((url) => {
+        if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
+      (addForm?.imageUrls || []).forEach((url) => {
+        if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -936,38 +971,55 @@ const WorldRankingWeights = () => {
             <>
               <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
                 <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
-                  {editForm?.imageUrls?.[0] ? (
+                  {editForm?.imageUrls?.length > 0 ? (
                     <Box sx={{ mt: 2 }}>
                       <Typography
                         variant="subtitle2"
                         sx={{ mb: 1, textAlign: "center" }}
                       >
-                        Image Preview
+                        Image Preview ({editForm.imageUrls.length}/{MAX_IMAGES})
                       </Typography>
-                      <Box
-                        component="img"
-                        src={editForm.imageUrls[0]}
-                        alt={`${editForm.state || "State"} preview`}
-                        sx={{
-                          width: "100%",
-                          maxWidth: 360,
-                          maxHeight: 220,
-                          objectFit: "cover",
-                          borderRadius: 1,
-                          border: "1px solid #e5e7eb",
-                        }}
-                      />
+                      <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        {editForm.imageUrls.map((url, index) => (
+                          <Box key={`${url}-${index}`} sx={{ textAlign: "center" }}>
+                            <Box
+                              component="img"
+                              src={url}
+                              alt={`${editForm.state || "State"} preview ${index + 1}`}
+                              sx={{
+                                width: "100%",
+                                maxWidth: 220,
+                                height: 140,
+                                objectFit: "cover",
+                                borderRadius: 1,
+                                border: "1px solid #e5e7eb",
+                              }}
+                            />
+                            {editMode ? (
+                              <IconButton
+                                color="error"
+                                onClick={() => handleImageDelete(index, "edit")}
+                                size="small"
+                                sx={{ mt: 1 }}
+                              >
+                                <DeleteOutlineIcon fontSize="small" />
+                              </IconButton>
+                            ) : null}
+                          </Box>
+                        ))}
+                      </Box>
                     </Box>
                   ) : <p>No image</p>}
                   {editMode ? (
                     <Box sx={{ mt: 2 }}>
                       <Button variant="outlined" component="label">
-                        Upload Image
+                        Upload Images
                         <input
                           hidden
                           accept="image/*"
                           type="file"
-                          onChange={handleImageUpload}
+                          multiple
+                          onChange={(event) => handleImageUpload(event, "edit")}
                         />
                       </Button>
                     </Box>
@@ -1186,31 +1238,46 @@ const WorldRankingWeights = () => {
                     variant="subtitle2"
                     sx={{ mb: 1, textAlign: "center" }}
                   >
-                    Image Preview
+                    Image Preview ({addForm.imageUrls.length}/{MAX_IMAGES})
                   </Typography>
-                  <Box
-                    component="img"
-                    src={addForm.imageUrls[0]}
-                    alt={`${addForm.state || "State"} preview`}
-                    sx={{
-                      width: "100%",
-                      maxWidth: 360,
-                      maxHeight: 220,
-                      objectFit: "cover",
-                      borderRadius: 1,
-                      border: "1px solid #e5e7eb",
-                    }}
-                  />
+                  <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {addForm.imageUrls.map((url, index) => (
+                      <Box key={`${url}-${index}`} sx={{ textAlign: "center" }}>
+                        <Box
+                          component="img"
+                          src={url}
+                          alt={`${addForm.state || "State"} preview ${index + 1}`}
+                          sx={{
+                            width: "100%",
+                            maxWidth: 220,
+                            height: 140,
+                            objectFit: "cover",
+                            borderRadius: 1,
+                            border: "1px solid #e5e7eb",
+                          }}
+                        />
+                        <IconButton
+                          color="error"
+                          onClick={() => handleImageDelete(index, "add")}
+                          size="small"
+                          sx={{ mt: 1 }}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
               ) : null}
               <Box sx={{ mt: 2 }}>
                 <Button variant="outlined" component="label">
-                  Upload Image
+                  Upload Images
                   <input
                     hidden
                     accept="image/*"
                     type="file"
-                    onChange={handleImageUploadAdd}
+                    multiple
+                    onChange={(event) => handleImageUpload(event, "add")}
                   />
                 </Button>
               </Box>
