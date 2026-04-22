@@ -725,7 +725,7 @@ const WorldRankingWeights = () => {
       formData.append("state", payload.state || "");
       formData.append("isActive", String(payload.isActive ?? ""));
       formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
-      formData.append("image", editForm.imageFile);
+      formData.append("images", editForm.imageFile);
       formData.append("weight", JSON.stringify(payload.weight));
 
       updateWeights({ id: editForm.id, payload: formData });
@@ -749,7 +749,7 @@ const WorldRankingWeights = () => {
     formData.append("labels", JSON.stringify(payload.labels));
 
     if (addForm.imageFile) {
-      formData.append("image", addForm.imageFile);
+      formData.append("images", addForm.imageFile);
     }
 
     createWeight(formData);
