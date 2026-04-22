@@ -22,6 +22,21 @@ const toRows = (payload) => {
   return [];
 };
 
+const normalizeImageUrls = (source) => {
+  if (Array.isArray(source)) return source.filter(Boolean);
+  if (typeof source === "string" && source.trim()) return [source.trim()];
+  return [];
+};
+
+const getImageUrlsFromRow = (row = {}) =>
+  normalizeImageUrls(
+    row?.imageUrls ??
+    row?.imageurls ??
+    row?.imageURLS ??
+    row?.imageUrl ??
+    row?.imageurl,
+  );
+
 const fmtNumber = (value, digits = 2) => {
   if (value === null || value === undefined || value === "") return "-";
   const num = Number(value);
@@ -465,7 +480,7 @@ const getInitialForm = (row = {}) => {
     state: row?.state ?? "",
     isActive:
       row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
-    imageUrls: [],
+    imageUrls: getImageUrlsFromRow(row),
     imageFile: null,
     weight: {},
     labels: {},
@@ -486,6 +501,7 @@ const getInitialForm = (row = {}) => {
 };
 
 const buildPayload = (form) => {
+  const normalizedImageUrls = normalizeImageUrls(form.imageUrls);
   const payload = {
     rank: toNumericOrFallback(form.rank, 0),
     continent: form.continent,
@@ -497,7 +513,7 @@ const buildPayload = (form) => {
         : form.isActive === "false"
           ? false
           : form.isActive,
-    imageUrls: [],
+    imageUrls: normalizedImageUrls,
     weight: {},
     labels: {},
   };
@@ -708,7 +724,7 @@ const WorldRankingWeights = () => {
       formData.append("country", payload.country || "");
       formData.append("state", payload.state || "");
       formData.append("isActive", String(payload.isActive ?? ""));
-      formData.append("imageUrls", payload.imageUrls || "");
+      formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
       formData.append("image", editForm.imageFile);
       formData.append("weight", JSON.stringify(payload.weight));
 
@@ -728,7 +744,7 @@ const WorldRankingWeights = () => {
     formData.append("country", payload.country || "");
     formData.append("state", payload.state || "");
     formData.append("isActive", String(payload.isActive ?? ""));
-    formData.append("imageUrls", payload.imageUrls || "");
+    formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
     formData.append("weight", JSON.stringify(payload.weight));
     formData.append("labels", JSON.stringify(payload.labels));
 
