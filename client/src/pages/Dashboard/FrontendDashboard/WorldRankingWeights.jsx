@@ -8,6 +8,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
+import { calculateScore, STATEWISE_WEIGHT_FORMULAS } from "../../../utils/weightCalculations";
 
 // const WORLD_RANKING_ENDPOINT =
 //   "https://wononomadsbe.vercel.app/api/state-wise-weight";
@@ -140,32 +141,123 @@ const weightColumns = [
   },
 ];
 
+const CALCULATION_CONFIG = [
+  { label: "Best For Nomads", formula: "bestForNomads", field: "labelBestForNomads" },
+  { label: "Most Affordable", formula: "mostAffordable", field: "labelMostAffordable" },
+  { label: "Safest Cities", formula: "safestCities", field: "labelSafestCities" },
+  { label: "Easy Visa", formula: "easyVisaLongStay", field: "labelEasyVisa" },
+  { label: "Strong Nomad Community", formula: "strongNomadCommunity", field: "labelStrongNomadCommunity" },
+  { label: "Healthcare Friendly", formula: "healthcareFriendly", field: "labelHealthcareFriendly" },
+  { label: "Startup / Business Opportunities", formula: "startupBusinessOpportunities", field: "labelStartupBusinessOpportunities" },
+  { label: "Clean Air / Environment", formula: "cleanAirEnvironment", field: "labelCleanAirEnvironment" },
+  { label: "Best Work Infrastructure", formula: "bestWorkInfrastructure", field: "labelBestWorkInfrastructure" },
+  { label: "Best For Remote Work Setup", formula: "bestForRemoteWorkSetup", field: "bestForRemoteWorkSetup" },
+  { label: "Cheapest Places", formula: "cheapestPlaces", field: "labelCheapestPlaces" },
+  { label: "Best Connected Cities (Flights)", formula: "bestConnectedCitiesFlights", field: "labelBestConnectedCitiesFlights" },
+  { label: "Strong Nomad Community", formula: "strongNomadCommunityWFA", field: "labelStrongNomadCommunityWfa" },
+  { label: "Fast Internet Cities", formula: "fastInternetCities", field: "labelFastInternetCities" },
+  { label: "Best Work Infrastructure", formula: "bestWorkInfrastructureWFA", field: "labelBestWorkInfrastructureWfa" },
+  { label: "Maximum Savings", formula: "maximumSavings", field: "labelMaximumSavings" },
+  { label: "Low Taxation", formula: "lowTaxation", field: "labelLowTaxation" },
+  { label: "Purchasing Power", formula: "purchasingPower", field: "labelPurchasingPower" },
+  { label: "Financial Stability", formula: "financialStabilityLowRisk", field: "labelFinancialStability" },
+  { label: "Startup Setup Cost", formula: "startupSetupCost", field: "labelStartupSetupCost" },
+  { label: "Balanced Financial Lifestyle", formula: "balancedFinancialLifestyle", field: "labelBalancedFinancialLifestyle" },
+  { label: "Social & Party Lifestyle", formula: "socialPartyLifestyle", field: "labelSocialPartyLifestyle" },
+  { label: "Chill & Wellness Lifestyle", formula: "chillWellnessLifestyle", field: "labelChillWellnessLifestyle" },
+  { label: "Adventure & Exploration", formula: "adventureExploration", field: "labelAdventureExploration" },
+  { label: "Nomad Community & Networking", formula: "nomadCommunityNetworking", field: "labelNomadCommunityNetworking" },
+  { label: "Couple-Friendly Lifestyle", formula: "coupleFriendlyLifestyle", field: "labelCoupleFriendlyLifestyle" },
+  { label: "Family-Friendly Lifestyle", formula: "familyFriendlyLifestyle", field: "labelFamilyFriendlyLifestyle" },
+  { label: "Female Friendly Lifestyle", formula: "femaleFriendlyLifestyle", field: "labelFemaleFriendlyLifestyle" },
+  { label: "Founder Nomads", formula: "founderNomads", field: "labelFounderNomads" },
+  { label: "Solo Nomads", formula: "soloNomads", field: "labelSoloNomads" },
+  { label: "Startup Ecosystems", formula: "startupEcosystems", field: "labelStartupEcosystems" },
+  { label: "Remote Job Opportunities", formula: "remoteJobOpportunities", field: "labelRemoteJobOpportunities" },
+  { label: "Founder Nomads", formula: "founderNomadsAyc", field: "labelFounderNomadsAyc" },
+  { label: "Tech Talent Density", formula: "techTalentDensity", field: "labelTechTalentDensity" },
+  { label: "Startup Incubators & Accelerators", formula: "startupIncubatorsAndAccelerators", field: "labelStartupIncubatorsAccelerators" },
+  { label: "Balanced Career Growth", formula: "balancedCareerGrowth", field: "labelBalancedCareerGrowth" },
+  { label: "Venture Capital Presence", formula: "ventureCapitalPresence", field: "labelVentureCapitalPresence" },
+  { label: "Conferences & Events", formula: "conferencesAndEvents", field: "labelConferencesEvents" },
+];
+
+const SCORE_TO_LABEL_MAP = CALCULATION_CONFIG.reduce((acc, item) => {
+  acc[item.formula] = item.field;
+  return acc;
+}, {});
+
+const WEIGHT_TO_LABEL_FIELD_MAP = {
+  costOfLiving: "labelCostOfLivingPerMonth",
+  internet: "labelInternetSpeed",
+  safety: "labelSafestCities",
+  nomadCommunity: "labelStrongNomadCommunity",
+  workInfrastructure: "labelBestWorkInfrastructure",
+  airQualityIndex: "labelAqiValue",
+  taxFriendly: "labelNomadTax",
+  purchasingPower: "labelPurchasingPower",
+  inflationStability: "labelFinancialStability",
+  startupSetupCost: "labelStartupSetupCost",
+  ventureCapital: "labelVentureCapitalPresence",
+  incubators: "labelStartupIncubatorsAccelerators",
+  techTalentDensity: "labelTechTalentDensity",
+  conferences: "labelConferencesEvents",
+  remoteJobs: "labelRemoteJobOpportunities",
+  founderNomads: "labelFounderNomads",
+  soloNomad: "labelSoloNomads",
+  familyNomads: "labelFamilyFriendlyLifestyle",
+  femaleNomads: "labelFemaleFriendlyLifestyle",
+  coupleNomads: "labelCoupleFriendlyLifestyle",
+};
+
+const WEIGHT_LABEL_RANGES = {
+  costOfLiving: [
+    { min: 0, max: 2500, label: "Low" },
+    { min: 2500, max: 5000, label: "Medium" },
+    { min: 5000, max: 10000, label: "High" },
+    { min: 10000, max: 100000, label: "Premium" },
+  ],
+  internet: [
+    { min: 0, max: 10, label: "Basic" },
+    { min: 10, max: 50, label: "Reliable" },
+    { min: 50, max: 200, label: "Fast" },
+    { min: 200, max: 10000, label: "High-Speed" },
+  ],
+  safety: [
+    { min: 0, max: 30, label: "Unsafe" },
+    { min: 30, max: 60, label: "Moderate" },
+    { min: 60, max: 90, label: "Safe" },
+    { min: 90, max: 1000, label: "Very Safe" },
+  ],
+  nomadCommunity: [
+    { min: 0, max: 25, label: "Limited" },
+    { min: 25, max: 50, label: "Growing" },
+    { min: 50, max: 75, label: "Popular" },
+    { min: 75, max: 101, label: "Major Hub" },
+  ],
+  workInfrastructure: [
+    { min: 0, max: 25, label: "Limited" },
+    { min: 25, max: 50, label: "Basic" },
+    { min: 50, max: 75, label: "Good" },
+    { min: 75, max: 101, label: "Top Tier" },
+  ],
+};
+
+const getLabelForWeightValue = (weightField, rawValue) => {
+  const numericValue = Number(rawValue);
+  if (Number.isNaN(numericValue)) return "";
+
+  const ranges = WEIGHT_LABEL_RANGES[weightField];
+  if (!Array.isArray(ranges) || ranges.length === 0) return "";
+
+  const matchedRange = ranges.find(
+    (range) => numericValue >= range.min && numericValue < range.max,
+  );
+
+  return matchedRange?.label ?? "";
+};
+
 const labelColumns = [
-  {
-    field: "labelCostOfLivingPerMonth",
-    headerName: "Cost Of Living Per Month",
-    options: ["High", "Medium", "Low", "Premium"],
-  },
-  {
-    field: "labelInternetSpeed",
-    headerName: "Internet Speed",
-    options: ["High-Speed", "Fast", "Reliable", "Basic"],
-  },
-  {
-    field: "labelAqiValue",
-    headerName: "Aqi Value",
-    options: ["Very Clean", "Clean", "Moderate", "Polluted"],
-  },
-  {
-    field: "labelNomadTax",
-    headerName: "Nomad Tax",
-    options: ["Tax Haven", "Tax Efficient", "Moderate Tax", "High Tax"],
-  },
-  {
-    field: "labelResidentTax",
-    headerName: "Resident Tax",
-    options: ["Tax Haven", "Tax Efficient", "Moderate Tax", "High Tax"],
-  },
   {
     field: "labelMostAffordable",
     headerName: "Most Affordable",
@@ -557,18 +649,29 @@ const WorldRankingWeights = () => {
     }));
   };
 
-  const handleWeightFieldChange = (field, value) => {
-    setEditForm((prev) => ({
-      ...prev,
-      weight: {
-        ...prev.weight,
-        [field]: value,
-      },
-    }));
+  const handleWeightFieldChange = (field, value, formType = "edit") => {
+    const setForm = formType === "edit" ? setEditForm : setAddForm;
+    setForm((prev) => {
+      const labelField = WEIGHT_TO_LABEL_FIELD_MAP[field];
+      const derivedLabel = getLabelForWeightValue(field, value);
+      const nextWeight = { ...prev.weight, [field]: value };
+      const nextLabels = { ...prev.labels };
+
+      if (labelField && derivedLabel) {
+        nextLabels[labelField] = derivedLabel;
+      }
+
+      return {
+        ...prev,
+        weight: nextWeight,
+        labels: nextLabels,
+      };
+    });
   };
 
-  const handleLabelFieldChange = (field, value) => {
-    setEditForm((prev) => ({
+  const handleLabelFieldChange = (field, value, formType = "edit") => {
+    const setForm = formType === "edit" ? setEditForm : setAddForm;
+    setForm((prev) => ({
       ...prev,
       labels: {
         ...prev.labels,
@@ -738,6 +841,7 @@ const WorldRankingWeights = () => {
           />
         ),
       },
+      // Weight Columns
       ...weightColumns.map((column) => ({
         ...column,
         valueGetter: (params) =>
@@ -746,6 +850,30 @@ const WorldRankingWeights = () => {
           params.data?.[column.field],
         valueFormatter: (params) => fmtNumber(params.value, 2),
       })),
+      // Interleaved Score and Label Columns
+      ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(([formulaKey, factors]) => {
+        const labelField = SCORE_TO_LABEL_MAP[formulaKey];
+        const labelCol = labelColumns.find(c => c.field === labelField);
+
+        return [
+          {
+            headerName: `${formulaKey} Score`,
+            field: `score_${formulaKey}`,
+            minWidth: 150,
+            valueGetter: (params) => {
+              const weights = params.data?.weight || params.data?.weights || params.data || {};
+              return calculateScore(weights, factors);
+            },
+            valueFormatter: (params) => fmtNumber(params.value, 3),
+          },
+          ...(labelCol ? [{
+            ...labelCol,
+            valueGetter: (params) =>
+              params.data?.labels?.[labelCol.field] ??
+              params.data?.[labelCol.field],
+          }] : [])
+        ];
+      })
     ],
     [],
   );
@@ -878,59 +1006,122 @@ const WorldRankingWeights = () => {
                 </TextField>
               </Box>
 
-              <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+              <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
                 Weights
               </Typography>
-              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
+              <Box className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-1 mb-4">
                 {weightColumns.map((column) => (
                   <TextField
                     key={column.field}
                     label={column.headerName}
                     type="number"
                     disabled={!editMode}
-                    value={editForm?.weight?.[column.field] ?? ""}
+                    value={editForm.weight?.[column.field] ?? ""}
                     onChange={(event) =>
-                      handleWeightFieldChange(column.field, event.target.value)
+                      handleWeightFieldChange(column.field, event.target.value, "edit")
                     }
                     fullWidth
+                    size="small"
                   />
                 ))}
               </Box>
 
-              <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-                Labels
+              <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
+                Calculations & Labels
               </Typography>
-              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
-                {labelColumns.map((column) => (
-                  <TextField
-                    key={column.field}
-                    label={column.headerName}
-                    select
-                    disabled={!editMode}
-                    value={editForm?.labels?.[column.field] ?? ""}
-                    onChange={(event) =>
-                      handleLabelFieldChange(column.field, event.target.value)
-                    }
-                    fullWidth
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {column.options?.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                    {editForm?.labels?.[column.field] &&
-                      !column.options?.includes(
-                        editForm.labels[column.field],
-                      ) && (
-                        <MenuItem value={editForm.labels[column.field]}>
-                          {editForm.labels[column.field]}
-                        </MenuItem>
+              <Box className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1 mb-4">
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                  Computed Score
+                </Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+                  Label
+                </Typography>
+
+                {CALCULATION_CONFIG.map((config) => {
+                  const labelCol = labelColumns.find(
+                    (c) => c.field === config.field
+                  );
+                  const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+                  const currentScore = calculateScore(
+                    editForm.weight || {},
+                    factors
+                  );
+
+                  return (
+                    <React.Fragment key={config.formula}>
+                      <TextField
+                        label={`Score ${config.label}`}
+                        value={currentScore}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        size="small"
+                        sx={{ bgcolor: "#f9fafb" }}
+                      />
+                      {labelCol ? (
+                        <TextField
+                          label={config.field}
+                          select
+                          disabled={!editMode}
+                          value={editForm.labels?.[config.field] ?? ""}
+                          onChange={(event) =>
+                            handleLabelFieldChange(
+                              config.field,
+                              event.target.value,
+                              "edit"
+                            )
+                          }
+                          fullWidth
+                          size="small"
+                        >
+                          <MenuItem value="">
+                            <em>None</em>
+                          </MenuItem>
+                          {labelCol.options?.map((opt) => (
+                            <MenuItem key={opt} value={opt}>
+                              {opt}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      ) : (
+                        <Box />
                       )}
-                  </TextField>
-                ))}
+                    </React.Fragment>
+                  );
+                })}
+
+                {labelColumns
+                  .filter(
+                    (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field)
+                  )
+                  .map((column) => (
+                    <React.Fragment key={column.field}>
+                      <Box />
+                      <TextField
+                        label={column.headerName}
+                        select
+                        disabled={!editMode}
+                        value={editForm.labels?.[column.field] ?? ""}
+                        onChange={(event) =>
+                          handleLabelFieldChange(
+                            column.field,
+                            event.target.value,
+                            "edit"
+                          )
+                        }
+                        fullWidth
+                        size="small"
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        {column.options?.map((option) => (
+                          <MenuItem key={option} value={option}>
+                            {option}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </React.Fragment>
+                  ))}
               </Box>
             </>
           ) : null}
@@ -1092,61 +1283,114 @@ const WorldRankingWeights = () => {
             </TextField>
           </Box>
 
-          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
+          <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
             Weights
           </Typography>
-          <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
+          <Box className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-1 mb-4">
             {weightColumns.map((column) => (
               <TextField
                 key={column.field}
                 label={column.headerName}
                 type="number"
-                value={addForm?.weight?.[column.field] ?? ""}
+                value={addForm.weight?.[column.field] ?? ""}
                 onChange={(event) =>
-                  setAddForm((prev) => ({
-                    ...prev,
-                    weight: {
-                      ...prev.weight,
-                      [column.field]: event.target.value,
-                    },
-                  }))
+                  handleWeightFieldChange(column.field, event.target.value, "add")
                 }
                 fullWidth
+                size="small"
               />
             ))}
           </Box>
 
-          <Typography variant="h6" sx={{ mt: 4, mb: 2 }}>
-            Labels
+          <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
+            Calculations & Labels
           </Typography>
-          <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
-            {labelColumns.map((column) => (
-              <TextField
-                key={column.field}
-                label={column.headerName}
-                select
-                value={addForm?.labels?.[column.field] ?? ""}
-                onChange={(event) =>
-                  setAddForm((prev) => ({
-                    ...prev,
-                    labels: {
-                      ...prev.labels,
-                      [column.field]: event.target.value,
-                    },
-                  }))
-                }
-                fullWidth
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {column.options?.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ))}
+          <Box className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1 mb-4">
+            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+              Computed Score
+            </Typography>
+            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
+              Label
+            </Typography>
+
+            {CALCULATION_CONFIG.map((config) => {
+              const labelCol = labelColumns.find((c) => c.field === config.field);
+              const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+              const currentScore = calculateScore(addForm.weight || {}, factors);
+
+              return (
+                <React.Fragment key={config.formula}>
+                  <TextField
+                    label={`Score ${config.label}`}
+                    value={currentScore}
+                    InputProps={{ readOnly: true }}
+                    fullWidth
+                    size="small"
+                    sx={{ bgcolor: "#f9fafb" }}
+                  />
+                  {labelCol ? (
+                    <TextField
+                      label={config.field}
+                      select
+                      value={addForm.labels?.[config.field] ?? ""}
+                      onChange={(event) =>
+                        handleLabelFieldChange(
+                          config.field,
+                          event.target.value,
+                          "add"
+                        )
+                      }
+                      fullWidth
+                      size="small"
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {labelCol.options?.map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  ) : (
+                    <Box />
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {labelColumns
+              .filter(
+                (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field)
+              )
+              .map((column) => (
+                <React.Fragment key={column.field}>
+                  <Box />
+                  <TextField
+                    label={column.headerName}
+                    select
+                    value={addForm.labels?.[column.field] ?? ""}
+                    onChange={(event) =>
+                      handleLabelFieldChange(
+                        column.field,
+                        event.target.value,
+                        "add"
+                      )
+                    }
+                    fullWidth
+                    size="small"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {column.options?.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </React.Fragment>
+              ))}
           </Box>
 
           <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
