@@ -151,7 +151,7 @@ const CALCULATION_CONFIG = [
   { label: "Startup / Business Opportunities", formula: "startupBusinessOpportunities", field: "labelStartupBusinessOpportunities" },
   { label: "Clean Air / Environment", formula: "cleanAirEnvironment", field: "labelCleanAirEnvironment" },
   { label: "Best Work Infrastructure", formula: "bestWorkInfrastructure", field: "labelBestWorkInfrastructure" },
-  { label: "Best For Remote Work Setup", formula: "bestForRemoteWorkSetup", field: "bestForRemoteWorkSetup" },
+  { label: "Best For Remote Work Setup", formula: "bestForRemoteWorkSetup", field: "labelBestForRemoteWorkSetup" },
   { label: "Cheapest Places", formula: "cheapestPlaces", field: "labelCheapestPlaces" },
   { label: "Best Connected Cities (Flights)", formula: "bestConnectedCitiesFlights", field: "labelBestConnectedCitiesFlights" },
   { label: "Strong Nomad Community", formula: "strongNomadCommunityWFA", field: "labelStrongNomadCommunityWfa" },
@@ -187,81 +187,17 @@ const SCORE_TO_LABEL_MAP = CALCULATION_CONFIG.reduce((acc, item) => {
   return acc;
 }, {});
 
-const WEIGHT_TO_LABEL_FIELD_MAP = {
-  costOfLiving: "labelCostOfLivingPerMonth",
-  internet: "labelInternetSpeed",
-  safety: "labelSafestCities",
-  nomadCommunity: "labelStrongNomadCommunity",
-  workInfrastructure: "labelBestWorkInfrastructure",
-  airQualityIndex: "labelAqiValue",
-  taxFriendly: "labelNomadTax",
-  purchasingPower: "labelPurchasingPower",
-  inflationStability: "labelFinancialStability",
-  startupSetupCost: "labelStartupSetupCost",
-  ventureCapital: "labelVentureCapitalPresence",
-  incubators: "labelStartupIncubatorsAccelerators",
-  techTalentDensity: "labelTechTalentDensity",
-  conferences: "labelConferencesEvents",
-  remoteJobs: "labelRemoteJobOpportunities",
-  founderNomads: "labelFounderNomads",
-  soloNomad: "labelSoloNomads",
-  familyNomads: "labelFamilyFriendlyLifestyle",
-  femaleNomads: "labelFemaleFriendlyLifestyle",
-  coupleNomads: "labelCoupleFriendlyLifestyle",
-};
-
-const WEIGHT_LABEL_RANGES = {
-  costOfLiving: [
-    { min: 0, max: 2500, label: "Low" },
-    { min: 2500, max: 5000, label: "Medium" },
-    { min: 5000, max: 10000, label: "High" },
-    { min: 10000, max: 100000, label: "Premium" },
-  ],
-  internet: [
-    { min: 0, max: 10, label: "Basic" },
-    { min: 10, max: 50, label: "Reliable" },
-    { min: 50, max: 200, label: "Fast" },
-    { min: 200, max: 10000, label: "High-Speed" },
-  ],
-  safety: [
-    { min: 0, max: 30, label: "Unsafe" },
-    { min: 30, max: 60, label: "Moderate" },
-    { min: 60, max: 90, label: "Safe" },
-    { min: 90, max: 1000, label: "Very Safe" },
-  ],
-  nomadCommunity: [
-    { min: 0, max: 25, label: "Limited" },
-    { min: 25, max: 50, label: "Growing" },
-    { min: 50, max: 75, label: "Popular" },
-    { min: 75, max: 101, label: "Major Hub" },
-  ],
-  workInfrastructure: [
-    { min: 0, max: 25, label: "Limited" },
-    { min: 25, max: 50, label: "Basic" },
-    { min: 50, max: 75, label: "Good" },
-    { min: 75, max: 101, label: "Top Tier" },
-  ],
-};
-
-const getLabelForWeightValue = (weightField, rawValue) => {
-  const numericValue = Number(rawValue);
-  if (Number.isNaN(numericValue)) return "";
-
-  const ranges = WEIGHT_LABEL_RANGES[weightField];
-  if (!Array.isArray(ranges) || ranges.length === 0) return "";
-
-  const matchedRange = ranges.find(
-    (range) => numericValue >= range.min && numericValue < range.max,
-  );
-
-  return matchedRange?.label ?? "";
-};
 
 const labelColumns = [
   {
+    field: "labelBestForNomads",
+    headerName: "Best For Nomads",
+    options: ["Basic", "Strong", "Global Hub"],
+  },
+  {
     field: "labelMostAffordable",
     headerName: "Most Affordable",
-    options: ["Budget", "Mid-Range", "Premium", "Expensive"],
+    options: ["Budget", "Mid-Range", "Premium"],
   },
   {
     field: "labelSafestCities",
@@ -302,6 +238,11 @@ const labelColumns = [
     field: "labelCheapestPlaces",
     headerName: "Cheapest Places",
     options: ["Budget", "Affordable", "Mid-Range", "Premium"],
+  },
+  {
+    field: "labelBestForRemoteWorkSetup",
+    headerName: "Best For Remote Work Setup",
+    options: ["Basic", "Strong", "Global Hub"],
   },
   {
     field: "labelBestConnectedCitiesFlights",
@@ -445,6 +386,75 @@ const labelColumns = [
   },
 ];
 
+const SCORE_TO_LABEL_OPTIONS_MAP = labelColumns.reduce((acc, column) => {
+  acc[column.field] = column.options?.filter(Boolean) || [];
+  return acc;
+}, {});
+
+const SCORE_LABEL_RANGES = {
+  mostAffordable: [
+    { min: 0, max: 7, label: "Premium" },
+    { min: 7, max: 8, label: "Mid-Range" },
+    { min: 8, max: 10, label: "Budget" },
+  ],
+};
+
+const getLabelFromScoreRanges = (scoreValue, ranges = []) => {
+  const numericScore = Number(scoreValue);
+  if (!Number.isFinite(numericScore) || ranges.length === 0) return "";
+
+  const matchedRange = ranges.find((range, index) => {
+    const min = Number(range.min);
+    const max = Number(range.max);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return false;
+
+    const isLastRange = index === ranges.length - 1;
+    if (isLastRange) {
+      return numericScore >= min && numericScore <= max;
+    }
+
+    return numericScore >= min && numericScore < max;
+  });
+
+  return matchedRange?.label ?? "";
+};
+
+const getLabelFromScore = (scoreValue, options = []) => {
+  const numericScore = Number(scoreValue);
+  if (!Number.isFinite(numericScore) || options.length === 0) return "";
+
+  const clampedScore = Math.max(0, Math.min(10, numericScore));
+  const bucketSize = 10 / options.length;
+  const bucketIndex = Math.min(
+    options.length - 1,
+    Math.floor((10 - clampedScore) / bucketSize),
+  );
+
+  return options[bucketIndex] ?? "";
+};
+
+const deriveLabelsFromCalculatedScores = (weights, existingLabels = {}) => {
+  const nextLabels = { ...existingLabels };
+
+  CALCULATION_CONFIG.forEach((config) => {
+    const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+    const labelOptions = SCORE_TO_LABEL_OPTIONS_MAP[config.field] || [];
+    if (factors.length === 0 || labelOptions.length === 0) return;
+
+    const calculatedScore = calculateScore(weights, factors);
+    const configuredRanges = SCORE_LABEL_RANGES[config.formula] || [];
+    const derivedLabel =
+      getLabelFromScoreRanges(calculatedScore, configuredRanges) ||
+      getLabelFromScore(calculatedScore, labelOptions);
+    if (!derivedLabel) return;
+
+    nextLabels[config.field] = derivedLabel;
+  });
+
+  return nextLabels;
+};
+
+
 const getInitialForm = (row = {}) => {
   const rowWeights = row?.weight || row?.weights || {};
   const initialForm = {
@@ -455,7 +465,7 @@ const getInitialForm = (row = {}) => {
     state: row?.state ?? "",
     isActive:
       row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
-    imageUrl: row?.imageUrl ?? row?.image ?? "",
+    imageUrls: [],
     imageFile: null,
     weight: {},
     labels: {},
@@ -487,7 +497,7 @@ const buildPayload = (form) => {
         : form.isActive === "false"
           ? false
           : form.isActive,
-    imageUrl: form.imageUrl || "",
+    imageUrls: [],
     weight: {},
     labels: {},
   };
@@ -652,14 +662,8 @@ const WorldRankingWeights = () => {
   const handleWeightFieldChange = (field, value, formType = "edit") => {
     const setForm = formType === "edit" ? setEditForm : setAddForm;
     setForm((prev) => {
-      const labelField = WEIGHT_TO_LABEL_FIELD_MAP[field];
-      const derivedLabel = getLabelForWeightValue(field, value);
       const nextWeight = { ...prev.weight, [field]: value };
-      const nextLabels = { ...prev.labels };
-
-      if (labelField && derivedLabel) {
-        nextLabels[labelField] = derivedLabel;
-      }
+      const nextLabels = deriveLabelsFromCalculatedScores(nextWeight, prev.labels);
 
       return {
         ...prev,
@@ -704,7 +708,7 @@ const WorldRankingWeights = () => {
       formData.append("country", payload.country || "");
       formData.append("state", payload.state || "");
       formData.append("isActive", String(payload.isActive ?? ""));
-      formData.append("imageUrl", payload.imageUrl || "");
+      formData.append("imageUrls", payload.imageUrls || "");
       formData.append("image", editForm.imageFile);
       formData.append("weight", JSON.stringify(payload.weight));
 
@@ -724,7 +728,7 @@ const WorldRankingWeights = () => {
     formData.append("country", payload.country || "");
     formData.append("state", payload.state || "");
     formData.append("isActive", String(payload.isActive ?? ""));
-    formData.append("imageUrl", payload.imageUrl || "");
+    formData.append("imageUrls", payload.imageUrls || "");
     formData.append("weight", JSON.stringify(payload.weight));
     formData.append("labels", JSON.stringify(payload.labels));
 
@@ -747,7 +751,7 @@ const WorldRankingWeights = () => {
     const previewUrl = URL.createObjectURL(file);
     setEditForm((prev) => ({
       ...prev,
-      imageUrl: previewUrl,
+      imageUrls: [previewUrl],
       imageFile: file,
     }));
     // toast.success("Image added successfully");
@@ -765,7 +769,7 @@ const WorldRankingWeights = () => {
     const previewUrl = URL.createObjectURL(file);
     setAddForm((prev) => ({
       ...prev,
-      imageUrl: previewUrl,
+      imageUrls: [previewUrl],
       imageFile: file,
     }));
   };
@@ -776,14 +780,17 @@ const WorldRankingWeights = () => {
     }
   }, [isEditOpen]);
 
+  // Track the last blob URL we created so we only revoke it on unmount or modal close
   useEffect(() => {
-    const previewUrl = editForm?.imageUrl || addForm?.imageUrl;
-    if (!previewUrl || !previewUrl.startsWith("blob:")) return undefined;
-
     return () => {
-      URL.revokeObjectURL(previewUrl);
+      // Cleanup on unmount only — prevents premature revocation during re-renders
+      const editUrl = editForm?.imageUrls?.[0];
+      const addUrl = addForm?.imageUrls?.[0];
+      if (editUrl?.startsWith("blob:")) URL.revokeObjectURL(editUrl);
+      if (addUrl?.startsWith("blob:")) URL.revokeObjectURL(addUrl);
     };
-  }, [editForm?.imageUrl, addForm?.imageUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const rowData = useMemo(
     () =>
@@ -913,7 +920,7 @@ const WorldRankingWeights = () => {
             <>
               <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
                 <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
-                  {editForm.imageUrl ? (
+                  {editForm?.imageUrls?.[0] ? (
                     <Box sx={{ mt: 2 }}>
                       <Typography
                         variant="subtitle2"
@@ -923,7 +930,7 @@ const WorldRankingWeights = () => {
                       </Typography>
                       <Box
                         component="img"
-                        src={editForm.imageUrl}
+                        src={editForm.imageUrls[0]}
                         alt={`${editForm.state || "State"} preview`}
                         sx={{
                           width: "100%",
@@ -935,7 +942,7 @@ const WorldRankingWeights = () => {
                         }}
                       />
                     </Box>
-                  ) : null}
+                  ) : <p>No image</p>}
                   {editMode ? (
                     <Box sx={{ mt: 2 }}>
                       <Button variant="outlined" component="label">
@@ -1157,7 +1164,7 @@ const WorldRankingWeights = () => {
         <Box sx={{ width: "100%" }}>
           <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
             <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
-              {addForm.imageUrl ? (
+              {addForm.imageUrls?.length > 0 ? (
                 <Box sx={{ mt: 2 }}>
                   <Typography
                     variant="subtitle2"
@@ -1167,7 +1174,7 @@ const WorldRankingWeights = () => {
                   </Typography>
                   <Box
                     component="img"
-                    src={addForm.imageUrl}
+                    src={addForm.imageUrls[0]}
                     alt={`${addForm.state || "State"} preview`}
                     sx={{
                       width: "100%",
