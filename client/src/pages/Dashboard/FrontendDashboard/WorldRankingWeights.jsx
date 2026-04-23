@@ -215,47 +215,47 @@ const labelColumns = [
   {
     field: "labelMostAffordable",
     headerName: "Most Affordable",
-    options: ["Budget", "Mid-Range", "Premium"],
+    options: ["Budget-friendly", "Mid-Range", "Premium"],
   },
   {
     field: "labelSafestCities",
     headerName: "Safest Cities",
-    options: ["Very Safe", "Safe", "Moderate", "Unsafe"],
+    options: ["Very Safe", "Safe", "Moderate"],
   },
   {
     field: "labelEasyVisa",
     headerName: "Easy Visa",
-    options: ["Easy Stay", "Flexible", "Restricted", "Difficult"],
+    options: ["Easy Stay", "Flexible", "Restricted"],
   },
   {
     field: "labelStrongNomadCommunity",
     headerName: "Strong Nomad Community",
-    options: ["Major Hub", "Popular", "Growing", "Limited"],
+    options: ["Major Hub", "Popular", "Growing"],
   },
   {
     field: "labelHealthcareFriendly",
     headerName: "Healthcare Friendly",
-    options: ["Excellent", "Good", "Basic", "Limited"],
+    options: ["Excellent", "Good", "Basic"],
   },
   {
     field: "labelStartupBusinessOpportunities",
     headerName: "Startup Business Opportunities",
-    options: ["High Opportunity", "Emerging Hub", "Moderate", "Limited"],
+    options: ["High Opportunity", "Emerging Hub", "Limited"],
   },
   {
     field: "labelCleanAirEnvironment",
     headerName: "Clean Air Environment",
-    options: ["Very Clean", "Clean", "Moderate", "Poor"],
+    options: ["Very Clean", "Clean", "Moderate"],
   },
   {
     field: "labelBestWorkInfrastructure",
     headerName: "Best Work Infrastructure",
-    options: ["Top Tier", "Good", "Basic", "Limited"],
+    options: ["Top Tier", "Good", "Basic"],
   },
   {
     field: "labelCheapestPlaces",
     headerName: "Cheapest Places",
-    options: ["Budget", "Affordable", "Mid-Range", "Premium"],
+    options: ["Budget", "Mid-Range", "Premium"],
   },
   {
     field: "labelBestForRemoteWorkSetup",
@@ -265,142 +265,137 @@ const labelColumns = [
   {
     field: "labelBestConnectedCitiesFlights",
     headerName: "Best Connected Cities Flights",
-    options: ["Global Hub", "Well Connected", "Connected", "Isolated"],
+    options: ["Global Hub", "Well Connected", "Accessible"],
   },
   {
     field: "labelStrongNomadCommunityWfa",
     headerName: "Strong Nomad Community Wfa",
-    options: ["Nomad Hotspot", "Popular", "Emerging", "Quiet"],
+    options: ["Nomad Hotspot", "Popular", "Emerging"],
   },
   {
     field: "labelFastInternetCities",
     headerName: "Fast Internet Cities",
-    options: ["High-Speed", "Fast", "Reliable", "Slow"],
+    options: ["High-Speed", "Fast", "Reliable"],
   },
   {
     field: "labelBestWorkInfrastructureWfa",
     headerName: "Best Work Infrastructure Wfa",
-    options: ["Top Tier", "Good", "Basic", "Limited"],
+    options: ["Top Tier", "Good", "Basic"],
   },
   {
     field: "labelMaximumSavings",
     headerName: "Maximum Savings",
-    options: ["High Savings", "Good Savings", "Moderate Savings", "Low Savings"],
+    options: ["High Savings", "Good Savings", "Moderate Savings"],
   },
   {
     field: "labelLowTaxation",
     headerName: "Low Taxation",
-    options: ["Tax Haven", "Tax Efficient", "Moderate Tax", "High Tax"],
+    options: ["Tax Haven", "Tax Efficient", "Moderate Tax"],
   },
   {
     field: "labelPurchasingPower",
     headerName: "Purchasing Power",
-    options: ["Exceptional", "High", "Standard", "Low"],
+    options: ["Exceptional", "High", "Standard"],
   },
   {
     field: "labelFinancialStability",
     headerName: "Financial Stability",
-    options: ["Secure", "Consistent", "Variable", "Unstable"],
+    options: ["Secure", "Consistent", "Variable"],
   },
   {
     field: "labelStartupSetupCost",
     headerName: "Startup Setup Cost",
-    options: ["Affordable", "Moderate", "Expensive", "Premium"],
+    options: ["Efficient", "Affordable", "Moderate"],
   },
   {
     field: "labelBalancedFinancialLifestyle",
     headerName: "Balanced Financial Lifestyle",
-    options: ["Financial Harmony", "Smart Living", "Balanced Living", "Struggling"],
+    options: ["Financial Harmony", "Smart Living", "Balanced Living"],
   },
   {
     field: "labelSocialPartyLifestyle",
     headerName: "Social Party Lifestyle",
-    options: ["Party Hub", "Active", "Quiet", "Boring"],
+    options: ["Party Hub", "Active", "Quiet"],
   },
   {
     field: "labelChillWellnessLifestyle",
     headerName: "Chill Wellness Lifestyle",
-    options: ["Wellness Haven", "Balanced Living", "Light Retreat", "Stressful"],
+    options: ["Wellness Haven", "Balanced Living", "Light Retreat"],
   },
   {
     field: "labelAdventureExploration",
     headerName: "Adventure Exploration",
-    options: ["Adventure Hub", "Active", "Moderate", "Limited"],
+    options: ["Adventure Hub", "Moderate", "Limited"],
   },
   {
     field: "labelNomadCommunityNetworking",
     headerName: "Nomad Community Networking",
-    options: ["Networking Hub", "Well Connected", "Growing Network", "Isolated"],
+    options: ["Networking Hub", "Well Connected", "Growing Network"],
   },
   {
     field: "labelCoupleFriendlyLifestyle",
     headerName: "Couple Friendly Lifestyle",
-    options: ["Ideal", "Friendly", "Suitable", "Difficult"],
+    options: ["Ideal", "Friendly", "Suitable"],
   },
   {
     field: "labelFamilyFriendlyLifestyle",
     headerName: "Family Friendly Lifestyle",
-    options: ["Ideal", "Friendly", "Suitable", "Difficult"],
+    options: ["Ideal", "Friendly", "Suitable"],
   },
   {
     field: "labelFemaleFriendlyLifestyle",
     headerName: "Female Friendly Lifestyle",
-    options: [
-      "Confident Travel",
-      "Comfortable & Safe",
-      "Travel Aware",
-      "Unsafe",
-    ],
+    options: ["Confident Travel", "Comfortable & Safe", "Travel Aware"],
   },
   {
     field: "labelFounderNomads",
     headerName: "Founder Nomads",
-    options: ["Founder Hub", "Startup Ready", "Rising", "Emerging"],
+    options: ["Founder Hub", "Startup Ready", "Rising"],
   },
   {
     field: "labelSoloNomads",
     headerName: "Solo Nomads",
-    options: ["Excellent", "Good", "Moderate", "Difficult"],
+    options: ["Excellent", "Good", "Moderate"],
   },
   {
     field: "labelStartupEcosystems",
     headerName: "Startup Ecosystems",
-    options: ["Global Hub", "Emerging", "Moderate", "Limited"],
+    options: ["Global Hub", "Startup Ready", "Emerging"],
   },
   {
     field: "labelRemoteJobOpportunities",
     headerName: "Remote Job Opportunities",
-    options: ["Global Hub", "Growing", "Moderate", "Limited"],
+    options: ["Global Hub", "Moderate", "Limited"],
   },
   {
     field: "labelFounderNomadsAyc",
     headerName: "Founder Nomads Ayc",
-    options: ["Global Hub", "Popular", "Emerging", "Limited"],
+    options: ["Global Hub", "Strong", "Growing"],
   },
   {
     field: "labelTechTalentDensity",
     headerName: "Tech Talent Density",
-    options: ["Talent Hub", "Tech Dense", "Strong", "Limited"],
+    options: ["Talent Hub", "Tech Dense", "Emerging"],
   },
   {
     field: "labelStartupIncubatorsAccelerators",
     headerName: "Startup Incubators Accelerators",
-    options: ["Launchpad Hub", "Emerging Support", "Well Supported", "Basic"],
+    options: ["Launchpad Hub", "Emerging Support", "Well Supported"],
   },
   {
     field: "labelBalancedCareerGrowth",
     headerName: "Balanced Career Growth",
-    options: ["Career Hub", "Growth City", "Emerging", "Stagnant"],
+    options: ["Career Hub", "Growth City", "Emerging"],
   },
   {
     field: "labelVentureCapitalPresence",
     headerName: "Venture Capital Presence",
-    options: ["Capital Hub", "Strong", "Growing", "Limited"],
+    options: ["Capital Hub", "Strong", "Emerging"],
   },
   {
     field: "labelConferencesEvents",
     headerName: "Conferences Events",
-    options: ["Global Hub", "Active", "Occasional", "Rare"],
+    options: ["Global Hub", "Active", "Occasional"],
   },
 ];
 
@@ -410,10 +405,195 @@ const SCORE_TO_LABEL_OPTIONS_MAP = labelColumns.reduce((acc, column) => {
 }, {});
 
 const SCORE_LABEL_RANGES = {
+  bestForNomads: [
+    { min: 0, max: 7, label: "Basic" },
+    { min: 7, max: 8, label: "Strong" },
+    { min: 8, max: 10, label: "Global Hub" },
+  ],
   mostAffordable: [
     { min: 0, max: 7, label: "Premium" },
     { min: 7, max: 8, label: "Mid-Range" },
+    { min: 8, max: 10, label: "Budget-Friendly" },
+  ],
+  safestCities: [
+    { min: 0, max: 7, label: "Moderate" },
+    { min: 7, max: 8, label: "Safe" },
+    { min: 8, max: 10, label: "Very Safe" },
+  ],
+  easyVisaLongStay: [
+    { min: 0, max: 7, label: "Restricted" },
+    { min: 7, max: 8, label: "Flexible" },
+    { min: 8, max: 10, label: "Easy Stay" },
+  ],
+  strongNomadCommunity: [
+    { min: 0, max: 7.5, label: "Growing" },
+    { min: 7.5, max: 8.5, label: "Popular" },
+    { min: 8.5, max: 10, label: "Major Hub" },
+  ],
+  healthcareFriendly: [
+    { min: 0, max: 7, label: "Basic" },
+    { min: 7, max: 8, label: "Good" },
+    { min: 8, max: 10, label: "Excellent" },
+  ],
+  startupBusinessOpportunities: [
+    { min: 0, max: 7, label: "Limited" },
+    { min: 7, max: 8, label: "Emerging Hub" },
+    { min: 8, max: 10, label: "High Opportunity" },
+  ],
+  cleanAirEnvironment: [
+    { min: 0, max: 7, label: "Moderate" },
+    { min: 7, max: 8, label: "Clean" },
+    { min: 8, max: 10, label: "Very Clean" },
+  ],
+  bestWorkInfrastructure: [
+    { min: 0, max: 7, label: "Basic" },
+    { min: 7, max: 8, label: "Good" },
+    { min: 8, max: 10, label: "Top Tier" },
+  ],
+  bestForRemoteWorkSetup: [
+    { min: 0, max: 7, label: "Basic" },
+    { min: 7, max: 8, label: "Strong" },
+    { min: 8, max: 10, label: "Global Hub" },
+  ],
+  cheapestPlaces: [
+    { min: 0, max: 7, label: "Premium" },
+    { min: 7, max: 8, label: "Mid-Range" },
     { min: 8, max: 10, label: "Budget" },
+  ],
+  bestConnectedCitiesFlights: [
+    { min: 0, max: 7.5, label: "Accessible" },
+    { min: 7.5, max: 8.5, label: "Well Connected" },
+    { min: 8.5, max: 10, label: "Global Hub" },
+  ],
+  strongNomadCommunityWfa: [
+    { min: 0, max: 7.5, label: "Emerging" },
+    { min: 7.5, max: 8.5, label: "Popular" },
+    { min: 8.5, max: 10, label: "Nomad Hotspot" },
+  ],
+  fastInternetCities: [
+    { min: 0, max: 7.5, label: "Reliable" },
+    { min: 7.5, max: 8.5, label: "Fast" },
+    { min: 8.5, max: 10, label: "High Speed" },
+  ],
+  bestWorkInfrastructureWfa: [
+    { min: 0, max: 7.5, label: "Basic" },
+    { min: 7.5, max: 8.5, label: "Good" },
+    { min: 8.5, max: 10, label: "Top Tier" },
+  ],
+  maximumSavings: [
+    { min: 0, max: 7, label: "Moderate Savings" },
+    { min: 7, max: 8, label: "Good Savings" },
+    { min: 8, max: 10, label: "High Savings" },
+  ],
+  lowTaxation: [
+    { min: 0, max: 7.5, label: "Moderate Tax" },
+    { min: 7.5, max: 8.5, label: "Tax Efficient" },
+    { min: 8.5, max: 10, label: "Tax Haven" },
+  ],
+  purchasingPower: [
+    { min: 0, max: 7, label: "Standard" },
+    { min: 7, max: 8, label: "High" },
+    { min: 8, max: 10, label: "Exceptional" },
+  ],
+  financialStability: [
+    { min: 0, max: 7, label: "Variable" },
+    { min: 7, max: 8, label: "Consistent" },
+    { min: 8, max: 10, label: "Secure" },
+  ],
+  startupSetupCost: [
+    { min: 0, max: 7, label: "Moderate" },
+    { min: 7, max: 8, label: "Affordable" },
+    { min: 8, max: 10, label: "Efficient" },
+  ],
+  balancedFinancialLifestyle: [
+    { min: 0, max: 7, label: "Balanced Living" },
+    { min: 7, max: 8, label: "Smart Living" },
+    { min: 8, max: 10, label: "Financial Harmony" },
+  ],
+  socialPartyLifestyle: [
+    { min: 0, max: 7.5, label: "Quiet" },
+    { min: 7.5, max: 8.5, label: "Active" },
+    { min: 8.5, max: 10, label: "Party Hub" },
+  ],
+  chillWellnessLifestyle: [
+    { min: 0, max: 7.5, label: "Light Retreat" },
+    { min: 7.5, max: 8.5, label: "Balanced Living" },
+    { min: 8.5, max: 10, label: "Wellness Haven" },
+  ],
+  adventureExploration: [
+    { min: 0, max: 7.5, label: "Limited" },
+    { min: 7.5, max: 8.5, label: "Moderate" },
+    { min: 8.5, max: 10, label: "Adventure Hub" },
+  ],
+  nomadCommunityNetworking: [
+    { min: 0, max: 7.5, label: "Growing Network" },
+    { min: 7.5, max: 8.5, label: "Well Connected" },
+    { min: 8.5, max: 10, label: "Networking Hub" },
+  ],
+  coupleFriendlyLifestyle: [
+    { min: 0, max: 7.5, label: "Suitable" },
+    { min: 7.5, max: 8.5, label: "Friendly" },
+    { min: 8.5, max: 10, label: "Ideal" },
+  ],
+  familyFriendlyLifestyle: [
+    { min: 0, max: 7.5, label: "Suitable" },
+    { min: 7.5, max: 8.5, label: "Friendly" },
+    { min: 8.5, max: 10, label: "Ideal" },
+  ],
+  femaleFriendlyLifestyle: [
+    { min: 0, max: 7.5, label: "Travel Aware" },
+    { min: 7.5, max: 8.5, label: "Comfortable & Safe" },
+    { min: 8.5, max: 10, label: "Confident Travel" },
+  ],
+  founderNomads: [
+    { min: 0, max: 7.5, label: "Rising" },
+    { min: 7.5, max: 8.5, label: "Startup Ready" },
+    { min: 8.5, max: 10, label: "Founder Hub" },
+  ],
+  soloNomads: [
+    { min: 0, max: 7.5, label: "Moderate" },
+    { min: 7.5, max: 8.5, label: "Good" },
+    { min: 8.5, max: 10, label: "Excellent" },
+  ],
+  startupEcosystems: [
+    { min: 0, max: 7.5, label: "Emerging" },
+    { min: 7.5, max: 8.5, label: "Startup Ready" },
+    { min: 8.5, max: 10, label: "Global Hub" },
+  ],
+  remoteJobOpportunities: [
+    { min: 0, max: 7.5, label: "Limited" },
+    { min: 7.5, max: 8.5, label: "Moderate" },
+    { min: 8.5, max: 10, label: "Global Hub" },
+  ],
+  founderNomadsAyc: [
+    { min: 0, max: 7.5, label: "Growing" },
+    { min: 7.5, max: 8.5, label: "Strong" },
+    { min: 8, max: 10, label: "Global Hub" },
+  ],
+  techTalentDensity: [
+    { min: 0, max: 7.5, label: "Emerging" },
+    { min: 7.5, max: 8.5, label: "Tech Dense" },
+    { min: 8.5, max: 10, label: "Talent Hub" },
+  ],
+  startupIncubatorsAndAccelerators: [
+    { min: 0, max: 7.5, label: "Emerging Support" },
+    { min: 7.5, max: 8.5, label: "Well Supported" },
+    { min: 8.5, max: 10, label: "Launchpad Hub" },
+  ],
+  balancedCareerGrowth: [
+    { min: 0, max: 7.5, label: "Emerging" },
+    { min: 7.5, max: 8.5, label: "Growth City" },
+    { min: 8.5, max: 10, label: "Career Hub" },
+  ],
+  ventureCapitalPresence: [
+    { min: 0, max: 7.5, label: "Emerging" },
+    { min: 7.5, max: 8.5, label: "Strong" },
+    { min: 8.5, max: 10, label: "Capital Hub" },
+  ],
+  conferencesAndEvents: [
+    { min: 0, max: 7.5, label: "Occasional" },
+    { min: 7.5, max: 8.5, label: "Active" },
+    { min: 8.5, max: 10, label: "Global Hub" },
   ],
 };
 
