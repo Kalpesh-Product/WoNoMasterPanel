@@ -26,6 +26,21 @@ const toRows = (payload) => {
 const normalizeImageUrls = (source) => {
   if (Array.isArray(source)) return source.filter(Boolean);
   if (typeof source === "string" && source.trim()) return [source.trim()];
+  if (source && typeof source === "object") {
+    if (typeof source.url === "string" && source.url.trim()) {
+      return [source.url.trim()];
+    }
+
+    return Object.values(source)
+      .map((item) => {
+        if (typeof item === "string") return item.trim();
+        if (item && typeof item === "object" && typeof item.url === "string") {
+          return item.url.trim();
+        }
+        return "";
+      })
+      .filter(Boolean);
+  }
   return [];
 };
 
@@ -37,7 +52,8 @@ const getImageUrlsFromRow = (row = {}) =>
     row?.imageurls ??
     row?.imageURLS ??
     row?.imageUrl ??
-    row?.imageurl,
+    row?.imageurl ??
+    row?.images,
   );
 
 const fmtNumber = (value, digits = 2) => {
