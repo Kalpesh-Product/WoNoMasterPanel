@@ -429,7 +429,7 @@ const SCORE_LABEL_RANGES = {
   mostAffordable: [
     { min: 0, max: 7, label: "Premium" },
     { min: 7, max: 8, label: "Mid-Range" },
-    { min: 8, max: 10, label: "Budget-Friendly" },
+    { min: 8, max: 10, label: "Budget-friendly" },
   ],
   safestCities: [
     { min: 0, max: 7, label: "Moderate" },
@@ -1324,6 +1324,7 @@ const WorldRankingWeights = () => {
                         label={`Score ${config.label}`}
                         value={currentScore}
                         InputProps={{ readOnly: true }}
+                        disabled // disable the score field
                         fullWidth
                         size="small"
                         sx={{ bgcolor: "#f9fafb" }}
@@ -1332,7 +1333,7 @@ const WorldRankingWeights = () => {
                         <TextField
                           label={config.field}
                           select
-                          disabled={!editMode}
+                          disabled // disable the label field
                           value={editForm.labels?.[config.field] ?? ""}
                           onChange={(event) =>
                             handleLabelFieldChange(
@@ -1610,6 +1611,7 @@ const WorldRankingWeights = () => {
                     label={`Score ${config.label}`}
                     value={currentScore}
                     InputProps={{ readOnly: true }}
+                    disabled // disable the score field
                     fullWidth
                     size="small"
                     sx={{ bgcolor: "#f9fafb" }}
@@ -1618,6 +1620,7 @@ const WorldRankingWeights = () => {
                     <TextField
                       label={config.field}
                       select
+                      disabled // disable the label field
                       value={addForm.labels?.[config.field] ?? ""}
                       onChange={(event) =>
                         handleLabelFieldChange(
