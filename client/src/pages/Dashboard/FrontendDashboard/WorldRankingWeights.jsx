@@ -375,12 +375,12 @@ const labelColumns = [
   {
     field: "labelBestForNomads",
     headerName: "Best For Nomads",
-    options: ["Basic", "Strong", "Global Hub"],
+    options: ["Basic", "Strong Community", "Nomad Hub"],
   },
   {
     field: "labelMostAffordable",
     headerName: "Most Affordable",
-    options: ["Budget-friendly", "Mid-Range", "Premium"],
+    options: ["Budget-friendly", "Mid-range", "Premium Living"],
   },
   {
     field: "labelSafestCities",
@@ -400,7 +400,7 @@ const labelColumns = [
   {
     field: "labelHealthcareFriendly",
     headerName: "Healthcare Friendly",
-    options: ["Excellent", "Good", "Basic"],
+    options: ["Excellent", "Good", "Expensive"],
   },
   {
     field: "labelStartupBusinessOpportunities",
@@ -410,17 +410,17 @@ const labelColumns = [
   {
     field: "labelCleanAirEnvironment",
     headerName: "Clean Air Environment",
-    options: ["Very Clean", "Clean", "Moderate"],
+    options: ["Excellent", "Ideal", "Moderate"],
   },
   {
     field: "labelBestWorkInfrastructure",
     headerName: "Best Work Infrastructure",
-    options: ["Top Tier", "Good", "Basic"],
+    options: ["Top Class", "Good", "Basic"],
   },
   {
     field: "labelCheapestPlaces",
     headerName: "Cheapest Places",
-    options: ["Budget", "Mid-Range", "Premium"],
+    options: ["Budget-friendly", "Mid-range", "Premium Living"],
   },
   {
     field: "labelBestForRemoteWorkSetup",
@@ -450,12 +450,12 @@ const labelColumns = [
   {
     field: "labelMaximumSavings",
     headerName: "Maximum Savings",
-    options: ["High Savings", "Good Savings", "Moderate Savings"],
+    options: ["High Savings", "Low Savings", "Moderate Savings"],
   },
   {
     field: "labelLowTaxation",
     headerName: "Low Taxation",
-    options: ["Tax Haven", "Tax Efficient", "Moderate Tax"],
+    options: ["Tax Haven", "Tax Efficient", "Tax Burden"],
   },
   {
     field: "labelPurchasingPower",
@@ -490,7 +490,7 @@ const labelColumns = [
   {
     field: "labelAdventureExploration",
     headerName: "Adventure Exploration",
-    options: ["Adventure Hub", "Moderate", "Limited"],
+    options: ["Adventure Hotspot", "Moderate", "Limited Activities"],
   },
   {
     field: "labelNomadCommunityNetworking",
@@ -510,7 +510,7 @@ const labelColumns = [
   {
     field: "labelFemaleFriendlyLifestyle",
     headerName: "Female Friendly Lifestyle",
-    options: ["Confident Travel", "Comfortable & Safe", "Travel Aware"],
+    options: ["Confident Travel", "Comfortable & Safe", "Moderately Safe"],
   },
   {
     field: "labelFounderNomads",
@@ -572,12 +572,12 @@ const SCORE_TO_LABEL_OPTIONS_MAP = labelColumns.reduce((acc, column) => {
 const SCORE_LABEL_RANGES = {
   bestForNomads: [
     { min: 0, max: 7, label: "Basic" },
-    { min: 7, max: 8, label: "Strong" },
-    { min: 8, max: 10, label: "Global Hub" },
+    { min: 7, max: 8, label: "Strong Community" },
+    { min: 8, max: 10, label: "Nomad Hub" },
   ],
   mostAffordable: [
-    { min: 0, max: 7, label: "Premium" },
-    { min: 7, max: 8, label: "Mid-Range" },
+    { min: 0, max: 7, label: "Premium Living" },
+    { min: 7, max: 8, label: "Mid-range" },
     { min: 8, max: 10, label: "Budget-friendly" },
   ],
   safestCities: [
@@ -596,7 +596,7 @@ const SCORE_LABEL_RANGES = {
     { min: 8.5, max: 10, label: "Major Hub" },
   ],
   healthcareFriendly: [
-    { min: 0, max: 7, label: "Basic" },
+    { min: 0, max: 7, label: "Expensive" },
     { min: 7, max: 8, label: "Good" },
     { min: 8, max: 10, label: "Excellent" },
   ],
@@ -607,13 +607,13 @@ const SCORE_LABEL_RANGES = {
   ],
   cleanAirEnvironment: [
     { min: 0, max: 7, label: "Moderate" },
-    { min: 7, max: 8, label: "Clean" },
-    { min: 8, max: 10, label: "Very Clean" },
+    { min: 7, max: 8, label: "Ideal" },
+    { min: 8, max: 10, label: "Excellent" },
   ],
   bestWorkInfrastructure: [
     { min: 0, max: 7, label: "Basic" },
     { min: 7, max: 8, label: "Good" },
-    { min: 8, max: 10, label: "Top Tier" },
+    { min: 8, max: 10, label: "Top Class" },
   ],
   bestForRemoteWorkSetup: [
     { min: 0, max: 7, label: "Basic" },
@@ -621,9 +621,9 @@ const SCORE_LABEL_RANGES = {
     { min: 8, max: 10, label: "Global Hub" },
   ],
   cheapestPlaces: [
-    { min: 0, max: 7, label: "Premium" },
-    { min: 7, max: 8, label: "Mid-Range" },
-    { min: 8, max: 10, label: "Budget" },
+    { min: 0, max: 7, label: "Premium Living" },
+    { min: 7, max: 8, label: "Mid-range" },
+    { min: 8, max: 10, label: "Budget-friendly" },
   ],
   bestConnectedCitiesFlights: [
     { min: 0, max: 7.5, label: "Accessible" },
@@ -647,11 +647,11 @@ const SCORE_LABEL_RANGES = {
   ],
   maximumSavings: [
     { min: 0, max: 7, label: "Moderate Savings" },
-    { min: 7, max: 8, label: "Good Savings" },
+    { min: 7, max: 8, label: "Low Savings" },
     { min: 8, max: 10, label: "High Savings" },
   ],
   lowTaxation: [
-    { min: 0, max: 7.5, label: "Moderate Tax" },
+    { min: 0, max: 7.5, label: "Tax Burden" },
     { min: 7.5, max: 8.5, label: "Tax Efficient" },
     { min: 8.5, max: 10, label: "Tax Haven" },
   ],
@@ -686,9 +686,9 @@ const SCORE_LABEL_RANGES = {
     { min: 8.5, max: 10, label: "Wellness Haven" },
   ],
   adventureExploration: [
-    { min: 0, max: 7.5, label: "Limited" },
+    { min: 0, max: 7.5, label: "Limited Activities" },
     { min: 7.5, max: 8.5, label: "Moderate" },
-    { min: 8.5, max: 10, label: "Adventure Hub" },
+    { min: 8.5, max: 10, label: "Adventure Hotspot" },
   ],
   nomadCommunityNetworking: [
     { min: 0, max: 7.5, label: "Growing Network" },
@@ -706,7 +706,7 @@ const SCORE_LABEL_RANGES = {
     { min: 8.5, max: 10, label: "Ideal" },
   ],
   femaleFriendlyLifestyle: [
-    { min: 0, max: 7.5, label: "Travel Aware" },
+    { min: 0, max: 7.5, label: "Moderately Safe" },
     { min: 7.5, max: 8.5, label: "Comfortable & Safe" },
     { min: 8.5, max: 10, label: "Confident Travel" },
   ],
