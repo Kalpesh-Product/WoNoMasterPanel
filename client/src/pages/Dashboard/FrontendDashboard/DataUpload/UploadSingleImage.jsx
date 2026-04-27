@@ -1,5 +1,5 @@
 // src/pages/Dashboard/FrontendDashboard/UploadSingleImage.jsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
 import PageFrame from "../../../../components/Pages/PageFrame";
@@ -12,14 +12,15 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const API_BASE = "https://wononomadsbe.vercel.app/api";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const UPLOAD_FILTERS_STORAGE_KEY = "dataUploadFilters";
 
 const UploadSingleImage = () => {
   const inputRef = useRef(null);
   const location = useLocation();
   const axios = useAxiosPrivate();
 
-  const [country, setCountry] = useState("Thailand");
-  const [companyType, setCompanyType] = useState("hostel");
+  const [country, setCountry] = useState("");
+  const [companyType, setCompanyType] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [imageType, setImageType] = useState("logo"); // "logo" or "image"
@@ -47,11 +48,70 @@ const UploadSingleImage = () => {
     },
   });
 
-  const countries = [...new Set(companies.map((c) => c.country))];
-  const types = [...new Set(companies.map((c) => c.companyType))];
-  const filteredCompanies = companies.filter(
-    (c) => c.country === country && c.companyType === companyType
+  const countries = useMemo(
+    () => [...new Set(companies.map((c) => c.country))],
+    [companies],
   );
+  const types = useMemo(
+    () => [
+      ...new Set(
+        companies
+          .filter((c) => c.country === country)
+          .map((c) => c.companyType),
+      ),
+    ],
+    [companies, country],
+  );
+  const filteredCompanies = companies.filter(
+    (c) => c.country === country && c.companyType === companyType,
+  );
+
+  useEffect(() => {
+    if (!companies.length) return;
+
+    const savedFilters = safeParseJSON(
+      localStorage.getItem(UPLOAD_FILTERS_STORAGE_KEY),
+    );
+
+    const savedCountry = savedFilters?.country;
+    const resolvedCountry = countries.includes(savedCountry)
+      ? savedCountry
+      : "";
+
+    const typesForCountry = [
+      ...new Set(
+        companies
+          .filter((c) => c.country === resolvedCountry)
+          .map((c) => c.companyType),
+      ),
+    ];
+    const savedCompanyType = savedFilters?.companyType;
+    const resolvedCompanyType = typesForCountry.includes(savedCompanyType)
+      ? savedCompanyType
+      : "";
+
+    setCountry(resolvedCountry);
+    setCompanyType(resolvedCompanyType);
+  }, [companies, countries]);
+
+  useEffect(() => {
+    if (!companies.length) return;
+
+    localStorage.setItem(
+      UPLOAD_FILTERS_STORAGE_KEY,
+      JSON.stringify({
+        country,
+        companyType,
+      }),
+    );
+  }, [companies, country, companyType]);
+
+  useEffect(() => {
+    if (companyType && !types.includes(companyType)) {
+      setCompanyType("");
+      setCompanyId("");
+    }
+  }, [types, companyType]);
 
   // ✅ mutation for upload
   // const { mutate, isPending } = useMutation({
@@ -150,7 +210,7 @@ const UploadSingleImage = () => {
     if (params.get("autoFill") === "true") {
       try {
         const context = JSON.parse(
-          sessionStorage.getItem("uploadContext") || "{}"
+          sessionStorage.getItem("uploadContext") || "{}",
         );
         if (context.companyId) {
           setCountry(context.country);
@@ -249,7 +309,7 @@ const UploadSingleImage = () => {
                   },
                   renderValue: (selected) => {
                     const company = filteredCompanies.find(
-                      (c) => c._id === selected
+                      (c) => c._id === selected,
                     );
                     return company ? company.companyName : "";
                   },
@@ -273,7 +333,7 @@ const UploadSingleImage = () => {
                   .filter((c) =>
                     c.companyName
                       .toLowerCase()
-                      .includes(searchTerm.toLowerCase())
+                      .includes(searchTerm.toLowerCase()),
                   )
                   .map((c) => (
                     <MenuItem key={c._id} value={c._id}>
@@ -370,6 +430,15 @@ const UploadSingleImage = () => {
 export default UploadSingleImage;
 
 // Helpers
+
+function safeParseJSON(value) {
+  try {
+    return JSON.parse(value || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function humanSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

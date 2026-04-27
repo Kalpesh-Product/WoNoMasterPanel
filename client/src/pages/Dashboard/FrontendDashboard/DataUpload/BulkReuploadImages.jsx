@@ -1,5 +1,5 @@
 // src/pages/Dashboard/FrontendDashboard/BulkReuploadImages.jsx
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
 import PageFrame from "../../../../components/Pages/PageFrame";
@@ -15,14 +15,15 @@ const API_BASE = "https://wononomadsbe.vercel.app/api";
 // const API_BASE = "http://localhost:3000/api";
 const MAX_FILES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const UPLOAD_FILTERS_STORAGE_KEY = "dataUploadFilters";
 
 const BulkReuploadImages = () => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
 
-  const [country, setCountry] = useState("Thailand");
-  const [companyType, setCompanyType] = useState("coworking");
+  const [country, setCountry] = useState("");
+  const [companyType, setCompanyType] = useState("");
   const [companyId, setCompanyId] = useState("");
   const [images, setImages] = useState([]); // store File[]
   const [previews, setPreviews] = useState([]); // store preview URLs
@@ -76,11 +77,70 @@ const BulkReuploadImages = () => {
     }
   }, [companies, isLoading]);
 
-  const countries = [...new Set(companies.map((c) => c.country))];
-  const types = [...new Set(companies.map((c) => c.companyType))];
+  const countries = useMemo(
+    () => [...new Set(companies.map((c) => c.country))],
+    [companies],
+  );
+  const types = useMemo(
+    () => [
+      ...new Set(
+        companies
+          .filter((c) => c.country === country)
+          .map((c) => c.companyType),
+      ),
+    ],
+    [companies, country],
+  );
   const filteredCompanies = companies.filter(
     (c) => c.country === country && c.companyType === companyType,
   );
+
+  useEffect(() => {
+    if (!companies.length) return;
+
+    const savedFilters = safeParseJSON(
+      localStorage.getItem(UPLOAD_FILTERS_STORAGE_KEY),
+    );
+
+    const savedCountry = savedFilters?.country;
+    const resolvedCountry = countries.includes(savedCountry)
+      ? savedCountry
+      : "";
+
+    const typesForCountry = [
+      ...new Set(
+        companies
+          .filter((c) => c.country === resolvedCountry)
+          .map((c) => c.companyType),
+      ),
+    ];
+    const savedCompanyType = savedFilters?.companyType;
+    const resolvedCompanyType = typesForCountry.includes(savedCompanyType)
+      ? savedCompanyType
+      : "";
+
+    setCountry(resolvedCountry);
+    setCompanyType(resolvedCompanyType);
+  }, [companies, countries]);
+
+  useEffect(() => {
+    if (!companies.length) return;
+
+    localStorage.setItem(
+      UPLOAD_FILTERS_STORAGE_KEY,
+      JSON.stringify({
+        country,
+        companyType,
+      }),
+    );
+  }, [companies, country, companyType]);
+
+  useEffect(() => {
+    if (companyType && !types.includes(companyType)) {
+      setCompanyType("");
+      setCompanyId("");
+    }
+  }, [types, companyType]);
 
   //   Fetch company Images
 
@@ -436,6 +496,15 @@ const BulkReuploadImages = () => {
 export default BulkReuploadImages;
 
 // Helpers
+
+function safeParseJSON(value) {
+  try {
+    return JSON.parse(value || "{}");
+  } catch {
+    return {};
+  }
+}
+
 function humanSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
