@@ -161,9 +161,7 @@ const UploadSingleImage = () => {
       setFile(null);
       setPreview(null);
       setCompanyId("");
-      setCompanyType("");
-      setCountry("");
-      setImageType("");
+      setImageType("logo");
       if (inputRef.current) inputRef.current.value = "";
     },
     onError: (err) => {
