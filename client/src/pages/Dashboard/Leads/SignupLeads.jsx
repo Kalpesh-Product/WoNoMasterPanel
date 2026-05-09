@@ -31,8 +31,11 @@ const SignupLeads = () => {
   });
 
   const updateLeadMutation = useMutation({
-    mutationFn: async (payload) => {
-      const response = await axios.patch("/api/leads/update-lead", payload);
+    mutationFn: async ({ hostUserId, ...payload }) => {
+      const response = await axios.patch(
+        `http://localhost:3000/api/forms/host-users/${hostUserId}`,
+        payload,
+      );
       return response.data;
     },
     onSuccess: () => {
@@ -49,8 +52,9 @@ const SignupLeads = () => {
     defaultValues: { comment: "" },
   });
 
-  const handleStatusChange = (leadId, newStatus) => {
-    updateLeadMutation.mutate({ leadId, status: newStatus });
+  const handleStatusChange = (hostUserId, status) => {
+    if (!hostUserId || !status) return;
+    updateLeadMutation.mutate({ hostUserId, status: status.toLowerCase() });
   };
 
   const handleOpenModal = (lead) => {
@@ -62,7 +66,7 @@ const SignupLeads = () => {
   const onSubmitComment = (data) => {
     if (!selectedLead?._id) return;
     updateLeadMutation.mutate({
-      leadId: selectedLead._id,
+      hostUserId: selectedLead._id,
       comment: data.comment,
     });
   };
@@ -84,12 +88,12 @@ const SignupLeads = () => {
       field: "status",
       headerName: "Status",
       cellRenderer: (params) => {
-        const value = params.data.status || "Pending";
+        const statusValue = (params.data.status || "pending").toLowerCase();
         const statusStyles = {
-          Pending: { bg: "#FEF3C7", color: "#F59E0B" },
-          Contacted: { bg: "#DBEAFE", color: "#3B82F6" },
-          Closed: { bg: "#D1FAE5", color: "#10B981" },
-          Rejected: { bg: "#FEE2E2", color: "#EF4444" },
+          pending: { bg: "#FEF3C7", color: "#F59E0B" },
+          contacted: { bg: "#c7fef9", color: "#0b69f5" },
+          closed: { bg: "#D1FAE5", color: "#10B981" },
+          rejected: { bg: "#FEE2E2", color: "#EF4444" },
         };
 
         return (
@@ -97,7 +101,7 @@ const SignupLeads = () => {
             <TextField
               select
               size="small"
-              value={value}
+              value={statusValue}
               onChange={(e) =>
                 handleStatusChange(params.data._id, e.target.value)
               }
@@ -107,13 +111,13 @@ const SignupLeads = () => {
                   px: 1.5,
                   fontWeight: 600,
                   fontSize: "0.85rem",
-                  backgroundColor: statusStyles[value]?.bg,
-                  color: statusStyles[value]?.color,
+                  backgroundColor: statusStyles[statusValue]?.bg,
+                  color: statusStyles[statusValue]?.color,
                   "& fieldset": { border: "none" },
                 },
               }}
             >
-              {["Pending", "Contacted", "Closed", "Rejected"].map((option) => (
+              {["pending", "contacted", "closed", "rejected"].map((option) => (
                 <MenuItem
                   key={option}
                   value={option}
@@ -127,7 +131,7 @@ const SignupLeads = () => {
                     my: 0.5,
                   }}
                 >
-                  {option}
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
                 </MenuItem>
               ))}
             </TextField>
