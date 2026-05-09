@@ -13,7 +13,10 @@ const SignupLeads = () => {
   } = useQuery({
     queryKey: ["signup-leads"],
     queryFn: async () => {
-      const response = await axios.get("/api/forms/host-users");
+      //   const response = await axios.get("/api/forms/host-users");
+      const response = await axios.get(
+        "http://localhost:3000/api/forms/host-users",
+      );
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
   });
