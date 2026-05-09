@@ -144,6 +144,7 @@ import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
+import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
 import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
@@ -196,6 +197,10 @@ export const routes = createBrowserRouter([
                     path: "",
                     element: <MainDashboard />,
                     index: true,
+                  },
+                  {
+                    path: "signup-leads",
+                    element: <SignupLeads />,
                   },
                   {
                     path: "all-leads",
