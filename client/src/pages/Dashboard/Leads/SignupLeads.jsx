@@ -24,7 +24,8 @@ const SignupLeads = () => {
     queryFn: async () => {
       //   const response = await axios.get("/api/forms/host-users");
       const response = await axios.get(
-        "http://localhost:3000/api/forms/host-users",
+        // "http://localhost:3000/api/forms/host-users",
+        "https://wononomadsbe.vercel.app/api/forms/host-users",
       );
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
@@ -33,7 +34,8 @@ const SignupLeads = () => {
   const updateLeadMutation = useMutation({
     mutationFn: async ({ hostUserId, ...payload }) => {
       const response = await axios.patch(
-        `http://localhost:3000/api/forms/host-users/${hostUserId}`,
+        // `http://localhost:3000/api/forms/host-users/${hostUserId}`,
+        `https://wononomadsbe.vercel.app/api/forms/host-users/${hostUserId}`,
         payload,
       );
       return response.data;
