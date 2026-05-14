@@ -44,7 +44,7 @@ const normalizeImageUrls = (source) => {
   return [];
 };
 
-const MAX_IMAGES = 3;
+const MAX_IMAGES = 5;
 
 const getImageUrlsFromRow = (row = {}) =>
   normalizeImageUrls(
