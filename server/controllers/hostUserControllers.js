@@ -118,7 +118,7 @@ const sendInviteEmail = async (req, res, next) => {
           <p>You can now proceed with the next step using the Wono platform.</p>
           <p>
             <a
-              href="https://unitflowsaas.vercel.app/login"
+              href="https://wonohostfe.vercel.app/"
               style="display: inline-block; padding: 10px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
             >
               Continue Signup
