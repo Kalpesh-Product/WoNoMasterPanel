@@ -8,12 +8,14 @@ import MuiModal from "../../../components/MuiModal";
 import { Controller, useForm } from "react-hook-form";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { toast } from "sonner";
+import { Button } from "@mui/material";
 
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
+  const [sendingInviteLeadId, setSendingInviteLeadId] = useState(null);
 
   const {
     data: leads = [],
@@ -50,6 +52,26 @@ const SignupLeads = () => {
     },
   });
 
+  const sendInviteMutation = useMutation({
+    mutationFn: async (lead) => {
+      const response = await axios.post("/api/host-user/send-invite", {
+        email: lead?.email,
+        name: lead?.name,
+        companyName: lead?.companyName,
+        status: lead?.status,
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setSendingInviteLeadId(null);
+      toast.success(data?.message || "Invite email sent");
+    },
+    onError: (error) => {
+      setSendingInviteLeadId(null);
+      toast.error(error?.response?.data?.message || "Failed to send invite");
+    },
+  });
+
   const { control, handleSubmit, reset } = useForm({
     defaultValues: { comment: "" },
   });
@@ -57,6 +79,11 @@ const SignupLeads = () => {
   const handleStatusChange = (hostUserId, status) => {
     if (!hostUserId || !status) return;
     updateLeadMutation.mutate({ hostUserId, status: status.toLowerCase() });
+  };
+
+  const handlePlanChange = (hostUserId, plan) => {
+    if (!hostUserId || !plan) return;
+    updateLeadMutation.mutate({ hostUserId, goals: plan.toLowerCase() });
   };
 
   const handleOpenModal = (lead) => {
@@ -78,7 +105,59 @@ const SignupLeads = () => {
     { field: "email", headerName: "Email" },
     { field: "mobile", headerName: "Mobile" },
     { field: "role", headerName: "Role" },
-    { field: "goals", headerName: "Goals" },
+    {
+      field: "goals",
+      headerName: "Plan",
+      cellRenderer: (params) => {
+        const planValue = (params.data.goals || "basic").toLowerCase();
+        const planStyles = {
+          basic: { bg: "#DBEAFE", color: "#1D4ED8" },
+          professional: { bg: "#FEF3C7", color: "#B45309" },
+          custom: { bg: "#FCE7F3", color: "#BE185D" },
+        };
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <TextField
+              select
+              size="small"
+              value={planValue}
+              onChange={(e) => handlePlanChange(params.data._id, e.target.value)}
+              sx={{
+                minWidth: 140,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "9999px",
+                  px: 1.5,
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  backgroundColor: planStyles[planValue]?.bg,
+                  color: planStyles[planValue]?.color,
+                  "& fieldset": { border: "none" },
+                },
+              }}
+            >
+              {["basic", "professional", "custom"].map((option) => (
+                <MenuItem
+                  key={option}
+                  value={option}
+                  sx={{
+                    justifyContent: "center",
+                    fontWeight: 600,
+                    fontSize: "0.85rem",
+                    borderRadius: "9999px",
+                    backgroundColor: planStyles[option]?.bg,
+                    color: planStyles[option]?.color,
+                    my: 0.5,
+                  }}
+                >
+                  {option.charAt(0).toUpperCase() + option.slice(1)}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
+        );
+      },
+    },
     { field: "companyName", headerName: "Company" },
     { field: "verticalType", headerName: "Vertical" },
     { field: "country", headerName: "Country" },
@@ -159,6 +238,36 @@ const SignupLeads = () => {
         params.data?.createdAt
           ? new Date(params.data.createdAt).toLocaleString()
           : "-",
+    },
+    {
+      field: "Invite user",
+      headerName: "Invite user",
+      cellRenderer: (params) => {
+        const canInvite =
+          (params.data.status || "").toLowerCase() === "closed";
+        const isSendingThisRow = sendingInviteLeadId === params.data._id;
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: "#2563eb",
+                color: "white",
+                textTransform: "none",
+                borderRadius: "9999px",
+              }}
+              disabled={!canInvite || isSendingThisRow}
+              onClick={() => {
+                setSendingInviteLeadId(params.data._id);
+                sendInviteMutation.mutate(params.data);
+              }}
+            >
+              {isSendingThisRow ? "Sending..." : "Invite user"}
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 

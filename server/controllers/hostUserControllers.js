@@ -1,6 +1,7 @@
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
+const { sendMail } = require("../config/nodemailerConfig");
 
 const bulkInsertPoc = async (req, res, next) => {
   try {
@@ -90,4 +91,48 @@ const bulkInsertPoc = async (req, res, next) => {
   }
 };
 
-module.exports = { bulkInsertPoc };
+const sendInviteEmail = async (req, res, next) => {
+  try {
+    const { email, name, companyName, status } = req.body;
+
+    if (!email || !name) {
+      return res
+        .status(400)
+        .json({ message: "Lead email and name are required" });
+    }
+
+    if ((status || "").toLowerCase() !== "closed") {
+      return res.status(400).json({
+        message: "Invite can only be sent when the lead status is closed",
+      });
+    }
+
+    await sendMail({
+      to: email,
+      subject: "Your Wono invite",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+          <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
+          <p>Hello ${name},</p>
+          <p>Your signup request for ${companyName || "your company"} has been approved.</p>
+          <p>You can now proceed with the next step using the Wono platform.</p>
+          <p>
+            <a
+              href="https://wonohostfe.vercel.app/"
+              style="display: inline-block; padding: 10px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
+            >
+              Continue Signup
+            </a>
+          </p>
+          <p>Regards,<br />Wono</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({ message: "Invite email sent successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { bulkInsertPoc, sendInviteEmail };

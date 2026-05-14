@@ -1,6 +1,6 @@
 const emailTemplates = (email, name, password) => {
   const userMailOptions = {
-    from: process.env.SENDER_EMAIL,
+    from: process.env.EMAIL_USER,
     to: email,
     subject: "Welcome to Our Service!",
     html: `
