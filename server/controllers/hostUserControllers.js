@@ -2,6 +2,25 @@ const HostCompany = require("../models/hostCompany/hostCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const { sendMail } = require("../config/nodemailerConfig");
+const jwt = require("jsonwebtoken");
+
+const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
+
+const resolveHostPanelFrontendUrl = () => {
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (isProd) {
+    return normalizeBaseUrl(
+      process.env.HOST_PANEL_FRONTEND_URL || "https://wonohostfe.vercel.app",
+    );
+  }
+
+  return normalizeBaseUrl(
+    process.env.HOST_PANEL_FRONTEND_URL_DEV ||
+      process.env.HOST_PANEL_FRONTEND_URL_LOCAL ||
+      "http://localhost:3006",
+  );
+};
 
 const bulkInsertPoc = async (req, res, next) => {
   try {
@@ -93,7 +112,15 @@ const bulkInsertPoc = async (req, res, next) => {
 
 const sendInviteEmail = async (req, res, next) => {
   try {
-    const { email, name, companyName, status } = req.body;
+    const {
+      email,
+      name,
+      companyName,
+      status,
+      fullName,
+      selectedPlan,
+      businessName,
+    } = req.body;
 
     if (!email || !name) {
       return res
@@ -107,6 +134,25 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
+    const invitePayload = {
+      fullName: fullName || name,
+      name: fullName || name,
+      email,
+      selectedPlan: (selectedPlan || "basic").toLowerCase(),
+      goals: (selectedPlan || "basic").toLowerCase(),
+      businessName: businessName || companyName || "",
+      companyName: businessName || companyName || "",
+    };
+
+    const inviteToken = jwt.sign(
+      invitePayload,
+      process.env.HOST_INVITE_TOKEN_SECRET || process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
+    );
+
+    const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
+    const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
+
     await sendMail({
       to: email,
       subject: "Your Wono invite",
@@ -118,7 +164,7 @@ const sendInviteEmail = async (req, res, next) => {
           <p>You can now proceed with the next step using the Wono platform.</p>
           <p>
             <a
-              href="https://wonohostfe.vercel.app/"
+              href="${inviteLink}"
               style="display: inline-block; padding: 10px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
             >
               Continue Signup

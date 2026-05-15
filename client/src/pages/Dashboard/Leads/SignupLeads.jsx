@@ -57,7 +57,10 @@ const SignupLeads = () => {
       const response = await axios.post("/api/host-user/send-invite", {
         email: lead?.email,
         name: lead?.name,
+        fullName: lead?.name,
         companyName: lead?.companyName,
+        businessName: lead?.companyName,
+        selectedPlan: lead?.goals,
         status: lead?.status,
       });
       return response.data;
