@@ -22,6 +22,63 @@ const resolveHostPanelFrontendUrl = () => {
   );
 };
 
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeInviteStatus = (status) => {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_");
+
+  if (normalized === "invite_sent") return "invite_sent";
+  if (normalized === "registered") return "registered";
+  if (normalized === "joined") return "joined";
+  return "not_invited";
+};
+
+const deriveInviteStatus = (hostUser) => {
+  if (hostUser?.joinedAt || hostUser?.refreshToken) {
+    return "joined";
+  }
+
+  if (hostUser?.registeredAt || hostUser?.password) {
+    return "registered";
+  }
+
+  if (hostUser?.inviteSentAt || hostUser?.inviteStatus === "invite_sent") {
+    return "invite_sent";
+  }
+
+  return normalizeInviteStatus(hostUser?.inviteStatus);
+};
+
+const syncInviteLifecycle = async (hostUser) => {
+  if (!hostUser) return "not_invited";
+
+  const derivedStatus = deriveInviteStatus(hostUser);
+  const updates = {};
+
+  if (derivedStatus !== normalizeInviteStatus(hostUser.inviteStatus)) {
+    updates.inviteStatus = derivedStatus;
+  }
+
+  if (derivedStatus === "registered" && !hostUser.registeredAt) {
+    updates.registeredAt = hostUser.updatedAt || new Date();
+  }
+
+  if (derivedStatus === "joined" && !hostUser.joinedAt) {
+    updates.joinedAt = hostUser.updatedAt || new Date();
+  }
+
+  if (Object.keys(updates).length) {
+    await HostUser.updateOne({ _id: hostUser._id }, { $set: updates });
+    Object.assign(hostUser, updates);
+  }
+
+  return deriveInviteStatus(hostUser);
+};
+
 const bulkInsertPoc = async (req, res, next) => {
   try {
     const { pocs } = req.body;
@@ -68,6 +125,7 @@ const bulkInsertPoc = async (req, res, next) => {
         languagesSpoken: poc.languagesSpoken || [],
         address: poc.address || "",
         profileImage: poc.profileImage || "",
+        inviteStatus: "not_invited",
         isActive: true,
       });
     }
@@ -110,6 +168,64 @@ const bulkInsertPoc = async (req, res, next) => {
   }
 };
 
+const getInviteStatuses = async (req, res, next) => {
+  try {
+    const emails = String(req.query.emails || "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean);
+
+    const query = emails.length
+      ? {
+          $or: emails.map((email) => ({
+            email: { $regex: `^${escapeRegex(email)}$`, $options: "i" },
+          })),
+        }
+      : {};
+
+    const hostUsers = await HostUser.find(query)
+      .select(
+        "email inviteStatus inviteSentAt registeredAt joinedAt password refreshToken updatedAt",
+      )
+      .lean();
+
+    const statuses = {};
+
+    for (const hostUser of hostUsers) {
+      const derivedStatus = deriveInviteStatus(hostUser);
+      const updates = {};
+
+      if (derivedStatus !== normalizeInviteStatus(hostUser.inviteStatus)) {
+        updates.inviteStatus = derivedStatus;
+      }
+
+      if (derivedStatus === "registered" && !hostUser.registeredAt) {
+        updates.registeredAt = hostUser.updatedAt || new Date();
+      }
+
+      if (derivedStatus === "joined" && !hostUser.joinedAt) {
+        updates.joinedAt = hostUser.updatedAt || new Date();
+      }
+
+      if (Object.keys(updates).length) {
+        await HostUser.updateOne({ _id: hostUser._id }, { $set: updates });
+        Object.assign(hostUser, updates);
+      }
+
+      statuses[String(hostUser.email || "").trim().toLowerCase()] = {
+        inviteStatus: deriveInviteStatus(hostUser),
+        inviteSentAt: hostUser.inviteSentAt,
+        registeredAt: hostUser.registeredAt,
+        joinedAt: hostUser.joinedAt,
+      };
+    }
+
+    return res.status(200).json({ data: statuses });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const sendInviteEmail = async (req, res, next) => {
   try {
     const {
@@ -119,7 +235,10 @@ const sendInviteEmail = async (req, res, next) => {
       status,
       fullName,
       selectedPlan,
-      businessName,
+      country,
+      state,
+      city,
+      verticalType,
     } = req.body;
 
     if (!email || !name) {
@@ -134,14 +253,25 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
+    const normalizedVerticals = Array.isArray(verticalType)
+      ? verticalType.filter(Boolean)
+      : verticalType
+        ? [verticalType]
+        : [];
+
     const invitePayload = {
       fullName: fullName || name,
       name: fullName || name,
       email,
       selectedPlan: (selectedPlan || "basic").toLowerCase(),
       goals: (selectedPlan || "basic").toLowerCase(),
-      businessName: businessName || companyName || "",
-      companyName: businessName || companyName || "",
+      companyName: companyName || "",
+      businessName: companyName || "",
+      country: country || "",
+      state: state || "",
+      city: city || "",
+      verticalType: normalizedVerticals,
+      businessType: normalizedVerticals,
     };
 
     const inviteToken = jwt.sign(
@@ -175,10 +305,25 @@ const sendInviteEmail = async (req, res, next) => {
       `,
     });
 
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const hostUser = await HostUser.findOne({
+      email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
+    });
+
+    if (hostUser) {
+      const currentStatus = await syncInviteLifecycle(hostUser);
+
+      if (!["registered", "joined"].includes(currentStatus)) {
+        hostUser.inviteStatus = "invite_sent";
+        hostUser.inviteSentAt = new Date();
+        await hostUser.save();
+      }
+    }
+
     return res.status(200).json({ message: "Invite email sent successfully" });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { bulkInsertPoc, sendInviteEmail };
+module.exports = { bulkInsertPoc, getInviteStatuses, sendInviteEmail };

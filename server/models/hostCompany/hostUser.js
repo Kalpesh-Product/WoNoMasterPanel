@@ -43,6 +43,23 @@ const hostUserSchema = new mongoose.Schema(
     profileImage: {
       type: String,
     },
+    inviteStatus: {
+      type: String,
+      enum: ["not_invited", "invite_sent", "registered", "joined"],
+      default: "not_invited",
+    },
+    inviteSentAt: {
+      type: Date,
+      default: null,
+    },
+    registeredAt: {
+      type: Date,
+      default: null,
+    },
+    joinedAt: {
+      type: Date,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,
