@@ -35,6 +35,8 @@ const serviceOptions = [
 const validApps = new Set(serviceOptions[0].items);
 const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const validateServices = (selectedServices = {}) => {
   const errors = [];
@@ -73,9 +75,30 @@ const validateServices = (selectedServices = {}) => {
   return errors;
 };
 
+const pickFirstNonEmpty = (...values) => {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const normalized = String(value).trim();
+    if (normalized) return normalized;
+  }
+
+  return "";
+};
+
 const createCompany = async (req, res, next) => {
   try {
     const payload = req.body;
+    const normalizedPocEmail = String(payload?.pocEmail || "")
+      .trim()
+      .toLowerCase();
+    const hostUser = normalizedPocEmail
+      ? await HostUser.findOne({
+          email: {
+            $regex: `^${escapeRegex(normalizedPocEmail)}$`,
+            $options: "i",
+          },
+        }).lean()
+      : null;
 
     const lastCompany = await HostCompany.findOne({
       companyName: payload.companyName,
@@ -122,11 +145,17 @@ const createCompany = async (req, res, next) => {
       companyId,
       companyName: payload.companyName,
       registeredEntityName: payload.registeredEntityName,
-      industry: payload.industry,
+      industry: pickFirstNonEmpty(
+        payload.industry,
+        hostUser?.verticalType?.[0],
+      ),
       companySize: payload.companySize,
-      companyCity: payload.companyCity,
-      companyState: payload.companyState,
-      companyCountry: payload.companyCountry,
+      companyCity: pickFirstNonEmpty(payload.companyCity, hostUser?.city),
+      companyState: pickFirstNonEmpty(payload.companyState, hostUser?.state),
+      companyCountry: pickFirstNonEmpty(
+        payload.companyCountry,
+        hostUser?.country,
+      ),
       companyContinent: payload.companyContinent,
       websiteLink: payload.websiteURL,
       linkedinURL: payload.linkedinURL,

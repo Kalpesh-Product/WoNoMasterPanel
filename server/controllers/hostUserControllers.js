@@ -37,6 +37,17 @@ const normalizeInviteStatus = (status) => {
   return "not_invited";
 };
 
+const normalizeVerticalType = (verticalType) => {
+  if (Array.isArray(verticalType)) {
+    return verticalType
+      .map((item) => String(item || "").trim())
+      .filter(Boolean);
+  }
+
+  const value = String(verticalType || "").trim();
+  return value ? [value] : [];
+};
+
 const deriveInviteStatus = (hostUser) => {
   if (hostUser?.joinedAt || hostUser?.refreshToken) {
     return "joined";
@@ -125,6 +136,10 @@ const bulkInsertPoc = async (req, res, next) => {
         languagesSpoken: poc.languagesSpoken || [],
         address: poc.address || "",
         profileImage: poc.profileImage || "",
+        country: poc.country || "",
+        state: poc.state || "",
+        city: poc.city || "",
+        verticalType: normalizeVerticalType(poc.verticalType),
         inviteStatus: "not_invited",
         isActive: true,
       });
@@ -253,11 +268,7 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    const normalizedVerticals = Array.isArray(verticalType)
-      ? verticalType.filter(Boolean)
-      : verticalType
-        ? [verticalType]
-        : [];
+    const normalizedVerticals = normalizeVerticalType(verticalType);
 
     const invitePayload = {
       fullName: fullName || name,
@@ -291,6 +302,13 @@ const sendInviteEmail = async (req, res, next) => {
           <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
           <p>Hello ${name},</p>
           <p>Your signup request for ${companyName || "your company"} has been approved.</p>
+          <p>Shared details for your workspace setup:</p>
+          <ul style="margin-top: 0; padding-left: 20px;">
+            <li>Country: ${country || "-"}</li>
+            <li>State: ${state || "-"}</li>
+            <li>City: ${city || "-"}</li>
+            <li>Vertical Type: ${normalizedVerticals.join(", ") || "-"}</li>
+          </ul>
           <p>You can now proceed with the next step using the Wono platform.</p>
           <p>
             <a
@@ -313,11 +331,19 @@ const sendInviteEmail = async (req, res, next) => {
     if (hostUser) {
       const currentStatus = await syncInviteLifecycle(hostUser);
 
+      hostUser.country = country || hostUser.country || "";
+      hostUser.state = state || hostUser.state || "";
+      hostUser.city = city || hostUser.city || "";
+      hostUser.verticalType = normalizedVerticals.length
+        ? normalizedVerticals
+        : hostUser.verticalType || [];
+
       if (!["registered", "joined"].includes(currentStatus)) {
         hostUser.inviteStatus = "invite_sent";
         hostUser.inviteSentAt = new Date();
-        await hostUser.save();
       }
+
+      await hostUser.save();
     }
 
     return res.status(200).json({ message: "Invite email sent successfully" });

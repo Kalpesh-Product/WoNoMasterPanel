@@ -43,6 +43,22 @@ const hostUserSchema = new mongoose.Schema(
     profileImage: {
       type: String,
     },
+    country: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
+    city: {
+      type: String,
+      trim: true,
+    },
+    verticalType: {
+      type: [String],
+      default: [],
+    },
     inviteStatus: {
       type: String,
       enum: ["not_invited", "invite_sent", "registered", "joined"],
