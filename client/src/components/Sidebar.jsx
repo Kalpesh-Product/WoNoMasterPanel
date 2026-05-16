@@ -156,13 +156,6 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
         {
           id: 6,
           title: "Customer Support",
-          codeName: "CustomerSupport",
-          icon: <VscPersonAdd />,
-          route: "/dashboard/customer-support",
-        },
-        {
-          id: 7,
-          title: "Chat",
           codeName: "Chat",
           icon: <VscPersonAdd />,
           route: "/dashboard/chat",

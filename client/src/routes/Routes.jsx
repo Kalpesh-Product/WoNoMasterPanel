@@ -509,6 +509,10 @@ export const routes = createBrowserRouter([
                     path: "host-companies",
                     element: <HostCompanies />,
                   },
+                  {
+                    path: "chat",
+                    element: <Chat />,
+                  }
                 ],
               },
 
