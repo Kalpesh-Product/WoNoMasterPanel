@@ -1,6 +1,7 @@
 const { default: axios } = require("axios");
 const Employee = require("../../models/hostCompany/employees");
 const HostCompany = require("../../models/hostCompany/hostCompany");
+const HostLeadCompany = require("../../models/hostCompany/hostLeadCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
 // const { v4: uuidv4 } = require("uuid");
@@ -392,6 +393,20 @@ const activateProduct = async (req, res, next) => {
 const getCompanies = async (req, res, next) => {
   try {
     const companies = await HostCompany.find();
+
+    if (!companies || !companies.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getHostLeadCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostLeadCompany.find().sort({ createdAt: -1 });
 
     if (!companies || !companies.length) {
       return res.status(200).json([]);
@@ -896,6 +911,7 @@ module.exports = {
   activateProduct,
   updateServices,
   getCompanies,
+  getHostLeadCompanies,
   getCompany,
   bulkInsertCompanies,
   bulkInsertLogos,

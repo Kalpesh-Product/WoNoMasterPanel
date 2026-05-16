@@ -1,7 +1,9 @@
 const HostCompany = require("../models/hostCompany/hostCompany");
+const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const { sendMail } = require("../config/nodemailerConfig");
+const { randomUUID } = require("crypto");
 
 const bulkInsertPoc = async (req, res, next) => {
   try {
@@ -93,7 +95,46 @@ const bulkInsertPoc = async (req, res, next) => {
 
 const sendInviteEmail = async (req, res, next) => {
   try {
-    const { email, name, companyName, status } = req.body;
+    const {
+      leadId,
+      email,
+      name,
+      mobile,
+      companyName,
+      verticalType,
+      country,
+      state,
+      city,
+      source,
+      status,
+      goals,
+      comment,
+    } = req.body;
+
+    const normalizeMultiValue = (value) => {
+      if (Array.isArray(value)) {
+        return value
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (item && typeof item === "object") {
+              return String(item.label || item.value || item.name || "").trim();
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join(", ");
+      }
+
+      if (typeof value === "string") {
+        return value.trim();
+      }
+
+      if (value && typeof value === "object") {
+        return String(value.label || value.value || value.name || "").trim();
+      }
+
+      return "";
+    };
 
     if (!email || !name) {
       return res
@@ -106,6 +147,33 @@ const sendInviteEmail = async (req, res, next) => {
         message: "Invite can only be sent when the lead status is closed",
       });
     }
+
+    const companyId = leadId?.trim() || `lead-${randomUUID()}`;
+
+    await HostLeadCompany.findOneAndUpdate(
+      { companyId },
+      {
+        $set: {
+          leadId: leadId?.trim() || undefined,
+          companyId,
+          companyName: companyName?.trim() || "Unknown Company",
+          industry: normalizeMultiValue(verticalType),
+          companyCountry: country?.trim() || "",
+          companyState: state?.trim() || "",
+          companyCity: city?.trim() || "",
+          isRegistered: true,
+          status: status?.trim()?.toLowerCase() || "closed",
+          plan: goals?.trim()?.toLowerCase() || "",
+          comment: comment?.trim() || "",
+          source: source?.trim() || "signup-lead",
+          pocName: name?.trim() || "",
+          pocEmail: email?.trim()?.toLowerCase() || "",
+          pocPhone: mobile?.trim() || "",
+          invitedAt: new Date(),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
 
     await sendMail({
       to: email,

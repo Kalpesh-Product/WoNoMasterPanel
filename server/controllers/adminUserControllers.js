@@ -5,6 +5,7 @@ const { default: mongoose } = require("mongoose");
 const axios = require("axios");
 const FormData = require("form-data");
 const HostCompany = require("../models/hostCompany/hostCompany");
+const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 
 const updateProfile = async (req, res) => {
@@ -524,11 +525,19 @@ const updateRegistrationStatus = async (req, res, next) => {
         .json({ message: "Missing or invalid required fields" });
     }
 
-    const updateCompany = await HostCompany.findOneAndUpdate(
+    let updateCompany = await HostCompany.findOneAndUpdate(
       { companyId },
       { isRegistered: status },
       { new: true },
     ).lean();
+
+    if (!updateCompany) {
+      updateCompany = await HostLeadCompany.findOneAndUpdate(
+        { companyId },
+        { isRegistered: status },
+        { new: true },
+      ).lean();
+    }
 
     if (!updateCompany) {
       return res.status(404).json({ message: "Company not found" });

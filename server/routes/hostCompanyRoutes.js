@@ -11,6 +11,7 @@ const {
   bulkInsertLogos,
   uploadLogo,
   editCompany,
+  getHostLeadCompanies,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -32,6 +33,7 @@ router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/update-services", updateServices);
 router.get("/companies", getCompanies);
+router.get("/host-companies", getHostLeadCompanies);
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);
 

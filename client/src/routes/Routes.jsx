@@ -172,6 +172,7 @@ import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 
 export const routes = createBrowserRouter([
   {
@@ -503,6 +504,10 @@ export const routes = createBrowserRouter([
                         element: <PocDetails />, // ✅ new page
                       },
                     ],
+                  },
+                  {
+                    path: "host-companies",
+                    element: <HostCompanies />,
                   },
                 ],
               },

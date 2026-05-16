@@ -55,10 +55,19 @@ const SignupLeads = () => {
   const sendInviteMutation = useMutation({
     mutationFn: async (lead) => {
       const response = await axios.post("/api/host-user/send-invite", {
+        leadId: lead?._id,
         email: lead?.email,
         name: lead?.name,
+        mobile: lead?.mobile,
         companyName: lead?.companyName,
+        verticalType: lead?.verticalType,
+        country: lead?.country,
+        state: lead?.state,
+        city: lead?.city,
+        source: lead?.source,
         status: lead?.status,
+        goals: lead?.goals,
+        comment: lead?.comment,
       });
       return response.data;
     },
