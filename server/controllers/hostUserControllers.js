@@ -1,6 +1,7 @@
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
+const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
 const { sendMail } = require("../config/nodemailerConfig");
 const jwt = require("jsonwebtoken");
 
@@ -62,6 +63,33 @@ const deriveInviteStatus = (hostUser) => {
   }
 
   return normalizeInviteStatus(hostUser?.inviteStatus);
+};
+
+const inviteStatusPriority = {
+  not_invited: 0,
+  invite_sent: 1,
+  registered: 2,
+  joined: 3,
+};
+
+const mergeInviteRecords = (base = {}, incoming = {}) => {
+  const baseStatus = deriveInviteStatus(base);
+  const incomingStatus = deriveInviteStatus(incoming);
+
+  const chosen =
+    (inviteStatusPriority[incomingStatus] || 0) >=
+    (inviteStatusPriority[baseStatus] || 0)
+      ? { ...base, ...incoming }
+      : { ...incoming, ...base };
+
+  return {
+    ...chosen,
+    inviteStatus:
+      (inviteStatusPriority[incomingStatus] || 0) >=
+      (inviteStatusPriority[baseStatus] || 0)
+        ? incomingStatus
+        : baseStatus,
+  };
 };
 
 const syncInviteLifecycle = async (hostUser) => {
@@ -204,7 +232,11 @@ const getInviteStatuses = async (req, res, next) => {
       )
       .lean();
 
-    const statuses = {};
+    const inviteStatusDocs = await HostInviteStatus.find(query)
+      .select("email inviteStatus inviteSentAt registeredAt joinedAt updatedAt")
+      .lean();
+
+    const statusSource = new Map();
 
     for (const hostUser of hostUsers) {
       const derivedStatus = deriveInviteStatus(hostUser);
@@ -227,11 +259,28 @@ const getInviteStatuses = async (req, res, next) => {
         Object.assign(hostUser, updates);
       }
 
-      statuses[String(hostUser.email || "").trim().toLowerCase()] = {
+      const key = String(hostUser.email || "").trim().toLowerCase();
+      statusSource.set(key, {
         inviteStatus: deriveInviteStatus(hostUser),
         inviteSentAt: hostUser.inviteSentAt,
         registeredAt: hostUser.registeredAt,
         joinedAt: hostUser.joinedAt,
+      });
+    }
+
+    for (const doc of inviteStatusDocs) {
+      const key = String(doc.email || "").trim().toLowerCase();
+      const existing = statusSource.get(key);
+      statusSource.set(key, mergeInviteRecords(existing, doc));
+    }
+
+    const statuses = {};
+    for (const [email, data] of statusSource.entries()) {
+      statuses[email] = {
+        inviteStatus: deriveInviteStatus(data),
+        inviteSentAt: data.inviteSentAt || null,
+        registeredAt: data.registeredAt || null,
+        joinedAt: data.joinedAt || null,
       };
     }
 
@@ -302,13 +351,6 @@ const sendInviteEmail = async (req, res, next) => {
           <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
           <p>Hello ${name},</p>
           <p>Your signup request for ${companyName || "your company"} has been approved.</p>
-          <p>Shared details for your workspace setup:</p>
-          <ul style="margin-top: 0; padding-left: 20px;">
-            <li>Country: ${country || "-"}</li>
-            <li>State: ${state || "-"}</li>
-            <li>City: ${city || "-"}</li>
-            <li>Vertical Type: ${normalizedVerticals.join(", ") || "-"}</li>
-          </ul>
           <p>You can now proceed with the next step using the Wono platform.</p>
           <p>
             <a
@@ -345,6 +387,28 @@ const sendInviteEmail = async (req, res, next) => {
 
       await hostUser.save();
     }
+
+    const inviteStatusDoc = await HostInviteStatus.findOne({
+      email: normalizedEmail,
+    }).lean();
+    const docStatus = normalizeInviteStatus(inviteStatusDoc?.inviteStatus);
+    const shouldKeepHigherStatus =
+      docStatus === "registered" || docStatus === "joined";
+
+    await HostInviteStatus.updateOne(
+      { email: normalizedEmail },
+      {
+        $set: {
+          email: normalizedEmail,
+          inviteStatus: shouldKeepHigherStatus ? docStatus : "invite_sent",
+          inviteSentAt:
+            inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
+              ? inviteStatusDoc?.inviteSentAt || new Date()
+              : new Date(),
+        },
+      },
+      { upsert: true },
+    );
 
     return res.status(200).json({ message: "Invite email sent successfully" });
   } catch (error) {
