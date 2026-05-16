@@ -173,6 +173,7 @@ import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 
 export const routes = createBrowserRouter([
   {
@@ -507,7 +508,16 @@ export const routes = createBrowserRouter([
                   },
                   {
                     path: "host-companies",
-                    element: <HostCompanies />,
+                    children: [
+                      {
+                        index: true,
+                        element: <HostCompanies />,
+                      },
+                      {
+                        path: ":companyId",
+                        element: <HostCompanyOverview />,
+                      },
+                    ]
                   },
                   {
                     path: "chat",

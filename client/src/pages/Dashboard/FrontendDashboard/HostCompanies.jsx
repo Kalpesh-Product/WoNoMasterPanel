@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chip } from "@mui/material";
+import { useDispatch } from "react-redux";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -9,10 +10,18 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
+import { setSelectedCompany } from "../../../redux/slices/companySlice";
+
+const slugify = (str) =>
+  String(str || "")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w-]+/g, "");
 
 const HostCompanies = () => {
     const navigate = useNavigate();
     const axiosPrivate = useAxiosPrivate();
+    const dispatch = useDispatch();
     const { auth } = useAuth();
 
     const { mutate: toggleCompanyStatus } = useMutation({
@@ -125,7 +134,28 @@ const HostCompanies = () => {
                 field: "companyName",
                 headerName: "Company Name",
                 flex: 1,
-                cellRenderer: (params) => params.value || "-",
+                cellRenderer: (params) => (
+                    <span
+                        className="text-primary hover:underline cursor-pointer"
+                        onClick={() => {
+                            dispatch(setSelectedCompany(params.data));
+                            sessionStorage.setItem("companyId", params.data.companyId);
+                            sessionStorage.setItem("companyName", params.data.companyName);
+
+                            navigate(
+                                `/dashboard/host-companies/${slugify(params.data.companyName)}`,
+                                {
+                                state: {
+                                    companyId: params.data.companyId,
+                                    companyName: params.data.companyName,
+                                },
+                                },
+                            );
+                        }}
+                    >
+                        {params.value || "-"}
+                    </span>
+                ),
             },
             {
                 field: "industry",
@@ -133,12 +163,12 @@ const HostCompanies = () => {
                 flex: 1,
                 cellRenderer: (params) => params.value || "-",
             },
-            {
-                field: "companyContinent",
-                headerName: "Continent",
-                flex: 1,
-                cellRenderer: (params) => params.value || "-",
-            },
+            // {
+            //     field: "companyContinent",
+            //     headerName: "Continent",
+            //     flex: 1,
+            //     cellRenderer: (params) => params.value || "-",
+            // },
             {
                 field: "companyCountry",
                 headerName: "Country",
@@ -222,7 +252,7 @@ const HostCompanies = () => {
                 ),
             },
         ],
-        [toggleCompanyStatus],
+        [dispatch, navigate, toggleCompanyStatus],
     );
 
     const sortedCompanies = useMemo(
