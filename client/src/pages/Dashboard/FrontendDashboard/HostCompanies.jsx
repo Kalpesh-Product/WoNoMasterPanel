@@ -162,6 +162,8 @@ const HostCompanies = () => {
                                             params.data.plan ||
                                             params.data.subscriptionPlan ||
                                             "",
+                                        requestedPlan:
+                                            params.data.requestedPlan || "",
                                     },
                                 },
                             );

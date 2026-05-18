@@ -10,7 +10,7 @@ const HostCompanyOverview = () => {
     const { companyId: companySlug } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { companyId, companyName, selectedPlan } = location?.state || {};
+    const { companyId, companyName, selectedPlan, requestedPlan } = location?.state || {};
 
     return (
         <div className="p-6">
@@ -25,7 +25,7 @@ const HostCompanyOverview = () => {
                         className="cursor-pointer border border-gray-200 rounded-2xl p-6 shadow hover:shadow-lg transition bg-white"
                         onClick={() =>
                             navigate(`/dashboard/host-companies/${companySlug}/${card.path}`, {
-                                state: { companyId, companyName, selectedPlan },
+                                state: { companyId, companyName, selectedPlan, requestedPlan },
                             })
                         }
                     >

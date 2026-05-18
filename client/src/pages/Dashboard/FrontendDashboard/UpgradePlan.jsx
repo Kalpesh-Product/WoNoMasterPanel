@@ -25,7 +25,7 @@ const UpgradePlan = () => {
     const axiosPrivate = useAxiosPrivate();
     const location = useLocation();
     const dispatch = useDispatch();
-    const { companyName, selectedPlan } = location.state || {};
+    const { companyName, selectedPlan, requestedPlan } = location.state || {};
     const { auth } = useAuth();
 
     const handleSendUpgradeRequest = (params) => {
@@ -41,6 +41,16 @@ const UpgradePlan = () => {
             .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(" ");
     }, [selectedPlan]);
+
+    const normalizedRequestedPlan = useMemo(() => {
+        const rawPlan = String(requestedPlan || "").trim();
+        if (!rawPlan) return "Not Assigned";
+        return rawPlan
+            .split(/[\s_-]+/)
+            .filter(Boolean)
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(" ");
+    }, [requestedPlan]);
 
     const { mutate: toggleCompanyStatus } = useMutation({
         mutationFn: async ({ companyId, status }) => {
@@ -170,7 +180,7 @@ const UpgradePlan = () => {
                 field: "requestedUpgradePlan",
                 headerName: "Requested Upgrade Plan",
                 flex: 1,
-                cellRenderer: (params) => params.value || "-",
+                cellRenderer: () => normalizedRequestedPlan || "-",
             },
             {
                 field: "paymentStatus",
