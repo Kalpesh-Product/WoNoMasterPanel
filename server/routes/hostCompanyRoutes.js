@@ -12,6 +12,7 @@ const {
   uploadLogo,
   editCompany,
   getHostLeadCompanies,
+  requestUpgradePlan,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -32,6 +33,7 @@ router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/update-services", updateServices);
+router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.get("/companies", getCompanies);
 router.get("/host-companies", getHostLeadCompanies);
 router.get("/company", getCompany);

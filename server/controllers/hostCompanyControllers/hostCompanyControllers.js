@@ -447,6 +447,41 @@ const getHostLeadCompanies = async (req, res, next) => {
   }
 };
 
+const requestUpgradePlan = async (req, res, next) => {
+  try {
+    const { companyId, requestedPlan } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (!requestedPlan || !String(requestedPlan).trim()) {
+      return res.status(400).json({ message: "requestedPlan is required" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          requestedPlan: String(requestedPlan).trim().toLowerCase(),
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Requested upgrade plan saved successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCompany = async (req, res, next) => {
   try {
     const { companyId } = req.query;
@@ -939,6 +974,7 @@ module.exports = {
   editCompany,
   activateProduct,
   updateServices,
+  requestUpgradePlan,
   getCompanies,
   getHostLeadCompanies,
   getCompany,

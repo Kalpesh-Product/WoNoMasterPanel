@@ -69,6 +69,10 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    requestedPlan: {
+      type: String,
+      trim: true,
+    },
     comment: {
       type: String,
       trim: true,
