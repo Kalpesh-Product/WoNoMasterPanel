@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -16,6 +16,53 @@ const SignupLeads = () => {
   const [openModal, setOpenModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [sendingInviteLeadId, setSendingInviteLeadId] = useState(null);
+  const [inviteStatusOverrides, setInviteStatusOverrides] = useState({});
+
+  const normalizeInviteStatus = (status) => {
+    const normalized = String(status || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_");
+
+    if (normalized === "invite_sent") return "invite_sent";
+    if (normalized === "registered") return "registered";
+    if (normalized === "joined") return "joined";
+    return "not_invited";
+  };
+
+  const deriveInviteStatusFromLead = (lead = {}, localStatus) => {
+    const explicitStatus = normalizeInviteStatus(
+      localStatus?.inviteStatus ||
+      lead?.inviteStatus ||
+      lead?.invitationStatus ||
+      lead?.userStatus ||
+      lead?.registrationStatus,
+    );
+
+    if (
+      localStatus?.joinedAt ||
+      lead?.joinedAt ||
+      lead?.lastLoginAt ||
+      lead?.isJoined === true
+    ) {
+      return "joined";
+    }
+
+    if (
+      localStatus?.registeredAt ||
+      lead?.registeredAt ||
+      lead?.accountCreatedAt ||
+      lead?.isRegistered === true
+    ) {
+      return "registered";
+    }
+
+    if (localStatus?.inviteSentAt || lead?.inviteSentAt) {
+      return "invite_sent";
+    }
+
+    return explicitStatus;
+  };
 
   const {
     data: leads = [],
@@ -33,6 +80,25 @@ const SignupLeads = () => {
     },
   });
 
+  const inviteStatusEmails = useMemo(
+    () =>
+      leads
+        .map((lead) => String(lead?.email || "").trim().toLowerCase())
+        .filter(Boolean),
+    [leads],
+  );
+
+  const { data: inviteStatuses = {} } = useQuery({
+    queryKey: ["signup-lead-invite-statuses", inviteStatusEmails],
+    enabled: inviteStatusEmails.length > 0,
+    queryFn: async () => {
+      const response = await axios.get("/api/host-user/invite-statuses", {
+        params: { emails: inviteStatusEmails.join(",") },
+      });
+      return response?.data?.data || {};
+    },
+  });
+
   const updateLeadMutation = useMutation({
     mutationFn: async ({ hostUserId, ...payload }) => {
       const response = await axios.patch(
@@ -44,6 +110,9 @@ const SignupLeads = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["signup-leads"] });
+      queryClient.invalidateQueries({
+        queryKey: ["signup-lead-invite-statuses"],
+      });
       setOpenModal(false);
       toast.success("Lead updated");
     },
@@ -65,14 +134,78 @@ const SignupLeads = () => {
         state: lead?.state,
         city: lead?.city,
         source: lead?.source,
+        fullName: lead?.name,
+        selectedPlan: lead?.goals,
         status: lead?.status,
         goals: lead?.goals,
         comment: lead?.comment,
       });
+
+      if (lead?._id) {
+        // Keep this best-effort only. That endpoint validates that at least one of
+        // status/comment/goals is present, so we include the current status.
+        try {
+          await axios.patch(
+            `https://wononomadsbe.vercel.app/api/forms/host-users/${lead._id}`,
+            {
+              status: String(lead?.status || "closed").toLowerCase(),
+              inviteStatus: "invite_sent",
+              inviteSentAt: new Date().toISOString(),
+            },
+          );
+        } catch (error) {
+          console.warn(
+            "Lead invite metadata update failed, but invite email was sent:",
+            error?.response?.data || error?.message,
+          );
+        }
+      }
+
       return response.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, lead) => {
       setSendingInviteLeadId(null);
+      const emailKey = String(lead?.email || "").trim().toLowerCase();
+      const inviteSentAt = new Date().toISOString();
+      setInviteStatusOverrides((prev) => ({
+        ...prev,
+        [emailKey]: {
+          ...(prev[emailKey] || {}),
+          inviteStatus: "invite_sent",
+          inviteSentAt,
+        },
+      }));
+
+      queryClient.setQueriesData(
+        { queryKey: ["signup-lead-invite-statuses"] },
+        (current = {}) => ({
+          ...current,
+          [emailKey]: {
+            ...(current[emailKey] || {}),
+            inviteStatus: "invite_sent",
+            inviteSentAt,
+          },
+        }),
+      );
+
+      queryClient.setQueryData(["signup-leads"], (current = []) =>
+        Array.isArray(current)
+          ? current.map((row) =>
+            row?._id === lead?._id
+              ? {
+                ...row,
+                inviteStatus: "invite_sent",
+                inviteSentAt,
+              }
+              : row,
+          )
+          : current,
+      );
+
+      queryClient.invalidateQueries({ queryKey: ["signup-leads"] });
+      queryClient.invalidateQueries({
+        queryKey: ["signup-lead-invite-statuses"],
+      });
       toast.success(data?.message || "Invite email sent");
     },
     onError: (error) => {
@@ -176,7 +309,7 @@ const SignupLeads = () => {
     { field: "formName", headerName: "Form" },
     {
       field: "status",
-      headerName: "Status",
+      headerName: "Leads Status",
       cellRenderer: (params) => {
         const statusValue = (params.data.status || "pending").toLowerCase();
         const statusStyles = {
@@ -249,11 +382,68 @@ const SignupLeads = () => {
           : "-",
     },
     {
+      field: "inviteStatus",
+      headerName: "Invite Status",
+      cellRenderer: (params) => {
+        const emailKey = String(params.data?.email || "").trim().toLowerCase();
+        const inviteStatus = deriveInviteStatusFromLead(
+          params.data,
+          {
+            ...(inviteStatuses[emailKey] || {}),
+            ...(inviteStatusOverrides[emailKey] || {}),
+          },
+        );
+        const statusStyles = {
+          not_invited: { bg: "#F3F4F6", color: "#4B5563" },
+          invite_sent: { bg: "#DBEAFE", color: "#1D4ED8" },
+          registered: { bg: "#FEF3C7", color: "#B45309" },
+          joined: { bg: "#D1FAE5", color: "#047857" },
+        };
+        const labelMap = {
+          not_invited: "Not invited",
+          invite_sent: "Invite sent",
+          registered: "Registered",
+          joined: "Joined",
+        };
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 96,
+                minHeight: 40,
+                padding: "0 12px",
+                borderRadius: "9999px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                backgroundColor: statusStyles[inviteStatus]?.bg,
+                color: statusStyles[inviteStatus]?.color,
+              }}
+            >
+              {labelMap[inviteStatus]}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
       field: "Invite user",
       headerName: "Invite user",
       cellRenderer: (params) => {
+        const emailKey = String(params.data?.email || "").trim().toLowerCase();
+        const inviteStatus = deriveInviteStatusFromLead(
+          params.data,
+          {
+            ...(inviteStatuses[emailKey] || {}),
+            ...(inviteStatusOverrides[emailKey] || {}),
+          },
+        );
         const canInvite =
-          (params.data.status || "").toLowerCase() === "closed";
+          (params.data.status || "").toLowerCase() === "closed" &&
+          !["registered", "joined"].includes(inviteStatus);
         const isSendingThisRow = sendingInviteLeadId === params.data._id;
 
         return (

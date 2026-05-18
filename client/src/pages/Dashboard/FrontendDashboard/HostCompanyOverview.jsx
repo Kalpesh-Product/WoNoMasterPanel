@@ -2,7 +2,7 @@ import React from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 
 const cards = [
-    { title: "Pricing Details", path: "pricing-details" },
+    { title: "Upgrade Plan", path: "upgrade-plan" },
     { title: "Module Access", path: "module-access" },
 ];
 
@@ -10,7 +10,7 @@ const HostCompanyOverview = () => {
     const { companyId: companySlug } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const { companyId, companyName } = location?.state || {};
+    const { companyId, companyName, selectedPlan } = location?.state || {};
 
     return (
         <div className="p-6">
@@ -25,7 +25,7 @@ const HostCompanyOverview = () => {
                         className="cursor-pointer border border-gray-200 rounded-2xl p-6 shadow hover:shadow-lg transition bg-white"
                         onClick={() =>
                             navigate(`/dashboard/host-companies/${companySlug}/${card.path}`, {
-                                state: { companyId, companyName },
+                                state: { companyId, companyName, selectedPlan },
                             })
                         }
                     >

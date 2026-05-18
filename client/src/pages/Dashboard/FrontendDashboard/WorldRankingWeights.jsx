@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Box, Button, IconButton, MenuItem, Typography, TextField } from "@mui/material";
+import {
+  Box,
+  Button,
+  IconButton,
+  MenuItem,
+  Typography,
+  TextField,
+} from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
@@ -9,11 +16,14 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
-import { calculateScore, STATEWISE_WEIGHT_FORMULAS } from "../../../utils/weightCalculations";
+import {
+  calculateScore,
+  STATEWISE_WEIGHT_FORMULAS,
+} from "../../../utils/weightCalculations";
 
-// const WORLD_RANKING_ENDPOINT =
-//   "https://wononomadsbe.vercel.app/api/state-wise-weight";
-const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
+const WORLD_RANKING_ENDPOINT =
+  "https://wononomadsbe.vercel.app/api/state-wise-weight";
+// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -49,11 +59,11 @@ const MAX_IMAGES = 5;
 const getImageUrlsFromRow = (row = {}) =>
   normalizeImageUrls(
     row?.imageUrls ??
-    row?.imageurls ??
-    row?.imageURLS ??
-    row?.imageUrl ??
-    row?.imageurl ??
-    row?.images,
+      row?.imageurls ??
+      row?.imageURLS ??
+      row?.imageUrl ??
+      row?.imageurl ??
+      row?.images,
   );
 
 const fmtNumber = (value, digits = 2) => {
@@ -176,51 +186,190 @@ const weightColumns = [
 ];
 
 const CALCULATION_CONFIG = [
-  { label: "Best For Nomads", formula: "bestForNomads", field: "labelBestForNomads" },
-  { label: "Most Affordable", formula: "mostAffordable", field: "labelMostAffordable" },
-  { label: "Safest Cities", formula: "safestCities", field: "labelSafestCities" },
+  {
+    label: "Best For Nomads",
+    formula: "bestForNomads",
+    field: "labelBestForNomads",
+  },
+  {
+    label: "Most Affordable",
+    formula: "mostAffordable",
+    field: "labelMostAffordable",
+  },
+  {
+    label: "Safest Cities",
+    formula: "safestCities",
+    field: "labelSafestCities",
+  },
   { label: "Easy Visa", formula: "easyVisaLongStay", field: "labelEasyVisa" },
-  { label: "Strong Nomad Community", formula: "strongNomadCommunity", field: "labelStrongNomadCommunity" },
-  { label: "Healthcare Friendly", formula: "healthcareFriendly", field: "labelHealthcareFriendly" },
-  { label: "Startup / Business Opportunities", formula: "startupBusinessOpportunities", field: "labelStartupBusinessOpportunities" },
-  { label: "Clean Air / Environment", formula: "cleanAirEnvironment", field: "labelCleanAirEnvironment" },
-  { label: "Best Work Infrastructure", formula: "bestWorkInfrastructure", field: "labelBestWorkInfrastructure" },
-  { label: "Best For Remote Work Setup", formula: "bestForRemoteWorkSetup", field: "labelBestForRemoteWorkSetup" },
-  { label: "Cheapest Places", formula: "cheapestPlaces", field: "labelCheapestPlaces" },
-  { label: "Best Connected Cities (Flights)", formula: "bestConnectedCitiesFlights", field: "labelBestConnectedCitiesFlights" },
-  { label: "Strong Nomad Community", formula: "strongNomadCommunityWFA", field: "labelStrongNomadCommunityWfa" },
-  { label: "Fast Internet Cities", formula: "fastInternetCities", field: "labelFastInternetCities" },
-  { label: "Best Work Infrastructure", formula: "bestWorkInfrastructureWFA", field: "labelBestWorkInfrastructureWfa" },
-  { label: "Maximum Savings", formula: "maximumSavings", field: "labelMaximumSavings" },
+  {
+    label: "Strong Nomad Community",
+    formula: "strongNomadCommunity",
+    field: "labelStrongNomadCommunity",
+  },
+  {
+    label: "Healthcare Friendly",
+    formula: "healthcareFriendly",
+    field: "labelHealthcareFriendly",
+  },
+  {
+    label: "Startup / Business Opportunities",
+    formula: "startupBusinessOpportunities",
+    field: "labelStartupBusinessOpportunities",
+  },
+  {
+    label: "Clean Air / Environment",
+    formula: "cleanAirEnvironment",
+    field: "labelCleanAirEnvironment",
+  },
+  {
+    label: "Best Work Infrastructure",
+    formula: "bestWorkInfrastructure",
+    field: "labelBestWorkInfrastructure",
+  },
+  {
+    label: "Best For Remote Work Setup",
+    formula: "bestForRemoteWorkSetup",
+    field: "labelBestForRemoteWorkSetup",
+  },
+  {
+    label: "Cheapest Places",
+    formula: "cheapestPlaces",
+    field: "labelCheapestPlaces",
+  },
+  {
+    label: "Best Connected Cities (Flights)",
+    formula: "bestConnectedCitiesFlights",
+    field: "labelBestConnectedCitiesFlights",
+  },
+  {
+    label: "Strong Nomad Community",
+    formula: "strongNomadCommunityWFA",
+    field: "labelStrongNomadCommunityWfa",
+  },
+  {
+    label: "Fast Internet Cities",
+    formula: "fastInternetCities",
+    field: "labelFastInternetCities",
+  },
+  {
+    label: "Best Work Infrastructure",
+    formula: "bestWorkInfrastructureWFA",
+    field: "labelBestWorkInfrastructureWfa",
+  },
+  {
+    label: "Maximum Savings",
+    formula: "maximumSavings",
+    field: "labelMaximumSavings",
+  },
   { label: "Low Taxation", formula: "lowTaxation", field: "labelLowTaxation" },
-  { label: "Purchasing Power", formula: "purchasingPower", field: "labelPurchasingPower" },
-  { label: "Financial Stability", formula: "financialStabilityLowRisk", field: "labelFinancialStability" },
-  { label: "Startup Setup Cost", formula: "startupSetupCost", field: "labelStartupSetupCost" },
-  { label: "Balanced Financial Lifestyle", formula: "balancedFinancialLifestyle", field: "labelBalancedFinancialLifestyle" },
-  { label: "Social & Party Lifestyle", formula: "socialPartyLifestyle", field: "labelSocialPartyLifestyle" },
-  { label: "Chill & Wellness Lifestyle", formula: "chillWellnessLifestyle", field: "labelChillWellnessLifestyle" },
-  { label: "Adventure & Exploration", formula: "adventureExploration", field: "labelAdventureExploration" },
-  { label: "Nomad Community & Networking", formula: "nomadCommunityNetworking", field: "labelNomadCommunityNetworking" },
-  { label: "Couple-Friendly Lifestyle", formula: "coupleFriendlyLifestyle", field: "labelCoupleFriendlyLifestyle" },
-  { label: "Family-Friendly Lifestyle", formula: "familyFriendlyLifestyle", field: "labelFamilyFriendlyLifestyle" },
-  { label: "Female Friendly Lifestyle", formula: "femaleFriendlyLifestyle", field: "labelFemaleFriendlyLifestyle" },
-  { label: "Founder Nomads", formula: "founderNomads", field: "labelFounderNomads" },
+  {
+    label: "Purchasing Power",
+    formula: "purchasingPower",
+    field: "labelPurchasingPower",
+  },
+  {
+    label: "Financial Stability",
+    formula: "financialStabilityLowRisk",
+    field: "labelFinancialStability",
+  },
+  {
+    label: "Startup Setup Cost",
+    formula: "startupSetupCost",
+    field: "labelStartupSetupCost",
+  },
+  {
+    label: "Balanced Financial Lifestyle",
+    formula: "balancedFinancialLifestyle",
+    field: "labelBalancedFinancialLifestyle",
+  },
+  {
+    label: "Social & Party Lifestyle",
+    formula: "socialPartyLifestyle",
+    field: "labelSocialPartyLifestyle",
+  },
+  {
+    label: "Chill & Wellness Lifestyle",
+    formula: "chillWellnessLifestyle",
+    field: "labelChillWellnessLifestyle",
+  },
+  {
+    label: "Adventure & Exploration",
+    formula: "adventureExploration",
+    field: "labelAdventureExploration",
+  },
+  {
+    label: "Nomad Community & Networking",
+    formula: "nomadCommunityNetworking",
+    field: "labelNomadCommunityNetworking",
+  },
+  {
+    label: "Couple-Friendly Lifestyle",
+    formula: "coupleFriendlyLifestyle",
+    field: "labelCoupleFriendlyLifestyle",
+  },
+  {
+    label: "Family-Friendly Lifestyle",
+    formula: "familyFriendlyLifestyle",
+    field: "labelFamilyFriendlyLifestyle",
+  },
+  {
+    label: "Female Friendly Lifestyle",
+    formula: "femaleFriendlyLifestyle",
+    field: "labelFemaleFriendlyLifestyle",
+  },
+  {
+    label: "Founder Nomads",
+    formula: "founderNomads",
+    field: "labelFounderNomads",
+  },
   { label: "Solo Nomads", formula: "soloNomads", field: "labelSoloNomads" },
-  { label: "Startup Ecosystems", formula: "startupEcosystems", field: "labelStartupEcosystems" },
-  { label: "Remote Job Opportunities", formula: "remoteJobOpportunities", field: "labelRemoteJobOpportunities" },
-  { label: "Founder Nomads", formula: "founderNomadsAyc", field: "labelFounderNomadsAyc" },
-  { label: "Tech Talent Density", formula: "techTalentDensity", field: "labelTechTalentDensity" },
-  { label: "Startup Incubators & Accelerators", formula: "startupIncubatorsAndAccelerators", field: "labelStartupIncubatorsAccelerators" },
-  { label: "Balanced Career Growth", formula: "balancedCareerGrowth", field: "labelBalancedCareerGrowth" },
-  { label: "Venture Capital Presence", formula: "ventureCapitalPresence", field: "labelVentureCapitalPresence" },
-  { label: "Conferences & Events", formula: "conferencesAndEvents", field: "labelConferencesEvents" },
+  {
+    label: "Startup Ecosystems",
+    formula: "startupEcosystems",
+    field: "labelStartupEcosystems",
+  },
+  {
+    label: "Remote Job Opportunities",
+    formula: "remoteJobOpportunities",
+    field: "labelRemoteJobOpportunities",
+  },
+  {
+    label: "Founder Nomads",
+    formula: "founderNomadsAyc",
+    field: "labelFounderNomadsAyc",
+  },
+  {
+    label: "Tech Talent Density",
+    formula: "techTalentDensity",
+    field: "labelTechTalentDensity",
+  },
+  {
+    label: "Startup Incubators & Accelerators",
+    formula: "startupIncubatorsAndAccelerators",
+    field: "labelStartupIncubatorsAccelerators",
+  },
+  {
+    label: "Balanced Career Growth",
+    formula: "balancedCareerGrowth",
+    field: "labelBalancedCareerGrowth",
+  },
+  {
+    label: "Venture Capital Presence",
+    formula: "ventureCapitalPresence",
+    field: "labelVentureCapitalPresence",
+  },
+  {
+    label: "Conferences & Events",
+    formula: "conferencesAndEvents",
+    field: "labelConferencesEvents",
+  },
 ];
 
 const SCORE_TO_LABEL_MAP = CALCULATION_CONFIG.reduce((acc, item) => {
   acc[item.formula] = item.field;
   return acc;
 }, {});
-
 
 const labelColumns = [
   {
@@ -668,7 +817,6 @@ const deriveLabelsFromCalculatedScores = (weights, existingLabels = {}) => {
   return nextLabels;
 };
 
-
 const getInitialForm = (row = {}) => {
   const rowWeights = row?.weight || row?.weights || {};
   const initialForm = {
@@ -789,7 +937,8 @@ const WorldRankingWeights = () => {
         companies
           .filter(
             (c) =>
-              (!addForm.continent || c.companyContinent === addForm.continent) &&
+              (!addForm.continent ||
+                c.companyContinent === addForm.continent) &&
               (!addForm.country || c.companyCountry === addForm.country),
           )
           .map((c) => c.companyState?.trim())
@@ -817,14 +966,17 @@ const WorldRankingWeights = () => {
     onError: (error) => {
       toast.error(
         error?.response?.data?.message ||
-        "Failed to update world ranking weight",
+          "Failed to update world ranking weight",
       );
     },
   });
 
   const { mutate: createWeight, isPending: isCreating } = useMutation({
     mutationFn: async (payload) => {
-      const response = await axios.post(`${WORLD_RANKING_ENDPOINT}/add`, payload);
+      const response = await axios.post(
+        `${WORLD_RANKING_ENDPOINT}/add`,
+        payload,
+      );
       return response.data;
     },
     onSuccess: (data) => {
@@ -853,9 +1005,7 @@ const WorldRankingWeights = () => {
 
   const handleOpenAddModal = () => {
     const maxRank =
-      rows.length > 0
-        ? Math.max(...rows.map((r) => Number(r.rank) || 0))
-        : 0;
+      rows.length > 0 ? Math.max(...rows.map((r) => Number(r.rank) || 0)) : 0;
     const initialForm = getInitialForm();
     initialForm.rank = maxRank + 1;
     setAddForm(initialForm);
@@ -868,7 +1018,6 @@ const WorldRankingWeights = () => {
     setAddForm(getInitialForm());
   };
 
-
   const handleFormFieldChange = (field, value) => {
     setEditForm((prev) => ({
       ...prev,
@@ -880,7 +1029,10 @@ const WorldRankingWeights = () => {
     const setForm = formType === "edit" ? setEditForm : setAddForm;
     setForm((prev) => {
       const nextWeight = { ...prev.weight, [field]: value };
-      const nextLabels = deriveLabelsFromCalculatedScores(nextWeight, prev.labels);
+      const nextLabels = deriveLabelsFromCalculatedScores(
+        nextWeight,
+        prev.labels,
+      );
 
       return {
         ...prev,
@@ -950,7 +1102,9 @@ const WorldRankingWeights = () => {
     formData.append("weight", JSON.stringify(payload.weight));
     formData.append("labels", JSON.stringify(payload.labels));
 
-    (addForm.imageFiles || []).forEach((file) => formData.append("images", file));
+    (addForm.imageFiles || []).forEach((file) =>
+      formData.append("images", file),
+    );
 
     createWeight(formData);
   };
@@ -981,7 +1135,9 @@ const WorldRankingWeights = () => {
         toast.error(`Only ${MAX_IMAGES} images are allowed`);
       }
 
-      const previewUrls = acceptedFiles.map((file) => URL.createObjectURL(file));
+      const previewUrls = acceptedFiles.map((file) =>
+        URL.createObjectURL(file),
+      );
 
       return {
         ...prev,
@@ -1004,9 +1160,10 @@ const WorldRankingWeights = () => {
       let nextFiles = [...(prev?.imageFiles || [])];
 
       if (targetUrl.startsWith("blob:")) {
-        const blobIndex = currentUrls
-          .slice(0, index + 1)
-          .filter((url) => url.startsWith("blob:")).length - 1;
+        const blobIndex =
+          currentUrls
+            .slice(0, index + 1)
+            .filter((url) => url.startsWith("blob:")).length - 1;
         nextFiles = nextFiles.filter((_, i) => i !== blobIndex);
         URL.revokeObjectURL(targetUrl);
       }
@@ -1105,29 +1262,39 @@ const WorldRankingWeights = () => {
         valueFormatter: (params) => fmtNumber(params.value, 2),
       })),
       // Interleaved Score and Label Columns
-      ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(([formulaKey, factors]) => {
-        const labelField = SCORE_TO_LABEL_MAP[formulaKey];
-        const labelCol = labelColumns.find(c => c.field === labelField);
+      ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(
+        ([formulaKey, factors]) => {
+          const labelField = SCORE_TO_LABEL_MAP[formulaKey];
+          const labelCol = labelColumns.find((c) => c.field === labelField);
 
-        return [
-          {
-            headerName: `${formulaKey} Score`,
-            field: `score_${formulaKey}`,
-            minWidth: 150,
-            valueGetter: (params) => {
-              const weights = params.data?.weight || params.data?.weights || params.data || {};
-              return calculateScore(weights, factors);
+          return [
+            {
+              headerName: `${formulaKey} Score`,
+              field: `score_${formulaKey}`,
+              minWidth: 150,
+              valueGetter: (params) => {
+                const weights =
+                  params.data?.weight ||
+                  params.data?.weights ||
+                  params.data ||
+                  {};
+                return calculateScore(weights, factors);
+              },
+              valueFormatter: (params) => fmtNumber(params.value, 3),
             },
-            valueFormatter: (params) => fmtNumber(params.value, 3),
-          },
-          ...(labelCol ? [{
-            ...labelCol,
-            valueGetter: (params) =>
-              params.data?.labels?.[labelCol.field] ??
-              params.data?.[labelCol.field],
-          }] : [])
-        ];
-      })
+            ...(labelCol
+              ? [
+                  {
+                    ...labelCol,
+                    valueGetter: (params) =>
+                      params.data?.labels?.[labelCol.field] ??
+                      params.data?.[labelCol.field],
+                  },
+                ]
+              : []),
+          ];
+        },
+      ),
     ],
     [],
   );
@@ -1177,7 +1344,10 @@ const WorldRankingWeights = () => {
                       </Typography>
                       <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         {editForm.imageUrls.map((url, index) => (
-                          <Box key={`${url}-${index}`} sx={{ textAlign: "center" }}>
+                          <Box
+                            key={`${url}-${index}`}
+                            sx={{ textAlign: "center" }}
+                          >
                             <Box
                               component="img"
                               src={url}
@@ -1205,7 +1375,9 @@ const WorldRankingWeights = () => {
                         ))}
                       </Box>
                     </Box>
-                  ) : <p>No image</p>}
+                  ) : (
+                    <p>No image</p>
+                  )}
                   {editMode ? (
                     <Box sx={{ mt: 2 }}>
                       <Button variant="outlined" component="label">
@@ -1289,7 +1461,11 @@ const WorldRankingWeights = () => {
                     disabled={!editMode}
                     value={editForm.weight?.[column.field] ?? ""}
                     onChange={(event) =>
-                      handleWeightFieldChange(column.field, event.target.value, "edit")
+                      handleWeightFieldChange(
+                        column.field,
+                        event.target.value,
+                        "edit",
+                      )
                     }
                     fullWidth
                     size="small"
@@ -1310,12 +1486,13 @@ const WorldRankingWeights = () => {
 
                 {CALCULATION_CONFIG.map((config) => {
                   const labelCol = labelColumns.find(
-                    (c) => c.field === config.field
+                    (c) => c.field === config.field,
                   );
-                  const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+                  const factors =
+                    STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
                   const currentScore = calculateScore(
                     editForm.weight || {},
-                    factors
+                    factors,
                   );
 
                   return (
@@ -1339,7 +1516,7 @@ const WorldRankingWeights = () => {
                             handleLabelFieldChange(
                               config.field,
                               event.target.value,
-                              "edit"
+                              "edit",
                             )
                           }
                           fullWidth
@@ -1363,7 +1540,8 @@ const WorldRankingWeights = () => {
 
                 {labelColumns
                   .filter(
-                    (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field)
+                    (lc) =>
+                      !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
                   )
                   .map((column) => (
                     <React.Fragment key={column.field}>
@@ -1377,7 +1555,7 @@ const WorldRankingWeights = () => {
                           handleLabelFieldChange(
                             column.field,
                             event.target.value,
-                            "edit"
+                            "edit",
                           )
                         }
                         fullWidth
@@ -1561,7 +1739,10 @@ const WorldRankingWeights = () => {
               select
               value={addForm.isActive}
               onChange={(event) =>
-                setAddForm((prev) => ({ ...prev, isActive: event.target.value }))
+                setAddForm((prev) => ({
+                  ...prev,
+                  isActive: event.target.value,
+                }))
               }
               fullWidth
             >
@@ -1581,7 +1762,11 @@ const WorldRankingWeights = () => {
                 type="number"
                 value={addForm.weight?.[column.field] ?? ""}
                 onChange={(event) =>
-                  handleWeightFieldChange(column.field, event.target.value, "add")
+                  handleWeightFieldChange(
+                    column.field,
+                    event.target.value,
+                    "add",
+                  )
                 }
                 fullWidth
                 size="small"
@@ -1601,9 +1786,14 @@ const WorldRankingWeights = () => {
             </Typography>
 
             {CALCULATION_CONFIG.map((config) => {
-              const labelCol = labelColumns.find((c) => c.field === config.field);
+              const labelCol = labelColumns.find(
+                (c) => c.field === config.field,
+              );
               const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
-              const currentScore = calculateScore(addForm.weight || {}, factors);
+              const currentScore = calculateScore(
+                addForm.weight || {},
+                factors,
+              );
 
               return (
                 <React.Fragment key={config.formula}>
@@ -1626,7 +1816,7 @@ const WorldRankingWeights = () => {
                         handleLabelFieldChange(
                           config.field,
                           event.target.value,
-                          "add"
+                          "add",
                         )
                       }
                       fullWidth
@@ -1650,7 +1840,7 @@ const WorldRankingWeights = () => {
 
             {labelColumns
               .filter(
-                (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field)
+                (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
               )
               .map((column) => (
                 <React.Fragment key={column.field}>
@@ -1663,7 +1853,7 @@ const WorldRankingWeights = () => {
                       handleLabelFieldChange(
                         column.field,
                         event.target.value,
-                        "add"
+                        "add",
                       )
                     }
                     fullWidth

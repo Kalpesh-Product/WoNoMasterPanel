@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chip } from "@mui/material";
@@ -11,18 +11,27 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
+import MuiModal from "../../../components/MuiModal";
 
 const slugify = (str) =>
-  String(str || "")
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "");
+    String(str || "")
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^\w-]+/g, "");
 
 const HostCompanies = () => {
     const navigate = useNavigate();
     const axiosPrivate = useAxiosPrivate();
     const dispatch = useDispatch();
     const { auth } = useAuth();
+    const [selectedCompany, setSelectedCompanyDetail] = useState(null);
+    const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+
+    const handleViewHostCompany = (company) => {
+        setSelectedCompanyDetail(company);
+        setIsViewModalOpen(true);
+    };
 
     const { mutate: toggleCompanyStatus } = useMutation({
         mutationFn: async ({ companyId, status }) => {
@@ -145,10 +154,15 @@ const HostCompanies = () => {
                             navigate(
                                 `/dashboard/host-companies/${slugify(params.data.companyName)}`,
                                 {
-                                state: {
-                                    companyId: params.data.companyId,
-                                    companyName: params.data.companyName,
-                                },
+                                    state: {
+                                        companyId: params.data.companyId,
+                                        companyName: params.data.companyName,
+                                        selectedPlan:
+                                            params.data.selectedPlan ||
+                                            params.data.plan ||
+                                            params.data.subscriptionPlan ||
+                                            "",
+                                    },
                                 },
                             );
                         }}
@@ -218,37 +232,46 @@ const HostCompanies = () => {
                 headerName: "Actions",
                 width: 120,
                 cellRenderer: (params) => (
-                    <ThreeDotMenu
-                        rowId={
-                            params?.data?.companyId ||
-                            params?.data?._id ||
-                            params?.data?.companyName
-                        }
-                        menuItems={[
-                            params?.data?.isRegistered
-                                ? {
-                                    label: "Mark As Inactive",
+                    <div className="flex items-center gap-2">
+                        <div
+                            role="button"
+                            onClick={() => handleViewHostCompany(params.data)}
+                            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+                        >
+                            <MdOutlineRemoveRedEye />
+                        </div>
+                        <ThreeDotMenu
+                            rowId={
+                                params?.data?.companyId ||
+                                params?.data?._id ||
+                                params?.data?.companyName
+                            }
+                            menuItems={[
+                                params?.data?.isRegistered
+                                    ? {
+                                        label: "Mark As Inactive",
+                                        onClick: () =>
+                                            toggleCompanyStatus({
+                                                companyId: params?.data?.companyId,
+                                                status: false,
+                                            }),
+                                    }
+                                    : {
+                                        label: "Mark As Active",
+                                        onClick: () =>
+                                            toggleCompanyStatus({
+                                                companyId: params?.data?.companyId,
+                                                status: true,
+                                            }),
+                                    },
+                                {
+                                    label: "Edit",
                                     onClick: () =>
-                                        toggleCompanyStatus({
-                                            companyId: params?.data?.companyId,
-                                            status: false,
-                                        }),
+                                        navigate(`/dashboard/host-companies/edit/${params?.data?.companyId}`),
                                 }
-                                : {
-                                    label: "Mark As Active",
-                                    onClick: () =>
-                                        toggleCompanyStatus({
-                                            companyId: params?.data?.companyId,
-                                            status: true,
-                                        }),
-                                },
-                            {
-                                label: "Edit",
-                                onClick: () =>
-                                    navigate(`/dashboard/host-companies/edit/${params?.data?.companyId}`),
-                            },
-                        ]}
-                    />
+                            ]}
+                        />
+                    </div>
                 ),
             },
         ],
@@ -282,8 +305,92 @@ const HostCompanies = () => {
                     loading={isLoading}
                 />
             </PageFrame>
+
+            <MuiModal
+                open={isViewModalOpen}
+                onClose={() => {
+                    setIsViewModalOpen(false);
+                    setSelectedCompanyDetail(null);
+                }}
+                title="Host Company Details"
+            >
+                <div className="flex flex-col gap-4">
+                    <h2 className="text-subtitle font-pmedium text-gray-800">
+                        Company Details
+                    </h2>
+                    <DetailRow label="Company Name" value={selectedCompany?.companyName} />
+                    <DetailRow label="Industry" value={selectedCompany?.industry} />
+                    <DetailRow label="Country" value={selectedCompany?.companyCountry} />
+                    <DetailRow label="State" value={selectedCompany?.companyState} />
+                    <DetailRow label="City" value={selectedCompany?.companyCity} />
+
+                    <hr className="border-borderGray my-1" />
+
+                    <h2 className="text-subtitle font-pmedium text-gray-800">
+                        Account Details
+                    </h2>
+                    <div className="grid grid-cols-[120px_16px_1fr] gap-2 items-center text-content">
+                        <span className="font-pmedium text-gray-700">Plan</span>
+                        <span className="text-gray-400">:</span>
+                        <div>
+                            <Chip
+                                label={formatLabel(selectedCompany?.plan || "not assigned")}
+                                size="small"
+                                sx={{
+                                    backgroundColor: "rgba(37, 99, 235, 0.1)",
+                                    color: "#2563EB",
+                                    fontWeight: 600,
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-[120px_16px_1fr] gap-2 items-center text-content">
+                        <span className="font-pmedium text-gray-700">Status</span>
+                        <span className="text-gray-400">:</span>
+                        <div className="flex items-center gap-2">
+                            <Chip
+                                label={formatLabel(selectedCompany?.status || "unknown")}
+                                size="small"
+                                sx={{
+                                    backgroundColor: "rgba(15, 23, 42, 0.08)",
+                                    color: "#0F172A",
+                                    fontWeight: 600,
+                                }}
+                            />
+                            <Chip
+                                label={selectedCompany?.isRegistered ? "Registered" : "Not Registered"}
+                                size="small"
+                                sx={{
+                                    backgroundColor: selectedCompany?.isRegistered ? "#DCFCE7" : "#FEE2E2",
+                                    color: selectedCompany?.isRegistered ? "#166534" : "#991B1B",
+                                    fontWeight: 600,
+                                }}
+                            />
+                        </div>
+                    </div>
+                    <DetailRow label="POC Name" value={selectedCompany?.pocName} />
+                    <DetailRow label="POC Email" value={selectedCompany?.pocEmail} />
+                    <DetailRow label="POC Phone" value={selectedCompany?.pocPhone} />
+                    <DetailRow label="Comment" value={selectedCompany?.comment} />
+                </div>
+            </MuiModal>
         </div>
     );
 };
+
+const formatLabel = (value) =>
+    String(value || "-")
+        .split(/[\s_-]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ");
+
+const DetailRow = ({ label, value }) => (
+    <div className="grid grid-cols-[120px_16px_1fr] gap-2 text-content">
+        <span className="font-pmedium text-gray-700">{label}</span>
+        <span className="text-gray-400">:</span>
+        <span className="text-gray-600 break-words">{value || "-"}</span>
+    </div>
+);
 
 export default HostCompanies;
