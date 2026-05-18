@@ -482,6 +482,41 @@ const requestUpgradePlan = async (req, res, next) => {
   }
 };
 
+const updateUpgradePaymentStatus = async (req, res, next) => {
+  try {
+    const { companyId, paymentStatus } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (typeof paymentStatus !== "boolean") {
+      return res.status(400).json({ message: "paymentStatus must be true or false" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          paymentStatus,
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Payment status updated successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getCompany = async (req, res, next) => {
   try {
     const { companyId } = req.query;
@@ -975,6 +1010,7 @@ module.exports = {
   activateProduct,
   updateServices,
   requestUpgradePlan,
+  updateUpgradePaymentStatus,
   getCompanies,
   getHostLeadCompanies,
   getCompany,

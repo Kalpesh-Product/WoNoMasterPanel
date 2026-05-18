@@ -73,6 +73,10 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    paymentStatus: {
+      type: Boolean,
+      default: false,
+    },
     comment: {
       type: String,
       trim: true,
@@ -98,6 +102,10 @@ const hostLeadCompanySchema = new mongoose.Schema(
     },
     invitedAt: {
       type: Date,
+    },
+    upgradeInviteSentAt: {
+      type: Date,
+      default: null,
     },
   },
   {

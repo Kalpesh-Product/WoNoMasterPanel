@@ -310,6 +310,7 @@ const sendInviteEmail = async (req, res, next) => {
       source,
       goals,
       comment,
+      isUpgradeRequest,
     } = req.body;
 
     const normalizeMultiValue = (value) => {
@@ -375,6 +376,7 @@ const sendInviteEmail = async (req, res, next) => {
           pocEmail: email?.trim()?.toLowerCase() || "",
           pocPhone: mobile?.trim() || "",
           invitedAt: new Date(),
+          ...(isUpgradeRequest ? { upgradeInviteSentAt: new Date() } : {}),
         },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
