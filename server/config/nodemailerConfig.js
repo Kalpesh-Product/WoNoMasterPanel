@@ -10,6 +10,12 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendMail = async ({ to, subject, text, html }) => {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error(
+      "Email service is not configured. Missing EMAIL_USER or EMAIL_PASS.",
+    );
+  }
+
   await transporter.sendMail({
     from: `"WONO" <${process.env.EMAIL_USER}>`,
     to,

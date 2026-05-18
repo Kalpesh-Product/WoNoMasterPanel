@@ -11,6 +11,9 @@ const {
   bulkInsertLogos,
   uploadLogo,
   editCompany,
+  getHostLeadCompanies,
+  requestUpgradePlan,
+  updateUpgradePaymentStatus,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -31,7 +34,10 @@ router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/update-services", updateServices);
+router.patch("/request-upgrade-plan", requestUpgradePlan);
+router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.get("/companies", getCompanies);
+router.get("/host-companies", getHostLeadCompanies);
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);
 

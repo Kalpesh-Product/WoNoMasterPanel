@@ -25,6 +25,7 @@ import TestPage from "../pages/Test/TestPage";
 import TicketLayout from "../pages/Tickets/TicketLayout";
 import DashboardLayout from "../pages/Dashboard/DashboardLayout";
 import FrontendDashboard from "../pages/Dashboard/FrontendDashboard/FrontendDashboard";
+import ModuleAccess from "../pages/Dashboard/FrontendDashboard/ModuleAccess";
 import MeetingLayout from "../pages/Meetings/MeetingLayout";
 import MeetingDashboard from "../pages/Meetings/MeetingDashboard";
 import BookMeetings from "../pages/Meetings/BookMeetings";
@@ -172,6 +173,9 @@ import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
+import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 
 export const routes = createBrowserRouter([
   {
@@ -504,6 +508,31 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  {
+                    path: "host-companies",
+                    children: [
+                      {
+                        index: true,
+                        element: <HostCompanies />,
+                      },
+                      {
+                        path: ":companyId",
+                        element: <HostCompanyOverview />,
+                      },
+                      {
+                        path: ":companyId/upgrade-plan",
+                        element: <UpgradePlan />,
+                      },
+                      {
+                        path: ":companyId/module-access",
+                        element: <ModuleAccess />,
+                      }
+                    ]
+                  },
+                  {
+                    path: "chat",
+                    element: <Chat />,
+                  }
                 ],
               },
 

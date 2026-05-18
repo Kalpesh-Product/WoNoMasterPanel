@@ -141,62 +141,76 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
         },
         {
           id: 4,
+          title: "Host Companies",
+          codeName: "HostCompanies",
+          icon: <FaLaptopCode />,
+          route: "/dashboard/host-companies",
+        },
+        {
+          id: 5,
           title: "Signup Leads",
           codeName: "SignupLeads",
           icon: <VscPersonAdd />,
           route: "/dashboard/signup-leads",
         },
         {
-          id: 5,
+          id: 6,
+          title: "Customer Support",
+          codeName: "Chat",
+          icon: <VscPersonAdd />,
+          route: "/dashboard/chat",
+        },
+        {
+          id: 8,
           title: "Requested Services",
           codeName: "Serv",
           icon: <FaBoxesStacked />,
           route: "/dashboard/requested-services",
         },
         {
-          id: 6,
+          id: 9,
           title: "Inactive Websites",
           codeName: "Inac",
           icon: <FaBoxesStacked />,
           route: "/dashboard/inactive-websites",
         },
         {
-          id: 7,
+          id: 10,
           title: "Data Upload",
           codeName: "Data",
           icon: <FaBoxesStacked />,
           route: "/dashboard/data-upload",
         },
         {
-          id: 8,
+          id: 11,
           title: "Profile",
           codeName: "Prof",
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
         },
         {
-          id: 9,
+          id: 12,
           title: "Logs",
           codeName: "Logs",
           icon: <FaBoxesStacked />,
           route: "/dashboard/logs-layout",
         },
         {
-          id: 10,
+          id: 13,
           title: "Reviews",
           codeName: "Rev",
           icon: <FaBoxesStacked />,
           route: "/dashboard/company-reviews",
         },
         {
-          id: 11,
+          id: 14,
           title: "Blogs and news",
           codeName: "BlogNews",
           icon: <FaBoxesStacked />,
           route: "/dashboard/BlogsAndNews",
         },
         {
-          id: 12,
+          id: 15,
           title: "World Ranking Weights",
           codeName: "WorldRankingWeights",
           icon: <FaChartLine />,
@@ -257,55 +271,49 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
 
   const filteredModules = isRestrictedUser
     ? defaultModules.map((module) => ({
-        ...module,
-        submenus: module.submenus.filter((submenu) =>
-          restrictedVisibleSubmenuTitles.includes(submenu.title),
-        ),
-      }))
+      ...module,
+      submenus: module.submenus.filter((submenu) =>
+        restrictedVisibleSubmenuTitles.includes(submenu.title),
+      ),
+    }))
     : defaultModules;
 
   return (
     <div className={`flex flex-col px-2  bg-gray`}>
       <div
-        className={`${
-          isSidebarOpen ? "w-60" : "w-16"
-        } bg-white  text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
+        className={`${isSidebarOpen ? "w-60" : "w-16"
+          } bg-white  text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
       >
         <div className="flex relative w-full">
           <div className="p-0 flex flex-col gap-2 w-full">
             <div
-              className={`rounded-md  ${
-                expandedModule === 0 ? "bg-gray-200" : "bg-white"
-              }`}
+              className={`rounded-md  ${expandedModule === 0 ? "bg-gray-200" : "bg-white"
+                }`}
             >
               {filteredModules.map((module, index) => (
                 <div key={index} className="">
                   <div
-                    className={`cursor-pointer text-gray-500  flex ${
-                      expandedModule === null && isSidebarOpen
-                        ? "justify-between pr-2"
-                        : expandedModule === 0 && isSidebarOpen
-                          ? "justify-between text-[#1E3D73] pr-2"
-                          : "justify-center pr-0"
-                    } items-center   ${
-                      expandedModule === 0 &&
+                    className={`cursor-pointer text-gray-500  flex ${expandedModule === null && isSidebarOpen
+                      ? "justify-between pr-2"
+                      : expandedModule === 0 && isSidebarOpen
+                        ? "justify-between text-[#1E3D73] pr-2"
+                        : "justify-center pr-0"
+                      } items-center   ${expandedModule === 0 &&
                       "bg-gray-200 rounded-t-md text-black"
-                    }  ${
-                      isActive(module.route)
+                      }  ${isActive(module.route)
                         ? "text-primary border-r-4 transition-all duration-100 rounded-tl-md rounded-bl-md "
                         : ""
-                    }`}
+                      }`}
                     onClick={() => {
                       navigate(module.route);
                     }}
                   >
                     <div className="flex justify-start items-center">
                       <div
-                        className={`flex items-center justify-center text-sm h-9 w-9 ${
-                          expandedModule === 0
-                            ? "bg-primary text-white rounded-md"
-                            : ""
-                        }`}
+                        className={`flex items-center justify-center text-sm h-9 w-9 ${expandedModule === 0
+                          ? "bg-primary text-white rounded-md"
+                          : ""
+                          }`}
                       >
                         {module.icon}
                       </div>
@@ -316,9 +324,8 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                     {isSidebarOpen && module.submenus && (
                       <span
                         onClick={() => module.submenus && toggleModule(index)}
-                        className={`transition-transform duration-300 ease-in-out ${
-                          expandedModule === index ? "rotate-180" : "rotate-0"
-                        }`}
+                        className={`transition-transform duration-300 ease-in-out ${expandedModule === index ? "rotate-180" : "rotate-0"
+                          }`}
                       >
                         {expandedModule === index ? (
                           <FaChevronUp />
@@ -329,33 +336,29 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                     )}
                   </div>
                   <div
-                    className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                      expandedModule === index ? "max-h-[500px]" : "max-h-0"
-                    }`}
+                    className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${expandedModule === index ? "max-h-[500px]" : "max-h-0"
+                      }`}
                   >
                     {module.submenus && (
                       <div>
                         {module.submenus.map((submenu, idx) => (
                           <div
                             key={idx}
-                            className={`cursor-pointer  hover:text-[#1E3D73] transition-all duration-100 ${
-                              isActive(submenu.route)
-                                ? "text-[#1E3D73]"
-                                : "text-gray-500"
-                            }  py-3`}
+                            className={`cursor-pointer  hover:text-[#1E3D73] transition-all duration-100 ${isActive(submenu.route)
+                              ? "text-[#1E3D73]"
+                              : "text-gray-500"
+                              }  py-3`}
                             onClick={() => handleMenuOpen(submenu)}
                           >
                             <div
-                              className={`flex items-center ${
-                                isSidebarOpen
-                                  ? "justify-start"
-                                  : "justify-center"
-                              }`}
+                              className={`flex items-center ${isSidebarOpen
+                                ? "justify-start"
+                                : "justify-center"
+                                }`}
                             >
                               <div
-                                className={`flex justify-center  items-center w-8 ${
-                                  isSidebarOpen ? "text-sm" : "text-sm"
-                                }`}
+                                className={`flex justify-center  items-center w-8 ${isSidebarOpen ? "text-sm" : "text-sm"
+                                  }`}
                               >
                                 {submenu.icon}
                               </div>
