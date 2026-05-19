@@ -64,6 +64,21 @@ const SignupLeads = () => {
     return explicitStatus;
   };
 
+  const normalizePlanValue = (value) => {
+    const normalized = String(value || "basic").trim().toLowerCase();
+
+    if (normalized === "custom") {
+      return "customise";
+    }
+
+    if (["customise", "customized", "customised"].includes(normalized)) {
+      return "customise";
+    }
+
+    if (normalized === "professional") return "professional";
+    return "basic";
+  };
+
   const {
     data: leads = [],
     isPending,
@@ -225,7 +240,10 @@ const SignupLeads = () => {
 
   const handlePlanChange = (hostUserId, plan) => {
     if (!hostUserId || !plan) return;
-    updateLeadMutation.mutate({ hostUserId, goals: plan.toLowerCase() });
+    updateLeadMutation.mutate({
+      hostUserId,
+      goals: normalizePlanValue(plan),
+    });
   };
 
   const handleOpenModal = (lead) => {
@@ -251,11 +269,11 @@ const SignupLeads = () => {
       field: "goals",
       headerName: "Plan",
       cellRenderer: (params) => {
-        const planValue = (params.data.goals || "basic").toLowerCase();
+        const planValue = normalizePlanValue(params.data.goals);
         const planStyles = {
           basic: { bg: "#DBEAFE", color: "#1D4ED8" },
           professional: { bg: "#FEF3C7", color: "#B45309" },
-          custom: { bg: "#FCE7F3", color: "#BE185D" },
+          customise: { bg: "#FCE7F3", color: "#BE185D" },
         };
 
         return (
@@ -278,7 +296,7 @@ const SignupLeads = () => {
                 },
               }}
             >
-              {["basic", "professional", "custom"].map((option) => (
+              {["basic", "professional", "customise"].map((option) => (
                 <MenuItem
                   key={option}
                   value={option}
