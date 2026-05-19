@@ -1,6 +1,7 @@
 const { default: axios } = require("axios");
 const Employee = require("../../models/hostCompany/employees");
 const HostCompany = require("../../models/hostCompany/hostCompany");
+const HostLeadCompany = require("../../models/hostCompany/hostLeadCompany");
 const { Readable } = require("stream");
 const csvParser = require("csv-parser");
 // const { v4: uuidv4 } = require("uuid");
@@ -35,6 +36,8 @@ const serviceOptions = [
 const validApps = new Set(serviceOptions[0].items);
 const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const validateServices = (selectedServices = {}) => {
   const errors = [];
@@ -73,9 +76,30 @@ const validateServices = (selectedServices = {}) => {
   return errors;
 };
 
+const pickFirstNonEmpty = (...values) => {
+  for (const value of values) {
+    if (value === undefined || value === null) continue;
+    const normalized = String(value).trim();
+    if (normalized) return normalized;
+  }
+
+  return "";
+};
+
 const createCompany = async (req, res, next) => {
   try {
     const payload = req.body;
+    const normalizedPocEmail = String(payload?.pocEmail || "")
+      .trim()
+      .toLowerCase();
+    const hostUser = normalizedPocEmail
+      ? await HostUser.findOne({
+          email: {
+            $regex: `^${escapeRegex(normalizedPocEmail)}$`,
+            $options: "i",
+          },
+        }).lean()
+      : null;
 
     const lastCompany = await HostCompany.findOne({
       companyName: payload.companyName,
@@ -122,11 +146,17 @@ const createCompany = async (req, res, next) => {
       companyId,
       companyName: payload.companyName,
       registeredEntityName: payload.registeredEntityName,
-      industry: payload.industry,
+      industry: pickFirstNonEmpty(
+        payload.industry,
+        hostUser?.verticalType?.[0],
+      ),
       companySize: payload.companySize,
-      companyCity: payload.companyCity,
-      companyState: payload.companyState,
-      companyCountry: payload.companyCountry,
+      companyCity: pickFirstNonEmpty(payload.companyCity, hostUser?.city),
+      companyState: pickFirstNonEmpty(payload.companyState, hostUser?.state),
+      companyCountry: pickFirstNonEmpty(
+        payload.companyCountry,
+        hostUser?.country,
+      ),
       companyContinent: payload.companyContinent,
       websiteLink: payload.websiteURL,
       linkedinURL: payload.linkedinURL,
@@ -398,6 +428,90 @@ const getCompanies = async (req, res, next) => {
     }
 
     return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getHostLeadCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostLeadCompany.find().sort({ createdAt: -1 });
+
+    if (!companies || !companies.length) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const requestUpgradePlan = async (req, res, next) => {
+  try {
+    const { companyId, requestedPlan } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (!requestedPlan || !String(requestedPlan).trim()) {
+      return res.status(400).json({ message: "requestedPlan is required" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          requestedPlan: String(requestedPlan).trim().toLowerCase(),
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Requested upgrade plan saved successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateUpgradePaymentStatus = async (req, res, next) => {
+  try {
+    const { companyId, paymentStatus } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (typeof paymentStatus !== "boolean") {
+      return res.status(400).json({ message: "paymentStatus must be true or false" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          paymentStatus,
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Payment status updated successfully",
+      company,
+    });
   } catch (error) {
     next(error);
   }
@@ -895,7 +1009,10 @@ module.exports = {
   editCompany,
   activateProduct,
   updateServices,
+  requestUpgradePlan,
+  updateUpgradePaymentStatus,
   getCompanies,
+  getHostLeadCompanies,
   getCompany,
   bulkInsertCompanies,
   bulkInsertLogos,

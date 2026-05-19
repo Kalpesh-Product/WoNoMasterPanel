@@ -25,6 +25,7 @@ import TestPage from "../pages/Test/TestPage";
 import TicketLayout from "../pages/Tickets/TicketLayout";
 import DashboardLayout from "../pages/Dashboard/DashboardLayout";
 import FrontendDashboard from "../pages/Dashboard/FrontendDashboard/FrontendDashboard";
+import ModuleAccess from "../pages/Dashboard/FrontendDashboard/ModuleAccess";
 import MeetingLayout from "../pages/Meetings/MeetingLayout";
 import MeetingDashboard from "../pages/Meetings/MeetingDashboard";
 import BookMeetings from "../pages/Meetings/BookMeetings";
@@ -145,6 +146,7 @@ import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadLis
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
+import ValueAddsLeads from "../pages/Dashboard/Leads/ValueAddsLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
 import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
@@ -167,11 +169,22 @@ import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
+import {
+  VisaSupportTable,
+  OverallActivationSupportTable,
+  NewCompanySetupTable,
+  ConsultationTable,
+  WorkationTable,
+  BecomeAContributorTable,
+} from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
+import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 
 export const routes = createBrowserRouter([
   {
@@ -221,6 +234,27 @@ export const routes = createBrowserRouter([
                       {
                         path: "job-applications",
                         element: <JobApplicationsTable />,
+                      },
+                    ],
+                  },
+                  {
+                    path: "value-adds-leads",
+                    element: <ValueAddsLeads />,
+                    children: [
+                      { path: "visa-support", element: <VisaSupportTable /> },
+                      {
+                        path: "overall-activation-support",
+                        element: <OverallActivationSupportTable />,
+                      },
+                      {
+                        path: "new-company-setup",
+                        element: <NewCompanySetupTable />,
+                      },
+                      { path: "consultation", element: <ConsultationTable /> },
+                      { path: "workation", element: <WorkationTable /> },
+                      {
+                        path: "become-a-contributor",
+                        element: <BecomeAContributorTable />,
                       },
                     ],
                   },
@@ -503,6 +537,31 @@ export const routes = createBrowserRouter([
                         element: <PocDetails />, // ✅ new page
                       },
                     ],
+                  },
+                  {
+                    path: "host-companies",
+                    children: [
+                      {
+                        index: true,
+                        element: <HostCompanies />,
+                      },
+                      {
+                        path: ":companyId",
+                        element: <HostCompanyOverview />,
+                      },
+                      {
+                        path: ":companyId/upgrade-plan",
+                        element: <UpgradePlan />,
+                      },
+                      {
+                        path: ":companyId/module-access",
+                        element: <ModuleAccess />,
+                      },
+                    ],
+                  },
+                  {
+                    path: "chat",
+                    element: <Chat />,
                   },
                 ],
               },
