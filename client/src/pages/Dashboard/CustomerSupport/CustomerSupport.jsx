@@ -106,6 +106,7 @@ const CustomerSupport = () => {
           item?.ticket?.company?.companyName ||
           "-",
         role: item?.role || "-",
+        workspaceName: item?.workspaceName || item?.ticket?.workspace?.name || "-",
         department: item?.department || item?.ticket?.raisedToDepartment?.name || "-",
         acceptedBy: getFullName(item?.acceptedBy || item?.ticket?.acceptedBy),
         requestedAt: formatDateTime(item?.requestedAt || item?.createdAt),
@@ -213,6 +214,7 @@ const CustomerSupport = () => {
           <DetalisFormatted title="Ticket ID" detail={selectedTicket?.ticketNumber} />
           <DetalisFormatted title="Title" detail={selectedTicket?.title} />
           <DetalisFormatted title="Description" detail={selectedTicket?.description} />
+          <DetalisFormatted title="Workspace" detail={selectedTicket?.workspaceName} />
           <DetalisFormatted title="Company Name" detail={selectedTicket?.companyName} />
           <DetalisFormatted title="Role" detail={selectedTicket?.role} />
           <DetalisFormatted title="Department" detail={selectedTicket?.department} />
