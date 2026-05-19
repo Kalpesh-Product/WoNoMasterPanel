@@ -146,6 +146,7 @@ import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadLis
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
+import ValueAddsLeads from "../pages/Dashboard/Leads/ValueAddsLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
 import InactiveWebsites from "../pages/Dashboard/IncativeWebsites/InactiveWebsites";
@@ -168,6 +169,14 @@ import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
+import {
+  VisaSupportTable,
+  OverallActivationSupportTable,
+  NewCompanySetupTable,
+  ConsultationTable,
+  WorkationTable,
+  BecomeAContributorTable,
+} from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
@@ -226,6 +235,27 @@ export const routes = createBrowserRouter([
                       {
                         path: "job-applications",
                         element: <JobApplicationsTable />,
+                      },
+                    ],
+                  },
+                  {
+                    path: "value-adds-leads",
+                    element: <ValueAddsLeads />,
+                    children: [
+                      { path: "visa-support", element: <VisaSupportTable /> },
+                      {
+                        path: "overall-activation-support",
+                        element: <OverallActivationSupportTable />,
+                      },
+                      {
+                        path: "new-company-setup",
+                        element: <NewCompanySetupTable />,
+                      },
+                      { path: "consultation", element: <ConsultationTable /> },
+                      { path: "workation", element: <WorkationTable /> },
+                      {
+                        path: "become-a-contributor",
+                        element: <BecomeAContributorTable />,
                       },
                     ],
                   },
@@ -527,13 +557,17 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/module-access",
                         element: <ModuleAccess />,
-                      }
-                    ]
+                      },
+                    ],
                   },
                   {
                     path: "customer-support",
                     element: <CustomerSupport />,
-                  }
+                  },
+                  {
+                    path: "chat",
+                    element: <Chat />,
+                  },
                 ],
               },
 
