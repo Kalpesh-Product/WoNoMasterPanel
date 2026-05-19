@@ -317,7 +317,7 @@ const UpgradePlan = () => {
             },
             {
                 field: "inviteStatus",
-                headerName: "Invite Status",
+                headerName: "Upgrade Invite Status",
                 flex: 1,
                 cellRenderer: (params) => {
                     const isInviteSent = Boolean(params.data.upgradeInviteSentAt);
@@ -336,7 +336,7 @@ const UpgradePlan = () => {
             },
             {
                 field: "sendUpgradeRequest",
-                headerName: "Send Upgrade Request",
+                headerName: "Send Upgrade Invite",
                 width: 120,
                 cellRenderer: (params) => {
                     const isInviteSent = Boolean(params.data.upgradeInviteSentAt);
@@ -364,12 +364,24 @@ const UpgradePlan = () => {
         [isSendingUpgradeInvite, sendUpgradeInvite, toggleCompanyStatus, updatePaymentStatus],
     );
 
+    const normalizePlan = (value) =>
+        String(value || "")
+            .trim()
+            .toLowerCase();
+
     const sortedCompanies = useMemo(
         () =>
-            [...companies].sort((a, b) => {
-                if (a.isRegistered === b.isRegistered) return 0;
-                return a.isRegistered ? -1 : 1;
-            }),
+            companies
+                .filter((company) => {
+                    const currentPlan = normalizePlan(company?.plan);
+                    const requestedPlan = normalizePlan(company?.requestedPlan);
+
+                    return Boolean(requestedPlan) && requestedPlan !== currentPlan;
+                })
+                .sort((a, b) => {
+                    if (a.isRegistered === b.isRegistered) return 0;
+                    return a.isRegistered ? -1 : 1;
+                }),
         [companies],
     );
 
@@ -385,7 +397,7 @@ const UpgradePlan = () => {
                     data={sortedCompanies}
                     columns={columns}
                     search
-                    tableTitle="Host Companies"
+                    tableTitle="Upgrade Plan"
                     tableHeight={500}
                     filterExcludeColumns={["logo", "isRegistered"]}
                     loading={isLoading}
