@@ -271,7 +271,7 @@ const SignupLeads = () => {
   const columns = [
     { field: "name", headerName: "Name" },
     { field: "email", headerName: "Email" },
-    { field: "mobile", headerName: "Mobile" },
+    // { field: "mobile", headerName: "Mobile" },
     { field: "companyName", headerName: "Company" },
     {
       field: "goals",

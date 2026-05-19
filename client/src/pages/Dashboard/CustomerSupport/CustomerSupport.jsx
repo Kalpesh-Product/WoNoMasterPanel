@@ -9,6 +9,7 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import DetalisFormatted from "../../../components/DetalisFormatted";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
@@ -30,6 +31,7 @@ const getStatusValue = (item) => item?.status || item?.ticket?.status || "-";
 
 const statusColorMap = {
   Open: { backgroundColor: "#E6E6FA", color: "#4B0082" },
+  Accepted: { backgroundColor: "#DCFCE7", color: "#166534" },
   "In Progress": { backgroundColor: "#ADD8E6", color: "#00008B" },
   Closed: { backgroundColor: "#90EE90", color: "#006400" },
   Pending: { backgroundColor: "#FFECC5", color: "#CC8400" },
@@ -37,14 +39,19 @@ const statusColorMap = {
   Rejected: { backgroundColor: "#E5E7EB", color: "#4B5563" },
 };
 
-const supportStatuses = [
-  "Open",
-  "In Progress",
-  "Pending",
-  "Escalated",
-  "Rejected",
-  "Closed",
-];
+const getAvailableStatusActions = (currentStatus) => {
+  switch (currentStatus) {
+    case "Pending":
+    case "Open":
+      return ["Accepted", "Rejected"];
+    case "Accepted":
+      return ["In Progress", "Rejected"];
+    case "In Progress":
+      return ["Closed", "Rejected"];
+    default:
+      return [];
+  }
+};
 
 const CustomerSupport = () => {
   const axios = useAxiosPrivate();
@@ -122,8 +129,8 @@ const CustomerSupport = () => {
       { field: "ticketNumber", headerName: "Ticket ID", minWidth: 140 },
       { field: "title", headerName: "Title", minWidth: 180 },
       { field: "companyName", headerName: "Company Name", minWidth: 180 },
-      { field: "department", headerName: "Department", minWidth: 160 },
-      { field: "acceptedBy", headerName: "Accepted By", minWidth: 180 },
+      // { field: "department", headerName: "Department", minWidth: 160 },
+      // { field: "acceptedBy", headerName: "Accepted By", minWidth: 180 },
       {
         field: "ticketStatus",
         headerName: "Status",
@@ -148,28 +155,32 @@ const CustomerSupport = () => {
       {
         field: "actions",
         headerName: "Actions",
-        minWidth: 110,
+        minWidth: 120,
         pinned: "right",
         cellRenderer: (params) => (
-          <ThreeDotMenu
-            rowId={params.data.supportTicketId}
-            isLoading={isStatusUpdating}
-            menuItems={[
-              {
-                label: "View",
-                onClick: () => handleView(params.data),
-              },
-              ...supportStatuses.map((status) => ({
-                label: `Status: ${status}`,
-                onClick: () =>
-                  updateStatus({
-                    supportTicketId: params.data.supportTicketId,
-                    status,
-                  }),
-                disabled: params.data.ticketStatus === status,
-              })),
-            ]}
-          />
+          <div className="flex items-center gap-2">
+            <div
+              role="button"
+              onClick={() => handleView(params.data)}
+              className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+            >
+              <MdOutlineRemoveRedEye />
+            </div>
+            <ThreeDotMenu
+              rowId={params.data.supportTicketId}
+              isLoading={isStatusUpdating}
+              menuItems={getAvailableStatusActions(params.data.ticketStatus).map(
+                (status) => ({
+                  label: status,
+                  onClick: () =>
+                    updateStatus({
+                      supportTicketId: params.data.supportTicketId,
+                      status,
+                    }),
+                }),
+              )}
+            />
+          </div>
         ),
       },
     ],

@@ -41,6 +41,11 @@ const supportTicketSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    workspace: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     role: {
       type: String,
       trim: true,
@@ -65,10 +70,9 @@ const supportTicketSchema = new mongoose.Schema(
       trim: true,
       enum: [
         "Open",
+        "Accepted",
         "In Progress",
         "Closed",
-        "Pending",
-        "Escalated",
         "Rejected",
       ],
       default: "Open",
@@ -76,6 +80,11 @@ const supportTicketSchema = new mongoose.Schema(
     image: {
       id: { type: String, default: "" },
       url: { type: String, default: "" },
+    },
+    resolutionMessage: {
+      type: String,
+      trim: true,
+      default: "",
     },
     resolvedBy: {
       type: mongoose.Schema.Types.ObjectId,

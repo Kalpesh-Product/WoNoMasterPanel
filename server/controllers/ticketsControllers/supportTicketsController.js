@@ -141,12 +141,14 @@ const supportTicket = async (req, res, next) => {
       description: description.trim(),
       company: company || null,
       companyName: foundCompany?.companyName || "",
+      workspace: "",
       role: roleTitles,
       department: foundTicket.raisedToDepartment?.name || "",
       acceptedBy: acceptedByUser?._id || null,
       requestedAt: new Date(),
       status: foundTicket.status || "Open",
       image: imageDetails || undefined,
+      resolutionMessage: "",
       resolvedBy: foundTicket.closedBy?._id || null,
       resolvedAt: foundTicket.closedAt || null,
     });
@@ -258,11 +260,13 @@ const createStandaloneSupportTicket = async (req, res, next) => {
       title,
       description,
       companyName,
+      workspace,
       role,
       department,
       acceptedBy,
       requestedAt,
       status,
+      resolutionMessage,
       resolvedBy,
     } = req.body;
     const image = req.file;
@@ -297,10 +301,9 @@ const createStandaloneSupportTicket = async (req, res, next) => {
 
     const allowedStatuses = [
       "Open",
+      "Accepted",
       "In Progress",
       "Closed",
-      "Pending",
-      "Escalated",
       "Rejected",
     ];
     const normalizedStatus =
@@ -330,6 +333,7 @@ const createStandaloneSupportTicket = async (req, res, next) => {
       description: description.trim(),
       company: company || null,
       companyName: String(companyName || foundCompany?.companyName || "").trim(),
+      workspace: String(workspace || "").trim(),
       role: String(role || roleTitles || "").trim(),
       department: String(department || "").trim(),
       acceptedBy:
@@ -339,6 +343,7 @@ const createStandaloneSupportTicket = async (req, res, next) => {
       requestedAt: requestedAt ? new Date(requestedAt) : new Date(),
       status: normalizedStatus,
       image: imageDetails || undefined,
+      resolutionMessage: String(resolutionMessage || "").trim(),
       resolvedBy:
         resolvedBy && mongoose.Types.ObjectId.isValid(resolvedBy)
           ? resolvedBy
@@ -391,10 +396,9 @@ const updateSupportTicketStatus = async (req, res, next) => {
     const { status } = req.body;
     const allowedStatuses = [
       "Open",
+      "Accepted",
       "In Progress",
       "Closed",
-      "Pending",
-      "Escalated",
       "Rejected",
     ];
 
