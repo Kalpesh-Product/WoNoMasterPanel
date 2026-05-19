@@ -21,6 +21,9 @@ const upload = require("../config/multerConfig");
 
 const {
   supportTicket,
+  getSupportTickets,
+  updateSupportTicketStatus,
+  createStandaloneSupportTicket,
 } = require("../controllers/ticketsControllers/supportTicketsController");
 const {
   addTicketIssue,
@@ -40,6 +43,9 @@ router.get("/get-all-tickets", getAllTickets);
 router.get("/get-depts-tickets", getAllDeptTickets);
 router.get("/my-tickets", filterMyTickets);
 router.get("/today", filterTodayTickets);
+router.get("/support-tickets", getSupportTickets);
+router.post("/support-tickets", upload.single("image"), createStandaloneSupportTicket);
+router.patch("/support-tickets/:supportTicketId/status", updateSupportTicketStatus);
 router.get("/:id", getSingleUserTickets);
 router.post("/raise-ticket", upload.single("issue"), raiseTicket);
 router.patch("/update-ticket/", updateOtherTicket);
@@ -48,7 +54,7 @@ router.patch("/reject-ticket/:id", rejectTicket);
 router.patch("/assign-ticket/:ticketId", assignTicket);
 router.patch("/escalate-ticket", escalateTicket);
 router.patch("/close-ticket", closeTicket);
-router.post("/support-ticket", supportTicket);
+router.post("/support-ticket", upload.single("image"), supportTicket);
 router.get("/department-tickets/:departmentId", ticketData);
 router.get("/team-members-tickets/", ticketData);
 router.get("/ticket-filter/:flag/:dept", fetchFilteredTickets);

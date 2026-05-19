@@ -306,6 +306,18 @@ async function filterSupportTickets(user, roles, userDepartments, companyId) {
         path: "user",
         select: "firstName lastName",
       })
+      .populate({
+        path: "requestedBy",
+        select: "firstName lastName email",
+      })
+      .populate({
+        path: "acceptedBy",
+        select: "firstName lastName email",
+      })
+      .populate({
+        path: "resolvedBy",
+        select: "firstName lastName email",
+      })
       .select("-company");
 
     // if (matchedRole === "Master Admin" || matchedRole === "Super Admin") {

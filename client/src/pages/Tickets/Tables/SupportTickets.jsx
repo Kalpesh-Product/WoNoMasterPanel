@@ -81,10 +81,17 @@ const SupportTickets = ({ title, departmentId }) => {
                 ? ticket.ticket.raisedBy.departments.map((dept) => dept.name)
                 : ["N/A"],
 
-            ticketTitle: ticket.reason || "No Title",
-            acceptedBy: `${ticket.ticket?.acceptedBy?.firstName ?? ""} ${
-              ticket.ticket.acceptedBy?.lastName ?? ""
-            }`,
+            ticketTitle: ticket.title || ticket.ticket?.ticket || "No Title",
+            description: ticket.description || "-",
+            acceptedBy: `${
+              ticket.acceptedBy?.firstName ??
+              ticket.ticket?.acceptedBy?.firstName ??
+              ""
+            } ${
+              ticket.acceptedBy?.lastName ??
+              ticket.ticket?.acceptedBy?.lastName ??
+              ""
+            }`.trim(),
             acceptedAt: ticket.ticket.acceptedAt,
             tickets:
               ticket.ticket?.assignees.length > 0
@@ -92,8 +99,23 @@ const SupportTickets = ({ title, departmentId }) => {
                 : ticket.ticket?.acceptedBy
                 ? "Accepted Ticket"
                 : "N/A",
-            raisedDate: ticket.createdAt || "N/A",
-            status: ticket.ticket.status || "Pending",
+            requestedBy:
+              `${
+                ticket.requestedBy?.firstName ??
+                ticket.user?.firstName ??
+                ""
+              } ${
+                ticket.requestedBy?.lastName ??
+                ticket.user?.lastName ??
+                ""
+              }`.trim() || "Unknown",
+            resolvedBy:
+              `${ticket.resolvedBy?.firstName ?? ""} ${
+                ticket.resolvedBy?.lastName ?? ""
+              }`.trim() || "N/A",
+            requestedAt: ticket.requestedAt || ticket.createdAt || "N/A",
+            status: ticket.status || ticket.ticket.status || "Pending",
+            image: ticket.image?.url || ticket.ticket?.image?.url || "",
             raisedToDepartment : ticket.ticket?.raisedToDepartment?.name || "N/A",
           };
 
@@ -253,6 +275,9 @@ const SupportTickets = ({ title, departmentId }) => {
       width: 100,
     },
     { field: "ticketTitle", headerName: "Ticket Title", width : 250},
+    { field: "description", headerName: "Description", width: 250 },
+    { field: "requestedBy", headerName: "Requested By", width: 180 },
+    { field: "resolvedBy", headerName: "Resolved By", width: 180 },
     {
       field: "tickets",
       headerName: "Ticket Type",
@@ -281,6 +306,24 @@ const SupportTickets = ({ title, departmentId }) => {
           </div>
         );
       },
+    },
+    {
+      field: "image",
+      headerName: "Image",
+      width: 110,
+      cellRenderer: (params) =>
+        params.value ? (
+          <a
+            href={params.value}
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-600 underline"
+          >
+            View
+          </a>
+        ) : (
+          "-"
+        ),
     },
     {
       field: "status",

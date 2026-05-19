@@ -43,7 +43,8 @@ const AcceptedTickets = ({ title, departmentId }) => {
     formState: { errors: supportTicketsError },
   } = useForm({
     defaultValues: {
-      reason: "",
+      description: "",
+      image: null,
     },
   });
   const {
@@ -122,7 +123,16 @@ const AcceptedTickets = ({ title, departmentId }) => {
   const { mutate: getSupport, isPending: isGetSupportPending } = useMutation({
     mutationKey: ["get-support"],
     mutationFn: async (data) => {
-      const response = await axios.post(`/api/tickets/support-ticket`, data);
+      const formData = new FormData();
+      formData.append("ticketId", data.ticketId);
+      formData.append("description", data.description);
+      if (data.image) {
+        formData.append("image", data.image);
+      }
+
+      const response = await axios.post(`/api/tickets/support-ticket`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       return response.data;
     },
     onSuccess: function (data) {
@@ -170,7 +180,11 @@ const AcceptedTickets = ({ title, departmentId }) => {
   };
   const onSubmit = (data) => {
     if (!selectedTicketId) return;
-    getSupport({ ticketId: selectedTicketId, reason: data.reason });
+    getSupport({
+      ticketId: selectedTicketId,
+      description: data.description,
+      image: data.image,
+    });
   };
   const onEscalate = (ticketDetails) => {
     if (!ticketDetails) return;
@@ -333,20 +347,31 @@ const AcceptedTickets = ({ title, departmentId }) => {
           className="flex flex-col gap-4"
         >
           <Controller
-            name="reason"
+            name="description"
             control={supportTicketControl}
             rules={{
-              required: "Reason is required",
+              required: "Description is required",
               validate: { noOnlyWhitespace, isAlphanumeric },
             }}
             render={({ field }) => (
               <TextField
                 {...field}
-                label={"Reason"}
+                label={"Description"}
                 multiline
                 rows={5}
-                error={!!supportTicketsError.reason}
-                helperText={supportTicketsError.reason?.message}
+                error={!!supportTicketsError.description}
+                helperText={supportTicketsError.description?.message}
+              />
+            )}
+          />
+          <Controller
+            name="image"
+            control={supportTicketControl}
+            render={({ field: { onChange } }) => (
+              <TextField
+                type="file"
+                inputProps={{ accept: "image/png,image/jpeg,image/webp" }}
+                onChange={(event) => onChange(event.target.files?.[0] || null)}
               />
             )}
           />

@@ -176,6 +176,7 @@ import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRanki
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 export const routes = createBrowserRouter([
   {
@@ -530,8 +531,8 @@ export const routes = createBrowserRouter([
                     ]
                   },
                   {
-                    path: "chat",
-                    element: <Chat />,
+                    path: "customer-support",
+                    element: <CustomerSupport />,
                   }
                 ],
               },
