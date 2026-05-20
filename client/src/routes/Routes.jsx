@@ -547,6 +547,10 @@ export const routes = createBrowserRouter([
                         element: <HostCompanies />,
                       },
                       {
+                        path: "edit/:companyId",
+                        element: <EditCompany />,
+                      },
+                      {
                         path: ":companyId",
                         element: <HostCompanyOverview />,
                       },

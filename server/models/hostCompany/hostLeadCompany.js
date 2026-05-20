@@ -77,6 +77,49 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    paymentLinkUrl: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    paymentLinkSentAt: {
+      type: Date,
+      default: null,
+    },
+    paymentConfirmedAt: {
+      type: Date,
+      default: null,
+    },
+    upgradeSuccessSentAt: {
+      type: Date,
+      default: null,
+    },
+    upgradeStatus: {
+      type: String,
+      trim: true,
+      default: "requested",
+    },
+    trialStartAt: {
+      type: Date,
+      default: null,
+    },
+    trialEndAt: {
+      type: Date,
+      default: null,
+    },
+    isTrialActive: {
+      type: Boolean,
+      default: false,
+    },
+    hasUsedTrial: {
+      type: Boolean,
+      default: false,
+    },
+    subscriptionStatus: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     comment: {
       type: String,
       trim: true,

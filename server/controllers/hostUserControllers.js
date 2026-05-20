@@ -120,6 +120,103 @@ const syncInviteLifecycle = async (hostUser) => {
   return deriveInviteStatus(hostUser);
 };
 
+const getMailButton = (href, label) => `
+  <a
+    href="${href}"
+    style="display: inline-block; padding: 10px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
+  >
+    ${label}
+  </a>
+`;
+
+const buildSignupInviteEmail = ({ name, companyName, inviteLink }) => ({
+  subject: "Your Wono invite",
+  html: `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
+      <p>Hello ${name},</p>
+      <p>Your signup request for ${companyName || "your company"} has been approved.</p>
+      <p>You can now proceed with the next step using the Wono platform.</p>
+      <p>${getMailButton(inviteLink, "Continue Signup")}</p>
+      <p>Regards,<br />Wono</p>
+    </div>
+  `,
+});
+
+const buildUpgradePaymentEmail = ({
+  name,
+  companyName,
+  selectedPlan,
+  paymentLinkUrl,
+}) => ({
+  subject: "Complete your Wono plan upgrade payment",
+  html: `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h2 style="margin-bottom: 16px;">Upgrade payment link</h2>
+      <p>Hello ${name},</p>
+      <p>Your request to upgrade <strong>${companyName || "your company"}</strong> to the <strong>${selectedPlan}</strong> plan is ready for payment.</p>
+      <p>Please complete your payment using the link below. Access will be upgraded after our team confirms the payment.</p>
+      <p>${getMailButton(paymentLinkUrl, "Pay Now")}</p>
+      <p>If you already paid, please wait for confirmation from our team.</p>
+      <p>Regards,<br />Wono</p>
+    </div>
+  `,
+});
+
+const buildUpgradeSuccessEmail = ({ name, companyName, selectedPlan, loginUrl }) => ({
+  subject: "Your Wono plan has been upgraded successfully",
+  html: `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+      <h2 style="margin-bottom: 16px;">Plan upgraded successfully</h2>
+      <p>Hello ${name},</p>
+      <p>Your plan for <strong>${companyName || "your company"}</strong> has been upgraded successfully to <strong>${selectedPlan}</strong>.</p>
+      <p>You can now log in and start using the upgraded access.</p>
+      <p>${getMailButton(loginUrl, "Login")}</p>
+      <p>If you face any issue logging in, please contact our support team.</p>
+      <p>Regards,<br />Wono</p>
+    </div>
+  `,
+});
+
+const DEFAULT_WORKSPACE_ID = "default-workspace";
+
+const normalizeWorkspaceName = (workspaceName = "") => {
+  const normalized = String(workspaceName || "").trim();
+  return normalized || "Main Workspace";
+};
+
+const normalizeWorkspaceId = (workspaceId = "") => {
+  const normalized = String(workspaceId || "").trim();
+  return normalized || DEFAULT_WORKSPACE_ID;
+};
+
+const buildFallbackWorkspace = () => ({
+  workspaceId: DEFAULT_WORKSPACE_ID,
+  workspaceName: "Main Workspace",
+});
+
+const normalizeMemberWorkspaceAccess = (member) => {
+  const workspaceAccess = Array.isArray(member?.workspaceAccess)
+    ? member.workspaceAccess
+    : [];
+
+  if (!workspaceAccess.length) {
+    return [
+      {
+        workspaceId: DEFAULT_WORKSPACE_ID,
+        workspaceName: "Main Workspace",
+        moduleAccess: member?.moduleAccess || {},
+      },
+    ];
+  }
+
+  return workspaceAccess.map((workspace) => ({
+    workspaceId: normalizeWorkspaceId(workspace?.workspaceId),
+    workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
+    moduleAccess: workspace?.moduleAccess || {},
+  }));
+};
+
 const bulkInsertPoc = async (req, res, next) => {
   try {
     const { pocs } = req.body;
@@ -376,7 +473,12 @@ const sendInviteEmail = async (req, res, next) => {
           pocEmail: email?.trim()?.toLowerCase() || "",
           pocPhone: mobile?.trim() || "",
           invitedAt: new Date(),
-          ...(isUpgradeRequest ? { upgradeInviteSentAt: new Date() } : {}),
+          ...(isUpgradeRequest
+            ? {
+                upgradeInviteSentAt: new Date(),
+                upgradeStatus: "payment_link_sent",
+              }
+            : {}),
         },
       },
       { upsert: true, new: true, setDefaultsOnInsert: true },
@@ -405,27 +507,12 @@ const sendInviteEmail = async (req, res, next) => {
 
     const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
     const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
-    await sendMail({
-      to: email,
-      subject: "Your Wono invite",
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-          <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
-          <p>Hello ${name},</p>
-          <p>Your signup request for ${companyName || "your company"} has been approved.</p>
-          <p>You can now proceed with the next step using the Wono platform.</p>
-          <p>
-            <a
-              href="${inviteLink}"
-              style="display: inline-block; padding: 10px 18px; background: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px;"
-            >
-              Continue Signup
-            </a>
-          </p>
-          <p>Regards,<br />Wono</p>
-        </div>
-      `,
+    const signupMail = buildSignupInviteEmail({
+      name,
+      companyName,
+      inviteLink,
     });
+    await sendMail({ to: email, ...signupMail });
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const hostUser = await HostUser.findOne({
@@ -478,4 +565,179 @@ const sendInviteEmail = async (req, res, next) => {
   }
 };
 
-module.exports = { bulkInsertPoc, getInviteStatuses, sendInviteEmail };
+const getCompanyMembers = async (req, res, next) => {
+  try {
+    const companyId = String(req.query.companyId || "").trim();
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    const [company, members] = await Promise.all([
+      HostCompany.findOne({ companyId }).lean(),
+      HostUser.find({ companyId })
+        .select(
+          "name email phone designation companyId isActive workspaceAccess createdAt updatedAt",
+        )
+        .lean(),
+    ]);
+
+    const workspaceMap = new Map();
+
+    const normalizedMembers = (members || []).map((member) => {
+      const normalizedWorkspaces = normalizeMemberWorkspaceAccess(member);
+
+      normalizedWorkspaces.forEach((workspace) => {
+        const workspaceKey = normalizeWorkspaceId(workspace.workspaceId);
+        if (!workspaceMap.has(workspaceKey)) {
+          workspaceMap.set(workspaceKey, {
+            workspaceId: workspaceKey,
+            workspaceName: normalizeWorkspaceName(workspace.workspaceName),
+          });
+        }
+      });
+
+      const activeWorkspace = normalizedWorkspaces[0] || buildFallbackWorkspace();
+
+      return {
+        ...member,
+        workspaceAccess: normalizedWorkspaces,
+        activeWorkspaceId: activeWorkspace.workspaceId,
+        activeWorkspaceName: activeWorkspace.workspaceName,
+        moduleAccess: activeWorkspace.moduleAccess || {},
+      };
+    });
+
+    if (!workspaceMap.size) {
+      workspaceMap.set(DEFAULT_WORKSPACE_ID, buildFallbackWorkspace());
+    }
+
+    return res.status(200).json({
+      data: {
+        company: company || null,
+        members: normalizedMembers,
+        workspaces: Array.from(workspaceMap.values()),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateMemberWorkspaceAccess = async (req, res, next) => {
+  try {
+    const { memberId } = req.params;
+    const { workspaceId, workspaceName, moduleAccess } = req.body || {};
+
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId is required" });
+    }
+
+    if (!workspaceName || typeof moduleAccess !== "object") {
+      return res.status(400).json({
+        message: "workspaceName and moduleAccess are required",
+      });
+    }
+
+    const member = await HostUser.findById(memberId);
+
+    if (!member) {
+      return res.status(404).json({ message: "Host user not found" });
+    }
+
+    const nextWorkspaceId = normalizeWorkspaceId(workspaceId);
+    const nextWorkspaceName = normalizeWorkspaceName(workspaceName);
+    const currentAccess = Array.isArray(member.workspaceAccess)
+      ? member.workspaceAccess.filter(
+          (item) => normalizeWorkspaceId(item?.workspaceId) !== nextWorkspaceId,
+        )
+      : [];
+
+    currentAccess.push({
+      workspaceId: nextWorkspaceId,
+      workspaceName: nextWorkspaceName,
+      moduleAccess,
+    });
+
+    member.workspaceAccess = currentAccess;
+    await member.save();
+
+    return res.status(200).json({
+      message: "Workspace access updated successfully",
+      member,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const sendUpgradePaymentLinkEmail = async (req, res, next) => {
+  try {
+    const { email, name, companyName, selectedPlan, paymentLinkUrl } = req.body || {};
+
+    if (!email || !name || !paymentLinkUrl) {
+      return res.status(400).json({
+        message: "email, name and paymentLinkUrl are required",
+      });
+    }
+
+    const paymentMail = buildUpgradePaymentEmail({
+      name,
+      companyName,
+      selectedPlan: String(selectedPlan || "requested").trim(),
+      paymentLinkUrl: String(paymentLinkUrl).trim(),
+    });
+
+    await sendMail({
+      to: email,
+      ...paymentMail,
+    });
+
+    return res.status(200).json({
+      message: "Upgrade payment email sent successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const sendUpgradeSuccessEmail = async (req, res, next) => {
+  try {
+    const { email, name, companyName, selectedPlan } = req.body || {};
+
+    if (!email || !name) {
+      return res.status(400).json({
+        message: "email and name are required",
+      });
+    }
+
+    const loginUrl = `${resolveHostPanelFrontendUrl()}/login`;
+    const successMail = buildUpgradeSuccessEmail({
+      name,
+      companyName,
+      selectedPlan: String(selectedPlan || "requested").trim(),
+      loginUrl,
+    });
+
+    await sendMail({
+      to: email,
+      ...successMail,
+    });
+
+    return res.status(200).json({
+      message: "Upgrade success email sent successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  bulkInsertPoc,
+  getInviteStatuses,
+  getCompanyMembers,
+  sendInviteEmail,
+  updateMemberWorkspaceAccess,
+  sendUpgradePaymentLinkEmail,
+  sendUpgradeSuccessEmail,
+};

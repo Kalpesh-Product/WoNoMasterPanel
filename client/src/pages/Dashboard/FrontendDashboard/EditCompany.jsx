@@ -50,6 +50,7 @@ const EditCompany = () => {
       pocLanguages: "",
       pocAddress: "",
       pocProfileImage: "",
+      companyLogo: null,
       isActive: true,
     },
   });
@@ -90,7 +91,7 @@ const EditCompany = () => {
       companyState: company.companyState || "",
       companyCountry: company.companyCountry || "",
       companyContinent: company.companyContinent || "",
-      websiteURL: company.websiteURL || "",
+      websiteURL: company.websiteURL || company.websiteLink || "",
       linkedinURL: company.linkedinURL || "",
       selectedApps: (selectedServices.apps || [])
         .map((item) => item?.appName)
@@ -180,7 +181,14 @@ const EditCompany = () => {
       },
     };
 
-    updateCompany(formattedData);
+    const formData = new FormData();
+    formData.append("data", JSON.stringify(formattedData));
+
+    if (data.companyLogo instanceof File) {
+      formData.append("logo", data.companyLogo);
+    }
+
+    updateCompany(formData);
   };
 
   return (

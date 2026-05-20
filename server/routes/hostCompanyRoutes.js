@@ -12,8 +12,10 @@ const {
   uploadLogo,
   editCompany,
   getHostLeadCompanies,
+  sendUpgradePaymentLink,
   requestUpgradePlan,
   updateUpgradePaymentStatus,
+  markUpgradeSuccessEmailSent,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -34,8 +36,10 @@ router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/update-services", updateServices);
+router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
+router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
 router.get("/companies", getCompanies);
 router.get("/host-companies", getHostLeadCompanies);
 router.get("/company", getCompany);
