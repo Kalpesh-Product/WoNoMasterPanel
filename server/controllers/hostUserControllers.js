@@ -3,6 +3,8 @@ const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
+const Workspace = require("../models/hostCompany/Workspace");
+const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
 const { randomUUID } = require("crypto");
 const jwt = require("jsonwebtoken");
@@ -27,6 +29,20 @@ const resolveHostPanelFrontendUrl = () => {
 
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const buildCompanyIdPrefixRegex = (companyId = "") => {
+  const normalized = String(companyId || "").trim();
+  if (!normalized) return null;
+
+  return new RegExp(`^${escapeRegex(normalized)}(?:$|-)`, "i");
+};
+
+const buildExactCaseInsensitiveRegex = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+
+  return new RegExp(`^${escapeRegex(normalized)}$`, "i");
+};
 
 const normalizeInviteStatus = (status) => {
   const normalized = String(status || "")
@@ -195,12 +211,23 @@ const buildFallbackWorkspace = () => ({
   workspaceName: "Main Workspace",
 });
 
-const normalizeMemberWorkspaceAccess = (member) => {
+const flattenGrantedModulesFromTreeState = (treeState = {}) =>
+  Object.entries(treeState || {})
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([key]) => String(key || "").trim())
+    .filter(Boolean);
+
+const normalizeMemberWorkspaceAccess = (member, options = {}) => {
+  const { allowFallback = true } = options;
   const workspaceAccess = Array.isArray(member?.workspaceAccess)
     ? member.workspaceAccess
     : [];
 
   if (!workspaceAccess.length) {
+    if (!allowFallback) {
+      return [];
+    }
+
     return [
       {
         workspaceId: DEFAULT_WORKSPACE_ID,
@@ -568,24 +595,210 @@ const sendInviteEmail = async (req, res, next) => {
 const getCompanyMembers = async (req, res, next) => {
   try {
     const companyId = String(req.query.companyId || "").trim();
+    const requestedCompanyName = String(req.query.companyName || "").trim();
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });
     }
 
-    const [company, members] = await Promise.all([
-      HostCompany.findOne({ companyId }).lean(),
-      HostUser.find({ companyId })
+    const companyIdRegex = buildCompanyIdPrefixRegex(companyId);
+    const fallbackCompany =
+      (await HostCompany.findOne({ companyId }).lean()) ||
+      (await HostLeadCompany.findOne({ companyId }).lean());
+    const scopedCompanyName =
+      requestedCompanyName || String(fallbackCompany?.companyName || "").trim();
+    const companyNameRegex = buildExactCaseInsensitiveRegex(scopedCompanyName);
+
+    const [members, directWorkspaces, nameMatchedWorkspaces] = await Promise.all([
+      HostUser.find({
+        companyId: companyIdRegex
+          ? { $regex: companyIdRegex }
+          : companyId,
+      })
         .select(
           "name email phone designation companyId isActive workspaceAccess createdAt updatedAt",
         )
         .lean(),
+      Workspace.find({
+        companyId: companyIdRegex
+          ? { $regex: companyIdRegex }
+          : companyId,
+        isActive: true,
+      })
+        .select("_id workspaceName companyId")
+        .lean(),
+      companyNameRegex
+        ? Workspace.find({
+            businessName: { $regex: companyNameRegex },
+            isActive: true,
+          })
+            .select("_id workspaceName companyId businessName")
+            .lean()
+        : Promise.resolve([]),
     ]);
 
-    const workspaceMap = new Map();
+    const memberIds = members
+      .map((member) => member?._id)
+      .filter(Boolean);
 
-    const normalizedMembers = (members || []).map((member) => {
-      const normalizedWorkspaces = normalizeMemberWorkspaceAccess(member);
+    const workspaceDocs = [
+      ...directWorkspaces,
+      ...nameMatchedWorkspaces.filter(
+        (workspace) =>
+          !directWorkspaces.some(
+            (directWorkspace) =>
+              String(directWorkspace?._id) === String(workspace?._id),
+          ),
+      ),
+    ];
+
+    const workspaceIds = workspaceDocs
+      .map((workspace) => workspace?._id)
+      .filter(Boolean);
+
+    const memberships = workspaceIds.length
+      ? await WorkspaceMember.find({
+          workspace: { $in: workspaceIds },
+          isActive: true,
+        })
+          .populate("user", "name email phone designation companyId isActive createdAt updatedAt")
+          .lean()
+      : [];
+
+    const membershipWorkspaceIds = memberships
+      .map((membership) => membership?.workspace)
+      .filter(Boolean);
+
+    const membershipWorkspaces = membershipWorkspaceIds.length
+      ? await Workspace.find({
+          _id: { $in: membershipWorkspaceIds },
+          isActive: true,
+        })
+          .select("_id workspaceName companyId businessName")
+          .lean()
+      : [];
+
+    const allWorkspaceDocs = [
+      ...workspaceDocs,
+      ...membershipWorkspaces.filter(
+        (workspace) =>
+          !workspaceDocs.some(
+            (existingWorkspace) =>
+              String(existingWorkspace?._id) === String(workspace?._id),
+          ),
+      ),
+    ];
+
+    const workspaceMap = new Map();
+    const memberMap = new Map();
+    const hasRealWorkspaces = allWorkspaceDocs.length > 0;
+
+    const ensureMemberRecord = (member = {}) => {
+      const key =
+        String(member?._id || "").trim() ||
+        String(member?.email || "").trim().toLowerCase();
+
+      if (!key) return null;
+
+      const existing = memberMap.get(key) || {};
+      const merged = {
+        ...existing,
+        ...member,
+        _id: member?._id || existing?._id,
+        designation: member?.designation || existing?.designation || "",
+        isActive:
+          typeof member?.isActive === "boolean"
+            ? member.isActive
+            : typeof existing?.isActive === "boolean"
+              ? existing.isActive
+              : true,
+        workspaceAccess: normalizeMemberWorkspaceAccess(
+          {
+            ...existing,
+            ...member,
+            workspaceAccess: [
+              ...(Array.isArray(existing?.workspaceAccess)
+                ? existing.workspaceAccess
+                : []),
+              ...(Array.isArray(member?.workspaceAccess)
+                ? member.workspaceAccess
+                : []),
+            ],
+          },
+          { allowFallback: !hasRealWorkspaces },
+        ),
+      };
+
+      memberMap.set(key, merged);
+      return merged;
+    };
+
+    members.forEach((member) => {
+      ensureMemberRecord(member);
+    });
+
+    allWorkspaceDocs.forEach((workspace) => {
+      const workspaceId = normalizeWorkspaceId(workspace?._id?.toString());
+      workspaceMap.set(workspaceId, {
+        workspaceId,
+        workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
+      });
+    });
+
+    memberships.forEach((membership) => {
+      const workspaceDoc = allWorkspaceDocs.find(
+        (workspace) => String(workspace._id) === String(membership?.workspace),
+      );
+      const workspaceId = normalizeWorkspaceId(
+        workspaceDoc?._id?.toString() || membership?.workspace?.toString(),
+      );
+      const workspaceName = normalizeWorkspaceName(workspaceDoc?.workspaceName);
+
+      workspaceMap.set(workspaceId, {
+        workspaceId,
+        workspaceName,
+      });
+
+      const populatedUser = membership?.user || {};
+      const member = ensureMemberRecord({
+        ...populatedUser,
+        designation: populatedUser?.designation || membership?.role || "",
+      });
+
+      if (!member) return;
+
+      const currentAccess = Array.isArray(member.workspaceAccess)
+        ? member.workspaceAccess.filter(
+            (item) => normalizeWorkspaceId(item?.workspaceId) !== workspaceId,
+          )
+        : [];
+
+      const grantedModules = Array.isArray(membership?.grantedModules)
+        ? membership.grantedModules.reduce((acc, item) => {
+            const key = String(item || "").trim();
+            if (key) acc[key] = true;
+            return acc;
+          }, {})
+        : {};
+
+      member.workspaceAccess = normalizeMemberWorkspaceAccess({
+        ...member,
+        workspaceAccess: [
+          ...currentAccess,
+          {
+            workspaceId,
+            workspaceName,
+            moduleAccess:
+              Object.keys(grantedModules).length > 0 ? grantedModules : {},
+          },
+        ],
+      });
+    });
+
+    const normalizedMembers = Array.from(memberMap.values()).map((member) => {
+      const normalizedWorkspaces = normalizeMemberWorkspaceAccess(member, {
+        allowFallback: !hasRealWorkspaces,
+      });
 
       normalizedWorkspaces.forEach((workspace) => {
         const workspaceKey = normalizeWorkspaceId(workspace.workspaceId);
@@ -614,7 +827,7 @@ const getCompanyMembers = async (req, res, next) => {
 
     return res.status(200).json({
       data: {
-        company: company || null,
+        company: fallbackCompany || null,
         members: normalizedMembers,
         workspaces: Array.from(workspaceMap.values()),
       },
@@ -647,6 +860,7 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
 
     const nextWorkspaceId = normalizeWorkspaceId(workspaceId);
     const nextWorkspaceName = normalizeWorkspaceName(workspaceName);
+    const grantedModules = flattenGrantedModulesFromTreeState(moduleAccess);
     const currentAccess = Array.isArray(member.workspaceAccess)
       ? member.workspaceAccess.filter(
           (item) => normalizeWorkspaceId(item?.workspaceId) !== nextWorkspaceId,
@@ -662,9 +876,27 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     member.workspaceAccess = currentAccess;
     await member.save();
 
+    await WorkspaceMember.findOneAndUpdate(
+      {
+        user: member._id,
+        workspace: nextWorkspaceId,
+      },
+      {
+        $set: {
+          grantedModules,
+        },
+      },
+      { new: true },
+    );
+
     return res.status(200).json({
       message: "Workspace access updated successfully",
-      member,
+      data: {
+        member,
+        workspaceId: nextWorkspaceId,
+        workspaceName: nextWorkspaceName,
+        grantedModules,
+      },
     });
   } catch (error) {
     next(error);

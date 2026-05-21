@@ -11,11 +11,14 @@ const HostCompanyOverview = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { companyId, companyName, selectedPlan, requestedPlan } = location?.state || {};
+    const pageTitle = String(companyName || companySlug || "Host Company")
+        .replace(/-/g, " ")
+        .trim();
 
     return (
         <div className="p-6">
             <h1 className="text-title font-pmedium text-primary uppercase mb-6">
-                Host Company Overview
+                {pageTitle} Overview
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

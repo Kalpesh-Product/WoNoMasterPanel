@@ -293,12 +293,17 @@ const normalizeWorkspaceId = (workspaceId = "") =>
 const normalizeWorkspaceName = (workspaceName = "") =>
   String(workspaceName || "").trim() || DEFAULT_WORKSPACE_NAME;
 
-const getMemberWorkspaces = (member) => {
+const getMemberWorkspaces = (member, options = {}) => {
+  const { allowFallback = true } = options;
   const access = Array.isArray(member?.workspaceAccess)
     ? member.workspaceAccess
     : [];
 
   if (!access.length) {
+    if (!allowFallback) {
+      return [];
+    }
+
     return [
       {
         workspaceId: DEFAULT_WORKSPACE_ID,
@@ -315,13 +320,21 @@ const getMemberWorkspaces = (member) => {
   }));
 };
 
-const getWorkspaceAccessForMember = (member, workspaceId) => {
-  const workspaces = getMemberWorkspaces(member);
+const getWorkspaceAccessForMember = (member, workspaceId, options = {}) => {
+  const workspaces = getMemberWorkspaces(member, options);
   const currentWorkspaceId = normalizeWorkspaceId(workspaceId);
   return (
     workspaces.find(
       (workspace) => normalizeWorkspaceId(workspace.workspaceId) === currentWorkspaceId,
     ) || workspaces[0]
+  );
+};
+
+const hasWorkspaceAccessEntry = (member, workspaceId, options = {}) => {
+  const workspaces = getMemberWorkspaces(member, options);
+  const currentWorkspaceId = normalizeWorkspaceId(workspaceId);
+  return workspaces.some(
+    (workspace) => normalizeWorkspaceId(workspace.workspaceId) === currentWorkspaceId,
   );
 };
 
@@ -333,8 +346,10 @@ const TreeNodeCard = ({ node, pathParts, level, treeState, onToggle }) => {
   return (
     <div
       className={`rounded-2xl border ${
-        level === 0 ? "border-slate-200 bg-slate-50/80" : "border-slate-200 bg-white"
-      } p-4 transition-shadow hover:shadow-md`}
+        level === 0
+          ? "border-slate-200 bg-slate-50/80"
+          : "border-slate-100 bg-white"
+      } p-4`}
       style={{ marginLeft: level * 16 }}
     >
       <div className="flex items-start justify-between gap-4">
@@ -523,7 +538,7 @@ const AccessEditorModal = ({
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+                      <div className="flex flex-col gap-4">
                         {section.children.map((module) => (
                           <TreeNodeCard
                             key={module.name}
@@ -559,6 +574,24 @@ const ModuleAccess = () => {
   const { companyId: companySlug } = useParams();
   const location = useLocation();
   const { companyName, selectedPlan } = location.state || {};
+  const resolvedCompanyId = useMemo(() => {
+    const stateCompanyId = String(location.state?.companyId || "").trim();
+    if (stateCompanyId) return stateCompanyId;
+
+    const storedCompanyId = String(sessionStorage.getItem("companyId") || "").trim();
+    if (storedCompanyId) return storedCompanyId;
+
+    return String(companySlug || "").trim();
+  }, [companySlug, location.state]);
+  const resolvedCompanyName = useMemo(() => {
+    const stateCompanyName = String(location.state?.companyName || "").trim();
+    if (stateCompanyName) return stateCompanyName;
+
+    const storedCompanyName = String(sessionStorage.getItem("companyName") || "").trim();
+    if (storedCompanyName) return storedCompanyName;
+
+    return String(companyName || companySlug || "").replace(/-/g, " ").trim();
+  }, [companyName, companySlug, location.state]);
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [employeeSearch, setEmployeeSearch] = useState("");
@@ -583,12 +616,16 @@ const ModuleAccess = () => {
   }, [selectedPlan]);
 
   const { data: companyMemberPayload, isLoading } = useQuery({
-    queryKey: ["host-company-members", companySlug],
+    queryKey: ["host-company-members", resolvedCompanyId],
     queryFn: async () => {
-      const response = await axios.get(`/api/host-user/company-members?companyId=${companySlug}`);
+      const response = await axios.get(
+        `/api/host-user/company-members?companyId=${encodeURIComponent(
+          resolvedCompanyId,
+        )}&companyName=${encodeURIComponent(resolvedCompanyName)}`,
+      );
       return response.data?.data || { company: null, members: [], workspaces: [] };
     },
-    enabled: Boolean(companySlug),
+    enabled: Boolean(resolvedCompanyId),
   });
 
   const company = companyMemberPayload?.company || null;
@@ -646,12 +683,22 @@ const ModuleAccess = () => {
     );
   }, [selectedWorkspaceId, workspaces]);
 
+  const hasRealWorkspaces = useMemo(() => {
+    return workspaces.some(
+      (workspace) =>
+        normalizeWorkspaceId(workspace.workspaceId) !== DEFAULT_WORKSPACE_ID ||
+        normalizeWorkspaceName(workspace.workspaceName) !== DEFAULT_WORKSPACE_NAME,
+    );
+  }, [workspaces]);
+
   const filteredMembers = useMemo(() => {
     const query = employeeSearch.trim().toLowerCase();
     const workspaceId = normalizeWorkspaceId(selectedWorkspace?.workspaceId);
 
     return members.filter((member) => {
-      const memberWorkspaces = getMemberWorkspaces(member);
+      const memberWorkspaces = getMemberWorkspaces(member, {
+        allowFallback: !hasRealWorkspaces,
+      });
       const inWorkspace = memberWorkspaces.some(
         (workspace) => normalizeWorkspaceId(workspace.workspaceId) === workspaceId,
       );
@@ -663,10 +710,19 @@ const ModuleAccess = () => {
 
       return inWorkspace && matchesQuery;
     });
-  }, [employeeSearch, members, selectedWorkspace]);
+  }, [employeeSearch, hasRealWorkspaces, members, selectedWorkspace]);
 
   const openEmployeeAccess = (member) => {
-    const workspaceAccess = getWorkspaceAccessForMember(member, selectedWorkspace?.workspaceId);
+    const workspaceAccess = getWorkspaceAccessForMember(
+      member,
+      selectedWorkspace?.workspaceId,
+      { allowFallback: !hasRealWorkspaces },
+    );
+    const hasSavedWorkspaceAccess = hasWorkspaceAccessEntry(
+      member,
+      selectedWorkspace?.workspaceId,
+      { allowFallback: !hasRealWorkspaces },
+    );
 
     setSelectedEmployee({
       ...member,
@@ -675,7 +731,7 @@ const ModuleAccess = () => {
       moduleAccess: workspaceAccess.moduleAccess || {},
     });
     setTreeState(
-      Object.keys(workspaceAccess.moduleAccess || {}).length
+      hasSavedWorkspaceAccess
         ? workspaceAccess.moduleAccess
         : initializeTreeState(MODULE_SECTIONS),
     );
@@ -699,7 +755,9 @@ const ModuleAccess = () => {
       return response.data;
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["host-company-members", companySlug] });
+      await queryClient.invalidateQueries({
+        queryKey: ["host-company-members", resolvedCompanyId],
+      });
       toast.success("Access saved successfully.");
       setIsModalOpen(false);
       setSelectedEmployee(null);
@@ -799,7 +857,10 @@ const ModuleAccess = () => {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{pageTitle}</p>
                 <p className="text-xs text-slate-500">
-                  {company?.companyCity || company?.companyState || "Company access source"}
+                  {selectedWorkspace?.workspaceName ||
+                    company?.companyCity ||
+                    company?.companyState ||
+                    "Company access source"}
                 </p>
               </div>
             </div>
@@ -845,7 +906,9 @@ const ModuleAccess = () => {
                   </TableRow>
                 ) : filteredMembers.length ? (
                   filteredMembers.map((member) => {
-                    const memberWorkspaces = getMemberWorkspaces(member);
+                    const memberWorkspaces = getMemberWorkspaces(member, {
+                      allowFallback: !hasRealWorkspaces,
+                    });
                     return (
                       <TableRow
                         key={member._id}
