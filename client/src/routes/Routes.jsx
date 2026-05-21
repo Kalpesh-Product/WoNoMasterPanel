@@ -185,6 +185,7 @@ import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRanki
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 export const routes = createBrowserRouter([
   {
@@ -546,6 +547,10 @@ export const routes = createBrowserRouter([
                         element: <HostCompanies />,
                       },
                       {
+                        path: "edit/:companyId",
+                        element: <EditCompany />,
+                      },
+                      {
                         path: ":companyId",
                         element: <HostCompanyOverview />,
                       },
@@ -558,6 +563,10 @@ export const routes = createBrowserRouter([
                         element: <ModuleAccess />,
                       },
                     ],
+                  },
+                  {
+                    path: "customer-support",
+                    element: <CustomerSupport />,
                   },
                   {
                     path: "chat",

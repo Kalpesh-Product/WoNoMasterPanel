@@ -17,6 +17,7 @@ const Company = require("../../models/hr/Company");
 const { createLog } = require("../../utils/moduleLogs");
 const CustomError = require("../../utils/customErrorlogs");
 const Ticket = require("../../models/tickets/Tickets");
+const SupportTicket = require("../../models/tickets/supportTickets");
 const validateUsers = require("../../utils/validateUsers");
 const UserData = require("../../models/hr/UserData");
 const emitter = require("../../utils/eventEmitter");
@@ -1210,6 +1211,17 @@ const closeTicket = async (req, res, next) => {
         logSourceKey
       );
     }
+
+    await SupportTicket.updateMany(
+      { ticket: ticketId },
+      {
+        $set: {
+          status: "Closed",
+          resolvedBy: user,
+          resolvedAt: new Date(),
+        },
+      }
+    );
 
     // Log the successful ticket closure
     await createLog({

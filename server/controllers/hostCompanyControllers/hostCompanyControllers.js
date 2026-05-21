@@ -244,17 +244,24 @@ const editCompany = async (req, res, next) => {
       });
     }
 
-    const company = await HostCompany.findOne({ companyId });
+    const company =
+      (await HostCompany.findOne({ companyId })) ||
+      (await HostLeadCompany.findOne({ companyId }));
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
+
+    const CompanyModel =
+      company.constructor.modelName === "HostLeadCompany"
+        ? HostLeadCompany
+        : HostCompany;
 
     if (
       payload.companyName &&
       payload.companyName.trim().toLowerCase() !==
         company.companyName?.trim().toLowerCase()
     ) {
-      const existingCompany = await HostCompany.findOne({
+      const existingCompany = await CompanyModel.findOne({
         companyName: payload.companyName,
         companyId: { $ne: companyId },
       }).lean();
@@ -324,7 +331,7 @@ const editCompany = async (req, res, next) => {
       }
     });
 
-    const updatedCompany = await HostCompany.findOneAndUpdate(
+    const updatedCompany = await CompanyModel.findOneAndUpdate(
       { companyId },
       { $set: updateData },
       { new: true },
@@ -447,6 +454,44 @@ const getHostLeadCompanies = async (req, res, next) => {
   }
 };
 
+const sendUpgradePaymentLink = async (req, res, next) => {
+  try {
+    const { companyId, paymentLinkUrl } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    if (!String(paymentLinkUrl || "").trim()) {
+      return res.status(400).json({ message: "paymentLinkUrl is required" });
+    }
+
+    const company = await HostLeadCompany.findOne({ companyId: String(companyId).trim() });
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    if (!String(company.requestedPlan || "").trim()) {
+      return res.status(400).json({
+        message: "requestedPlan is required before sending payment link",
+      });
+    }
+
+    company.paymentLinkUrl = String(paymentLinkUrl).trim();
+    company.paymentLinkSentAt = new Date();
+    company.upgradeStatus = "payment_link_sent";
+    await company.save();
+
+    return res.status(200).json({
+      message: "Upgrade payment link saved successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const requestUpgradePlan = async (req, res, next) => {
   try {
     const { companyId, requestedPlan } = req.body || {};
@@ -494,22 +539,71 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
       return res.status(400).json({ message: "paymentStatus must be true or false" });
     }
 
-    const company = await HostLeadCompany.findOneAndUpdate(
-      { companyId: String(companyId).trim() },
-      {
-        $set: {
-          paymentStatus,
-        },
-      },
-      { new: true },
-    );
+    const company = await HostLeadCompany.findOne({
+      companyId: String(companyId).trim(),
+    });
 
     if (!company) {
       return res.status(404).json({ message: "Host lead company not found" });
     }
 
+    company.paymentStatus = paymentStatus;
+
+    if (paymentStatus) {
+      company.paymentConfirmedAt = new Date();
+      company.upgradeStatus = "paid";
+
+      const requestedPlan = String(company.requestedPlan || "")
+        .trim()
+        .toLowerCase();
+      if (requestedPlan) {
+        company.plan = requestedPlan;
+      }
+    } else {
+      company.paymentConfirmedAt = null;
+      company.upgradeSuccessSentAt = null;
+      company.upgradeStatus = company.paymentLinkSentAt
+        ? "payment_link_sent"
+        : "requested";
+    }
+
+    await company.save();
+
     return res.status(200).json({
       message: "Payment status updated successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const markUpgradeSuccessEmailSent = async (req, res, next) => {
+  try {
+    const { companyId } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+
+    const company = await HostLeadCompany.findOne({ companyId: String(companyId).trim() });
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    if (company.paymentStatus !== true) {
+      return res.status(400).json({
+        message: "Payment must be confirmed before sending upgrade success email",
+      });
+    }
+
+    company.upgradeSuccessSentAt = new Date();
+    company.upgradeStatus = "upgraded";
+    await company.save();
+
+    return res.status(200).json({
+      message: "Upgrade success status saved successfully",
       company,
     });
   } catch (error) {
@@ -521,7 +615,9 @@ const getCompany = async (req, res, next) => {
   try {
     const { companyId } = req.query;
 
-    const company = await HostCompany.findOne({ companyId: companyId });
+    const company =
+      (await HostCompany.findOne({ companyId: companyId })) ||
+      (await HostLeadCompany.findOne({ companyId: companyId }));
 
     if (!company) {
       return res.status(200).json({});
@@ -1009,8 +1105,10 @@ module.exports = {
   editCompany,
   activateProduct,
   updateServices,
+  sendUpgradePaymentLink,
   requestUpgradePlan,
   updateUpgradePaymentStatus,
+  markUpgradeSuccessEmailSent,
   getCompanies,
   getHostLeadCompanies,
   getCompany,

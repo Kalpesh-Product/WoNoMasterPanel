@@ -2,18 +2,21 @@ import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { IconButton, MenuItem, TextField } from "@mui/material";
-import { MdOutlineRateReview } from "react-icons/md";
+import { MenuItem, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import { Controller, useForm } from "react-hook-form";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { toast } from "sonner";
 import { Button } from "@mui/material";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import DetalisFormatted from "../../../components/DetalisFormatted";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
   const [openModal, setOpenModal] = useState(false);
+  const [openViewModal, setOpenViewModal] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [sendingInviteLeadId, setSendingInviteLeadId] = useState(null);
   const [inviteStatusOverrides, setInviteStatusOverrides] = useState({});
@@ -62,6 +65,21 @@ const SignupLeads = () => {
     }
 
     return explicitStatus;
+  };
+
+  const normalizePlanValue = (value) => {
+    const normalized = String(value || "basic").trim().toLowerCase();
+
+    if (normalized === "custom") {
+      return "customise";
+    }
+
+    if (["customise", "customized", "customised"].includes(normalized)) {
+      return "customise";
+    }
+
+    if (normalized === "professional") return "professional";
+    return "basic";
   };
 
   const {
@@ -225,13 +243,21 @@ const SignupLeads = () => {
 
   const handlePlanChange = (hostUserId, plan) => {
     if (!hostUserId || !plan) return;
-    updateLeadMutation.mutate({ hostUserId, goals: plan.toLowerCase() });
+    updateLeadMutation.mutate({
+      hostUserId,
+      goals: normalizePlanValue(plan),
+    });
   };
 
   const handleOpenModal = (lead) => {
     setSelectedLead(lead);
     reset({ comment: lead?.comment || "" });
     setOpenModal(true);
+  };
+
+  const handleOpenViewModal = (lead) => {
+    setSelectedLead(lead);
+    setOpenViewModal(true);
   };
 
   const onSubmitComment = (data) => {
@@ -245,17 +271,17 @@ const SignupLeads = () => {
   const columns = [
     { field: "name", headerName: "Name" },
     { field: "email", headerName: "Email" },
-    { field: "mobile", headerName: "Mobile" },
-    { field: "role", headerName: "Role" },
+    // { field: "mobile", headerName: "Mobile" },
+    { field: "companyName", headerName: "Company" },
     {
       field: "goals",
       headerName: "Plan",
       cellRenderer: (params) => {
-        const planValue = (params.data.goals || "basic").toLowerCase();
+        const planValue = normalizePlanValue(params.data.goals);
         const planStyles = {
           basic: { bg: "#DBEAFE", color: "#1D4ED8" },
           professional: { bg: "#FEF3C7", color: "#B45309" },
-          custom: { bg: "#FCE7F3", color: "#BE185D" },
+          customise: { bg: "#FCE7F3", color: "#BE185D" },
         };
 
         return (
@@ -278,7 +304,7 @@ const SignupLeads = () => {
                 },
               }}
             >
-              {["basic", "professional", "custom"].map((option) => (
+              {["basic", "professional", "customise"].map((option) => (
                 <MenuItem
                   key={option}
                   value={option}
@@ -300,13 +326,6 @@ const SignupLeads = () => {
         );
       },
     },
-    { field: "companyName", headerName: "Company" },
-    { field: "verticalType", headerName: "Vertical" },
-    { field: "country", headerName: "Country" },
-    { field: "state", headerName: "State" },
-    { field: "city", headerName: "City" },
-    { field: "source", headerName: "Source" },
-    { field: "formName", headerName: "Form" },
     {
       field: "status",
       headerName: "Leads Status",
@@ -361,25 +380,6 @@ const SignupLeads = () => {
           </div>
         );
       },
-    },
-    {
-      field: "comment",
-      headerName: "Comment",
-      cellRenderer: (params) => (
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          <IconButton onClick={() => handleOpenModal(params.data)}>
-            <MdOutlineRateReview />
-          </IconButton>
-        </div>
-      ),
-    },
-    {
-      field: "createdAt",
-      headerName: "Created At",
-      valueGetter: (params) =>
-        params.data?.createdAt
-          ? new Date(params.data.createdAt).toLocaleString()
-          : "-",
     },
     {
       field: "inviteStatus",
@@ -468,6 +468,32 @@ const SignupLeads = () => {
         );
       },
     },
+    {
+      field: "actions",
+      headerName: "Actions",
+      pinned: "right",
+      minWidth: 120,
+      cellRenderer: (params) => (
+        <div className="flex items-center gap-2">
+          <div
+            role="button"
+            onClick={() => handleOpenViewModal(params.data)}
+            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+          >
+            <MdOutlineRemoveRedEye />
+          </div>
+          <ThreeDotMenu
+            rowId={params.data._id}
+            menuItems={[
+              {
+                label: "Comment",
+                onClick: () => handleOpenModal(params.data),
+              },
+            ]}
+          />
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -513,6 +539,48 @@ const SignupLeads = () => {
             isLoading={updateLeadMutation.isPending}
           />
         </form>
+      </MuiModal>
+
+      <MuiModal
+        open={openViewModal}
+        onClose={() => setOpenViewModal(false)}
+        title="Signup Lead Details"
+      >
+        <div className="flex flex-col gap-3">
+          <DetalisFormatted title="Name" detail={selectedLead?.name} />
+          <DetalisFormatted title="Email" detail={selectedLead?.email} />
+          <DetalisFormatted title="Mobile" detail={selectedLead?.mobile} />
+          <DetalisFormatted title="Role" detail={selectedLead?.role} />
+          <DetalisFormatted title="Company" detail={selectedLead?.companyName} />
+          <DetalisFormatted
+            title="Plan"
+            detail={normalizePlanValue(selectedLead?.goals)}
+            upperCase
+          />
+          <DetalisFormatted
+            title="Vertical"
+            detail={
+              Array.isArray(selectedLead?.verticalType)
+                ? selectedLead.verticalType.join(", ")
+                : selectedLead?.verticalType
+            }
+          />
+          <DetalisFormatted title="Country" detail={selectedLead?.country} />
+          <DetalisFormatted title="State" detail={selectedLead?.state} />
+          <DetalisFormatted title="City" detail={selectedLead?.city} />
+          <DetalisFormatted title="Source" detail={selectedLead?.source} />
+          <DetalisFormatted title="Form" detail={selectedLead?.formName} />
+          <DetalisFormatted title="Status" detail={selectedLead?.status} />
+          <DetalisFormatted title="Comment" detail={selectedLead?.comment} />
+          <DetalisFormatted
+            title="Created At"
+            detail={
+              selectedLead?.createdAt
+                ? new Date(selectedLead.createdAt).toLocaleString()
+                : "-"
+            }
+          />
+        </div>
       </MuiModal>
     </>
   );

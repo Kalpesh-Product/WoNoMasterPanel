@@ -1,5 +1,27 @@
 const mongoose = require("mongoose");
 
+const workspaceAccessSchema = new mongoose.Schema(
+  {
+    workspaceId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    workspaceName: {
+      type: String,
+      trim: true,
+      default: "Main Workspace",
+    },
+    moduleAccess: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
 const hostUserSchema = new mongoose.Schema(
   {
     company: {
@@ -79,6 +101,10 @@ const hostUserSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    workspaceAccess: {
+      type: [workspaceAccessSchema],
+      default: [],
     },
   },
   {

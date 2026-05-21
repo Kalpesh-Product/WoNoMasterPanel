@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const BreadCrumbComponent = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const companyNameFromState = location.state?.companyName;
 
   // Extract query parameters
   const searchParams = new URLSearchParams(location.search);
@@ -26,6 +27,11 @@ const BreadCrumbComponent = () => {
   // Generate breadcrumb links
   const breadcrumbs = pathSegments.map((segment, index) => {
     const isLast = index === pathSegments.length - 1;
+    const isEditCompanyIdSegment =
+      index >= 2 &&
+      pathSegments[index - 1] === "edit" &&
+      ["host-companies", "companies"].includes(pathSegments[index - 2]) &&
+      companyNameFromState;
 
     // Build the navigation path
     const path = pathSegments.slice(0, index + 1).join("/");
@@ -35,10 +41,12 @@ const BreadCrumbComponent = () => {
     const fullPath = isDirectAppPath ? `/${path}` : `/dashboard/${path}`;
 
     // Capitalize for display
-    const displayText = decodeURIComponent(segment)
-      .replace(/-/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase())
-      .replace(/\bPoc\b/g, "POC");
+    const displayText = isEditCompanyIdSegment
+      ? companyNameFromState
+      : decodeURIComponent(segment)
+          .replace(/-/g, " ")
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+          .replace(/\bPoc\b/g, "POC");
 
     return isLast ? (
       <Typography key={index} color="text.primary">

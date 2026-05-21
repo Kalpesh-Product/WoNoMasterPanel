@@ -230,6 +230,56 @@ const HostCompanies = () => {
                 },
             },
             {
+                field: "currentSubscription",
+                headerName: "Current Active Subscription",
+                flex: 1.2,
+                cellRenderer: (params) => {
+                    const label = getCurrentSubscriptionLabel(params.data);
+                    return (
+                        <Chip
+                            label={label}
+                            size="small"
+                            sx={{
+                                backgroundColor: "rgba(37, 99, 235, 0.1)",
+                                color: "#2563EB",
+                                fontWeight: 600,
+                            }}
+                        />
+                    );
+                },
+            },
+            {
+                field: "trialStatus",
+                headerName: "7 Day Trial",
+                flex: 1,
+                cellRenderer: (params) => {
+                    const isTrialActive = params.data.isTrialActive === true;
+                    const hasUsedTrial = params.data.hasUsedTrial === true;
+
+                    let label = "Not Started";
+                    let backgroundColor = "#F3F4F6";
+                    let color = "#4B5563";
+
+                    if (isTrialActive) {
+                        label = "Active";
+                        backgroundColor = "#DBEAFE";
+                        color = "#1D4ED8";
+                    } else if (hasUsedTrial) {
+                        label = "Used";
+                        backgroundColor = "#FEF3C7";
+                        color = "#B45309";
+                    }
+
+                    return (
+                        <Chip
+                            label={label}
+                            style={{ backgroundColor, color }}
+                            size="small"
+                        />
+                    );
+                },
+            },
+            {
                 field: "actions",
                 headerName: "Actions",
                 width: 120,
@@ -269,7 +319,15 @@ const HostCompanies = () => {
                                 {
                                     label: "Edit",
                                     onClick: () =>
-                                        navigate(`/dashboard/host-companies/edit/${params?.data?.companyId}`),
+                                        navigate(
+                                            `/dashboard/host-companies/edit/${params?.data?.companyId}`,
+                                            {
+                                                state: {
+                                                    companyId: params?.data?.companyId,
+                                                    companyName: params?.data?.companyName,
+                                                },
+                                            },
+                                        ),
                                 }
                             ]}
                         />
@@ -373,6 +431,22 @@ const HostCompanies = () => {
                     <DetailRow label="POC Name" value={selectedCompany?.pocName} />
                     <DetailRow label="POC Email" value={selectedCompany?.pocEmail} />
                     <DetailRow label="POC Phone" value={selectedCompany?.pocPhone} />
+                    <DetailRow
+                        label="7 Day Trial"
+                        value={getTrialStatusLabel(selectedCompany)}
+                    />
+                    <DetailRow
+                        label="Trial Start"
+                        value={formatDateTime(selectedCompany?.trialStartAt)}
+                    />
+                    <DetailRow
+                        label="Trial End"
+                        value={formatDateTime(selectedCompany?.trialEndAt)}
+                    />
+                    <DetailRow
+                        label="Subscription Status"
+                        value={formatLabel(selectedCompany?.subscriptionStatus || "-")}
+                    />
                     <DetailRow label="Comment" value={selectedCompany?.comment} />
                 </div>
             </MuiModal>
@@ -394,5 +468,29 @@ const DetailRow = ({ label, value }) => (
         <span className="text-gray-600 break-words">{value || "-"}</span>
     </div>
 );
+
+const getTrialStatusLabel = (company) => {
+    if (company?.isTrialActive) return "Active";
+    if (company?.hasUsedTrial) return "Used";
+    return "Not Started";
+};
+
+const getCurrentSubscriptionLabel = (company) => {
+    if (company?.isTrialActive) return "7 Day Trial";
+    if (String(company?.subscriptionStatus || "").trim()) {
+        return formatLabel(company.subscriptionStatus);
+    }
+    if (String(company?.plan || "").trim()) {
+        return formatLabel(company.plan);
+    }
+    return "Not Assigned";
+};
+
+const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString();
+};
 
 export default HostCompanies;
