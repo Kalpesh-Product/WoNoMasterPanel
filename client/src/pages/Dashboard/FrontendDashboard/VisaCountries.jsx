@@ -16,7 +16,7 @@ const VisaCountries = () => {
     queryKey: ["visaCountriesList"],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        "/api/visa-rules/destinations/countries",
+        "http://localhost:3000/api/visa-rules/destinations/countries",
       );
       return response?.data?.countries || [];
     },
