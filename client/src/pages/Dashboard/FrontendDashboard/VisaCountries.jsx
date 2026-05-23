@@ -1,11 +1,20 @@
 import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Button, TextField } from "@mui/material";
+import { Button, MenuItem, TextField } from "@mui/material";
 import PageFrame from "../../../components/Pages/PageFrame";
 import AgTable from "../../../components/AgTable";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+
+const REQUIREMENT_OPTIONS = [
+  "e-visa",
+  "no admission",
+  "visa free",
+  "visa freee",
+  "visa on arrival",
+  "visa required",
+];
 
 const VisaCountries = () => {
   const axiosPrivate = useAxiosPrivate();
@@ -209,13 +218,25 @@ const VisaCountries = () => {
                 <TextField
                   label="Requirement"
                   size="small"
+                  select
                   value={row.requirement}
                   onChange={(event) =>
                     handleFieldChange(index, "requirement", event.target.value)
                   }
                   disabled={!editMode}
                   fullWidth
-                />
+                >
+                  {Array.from(
+                    new Set([
+                      ...REQUIREMENT_OPTIONS,
+                      ...(row.requirement ? [row.requirement] : []),
+                    ]),
+                  ).map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </div>
             ))}
           </div>
