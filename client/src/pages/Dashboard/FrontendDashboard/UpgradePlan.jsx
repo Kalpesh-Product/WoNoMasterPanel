@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chip } from "@mui/material";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
@@ -16,11 +16,22 @@ const DEFAULT_TEST_PAYMENT_LINK = "https://example.com/test-payment-link";
 
 const UpgradePlan = () => {
   const navigate = useNavigate();
+  const { companyId: companySlug } = useParams();
+  const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
   const [paymentLinks, setPaymentLinks] = useState({});
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const resolvedCompanyId = useMemo(() => {
+    const stateCompanyId = String(location.state?.companyId || "").trim();
+    if (stateCompanyId) return stateCompanyId;
+
+    const storedCompanyId = String(sessionStorage.getItem("companyId") || "").trim();
+    if (storedCompanyId) return storedCompanyId;
+
+    return String(companySlug || "").trim();
+  }, [companySlug, location.state]);
 
   const userEmail = auth?.user?.email;
   const restrictedEmails = [
@@ -412,7 +423,6 @@ const UpgradePlan = () => {
     [
       isSendingPaymentLink,
       isSendingUpgradeSuccess,
-      paymentLinks,
       sendPaymentLink,
       sendUpgradeSuccess,
       updatePaymentStatus,
@@ -427,6 +437,9 @@ const UpgradePlan = () => {
   const sortedCompanies = useMemo(
     () =>
       companies
+        .filter((company) =>
+          String(company?.companyId || "").trim() === resolvedCompanyId,
+        )
         .filter((company) => {
           const currentPlan = normalizePlan(company?.plan);
           const requestedPlan = normalizePlan(company?.requestedPlan);
@@ -439,7 +452,7 @@ const UpgradePlan = () => {
           if (a.paymentStatus === b.paymentStatus) return 0;
           return a.paymentStatus ? -1 : 1;
         }),
-    [companies],
+    [companies, resolvedCompanyId],
   );
 
   if (isLoading) return <div className="p-6">Loading host companies...</div>;

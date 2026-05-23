@@ -185,6 +185,7 @@ import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRanki
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
@@ -567,6 +568,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/module-access",
                         element: <ModuleAccess />,
+                      },
+                      {
+                        path: ":companyId/website-credit-requests",
+                        element: <WebsiteCreditRequests />,
                       },
                     ],
                   },
