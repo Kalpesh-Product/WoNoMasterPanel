@@ -187,6 +187,8 @@ import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompan
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
+import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
+
 export const routes = createBrowserRouter([
   {
     path: "/",
@@ -403,6 +405,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "world-ranking-weights",
                     element: <WorldRankingWeights />,
+                  },
+                  {
+                    path: "visa-countries",
+                    element: <VisaCountries />,
                   },
                   {
                     path: "companies",

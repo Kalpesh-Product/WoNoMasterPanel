@@ -1,42 +1,20 @@
-import React, { useEffect, useState } from "react";
-import {
-  FaAngleDown,
-  FaChevronUp,
-  FaLaptopMedical,
-  FaBoxesStacked,
-} from "react-icons/fa6";
-import {
-  FaRegCalendarAlt,
-  FaTasks,
-  FaChartLine,
-  FaUserShield,
-  FaLaptopCode,
-} from "react-icons/fa";
-import { TbReportSearch } from "react-icons/tb";
-import { IoMdNotifications } from "react-icons/io";
-import { SiAuthelia } from "react-icons/si";
-import { HiOutlineChatAlt2 } from "react-icons/hi";
+import React, { useState } from "react";
+import { FaAngleDown, FaChevronUp, FaBoxesStacked } from "react-icons/fa6";
+import { FaChartLine } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
 import { MdHome } from "react-icons/md";
-import { RiAdminFill } from "react-icons/ri";
-import { TbCashRegister } from "react-icons/tb";
+import { FaLaptopCode } from "react-icons/fa";
 import { FaUserTie } from "react-icons/fa6";
-import { MdMeetingRoom } from "react-icons/md";
-import { GiAutoRepair } from "react-icons/gi";
-import { GrCafeteria } from "react-icons/gr";
-import { TiTicket } from "react-icons/ti";
-import SeperatorUnderline from "./SeperatorUnderline";
 import { VscPersonAdd } from "react-icons/vsc";
 import useAuth from "../hooks/useAuth";
 
-const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
-  const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
-  const [mobileOpen, setMobileOpen] = useState(false);
+const Sidebar = ({ onCloseDrawer }) => {
+  const { isSidebarOpen } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
   const [expandedModule, setExpandedModule] = useState(0);
-  const { auth } = useAuth(); // ✅ uncommented and used
+  const { auth } = useAuth();
 
   const userEmail = auth?.user?.email;
 
@@ -45,7 +23,6 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
     "mehak.wono@gmail.com",
     "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
-    // "vishal.wono@gmail.com",
   ];
 
   const companiesAccessAllowedEmails = [
@@ -55,67 +32,6 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
 
   const worldRankingWeightsAccessAllowedEmails = [
     "shawnsilveira.wono@gmail.com",
-  ];
-
-  const allowedVisitorDeptIds = [
-    "6798bae6e469e809084e24a4",
-    "67b2cf85b9b6ed5cedeb9a2e",
-    "6798ba9de469e809084e2494",
-  ];
-
-  useEffect(() => {
-    setMobileOpen(drawerOpen);
-  }, [drawerOpen]);
-
-  // const userDeptIds = auth?.user?.departments?.map((d) => d._id) || [];
-
-  // const canAccessVisitors = userDeptIds.some((id) =>
-  //   allowedVisitorDeptIds.includes(id)
-  // );
-
-  // Menu items array (without DASHBOARD)
-  const menuItems = [
-    {
-      name: "Tickets",
-      icon: <TiTicket />,
-    },
-    {
-      name: "Meetings",
-      icon: <MdMeetingRoom />,
-    },
-    {
-      name: "Tasks",
-      icon: <FaTasks />,
-    },
-
-    {
-      name: "Performance",
-      icon: <FaTasks />,
-    },
-  ];
-
-  const generalItems = [
-    { name: "Calendar", icon: <FaRegCalendarAlt /> },
-    { name: "Access", icon: <SiAuthelia /> },
-    {
-      name: "Notifications",
-      icon: <IoMdNotifications />,
-    },
-    {
-      name: "Profile",
-      icon: <FaUserTie />,
-    },
-  ];
-  const upcomingItems = [
-    {
-      name: "Reports",
-      icon: <TbReportSearch />,
-    },
-    {
-      name: "Assets",
-      icon: <FaBoxesStacked />,
-    },
-    { name: "Chat", icon: <HiOutlineChatAlt2 /> },
   ];
 
   const defaultModules = [
@@ -128,143 +44,110 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
         {
           id: 2,
           title: "Companies",
-          codeName: "Tec",
           icon: <FaLaptopCode />,
           route: "/dashboard/companies",
         },
         {
           id: 3,
           title: "All Leads",
-          codeName: "Lead",
           icon: <FaUserTie />,
           route: "/dashboard/all-leads",
         },
         {
           id: 4,
           title: "Value Adds Leads",
-          codeName: "ValueAddsLeads",
           icon: <FaUserTie />,
           route: "/dashboard/value-adds-leads",
         },
         {
           id: 5,
           title: "Host Companies",
-          codeName: "HostCompanies",
           icon: <FaLaptopCode />,
           route: "/dashboard/host-companies",
         },
         {
           id: 6,
           title: "Signup Leads",
-          codeName: "SignupLeads",
           icon: <VscPersonAdd />,
           route: "/dashboard/signup-leads",
         },
         {
           id: 7,
           title: "Customer Support",
-          codeName: "Chat",
           icon: <VscPersonAdd />,
           route: "/dashboard/customer-support",
         },
         {
           id: 8,
           title: "Requested Services",
-          codeName: "Serv",
           icon: <FaBoxesStacked />,
           route: "/dashboard/requested-services",
         },
         {
           id: 9,
           title: "Inactive Websites",
-          codeName: "Inac",
           icon: <FaBoxesStacked />,
           route: "/dashboard/inactive-websites",
         },
         {
           id: 10,
           title: "Data Upload",
-          codeName: "Data",
           icon: <FaBoxesStacked />,
           route: "/dashboard/data-upload",
         },
         {
           id: 11,
           title: "Profile",
-          codeName: "Prof",
           icon: <FaBoxesStacked />,
           route: "/dashboard/profile/my-profile",
         },
         {
           id: 12,
           title: "Logs",
-          codeName: "Logs",
           icon: <FaBoxesStacked />,
           route: "/dashboard/logs-layout",
         },
         {
           id: 13,
           title: "Reviews",
-          codeName: "Rev",
           icon: <FaBoxesStacked />,
           route: "/dashboard/company-reviews",
         },
         {
           id: 14,
           title: "Blogs and news",
-          codeName: "BlogNews",
           icon: <FaBoxesStacked />,
           route: "/dashboard/BlogsAndNews",
         },
         {
           id: 15,
           title: "World Ranking Weights",
-          codeName: "WorldRankingWeights",
           icon: <FaChartLine />,
           route: "/dashboard/world-ranking-weights",
+        },
+        {
+          id: 16,
+          title: "Visa Countries",
+          icon: <FaChartLine />,
+          route: "/dashboard/visa-countries",
         },
       ],
     },
   ];
 
-  // const userDepartments = auth.user.departments.map((item) => item.name);
-
-  // First, attempt to filter submenus based on user departments
-  // const filteredModules = defaultModules.map((module) => {
-  //   const filteredSubmenus = module.submenus.filter((submenu) =>
-  //     userDepartments.includes(submenu.codeName)
-  //   );
-
-  //   return {
-  //     ...module,
-  //     submenus: filteredSubmenus,
-  //   };
-  // });
-
-  // Check if all submenus are empty
-  // const hasAnySubmenus = filteredModules.some(
-  //   (module) => module.submenus.length > 0
-  // );
-
-  // If none match, return the original defaultModules
-  // const finalModules = hasAnySubmenus ? filteredModules : defaultModules;
-
   const handleMenuOpen = (item) => {
     navigate(item.route);
-    if (onCloseDrawer) onCloseDrawer(); // 🔁 Close drawer on menu click
+    if (onCloseDrawer) onCloseDrawer();
   };
 
   const toggleModule = (index) => {
     setExpandedModule((prev) => (prev === index ? null : index));
   };
 
-  const isActive = (path) => location.pathname.startsWith(`${path}`);
-  const isAppsActive = (path) => location.pathname.startsWith(`/app/${path}`);
+  const isActive = (path) => location.pathname.startsWith(path);
 
-  // ✅ Filter submenus for restricted users
   const isRestrictedUser = restrictedEmails.includes(userEmail);
   const canAccessCompanies = companiesAccessAllowedEmails.includes(userEmail);
-
   const canAccessWorldRankingWeights =
     worldRankingWeightsAccessAllowedEmails.includes(userEmail);
 
@@ -278,61 +161,59 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
 
   const filteredModules = isRestrictedUser
     ? defaultModules.map((module) => ({
-      ...module,
-      submenus: module.submenus.filter((submenu) =>
-        restrictedVisibleSubmenuTitles.includes(submenu.title),
-      ),
-    }))
+        ...module,
+        submenus: module.submenus.filter((submenu) =>
+          restrictedVisibleSubmenuTitles.includes(submenu.title),
+        ),
+      }))
     : defaultModules;
 
   return (
-    <div className={`flex flex-col px-2  bg-gray`}>
+    <div className="flex flex-col px-2 bg-gray">
       <div
-        className={`${isSidebarOpen ? "w-60" : "w-16"
-          } bg-white  text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
+        className={`${isSidebarOpen ? "w-60" : "w-16"} bg-white text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
       >
         <div className="flex relative w-full">
           <div className="p-0 flex flex-col gap-2 w-full">
             <div
-              className={`rounded-md  ${expandedModule === 0 ? "bg-gray-200" : "bg-white"
-                }`}
+              className={`rounded-md ${expandedModule === 0 ? "bg-gray-200" : "bg-white"}`}
             >
               {filteredModules.map((module, index) => (
-                <div key={index} className="">
+                <div key={module.id}>
                   <div
-                    className={`cursor-pointer text-gray-500  flex ${expandedModule === null && isSidebarOpen
+                    className={`cursor-pointer text-gray-500 flex ${
+                      expandedModule === null && isSidebarOpen
                         ? "justify-between pr-2"
                         : expandedModule === 0 && isSidebarOpen
                           ? "justify-between text-[#1E3D73] pr-2"
                           : "justify-center pr-0"
-                      } items-center   ${expandedModule === 0 &&
-                      "bg-gray-200 rounded-t-md text-black"
-                      }  ${isActive(module.route)
+                    } items-center ${expandedModule === 0 && "bg-gray-200 rounded-t-md text-black"} ${
+                      isActive(module.route)
                         ? "text-primary border-r-4 transition-all duration-100 rounded-tl-md rounded-bl-md "
                         : ""
-                      }`}
-                    onClick={() => {
-                      navigate(module.route);
-                    }}
+                    }`}
+                    onClick={() => navigate(module.route)}
                   >
                     <div className="flex justify-start items-center">
                       <div
-                        className={`flex items-center justify-center text-sm h-9 w-9 ${expandedModule === 0
+                        className={`flex items-center justify-center text-sm h-9 w-9 ${
+                          expandedModule === 0
                             ? "bg-primary text-white rounded-md"
                             : ""
-                          }`}
+                        }`}
                       >
                         {module.icon}
                       </div>
                       {isSidebarOpen && (
-                        <span className="pl-5 text-sm ">{module.title}</span>
+                        <span className="pl-5 text-sm">{module.title}</span>
                       )}
                     </div>
                     {isSidebarOpen && module.submenus && (
                       <span
                         onClick={() => module.submenus && toggleModule(index)}
-                        className={`transition-transform duration-300 ease-in-out ${expandedModule === index ? "rotate-180" : "rotate-0"
-                          }`}
+                        className={`transition-transform duration-300 ease-in-out ${
+                          expandedModule === index ? "rotate-180" : "rotate-0"
+                        }`}
                       >
                         {expandedModule === index ? (
                           <FaChevronUp />
@@ -343,30 +224,26 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                     )}
                   </div>
                   <div
-                    className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${expandedModule === index ? "max-h-[500px]" : "max-h-0"
-                      }`}
+                    className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+                      expandedModule === index ? "max-h-[2000px]" : "max-h-0"
+                    }`}
                   >
                     {module.submenus && (
                       <div>
-                        {module.submenus.map((submenu, idx) => (
+                        {module.submenus.map((submenu) => (
                           <div
-                            key={idx}
-                            className={`cursor-pointer  hover:text-[#1E3D73] transition-all duration-100 ${isActive(submenu.route)
+                            key={submenu.id}
+                            className={`cursor-pointer hover:text-[#1E3D73] transition-all duration-100 ${
+                              isActive(submenu.route)
                                 ? "text-[#1E3D73]"
                                 : "text-gray-500"
-                              }  py-3`}
+                            } py-3`}
                             onClick={() => handleMenuOpen(submenu)}
                           >
                             <div
-                              className={`flex items-center ${isSidebarOpen
-                                  ? "justify-start"
-                                  : "justify-center"
-                                }`}
+                              className={`flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"}`}
                             >
-                              <div
-                                className={`flex justify-center  items-center w-8 ${isSidebarOpen ? "text-sm" : "text-sm"
-                                  }`}
-                              >
+                              <div className="flex justify-center items-center w-8 text-sm">
                                 {submenu.icon}
                               </div>
                               {isSidebarOpen && (
@@ -383,96 +260,6 @@ const Sidebar = ({ drawerOpen, onCloseDrawer }) => {
                 </div>
               ))}
             </div>
-            {/* menuitems */}
-            {/* <div className="pt-2  flex flex-col gap-2 w-full">
-              <SeperatorUnderline title={"Apps"} />
-              {menuItems.map((item, index) => (
-                <div
-                  key={index}
-                  onClick={() => handleMenuOpen(item)}
-                  className={`cursor-pointer hover:text-primary transition-all duration-100 ${
-                    isAppsActive(item.route)
-                      ? "text-primary bg-gray-200 rounded-md"
-                      : "text-gray-500"
-                  } flex ${
-                    isSidebarOpen ? "" : "justify-center"
-                  } items-center py-0 `}
-                >
-                  <div
-                    className={`flex justify-center items-center w-9 h-9 ${
-                      isAppsActive(item.route)
-                        ? "bg-primary text-white rounded-md"
-                        : ""
-                    } text-sm`}
-                  >
-                    {item.icon}
-                  </div>
-                  {isSidebarOpen && (
-                    <span className="pl-5 text-sm">{item.name}</span>
-                  )}
-                </div>
-              ))}
-            </div> */}
-            {/* general */}
-            {/* <div className="pt-2  flex flex-col gap-2 w-full">
-              <SeperatorUnderline title={"General"} />
-              {generalItems.map((item, index) => (
-                <div
-                  key={index}
-                  onClick={() => handleMenuOpen(item)}
-                  className={`cursor-pointer hover:text-primary transition-all duration-100 ${
-                    isAppsActive(item.route)
-                      ? "text-primary bg-gray-200 rounded-md"
-                      : "text-gray-500"
-                  } flex ${
-                    isSidebarOpen ? "" : "justify-center"
-                  } items-center py-0 `}
-                >
-                  <div
-                    className={`flex justify-center items-center w-9 h-9 ${
-                      isAppsActive(item.route)
-                        ? "bg-primary text-white rounded-md"
-                        : ""
-                    } text-sm`}
-                  >
-                    {item.icon}
-                  </div>
-                  {isSidebarOpen && (
-                    <span className="pl-5 text-sm">{item.name}</span>
-                  )}
-                </div>
-              ))}
-            </div> */}
-            {/* coming soon */}
-            {/* <div className="pt-2  flex flex-col gap-2 w-full">
-              <SeperatorUnderline smallText title={"Coming-soon"} />
-              {upcomingItems.map((item, index) => (
-                <div
-                  key={index}
-                  onClick={() => handleMenuOpen(item)}
-                  className={`cursor-pointer hover:text-primary transition-all duration-100 ${
-                    isAppsActive(item.route)
-                      ? "text-primary bg-gray-200 rounded-md"
-                      : "text-gray-500"
-                  } flex ${
-                    isSidebarOpen ? "" : "justify-center"
-                  } items-center py-0 `}
-                >
-                  <div
-                    className={`flex justify-center items-center w-9 h-9 ${
-                      isAppsActive(item.route)
-                        ? "bg-primary text-white rounded-md"
-                        : ""
-                    } text-sm`}
-                  >
-                    {item.icon}
-                  </div>
-                  {isSidebarOpen && (
-                    <span className="pl-5 text-sm">{item.name}</span>
-                  )}
-                </div>
-              ))}
-            </div> */}
           </div>
         </div>
       </div>
