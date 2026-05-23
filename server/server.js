@@ -50,6 +50,7 @@ const adminUserRoutes = require("./routes/adminUserRoutes");
 const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
+const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
 
 const {
   getTemplate,
@@ -127,6 +128,7 @@ app.use("/api/administration", verifyJwt, auditLogger, administrationRoutes);
 app.use("/api/finance", verifyJwt, auditLogger, financeRoutes);
 app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
+app.use("/api/website-credits", websiteCreditsRoutes);
 
 app.all("*", (req, res) => {
   if (req.accepts("html")) {

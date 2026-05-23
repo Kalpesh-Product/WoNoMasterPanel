@@ -1,11 +1,20 @@
 import React from "react";
 import { Breadcrumbs, Typography, Link } from "@mui/material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 const BreadCrumbComponent = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { companyId: routeCompanyId } = useParams();
   const companyNameFromState = location.state?.companyName;
+  const companyIdFromSession = String(sessionStorage.getItem("companyId") || "").trim();
+  const companyNameFromSession =
+    companyIdFromSession && routeCompanyId && companyIdFromSession === routeCompanyId
+      ? sessionStorage.getItem("companyName")
+      : "";
+  const resolvedCompanyName = String(
+    companyNameFromState || companyNameFromSession || "",
+  ).trim();
 
   // Extract query parameters
   const searchParams = new URLSearchParams(location.search);
@@ -32,6 +41,10 @@ const BreadCrumbComponent = () => {
       pathSegments[index - 1] === "edit" &&
       ["host-companies", "companies"].includes(pathSegments[index - 2]) &&
       companyNameFromState;
+    const isCompanyDetailsIdSegment =
+      index >= 1 &&
+      ["host-companies", "companies"].includes(pathSegments[index - 1]) &&
+      resolvedCompanyName;
 
     // Build the navigation path
     const path = pathSegments.slice(0, index + 1).join("/");
@@ -43,6 +56,8 @@ const BreadCrumbComponent = () => {
     // Capitalize for display
     const displayText = isEditCompanyIdSegment
       ? companyNameFromState
+      : isCompanyDetailsIdSegment
+      ? resolvedCompanyName
       : decodeURIComponent(segment)
           .replace(/-/g, " ")
           .replace(/\b\w/g, (char) => char.toUpperCase())
