@@ -14,6 +14,13 @@ import { setSelectedCompany } from "../../../redux/slices/companySlice";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 import MuiModal from "../../../components/MuiModal";
 
+const toCompanySlug = (value = "") =>
+    String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "host-company";
+
 const HostCompanies = () => {
     const navigate = useNavigate();
     const axiosPrivate = useAxiosPrivate();
@@ -144,9 +151,10 @@ const HostCompanies = () => {
                             dispatch(setSelectedCompany(params.data));
                             sessionStorage.setItem("companyId", params.data.companyId);
                             sessionStorage.setItem("companyName", params.data.companyName);
+                            const companySlug = toCompanySlug(params.data.companyName);
 
                             navigate(
-                                `/dashboard/host-companies/${params.data.companyId}`,
+                                `/dashboard/host-companies/${companySlug}`,
                                 {
                                     state: {
                                         companyId: params.data.companyId,

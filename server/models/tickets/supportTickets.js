@@ -61,6 +61,16 @@ const supportTicketSchema = new mongoose.Schema(
       ref: "UserData",
       default: null,
     },
+    acceptedByName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    acceptedByEmail: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     requestedAt: {
       type: Date,
       default: Date.now,
@@ -72,6 +82,7 @@ const supportTicketSchema = new mongoose.Schema(
         "Open",
         "Accepted",
         "In Progress",
+        "Pending",
         "Closed",
         "Rejected",
       ],
@@ -90,6 +101,16 @@ const supportTicketSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "UserData",
       default: null,
+    },
+    resolvedByName: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    resolvedByEmail: {
+      type: String,
+      trim: true,
+      default: "",
     },
     resolvedAt: {
       type: Date,

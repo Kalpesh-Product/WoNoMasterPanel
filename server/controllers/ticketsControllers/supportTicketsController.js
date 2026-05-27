@@ -215,12 +215,22 @@ const getSupportTickets = async (req, res, next) => {
       .populate({
         path: "user",
         model: "UserData",
-        select: "firstName lastName email",
+        select: "firstName lastName name email company",
+        populate: {
+          path: "company",
+          model: "Company",
+          select: "companyName",
+        },
       })
       .populate({
         path: "requestedBy",
         model: "UserData",
-        select: "firstName lastName email",
+        select: "firstName lastName name email company",
+        populate: {
+          path: "company",
+          model: "Company",
+          select: "companyName",
+        },
       })
       .populate({
         path: "acceptedBy",
@@ -241,7 +251,23 @@ const getSupportTickets = async (req, res, next) => {
       .lean()
       .exec();
 
-    return res.status(200).json(supportTickets);
+    const enrichedSupportTickets = supportTickets.map((item) => {
+      const companyName = String(
+        item?.companyName ||
+          item?.company?.companyName ||
+          item?.ticket?.company?.companyName ||
+          item?.requestedBy?.company?.companyName ||
+          item?.user?.company?.companyName ||
+          "",
+      ).trim();
+
+      return {
+        ...item,
+        companyName,
+      };
+    });
+
+    return res.status(200).json(enrichedSupportTickets);
   } catch (error) {
     next(
       new CustomError(error.message, logPath, logAction, logSourceKey, 500)
@@ -303,6 +329,7 @@ const createStandaloneSupportTicket = async (req, res, next) => {
       "Open",
       "Accepted",
       "In Progress",
+      "Pending",
       "Closed",
       "Rejected",
     ];
@@ -420,13 +447,82 @@ const updateSupportTicketStatus = async (req, res, next) => {
       );
     }
 
+    const existingSupportTicket = await SupportTicket.findById(supportTicketId)
+      .select("acceptedBy acceptedByName acceptedByEmail")
+      .lean();
+
+    if (!existingSupportTicket) {
+      throw new CustomError(
+        "Support ticket not found",
+        logPath,
+        logAction,
+        logSourceKey
+      );
+    }
+
     const updates = { status };
-    if (status === "Closed") {
-      updates.resolvedBy = user;
+    const actorName = String(
+      req.userData?.name ||
+        `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
+    )
+      .trim();
+    const actorEmail = String(req.userData?.email || "")
+      .trim()
+      .toLowerCase();
+
+    if (status === "Accepted") {
+      updates.acceptedBy = mongoose.Types.ObjectId.isValid(user) ? user : null;
+      updates.acceptedByName = actorName;
+      updates.acceptedByEmail = actorEmail;
+    }
+
+    if (status === "Pending") {
+      const resolutionMessage = String(req.body?.resolutionMessage || "").trim();
+      if (!resolutionMessage) {
+        throw new CustomError(
+          "Resolution message is required when marking status as Pending",
+          logPath,
+          logAction,
+          logSourceKey
+        );
+      }
+
+      updates.resolutionMessage = resolutionMessage;
+      updates.resolvedBy = mongoose.Types.ObjectId.isValid(user) ? user : null;
+      updates.resolvedByName = actorName;
+      updates.resolvedByEmail = actorEmail;
       updates.resolvedAt = new Date();
-    } else {
-      updates.resolvedBy = null;
-      updates.resolvedAt = null;
+
+      const hasAcceptedBy =
+        Boolean(existingSupportTicket?.acceptedBy) ||
+        Boolean(String(existingSupportTicket?.acceptedByName || "").trim()) ||
+        Boolean(String(existingSupportTicket?.acceptedByEmail || "").trim());
+
+      if (!hasAcceptedBy) {
+        updates.acceptedBy = mongoose.Types.ObjectId.isValid(user) ? user : null;
+        updates.acceptedByName = actorName;
+        updates.acceptedByEmail = actorEmail;
+      }
+    }
+
+    if (status === "Closed") {
+      updates.resolvedBy = mongoose.Types.ObjectId.isValid(user) ? user : null;
+      updates.resolvedByName = actorName;
+      updates.resolvedByEmail = actorEmail;
+      updates.resolvedAt = new Date();
+
+      const hasAcceptedBy =
+        Boolean(existingSupportTicket?.acceptedBy) ||
+        Boolean(String(existingSupportTicket?.acceptedByName || "").trim()) ||
+        Boolean(String(existingSupportTicket?.acceptedByEmail || "").trim());
+
+      // Ensure both Accepted By and Resolved By are filled,
+      // even when same user performs both actions.
+      if (!hasAcceptedBy) {
+        updates.acceptedBy = mongoose.Types.ObjectId.isValid(user) ? user : null;
+        updates.acceptedByName = actorName;
+        updates.acceptedByEmail = actorEmail;
+      }
     }
 
     const updatedSupportTicket = await SupportTicket.findByIdAndUpdate(
@@ -436,12 +532,7 @@ const updateSupportTicketStatus = async (req, res, next) => {
     ).lean();
 
     if (!updatedSupportTicket) {
-      throw new CustomError(
-        "Support ticket not found",
-        logPath,
-        logAction,
-        logSourceKey
-      );
+      throw new CustomError("Support ticket not found", logPath, logAction, logSourceKey);
     }
 
     return res.status(200).json({

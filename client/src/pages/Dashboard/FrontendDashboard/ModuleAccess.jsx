@@ -76,8 +76,25 @@ const MODULE_SECTIONS = [
         ],
       },
       { name: "Website Leads", children: [] },
-      { name: "Organization Management", children: [] },
-      { name: "Access Grants", children: [] },
+      {
+        name: "Organization Management",
+        children: [
+          { name: "User Count", children: [] },
+          { name: "Add User", children: [] },
+          { name: "Departments Tab", children: [] },
+          { name: "Global Count Card", children: [] },
+        ],
+      },
+      {
+        name: "Access Grants",
+        children: [
+          { name: "Transfer Ownership", children: [] },
+          { name: "Access Button", children: [] },
+          { name: "Promote / Demote", children: [] },
+          { name: "Transfer Workspace", children: [] },
+          { name: "Add Workspace Access", children: [] },
+        ],
+      },
       { name: "Workspace Settings", children: [] },
       { name: "Customer Support", children: [] },
     ],
@@ -91,7 +108,10 @@ const MODULE_SECTIONS = [
         children: [
           { name: "Raise Ticket", children: [] },
           { name: "Manage Tickets", children: [] },
+          { name: "Team Members", children: [] },
           { name: "Ticket Reports", children: [] },
+          { name: "Department Wise Tickets", children: [] },
+          { name: "Ticket Settings", children: [] },
         ],
       },
       {
@@ -106,28 +126,68 @@ const MODULE_SECTIONS = [
         name: "Meeting Room System",
         children: [
           { name: "Book Meetings", children: [] },
-          { name: "Manage Meetings", children: [] },
+          {
+            name: "Manage Meetings",
+            children: [
+              { name: "Internal Meetings", children: [] },
+              { name: "External Clients", children: [] },
+            ],
+          },
+          { name: "Meeting Settings", children: [] },
+          { name: "Meeting Calendar", children: [] },
+          { name: "Meeting Reports", children: [] },
           { name: "Meeting Reviews", children: [] },
         ],
       },
+      { name: "Calendar", children: [] },
       {
         name: "Visitor Management",
         children: [
-          { name: "Standard Visitor", children: [] },
-          { name: "Workspace Tour", children: [] },
-          { name: "Walk-In Booking", children: [] },
-          { name: "Verify Booking ID", children: [] },
           { name: "Daily Visitors", children: [] },
           { name: "Bookings", children: [] },
           { name: "Clients", children: [] },
           { name: "Visitor History", children: [] },
+          {
+            name: "New Frontdesk Action",
+            children: [
+              { name: "Standard Visitor", children: [] },
+              { name: "Workspace Tour", children: [] },
+              { name: "Walk-In Booking", children: [] },
+              { name: "Verify Booking ID", children: [] },
+              {
+                name: "Standard Visitor Tabs",
+                children: [
+                  { name: "Standard Visitor Tab", children: [] },
+                  { name: "Department Visitor Tab", children: [] },
+                  { name: "Tenant Company Visitor Tab", children: [] },
+                ],
+              },
+            ],
+          },
         ],
       },
+      { name: "Attendance", children: [] },
       {
         name: "Assets",
         children: [
-          { name: "Asset List", children: [] },
-          { name: "Categories", children: [] },
+          {
+            name: "View Assets",
+            children: [
+              { name: "Assets Categories", children: [] },
+              { name: "Assets Sub Categories", children: [] },
+              { name: "List Of Assets", children: [] },
+            ],
+          },
+          {
+            name: "Manage Assets",
+            children: [
+              { name: "Assign Assets", children: [] },
+              { name: "Assigned Assets", children: [] },
+              { name: "Approvals", children: [] },
+            ],
+          },
+          { name: "Asset Reports", children: [] },
+          { name: "Assets Settings", children: [{ name: "Bulk Upload", children: [] }] },
         ],
       },
       { name: "Inventory", children: [] },
@@ -141,6 +201,30 @@ const MODULE_SECTIONS = [
       },
       { name: "Chat Bot", children: [] },
       { name: "Reports", children: [] },
+      {
+        name: "Tasks",
+        children: [
+          {
+            name: "Department Tasks",
+            children: [
+              { name: "Department Tasks List", children: [] },
+              { name: "Department Task Details", children: [] },
+            ],
+          },
+          { name: "Project List", children: [] },
+          { name: "My Tasks", children: [{ name: "Daily Tasks", children: [] }] },
+          { name: "Task Team Members", children: [] },
+          {
+            name: "Task Reports",
+            children: [
+              { name: "My Task Reports", children: [] },
+              { name: "Assigned Task Reports", children: [] },
+              { name: "Department Task Reports", children: [] },
+            ],
+          },
+          { name: "Task Calendar", children: [] },
+        ],
+      },
     ],
   },
   {
@@ -202,6 +286,185 @@ const DEFAULT_WORKSPACE_NAME = "Main Workspace";
 
 const buildPathKey = (pathParts) => pathParts.join("::");
 
+const toArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  return Object.values(value);
+};
+
+const parseWorkspaceModules = (rawModules) => {
+  if (Array.isArray(rawModules)) return rawModules;
+  if (rawModules && typeof rawModules === "object") return rawModules;
+  if (typeof rawModules !== "string") return [];
+  try {
+    const parsed = JSON.parse(rawModules);
+    return parsed || [];
+  } catch {
+    return [];
+  }
+};
+
+const normalizeModulesTree = (nodes = []) => {
+  const nodeList = toArray(nodes);
+  return nodeList
+    .map((node) => {
+      const categoryName = String(node?.category || "").trim();
+      if (categoryName) {
+        const categoryChildren = normalizeModulesTree(node?.items || []);
+        return {
+          name: categoryName,
+          accent: node?.accent,
+          children: categoryChildren,
+        };
+      }
+
+      const name = String(
+        node?.name || node?.title || node?.dropdownTitle || node?.label || node?.moduleName || "",
+      ).trim();
+      if (!name) return null;
+
+      const nested =
+        node?.children ||
+        node?.items ||
+        node?.modules ||
+        node?.submodules ||
+        node?.tabs ||
+        [];
+
+      const children = normalizeModulesTree(nested);
+      return {
+        name,
+        moduleId: String(node?.id || node?.moduleId || "").trim(),
+        accent: node?.accent,
+        children,
+      };
+    })
+    .filter(Boolean);
+};
+
+const flattenSectionModules = (sections = []) =>
+  (Array.isArray(sections) ? sections : []).flatMap((section) => {
+    const sectionName = String(section?.name || "").trim();
+    const modules = Array.isArray(section?.children) ? section.children : [];
+    if (!sectionName) return modules;
+
+    return modules.map((module) => {
+      if (!module?.children?.length) return { ...module, sectionName };
+      return {
+        ...module,
+        sectionName,
+        children: module.children.map((child) => ({
+          ...child,
+          sectionName,
+        })),
+      };
+    });
+  });
+
+const buildMainDropdownGroups = (sections = []) => {
+  const safeSections = Array.isArray(sections) ? sections : [];
+  const withSectionContext = safeSections.map((section) => ({
+    ...section,
+    children: (Array.isArray(section?.children) ? section.children : []).map((child) => ({
+      ...child,
+      sectionName: String(section?.name || "").trim(),
+    })),
+  }));
+
+  if (withSectionContext.length <= 5) return withSectionContext;
+
+  const primary = withSectionContext.slice(0, 4);
+  const remaining = withSectionContext.slice(4);
+  const mergedChildren = remaining.flatMap((section) =>
+    Array.isArray(section?.children) ? section.children : [],
+  );
+
+  return [
+    ...primary,
+    {
+      name: "MORE MODULES",
+      accent: "from-slate-500 via-slate-600 to-slate-700",
+      children: mergedChildren,
+    },
+  ];
+};
+
+const collectEnabledModuleIds = (nodes = [], treeState = {}, path = [], enabled = new Set()) => {
+  nodes.forEach((node) => {
+    const currentPath = [...path, node.name];
+    const key = buildPathKey(currentPath);
+    const moduleId = String(node?.moduleId || "").trim();
+    if (moduleId && treeState[key]) {
+      enabled.add(moduleId);
+    }
+    if (Array.isArray(node?.children) && node.children.length) {
+      collectEnabledModuleIds(node.children, treeState, currentPath, enabled);
+    }
+  });
+  return enabled;
+};
+
+const DEPARTMENT_ID_GROUPS = {
+  "HR Department": new Set([
+    "employee-management",
+    "documents",
+    "recruitment",
+    "leave-processing",
+    "attendance-review",
+    "payroll",
+    "exit-management",
+  ]),
+  "Administration Department": new Set([
+    "tenant-companies",
+    "bookings",
+    "visitors-management",
+    "resource-management",
+    "housekeeping",
+    "workspace-layout",
+  ]),
+  "Sales Department": new Set([
+    "leads-management",
+    "pricing-packages",
+    "sales-architecture",
+  ]),
+  "Finance Department": new Set([
+    "expenses-budget",
+    "billing-payments",
+    "accounting",
+  ]),
+  "Tech Department": new Set(["website-builder"]),
+  "IT Department": new Set(["system-access-management", "repair-logs"]),
+  "Maintenance Department": new Set(["amc-scheduler", "maintenance-repair-logs"]),
+};
+
+const groupDepartmentModules = (modules = []) => {
+  const buckets = Object.keys(DEPARTMENT_ID_GROUPS).reduce((acc, dept) => {
+    acc[dept] = [];
+    return acc;
+  }, {});
+  const others = [];
+
+  modules.forEach((module) => {
+    const moduleId = String(module?.moduleId || "").trim().toLowerCase();
+    let assigned = false;
+    Object.entries(DEPARTMENT_ID_GROUPS).forEach(([dept, idSet]) => {
+      if (assigned) return;
+      if (moduleId && idSet.has(moduleId)) {
+        buckets[dept].push(module);
+        assigned = true;
+      }
+    });
+    if (!assigned) others.push(module);
+  });
+
+  const grouped = Object.entries(buckets)
+    .map(([dept, items]) => ({ name: dept, items }))
+    .filter((entry) => entry.items.length);
+
+  if (others.length) grouped.push({ name: "Other Department Access", items: others });
+  return grouped;
+};
+
 const initializeTreeState = (nodes, pathParts = [], state = {}) => {
   nodes.forEach((node) => {
     const nextPath = [...pathParts, node.name];
@@ -212,6 +475,175 @@ const initializeTreeState = (nodes, pathParts = [], state = {}) => {
   });
 
   return state;
+};
+
+const initializeDisabledTreeState = (nodes, pathParts = [], state = {}) => {
+  nodes.forEach((node) => {
+    const nextPath = [...pathParts, node.name];
+    state[buildPathKey(nextPath)] = false;
+    if (node.children?.length) {
+      initializeDisabledTreeState(node.children, nextPath, state);
+    }
+  });
+  return state;
+};
+
+const enableBranch = (state, branchPath) => {
+  const branchKey = buildPathKey(branchPath);
+  Object.keys(state).forEach((key) => {
+    if (key === branchKey || key.startsWith(`${branchKey}::`)) {
+      state[key] = true;
+    }
+  });
+};
+
+const withEnabledBranches = (branches = []) => {
+  const state = initializeDisabledTreeState(MODULE_SECTIONS);
+  branches.forEach((branch) => enableBranch(state, branch));
+  return state;
+};
+
+const buildStateFromEnabledKeys = (nodes = [], enabledKeys = []) => {
+  const baseState = initializeDisabledTreeState(nodes);
+  const keys = Array.isArray(enabledKeys) ? enabledKeys : [];
+
+  const enablePathWithAncestors = (pathKey) => {
+    const parts = String(pathKey || "").split("::").filter(Boolean);
+    for (let i = 1; i <= parts.length; i += 1) {
+      const ancestorKey = parts.slice(0, i).join("::");
+      if (Object.prototype.hasOwnProperty.call(baseState, ancestorKey)) {
+        baseState[ancestorKey] = true;
+      }
+    }
+    Object.keys(baseState).forEach((candidate) => {
+      if (candidate === pathKey || candidate.startsWith(`${pathKey}::`)) {
+        baseState[candidate] = true;
+      }
+    });
+  };
+
+  const idPathMap = new Map();
+  const collectIdPaths = (treeNodes = [], path = []) => {
+    treeNodes.forEach((node) => {
+      const currentPath = [...path, node.name];
+      const moduleId = String(node?.moduleId || "").trim();
+      if (moduleId) {
+        idPathMap.set(moduleId, buildPathKey(currentPath));
+      }
+      if (Array.isArray(node?.children) && node.children.length) {
+        collectIdPaths(node.children, currentPath);
+      }
+    });
+  };
+  collectIdPaths(nodes);
+
+  keys.forEach((rawKey) => {
+    const raw = String(rawKey || "").trim();
+    if (!raw) return;
+
+    const pathKey = idPathMap.get(raw) || raw;
+    enablePathWithAncestors(pathKey);
+  });
+  return baseState;
+};
+
+const resolvePlanKey = (rawPlan) => {
+  const value = String(rawPlan || "").trim().toLowerCase();
+  if (!value) return "basic";
+  if (value.includes("custom")) return "customize";
+  if (value.includes("pro")) return "professional";
+  return "basic";
+};
+
+const buildPlanState = (rawPlan) => {
+  const basic = [
+    ["COMPANY SETTINGS", "Website Builder", "Static Website"],
+    ["COMPANY SETTINGS", "Wono Nomad"],
+    ["COMPANY SETTINGS", "Website Leads"],
+    ["COMPANY SETTINGS", "Organization Management", "User Count"],
+    ["COMPANY SETTINGS", "Organization Management", "Add User"],
+    ["COMPANY SETTINGS", "Access Grants", "Transfer Ownership"],
+    ["COMPANY SETTINGS", "Access Grants", "Access Button"],
+    ["COMPANY SETTINGS", "Customer Support"],
+    ["KEY APPS", "Visitor Management", "Daily Visitors"],
+    ["KEY APPS", "Visitor Management", "Visitor History"],
+    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor"],
+    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Standard Visitor Tab"],
+  ];
+  const professional = [
+    ["COMPANY SETTINGS", "Workspace Settings"],
+    ["COMPANY SETTINGS", "Organization Management", "Departments Tab"],
+    ["COMPANY SETTINGS", "Organization Management", "Global Count Card"],
+    ["COMPANY SETTINGS", "Access Grants", "Promote / Demote"],
+    ["COMPANY SETTINGS", "Access Grants", "Transfer Workspace"],
+    ["COMPANY SETTINGS", "Access Grants", "Add Workspace Access"],
+    ["COMPANY SETTINGS", "Website Builder", "Dynamic Website"],
+    ["KEY APPS", "Meeting Room System"],
+    ["KEY APPS", "Tickets"],
+    ["KEY APPS", "Calendar"],
+    ["KEY APPS", "Visitor Management"],
+    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Department Visitor Tab"],
+    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Tenant Company Visitor Tab"],
+    ["DEPARTMENT ACCESSES", "Sales Department"],
+  ];
+  const customize = [
+    ["COMPANY SETTINGS", "Analytics"],
+    ["KEY APPS", "Attendance"],
+    ["KEY APPS", "Tasks"],
+    ["KEY APPS", "Leave Requests"],
+    ["KEY APPS", "Assets"],
+    ["KEY APPS", "Inventory"],
+    ["KEY APPS", "Finance Management"],
+    ["KEY APPS", "Reports"],
+    ["DEPARTMENT ACCESSES"],
+  ];
+
+  const planKey = resolvePlanKey(rawPlan);
+  if (planKey === "basic") return withEnabledBranches(basic);
+  if (planKey === "professional") return withEnabledBranches([...basic, ...professional]);
+  return withEnabledBranches([...basic, ...professional, ...customize]);
+};
+
+const buildRoleStateFromWorkspace = ({
+  moduleSections = [],
+  enabledModuleIds = [],
+  designation = "",
+}) => {
+  const role = String(designation || "").trim().toLowerCase();
+  const planState = buildStateFromEnabledKeys(moduleSections, enabledModuleIds);
+  if (role.includes("founder")) {
+    return planState;
+  }
+
+  const commonOnly = initializeDisabledTreeState(moduleSections);
+  const applyCommonBranch = (nodes = [], path = []) => {
+    nodes.forEach((node) => {
+      const currentPath = [...path, node.name];
+      const key = buildPathKey(currentPath);
+      const topCategory = String(currentPath[0] || "").toLowerCase();
+      const inCommonCategory = topCategory.includes("common");
+
+      if (inCommonCategory && planState[key]) {
+        commonOnly[key] = true;
+      }
+      if (Array.isArray(node?.children) && node.children.length) {
+        applyCommonBranch(node.children, currentPath);
+      }
+    });
+  };
+
+  applyCommonBranch(moduleSections);
+  return commonOnly;
+};
+
+const clampStateToPlan = (state = {}, planState = {}) => {
+  const next = { ...state };
+  Object.keys(next).forEach((key) => {
+    if (!planState[key]) {
+      next[key] = false;
+    }
+  });
+  return next;
 };
 
 const findNodeByPath = (nodes, pathParts, depth = 0) => {
@@ -338,18 +770,19 @@ const hasWorkspaceAccessEntry = (member, workspaceId, options = {}) => {
   );
 };
 
-const TreeNodeCard = ({ node, pathParts, level, treeState, onToggle }) => {
+const TreeNodeCard = ({ node, pathParts, level, treeState, onToggle, isPathLocked }) => {
   const key = buildPathKey(pathParts);
   const isEnabled = Boolean(treeState[key]);
+  const isLocked = isPathLocked(pathParts);
   const hasChildren = (node.children || []).length > 0;
 
   return (
     <div
-      className={`rounded-2xl border ${
+      className={`rounded-xl border ${
         level === 0
-          ? "border-slate-200 bg-slate-50/80"
+          ? "border-slate-200 bg-slate-50/70"
           : "border-slate-100 bg-white"
-      } p-4`}
+      } p-3.5`}
       style={{ marginLeft: level * 16 }}
     >
       <div className="flex items-start justify-between gap-4">
@@ -357,21 +790,22 @@ const TreeNodeCard = ({ node, pathParts, level, treeState, onToggle }) => {
           <div className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-slate-500 shadow-sm">
             {getNodeKind(level)}
           </div>
-          <h3 className="mt-3 text-base font-pmedium text-slate-900">{node.name}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {hasChildren
-              ? `${node.children.length} child ${node.children.length === 1 ? "node" : "nodes"}`
-              : "Leaf access item"}
-          </p>
-        </div>
+          <h3 className="mt-2 text-sm font-semibold text-slate-900">{node.name}</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {hasChildren
+                ? `${node.children.length} child ${node.children.length === 1 ? "node" : "nodes"}`
+                : "Leaf access item"}
+            </p>
+            {isLocked && <p className="mt-1 text-xs font-semibold text-rose-500">Locked</p>}
+          </div>
 
         <FormControlLabel
           sx={{ mr: 0 }}
           control={
-            <Switch
-              checked={isEnabled}
-              onChange={(event) => onToggle(pathParts, event.target.checked)}
-            />
+              <Switch
+                checked={isEnabled}
+                onChange={(event) => onToggle(pathParts, event.target.checked)}
+              />
           }
           label=""
         />
@@ -385,10 +819,11 @@ const TreeNodeCard = ({ node, pathParts, level, treeState, onToggle }) => {
                 key={child.name}
                 node={child}
                 pathParts={[...pathParts, child.name]}
-                level={level + 1}
-                treeState={treeState}
-                onToggle={onToggle}
-              />
+                  level={level + 1}
+                  treeState={treeState}
+                  onToggle={onToggle}
+                  isPathLocked={isPathLocked}
+                />
             ))}
           </div>
         </div>
@@ -401,6 +836,7 @@ const AccessEditorModal = ({
   open,
   employee,
   workspace,
+  moduleSections,
   treeState,
   treeSearch,
   setTreeSearch,
@@ -408,18 +844,33 @@ const AccessEditorModal = ({
   onClose,
   onSave,
   isSaving,
+  isPathLocked,
+  isWorkspaceMode,
 }) => {
   const filteredSections = useMemo(() => {
     const query = treeSearch.trim().toLowerCase();
-    return filterTree(MODULE_SECTIONS, query);
-  }, [treeSearch]);
+    return filterTree(moduleSections, query);
+  }, [moduleSections, treeSearch]);
+  const mainDropdownGroups = useMemo(
+    () => buildMainDropdownGroups(filteredSections),
+    [filteredSections],
+  );
+  const [openGroups, setOpenGroups] = useState({});
 
-  if (!employee || !workspace) return null;
+  useEffect(() => {
+    const defaults = {};
+    mainDropdownGroups.forEach((group, index) => {
+      defaults[group.name] = index < 2;
+    });
+    setOpenGroups(defaults);
+  }, [mainDropdownGroups]);
+
+  if (!workspace) return null;
 
   return (
     <Modal open={open} onClose={onClose}>
       <Box
-        className="max-h-[90vh] w-[min(1200px,96vw)] overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.22)]"
+        className="max-h-[84vh] w-[min(980px,94vw)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_52px_rgba(15,23,42,0.18)]"
         sx={{
           position: "absolute",
           top: "50%",
@@ -427,14 +878,14 @@ const AccessEditorModal = ({
           transform: "translate(-50%, -50%)",
         }}
       >
-        <div className="flex max-h-[90vh] flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
+        <div className="flex max-h-[84vh] flex-col">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
-                Employee Access
+                {isWorkspaceMode ? "Workspace Modules" : "Employee Access"}
               </p>
-              <h2 className="mt-2 text-2xl font-pmedium text-slate-900">
-                {employee.name || "Unnamed Employee"}
+              <h2 className="mt-1.5 text-xl font-pmedium text-slate-900">
+                {isWorkspaceMode ? workspace.workspaceName : employee?.name || "Unnamed Employee"}
               </h2>
               <p className="mt-1 text-sm text-slate-500">
                 Workspace: <span className="font-semibold text-slate-700">{workspace.workspaceName}</span>
@@ -445,27 +896,35 @@ const AccessEditorModal = ({
             </IconButton>
           </div>
 
-          <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[360px_1fr]">
-            <div className="border-b border-slate-100 bg-slate-50/80 p-6 lg:border-b-0 lg:border-r">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[300px_1fr]">
+            <div className="border-b border-slate-100 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
+              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white">
-                    {(employee.name || "E").charAt(0).toUpperCase()}
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
+                    {(isWorkspaceMode ? workspace.workspaceName : employee?.name || "W")
+                      .charAt(0)
+                      .toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{employee.name || "Employee"}</p>
-                    <p className="text-xs text-slate-500">{employee.designation || "Role not set"}</p>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {isWorkspaceMode ? "Workspace Control" : employee?.name || "Employee"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {isWorkspaceMode ? "Master Panel" : employee?.designation || "Role not set"}
+                    </p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-col gap-2 text-sm text-slate-600">
+                <div className="mt-3 flex flex-col gap-1.5 text-sm text-slate-600">
                   <div className="flex items-center justify-between gap-3">
                     <span>Email</span>
-                    <span className="font-medium text-slate-900">{employee.email || "-"}</span>
+                    <span className="font-medium text-slate-900">
+                      {isWorkspaceMode ? "Workspace Scope" : employee?.email || "-"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span>Status</span>
                     <span className="font-medium text-slate-900">
-                      {employee.isActive ? "Active" : "Inactive"}
+                      {isWorkspaceMode ? "Active" : employee?.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3">
@@ -481,7 +940,7 @@ const AccessEditorModal = ({
                 fullWidth
                 size="small"
                 placeholder="Search access nodes"
-                className="!mt-4"
+                className="!mt-3"
               />
 
               <p className="mt-3 text-xs leading-5 text-slate-500">
@@ -489,12 +948,12 @@ const AccessEditorModal = ({
               </p>
             </div>
 
-            <div className="flex max-h-[90vh] flex-col overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+            <div className="flex max-h-[84vh] flex-col overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip label={workspace.workspaceName} size="small" />
                   <Chip
-                    label={`${MODULE_SECTIONS.length} Groups`}
+                    label={`${mainDropdownGroups.length} Main Groups`}
                     size="small"
                     sx={{ backgroundColor: "rgba(15, 23, 42, 0.06)", fontWeight: 700 }}
                   />
@@ -512,49 +971,85 @@ const AccessEditorModal = ({
                     "&:hover": { backgroundColor: "#111827" },
                   }}
                 >
-                  {isSaving ? "Saving..." : "Save Access"}
-                </Button>
+                    {isSaving ? "Saving..." : isWorkspaceMode ? "Save Enabled Modules" : "Save Access"}
+                  </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-5">
-                {filteredSections.map((section) => (
+              <div className="flex-1 overflow-y-auto px-5 py-4">
+                {mainDropdownGroups.map((group) => (
                   <div
-                    key={section.name}
-                    className="mb-5 overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.06)]"
+                    key={group.name}
+                    className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white"
                   >
-                    <div className={`h-2 bg-gradient-to-r ${section.accent}`} />
-                    <div className="p-5">
-                      <div className="mb-4 flex items-end justify-between gap-4 border-b border-slate-100 pb-4">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-400">
-                            Section
-                          </p>
-                          <h3 className="mt-1 text-xl font-pmedium text-slate-900">
-                            {section.name}
-                          </h3>
-                        </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                          {section.children.length} modules
-                        </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenGroups((prev) => ({
+                          ...prev,
+                          [group.name]: !prev[group.name],
+                        }))
+                      }
+                      className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left"
+                    >
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+                          Workspace Control
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">{group.name}</p>
                       </div>
+                      <div className="text-xs font-semibold text-slate-500">
+                        {Array.isArray(group.children) ? `${group.children.length} modules` : "0 modules"}
+                      </div>
+                    </button>
 
-                      <div className="flex flex-col gap-4">
-                        {section.children.map((module) => (
-                          <TreeNodeCard
-                            key={module.name}
-                            node={module}
-                            pathParts={[section.name, module.name]}
-                            level={0}
-                            treeState={treeState}
-                            onToggle={onToggle}
-                          />
-                        ))}
+                    {openGroups[group.name] && (
+                      <div className="space-y-3 px-4 py-3">
+                        {String(group.name || "").toLowerCase().includes("department access") ? (
+                          groupDepartmentModules(Array.isArray(group.children) ? group.children : []).map((deptGroup) => (
+                            <div key={`${group.name}::${deptGroup.name}`} className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
+                              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                {deptGroup.name}
+                              </p>
+                              <div className="space-y-2">
+                                {deptGroup.items.map((module) => (
+                                  <TreeNodeCard
+                                    key={`${group.name}::${deptGroup.name}::${module.name}`}
+                                    node={module}
+                                    pathParts={[
+                                      String(module?.sectionName || group.name).trim(),
+                                      module.name,
+                                    ]}
+                                    level={0}
+                                    treeState={treeState}
+                                    onToggle={onToggle}
+                                    isPathLocked={isPathLocked}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          (Array.isArray(group.children) ? group.children : []).map((module) => (
+                            <TreeNodeCard
+                              key={`${group.name}::${module.name}`}
+                              node={module}
+                              pathParts={[
+                                String(module?.sectionName || group.name).trim(),
+                                module.name,
+                              ]}
+                              level={0}
+                              treeState={treeState}
+                              onToggle={onToggle}
+                              isPathLocked={isPathLocked}
+                            />
+                          ))
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 
-                {!filteredSections.length && (
+                {!mainDropdownGroups.length && (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-500">
                     No access nodes match your search.
                   </div>
@@ -581,8 +1076,8 @@ const ModuleAccess = () => {
     const storedCompanyId = String(sessionStorage.getItem("companyId") || "").trim();
     if (storedCompanyId) return storedCompanyId;
 
-    return String(companySlug || "").trim();
-  }, [companySlug, location.state]);
+    return "";
+  }, [location.state]);
   const resolvedCompanyName = useMemo(() => {
     const stateCompanyName = String(location.state?.companyName || "").trim();
     if (stateCompanyName) return stateCompanyName;
@@ -597,23 +1092,14 @@ const ModuleAccess = () => {
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [treeSearch, setTreeSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [treeState, setTreeState] = useState(() => initializeTreeState(MODULE_SECTIONS));
+  const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
+  const [treeState, setTreeState] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const pageTitle = useMemo(() => {
     if (companyName) return companyName;
     return String(companySlug || "Host Company").replace(/-/g, " ");
   }, [companyName, companySlug]);
-
-  const normalizedPlan = useMemo(() => {
-    const rawPlan = String(selectedPlan || "").trim();
-    if (!rawPlan) return "Not Assigned";
-    return rawPlan
-      .split(/[\s_-]+/)
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  }, [selectedPlan]);
 
   const { data: companyMemberPayload, isLoading } = useQuery({
     queryKey: ["host-company-members", resolvedCompanyId],
@@ -629,9 +1115,29 @@ const ModuleAccess = () => {
   });
 
   const company = companyMemberPayload?.company || null;
-  const members = Array.isArray(companyMemberPayload?.members)
-    ? companyMemberPayload.members
-    : [];
+  const members = useMemo(
+    () =>
+      Array.isArray(companyMemberPayload?.members)
+        ? companyMemberPayload.members
+        : [],
+    [companyMemberPayload?.members],
+  );
+
+  const effectiveRawPlan = useMemo(() => {
+    const fromCompany = String(company?.plan || company?.requestedPlan || "").trim();
+    if (fromCompany) return fromCompany;
+    return String(selectedPlan || "").trim();
+  }, [company?.plan, company?.requestedPlan, selectedPlan]);
+
+  const normalizedPlan = useMemo(() => {
+    const rawPlan = String(effectiveRawPlan || "").trim();
+    if (!rawPlan) return "Not Assigned";
+    return rawPlan
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  }, [effectiveRawPlan]);
 
   const workspaces = useMemo(() => {
     const apiWorkspaces = Array.isArray(companyMemberPayload?.workspaces)
@@ -642,6 +1148,12 @@ const ModuleAccess = () => {
       return apiWorkspaces.map((workspace) => ({
         workspaceId: normalizeWorkspaceId(workspace.workspaceId),
         workspaceName: normalizeWorkspaceName(workspace.workspaceName),
+        modules: workspace?.modules || [],
+        enabledModules: Array.isArray(workspace?.enabledModuleIds)
+          ? workspace.enabledModuleIds
+          : Array.isArray(workspace?.enabledModules)
+            ? workspace.enabledModules
+            : [],
       }));
     }
 
@@ -649,6 +1161,8 @@ const ModuleAccess = () => {
       {
         workspaceId: DEFAULT_WORKSPACE_ID,
         workspaceName: DEFAULT_WORKSPACE_NAME,
+        modules: [],
+        enabledModules: [],
       },
     ];
   }, [companyMemberPayload?.workspaces]);
@@ -658,6 +1172,30 @@ const ModuleAccess = () => {
       setSelectedWorkspaceId(workspaces[0].workspaceId);
     }
   }, [selectedWorkspaceId, workspaces]);
+
+  const selectedWorkspace = useMemo(() => {
+    return (
+      workspaces.find(
+        (workspace) =>
+          normalizeWorkspaceId(workspace.workspaceId) === normalizeWorkspaceId(selectedWorkspaceId),
+      ) || workspaces[0]
+    );
+  }, [selectedWorkspaceId, workspaces]);
+
+  const activeModuleSections = useMemo(() => {
+    const parsedModules = parseWorkspaceModules(selectedWorkspace?.modules);
+    const fromWorkspace = normalizeModulesTree(parsedModules);
+    return fromWorkspace.length ? fromWorkspace : [];
+  }, [selectedWorkspace?.modules]);
+
+  const workspaceEnabledPlanState = useMemo(() => {
+    if (!activeModuleSections.length) return {};
+    const enabledKeys = Array.isArray(selectedWorkspace?.enabledModules)
+      ? selectedWorkspace.enabledModules
+      : [];
+    if (!enabledKeys.length) return {};
+    return buildStateFromEnabledKeys(activeModuleSections, enabledKeys);
+  }, [activeModuleSections, selectedWorkspace?.enabledModules]);
 
   useEffect(() => {
     if (!workspaces.length) return;
@@ -670,18 +1208,15 @@ const ModuleAccess = () => {
       setSelectedWorkspaceId(workspaces[0].workspaceId);
       setSelectedEmployee(null);
       setIsModalOpen(false);
-      setTreeState(initializeTreeState(MODULE_SECTIONS));
+      setTreeState(workspaceEnabledPlanState);
     }
-  }, [selectedWorkspaceId, workspaces]);
+  }, [selectedWorkspaceId, workspaceEnabledPlanState, workspaces]);
 
-  const selectedWorkspace = useMemo(() => {
-    return (
-      workspaces.find(
-        (workspace) =>
-          normalizeWorkspaceId(workspace.workspaceId) === normalizeWorkspaceId(selectedWorkspaceId),
-      ) || workspaces[0]
-    );
-  }, [selectedWorkspaceId, workspaces]);
+  useEffect(() => {
+    if (!isModalOpen) {
+      setTreeState(workspaceEnabledPlanState);
+    }
+  }, [isModalOpen, workspaceEnabledPlanState]);
 
   const hasRealWorkspaces = useMemo(() => {
     return workspaces.some(
@@ -713,6 +1248,7 @@ const ModuleAccess = () => {
   }, [employeeSearch, hasRealWorkspaces, members, selectedWorkspace]);
 
   const openEmployeeAccess = (member) => {
+    setIsWorkspaceMode(false);
     const workspaceAccess = getWorkspaceAccessForMember(
       member,
       selectedWorkspace?.workspaceId,
@@ -724,16 +1260,25 @@ const ModuleAccess = () => {
       { allowFallback: !hasRealWorkspaces },
     );
 
+    const rolePresetState = buildRoleStateFromWorkspace({
+      moduleSections: activeModuleSections,
+      enabledModuleIds: Array.isArray(selectedWorkspace?.enabledModules)
+        ? selectedWorkspace.enabledModules
+        : [],
+      designation: member?.designation,
+    });
+
     setSelectedEmployee({
       ...member,
       workspaceName: workspaceAccess.workspaceName,
       workspaceId: workspaceAccess.workspaceId,
       moduleAccess: workspaceAccess.moduleAccess || {},
+      hasSavedWorkspaceAccess,
     });
     setTreeState(
       hasSavedWorkspaceAccess
-        ? workspaceAccess.moduleAccess
-        : initializeTreeState(MODULE_SECTIONS),
+        ? clampStateToPlan(workspaceAccess.moduleAccess || {}, workspaceEnabledPlanState)
+        : clampStateToPlan(rolePresetState, workspaceEnabledPlanState),
     );
     setTreeSearch("");
     setIsModalOpen(true);
@@ -748,7 +1293,13 @@ const ModuleAccess = () => {
         {
           workspaceId: selectedWorkspace?.workspaceId,
           workspaceName: selectedWorkspace?.workspaceName,
-          moduleAccess: treeState,
+              moduleAccess: clampStateToPlan(
+                treeState,
+                workspaceEnabledPlanState,
+              ),
+            accessSource: selectedEmployee?.hasSavedWorkspaceAccess
+              ? "custom_workspace_grant"
+              : "plan_role_preset",
         },
       );
 
@@ -767,8 +1318,41 @@ const ModuleAccess = () => {
     },
   });
 
+  const saveWorkspaceMutation = useMutation({
+    mutationFn: async () => {
+      const enabledIds = Array.from(
+        collectEnabledModuleIds(activeModuleSections, treeState),
+      );
+      const response = await axios.patch(
+        `/api/host-user/workspace/${selectedWorkspace?.workspaceId}/enabled-modules`,
+        { enabledModuleIds: enabledIds },
+      );
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["host-company-members", resolvedCompanyId],
+      });
+      toast.success("Workspace enabled modules updated.");
+      setIsModalOpen(false);
+      setIsWorkspaceMode(false);
+      setSelectedEmployee(null);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Unable to update workspace modules.");
+    },
+  });
+
   const handleToggle = (pathParts, checked) => {
-    setTreeState((prev) => toggleTreeNode(MODULE_SECTIONS, prev, pathParts, checked));
+    setTreeState((prev) => toggleTreeNode(activeModuleSections, prev, pathParts, checked));
+  };
+
+  const isPathLocked = (pathParts) => {
+    const key = buildPathKey(pathParts);
+    if (isWorkspaceMode) {
+      return !treeState[key];
+    }
+    return !workspaceEnabledPlanState[key];
   };
 
   return (
@@ -828,7 +1412,7 @@ const ModuleAccess = () => {
                 setSelectedWorkspaceId(event.target.value);
                 setSelectedEmployee(null);
                 setIsModalOpen(false);
-                setTreeState(initializeTreeState(MODULE_SECTIONS));
+                setTreeState(workspaceEnabledPlanState);
               }}
               fullWidth
               size="small"
@@ -839,6 +1423,18 @@ const ModuleAccess = () => {
                 </MenuItem>
               ))}
             </TextField>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                setIsWorkspaceMode(true);
+                setSelectedEmployee(null);
+                setTreeState(workspaceEnabledPlanState);
+                setIsModalOpen(true);
+              }}
+              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+            >
+              Configure Workspace Modules
+            </Button>
 
               <TextField
                 value={employeeSearch}
@@ -974,6 +1570,7 @@ const ModuleAccess = () => {
         open={isModalOpen}
         employee={selectedEmployee}
         workspace={selectedWorkspace}
+        moduleSections={activeModuleSections}
         treeState={treeState}
         treeSearch={treeSearch}
         setTreeSearch={setTreeSearch}
@@ -982,8 +1579,12 @@ const ModuleAccess = () => {
           setIsModalOpen(false);
           setSelectedEmployee(null);
         }}
-        onSave={() => saveMutation.mutate()}
-        isSaving={saveMutation.isPending}
+        onSave={() =>
+          isWorkspaceMode ? saveWorkspaceMutation.mutate() : saveMutation.mutate()
+        }
+        isSaving={isWorkspaceMode ? saveWorkspaceMutation.isPending : saveMutation.isPending}
+        isPathLocked={isPathLocked}
+        isWorkspaceMode={isWorkspaceMode}
       />
     </div>
   );
