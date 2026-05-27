@@ -9,6 +9,7 @@ const {
   sendUpgradeSuccessEmail,
   updateMemberWorkspaceAccess,
   updateWorkspaceEnabledModules,
+  syncWorkspaceDepartmentModules,
 } = require("../controllers/hostUserControllers");
 
 router.post("/bulk-insert-poc", bulkInsertPoc);
@@ -19,5 +20,6 @@ router.post("/send-upgrade-payment-link-email", verifyJwt, sendUpgradePaymentLin
 router.post("/send-upgrade-success-email", verifyJwt, sendUpgradeSuccessEmail);
 router.patch("/:memberId/workspace-access", verifyJwt, updateMemberWorkspaceAccess);
 router.patch("/workspace/:workspaceId/enabled-modules", verifyJwt, updateWorkspaceEnabledModules);
+router.post("/workspace/sync-department-modules", verifyJwt, syncWorkspaceDepartmentModules);
 
 module.exports = router;
