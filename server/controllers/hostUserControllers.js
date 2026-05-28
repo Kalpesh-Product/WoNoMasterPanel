@@ -470,6 +470,27 @@ const VISITOR_ACCESS_KEYS = new Set([
   "visitors_standard_type_tenant",
 ]);
 
+const ORGANIZATION_PERMISSION_MAP = {
+  module: "organization-management",
+  tabs: ["org_tab_users", "org_tab_departments"],
+  actions: [
+    "org_users_invite_member",
+    "org_users_change_role",
+    "org_users_toggle_access",
+    "org_departments_create",
+    "org_departments_edit",
+    "org_departments_assign_manager",
+    "org_departments_assign_acting_manager",
+    "org_departments_remove_acting_manager",
+  ],
+};
+
+const ORGANIZATION_ACCESS_KEYS = new Set([
+  ORGANIZATION_PERMISSION_MAP.module,
+  ...ORGANIZATION_PERMISSION_MAP.tabs,
+  ...ORGANIZATION_PERMISSION_MAP.actions,
+]);
+
 const VISITOR_CANONICAL_NODE = {
   id: "visitor-management",
   moduleId: "visitor-management",
@@ -521,6 +542,46 @@ const VISITOR_CANONICAL_NODE = {
       moduleId: "visitors_mode_verify_booking",
       name: "Verify Booking ID",
       children: [],
+    },
+  ],
+};
+
+const ORGANIZATION_CANONICAL_NODE = {
+  id: "organization-management",
+  moduleId: "organization-management",
+  name: "Organization Management",
+  children: [
+    {
+      id: "org_tab_users",
+      moduleId: "org_tab_users",
+      name: "Users",
+      children: [
+        { id: "org_users_invite_member", moduleId: "org_users_invite_member", name: "Invite Member", children: [] },
+        { id: "org_users_change_role", moduleId: "org_users_change_role", name: "Change Role", children: [] },
+        { id: "org_users_toggle_access", moduleId: "org_users_toggle_access", name: "Toggle Access", children: [] },
+      ],
+    },
+    {
+      id: "org_tab_departments",
+      moduleId: "org_tab_departments",
+      name: "Departments",
+      children: [
+        { id: "org_departments_create", moduleId: "org_departments_create", name: "Create Department", children: [] },
+        { id: "org_departments_edit", moduleId: "org_departments_edit", name: "Edit Department", children: [] },
+        { id: "org_departments_assign_manager", moduleId: "org_departments_assign_manager", name: "Assign Manager", children: [] },
+        {
+          id: "org_departments_assign_acting_manager",
+          moduleId: "org_departments_assign_acting_manager",
+          name: "Assign Acting Manager",
+          children: [],
+        },
+        {
+          id: "org_departments_remove_acting_manager",
+          moduleId: "org_departments_remove_acting_manager",
+          name: "Remove Acting Manager",
+          children: [],
+        },
+      ],
     },
   ],
 };
@@ -591,6 +652,63 @@ const ensureVisitorHierarchyInModules = (rawModules = []) => {
       };
       changed = true;
     }
+  }
+
+  return { modules, changed };
+};
+
+const ensureOrganizationHierarchyInModules = (rawModules = []) => {
+  const modules = Array.isArray(rawModules)
+    ? deepCloneJson(rawModules)
+    : rawModules && typeof rawModules === "object"
+      ? deepCloneJson(Object.values(rawModules))
+      : [];
+  let changed = false;
+
+  let orgReplaced = false;
+  let founderNode = null;
+
+  const rootNodes = modules.flatMap((category) => getNodeChildren(category));
+  const walk = (nodes = []) => {
+    for (const node of Array.isArray(nodes) ? nodes : []) {
+      const nodeName = String(node?.name || node?.moduleName || "").trim().toLowerCase();
+      if (nodeName === "organization management") return { type: "org", node };
+      if (nodeName === "founder core module") founderNode = node;
+      const found = walk(getNodeChildren(node));
+      if (found) return found;
+    }
+    return null;
+  };
+
+  const found = walk(rootNodes);
+  if (found?.type === "org") {
+    const orgNode = found.node;
+    const orgRef = getChildrenRef(orgNode);
+    const normalizedExisting = JSON.stringify({
+      id: String(orgNode?.id || orgNode?.moduleId || "").trim(),
+      name: String(orgNode?.name || orgNode?.moduleName || "").trim(),
+      children: getNodeChildren(orgNode),
+    });
+    const normalizedCanonical = JSON.stringify({
+      id: ORGANIZATION_CANONICAL_NODE.id,
+      name: ORGANIZATION_CANONICAL_NODE.name,
+      children: ORGANIZATION_CANONICAL_NODE.children,
+    });
+    if (normalizedExisting !== normalizedCanonical) {
+      orgNode.id = ORGANIZATION_CANONICAL_NODE.id;
+      orgNode.moduleId = ORGANIZATION_CANONICAL_NODE.moduleId;
+      orgNode.name = ORGANIZATION_CANONICAL_NODE.name;
+      orgNode[orgRef] = deepCloneJson(ORGANIZATION_CANONICAL_NODE.children);
+      changed = true;
+    }
+    orgReplaced = true;
+  }
+
+  if (!orgReplaced && founderNode) {
+    const founderRef = getChildrenRef(founderNode);
+    if (!Array.isArray(founderNode[founderRef])) founderNode[founderRef] = [];
+    founderNode[founderRef].push(deepCloneJson(ORGANIZATION_CANONICAL_NODE));
+    changed = true;
   }
 
   return { modules, changed };
@@ -933,6 +1051,121 @@ const buildModuleAccessTreeStateFromIds = ({
   return state;
 };
 
+const extractNormalizedRoleTokens = (rolesInput = []) => {
+  const list = Array.isArray(rolesInput) ? rolesInput : [rolesInput];
+  const tokens = new Set();
+
+  list.forEach((role) => {
+    if (role === undefined || role === null) return;
+    if (typeof role === "string") {
+      const normalized = role.trim().toLowerCase();
+      if (normalized) tokens.add(normalized);
+      return;
+    }
+    if (typeof role === "object") {
+      [
+        role.roleID,
+        role.roleId,
+        role.roleTitle,
+        role.roleName,
+        role.name,
+        role.value,
+      ].forEach((value) => {
+        const normalized = String(value || "").trim().toLowerCase();
+        if (normalized) tokens.add(normalized);
+      });
+    }
+  });
+
+  return tokens;
+};
+
+const hasOrganizationAccess = async ({
+  actorUserId,
+  actorRoles = [],
+  companyId,
+  workspaceId,
+  requiredKey,
+}) => {
+  const roleSet = extractNormalizedRoleTokens(actorRoles);
+  const privilegedRoleTokens = new Set([
+    "super admin",
+    "master admin",
+    "founder",
+    "role_super_admin",
+    "role_master_admin",
+    "role_founder",
+  ]);
+  if ([...privilegedRoleTokens].some((token) => roleSet.has(token))) {
+    return true;
+  }
+
+  const required = String(requiredKey || "").trim();
+  if (!required || !ORGANIZATION_ACCESS_KEYS.has(required)) return false;
+  if (!actorUserId) return false;
+
+  const actor = await HostUser.findById(actorUserId).select("designation").lean();
+  const designation = String(actor?.designation || "").trim().toLowerCase();
+  if (
+    designation.includes("founder") ||
+    designation.includes("super admin") ||
+    designation.includes("master admin")
+  ) {
+    return true;
+  }
+
+  const requestedWorkspaceId = String(workspaceId || "").trim();
+  if (requestedWorkspaceId) {
+    const membership = await WorkspaceMember.findOne({
+      user: actorUserId,
+      workspace: requestedWorkspaceId,
+      isActive: true,
+    })
+      .select("grantedModules enabledModules role isPrimary")
+      .lean();
+    const membershipRole = String(membership?.role || "").trim().toLowerCase();
+    if (membership?.isPrimary === true || membershipRole === "founder") {
+      return true;
+    }
+    const granted = Array.isArray(membership?.grantedModules)
+      ? membership.grantedModules
+      : Array.isArray(membership?.enabledModules)
+        ? membership.enabledModules
+        : [];
+    return granted.map((id) => String(id || "").trim()).includes(required);
+  }
+
+  const normalizedCompanyId = String(companyId || "").trim();
+  if (!normalizedCompanyId) return false;
+
+  const companyRegex = buildCompanyIdPrefixRegex(normalizedCompanyId);
+  const workspaces = await Workspace.find({
+    companyId: companyRegex ? { $regex: companyRegex } : normalizedCompanyId,
+    isActive: true,
+  })
+    .select("_id")
+    .lean();
+  const workspaceIds = workspaces.map((workspace) => workspace?._id).filter(Boolean);
+  if (!workspaceIds.length) return false;
+
+  const memberships = await WorkspaceMember.find({
+    user: actorUserId,
+    workspace: { $in: workspaceIds },
+    isActive: true,
+  })
+    .select("grantedModules enabledModules")
+    .lean();
+
+  return memberships.some((membership) => {
+    const granted = Array.isArray(membership?.grantedModules)
+      ? membership.grantedModules
+      : Array.isArray(membership?.enabledModules)
+        ? membership.enabledModules
+        : [];
+    return granted.map((id) => String(id || "").trim()).includes(required);
+  });
+};
+
 const bulkInsertPoc = async (req, res, next) => {
   try {
     const { pocs } = req.body;
@@ -1107,6 +1340,17 @@ const getInviteStatuses = async (req, res, next) => {
 
 const sendInviteEmail = async (req, res, next) => {
   try {
+    const canInviteMember = await hasOrganizationAccess({
+      actorUserId: req.user,
+      actorRoles: req.roles,
+      companyId: req.body?.companyId,
+      workspaceId: req.body?.workspaceId,
+      requiredKey: "org_users_invite_member",
+    });
+    if (!canInviteMember) {
+      return res.status(403).json({ message: "Forbidden: invite-member access required" });
+    }
+
     const {
       leadId,
       email,
@@ -1381,10 +1625,14 @@ const getCompanyMembers = async (req, res, next) => {
     const workspaceDocsWithDepartmentAccess = allWorkspaceDocs.map((workspace) => {
       const mergedDept = mergeDepartmentAccessModules(workspace?.modules || []);
       const mergedVisitor = ensureVisitorHierarchyInModules(mergedDept.modules || []);
+      const mergedOrganization = ensureOrganizationHierarchyInModules(
+        mergedVisitor.modules || [],
+      );
       return {
         ...workspace,
-        modules: mergedVisitor.modules,
-        __departmentModulesChanged: mergedDept.changed || mergedVisitor.changed,
+        modules: mergedOrganization.modules,
+        __departmentModulesChanged:
+          mergedDept.changed || mergedVisitor.changed || mergedOrganization.changed,
       };
     });
 
@@ -1510,25 +1758,16 @@ const getCompanyMembers = async (req, res, next) => {
         ),
         workspaceDoc?.modules || [],
       );
-      const memberEnabledIds = Array.isArray(membership?.grantedModules)
+      const memberGrantedIds = Array.isArray(membership?.grantedModules)
         ? membership.grantedModules
-        : Array.isArray(membership?.enabledModules)
-          ? membership.enabledModules
-          : [];
-      const filteredMemberEnabledIds = memberEnabledIds
+        : [];
+      const filteredMemberGrantedIds = memberGrantedIds
         .map((id) => String(id || "").trim())
         .filter((id) => id && workspaceEnabledIds.includes(id));
-      const defaultMemberEnabledIds = getDefaultMemberEnabledModules({
-        workspace: workspaceDoc || {},
-        designation: member?.designation || membership?.role || "",
-      });
-      const effectiveMemberEnabledIds =
-        filteredMemberEnabledIds.length > 0
-          ? filteredMemberEnabledIds
-          : defaultMemberEnabledIds;
+      const effectiveMemberGrantedIds = filteredMemberGrantedIds;
       const grantedModules = buildModuleAccessTreeStateFromIds({
         workspaceModules: workspaceDoc?.modules || [],
-        enabledModuleIds: effectiveMemberEnabledIds,
+        enabledModuleIds: effectiveMemberGrantedIds,
       });
 
       member.workspaceAccess = normalizeMemberWorkspaceAccess({
@@ -1539,7 +1778,7 @@ const getCompanyMembers = async (req, res, next) => {
             workspaceId,
             workspaceName,
             moduleAccess: grantedModules,
-            grantedModules: effectiveMemberEnabledIds,
+            grantedModules: effectiveMemberGrantedIds,
           },
         ],
       });
@@ -1595,6 +1834,13 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
   try {
     const { memberId } = req.params;
     const { workspaceId, workspaceName, moduleAccess, accessModules, accessSource } = req.body || {};
+    const requestedAccessModules = Array.isArray(accessModules)
+      ? accessModules.map((id) => String(id || "").trim()).filter(Boolean)
+      : [];
+    const organizationActionKey =
+      requestedAccessModules.find((key) =>
+        ORGANIZATION_PERMISSION_MAP.actions.includes(key),
+      ) || "org_users_toggle_access";
 
     if (!memberId) {
       return res.status(400).json({ message: "memberId is required" });
@@ -1613,67 +1859,130 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     }
 
     const nextWorkspaceId = normalizeWorkspaceId(workspaceId);
-    const nextWorkspaceName = normalizeWorkspaceName(workspaceName);
     const requestedTreeState =
       moduleAccess && typeof moduleAccess === "object" ? moduleAccess : {};
-    const workspaceDocRaw = await Workspace.findById(nextWorkspaceId)
-      .select("_id modules enabledModuleIds")
+    let workspaceDocRaw = await Workspace.findById(nextWorkspaceId)
+      .select("_id workspaceName companyId modules enabledModuleIds")
       .lean();
+
+    if (!workspaceDocRaw?._id) {
+      const memberCompanyId = String(member?.companyId || "").trim();
+      const companyRegex = buildCompanyIdPrefixRegex(memberCompanyId);
+      const workspaceNameRegex = buildExactCaseInsensitiveRegex(workspaceName);
+
+      if (workspaceNameRegex) {
+        workspaceDocRaw = await Workspace.findOne({
+          isActive: true,
+          ...(memberCompanyId
+            ? { companyId: companyRegex ? { $regex: companyRegex } : memberCompanyId }
+            : {}),
+          workspaceName: { $regex: workspaceNameRegex },
+        })
+          .select("_id workspaceName companyId modules enabledModuleIds")
+          .lean();
+      }
+
+      if (!workspaceDocRaw?._id && memberCompanyId) {
+        workspaceDocRaw = await Workspace.findOne({
+          isActive: true,
+          companyId: companyRegex ? { $regex: companyRegex } : memberCompanyId,
+        })
+          .sort({ createdAt: 1 })
+          .select("_id workspaceName companyId modules enabledModuleIds")
+          .lean();
+      }
+    }
+
+    const effectiveWorkspaceId = normalizeWorkspaceId(
+      workspaceDocRaw?._id?.toString() || nextWorkspaceId,
+    );
+    const nextWorkspaceName = normalizeWorkspaceName(
+      workspaceDocRaw?.workspaceName || workspaceName,
+    );
+    const hasWorkspaceDoc = Boolean(workspaceDocRaw?._id);
     const ensuredVisitor = ensureVisitorHierarchyInModules(workspaceDocRaw?.modules || []);
+    const ensuredOrganization = ensureOrganizationHierarchyInModules(
+      ensuredVisitor.modules || [],
+    );
     const workspaceDoc = {
       ...workspaceDocRaw,
-      modules: ensuredVisitor.modules,
+      modules: ensuredOrganization.modules,
     };
-    const workspaceEnabledIds = expandLinkedModuleIds(
-      sanitizeEnabledModuleIds(
-        Array.isArray(workspaceDoc?.enabledModuleIds)
-          ? workspaceDoc.enabledModuleIds
-          : [],
-        workspaceDoc?.modules || [],
-      ),
-      workspaceDoc?.modules || [],
-    );
-    const clampedModuleAccess = clampModuleAccessStateToWorkspace({
-      moduleAccess: requestedTreeState,
-      workspaceModules: workspaceDoc?.modules || [],
-      workspaceEnabledIds: workspaceEnabledIds,
-    });
-    const derivedGrantedModules = resolveGrantedModuleIdsFromTreeState({
-      moduleAccess: clampedModuleAccess,
-      workspaceModules: workspaceDoc?.modules || [],
-      workspaceEnabledIds: workspaceEnabledIds,
-    });
+    const workspaceEnabledIds = hasWorkspaceDoc
+      ? expandLinkedModuleIds(
+          sanitizeEnabledModuleIds(
+            Array.isArray(workspaceDoc?.enabledModuleIds)
+              ? workspaceDoc.enabledModuleIds
+              : [],
+            workspaceDoc?.modules || [],
+          ),
+          workspaceDoc?.modules || [],
+        )
+      : [];
+    const clampedModuleAccess = hasWorkspaceDoc
+      ? clampModuleAccessStateToWorkspace({
+          moduleAccess: requestedTreeState,
+          workspaceModules: workspaceDoc?.modules || [],
+          workspaceEnabledIds: workspaceEnabledIds,
+        })
+      : requestedTreeState;
+    const derivedGrantedModules = hasWorkspaceDoc
+      ? resolveGrantedModuleIdsFromTreeState({
+          moduleAccess: clampedModuleAccess,
+          workspaceModules: workspaceDoc?.modules || [],
+          workspaceEnabledIds: workspaceEnabledIds,
+        })
+      : flattenGrantedModulesFromTreeState(clampedModuleAccess);
     const hasVisitorModuleEnabled =
+      !hasWorkspaceDoc ||
       workspaceEnabledIds.includes("visitor-management") ||
       workspaceEnabledIds.includes("administration-visitor-management");
+    const hasOrganizationModuleEnabled =
+      !hasWorkspaceDoc ||
+      workspaceEnabledIds.includes(ORGANIZATION_PERMISSION_MAP.module) ||
+      ORGANIZATION_PERMISSION_MAP.tabs.some((key) => workspaceEnabledIds.includes(key)) ||
+      ORGANIZATION_PERMISSION_MAP.actions.some((key) => workspaceEnabledIds.includes(key));
 
-    const explicitAccessModules = Array.isArray(accessModules)
-      ? accessModules
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
+    const explicitAccessModules = requestedAccessModules.length
+      ? requestedAccessModules
       : null;
-    const grantedModules =
+    const grantedModulesRaw =
       explicitAccessModules && explicitAccessModules.length
         ? Array.from(
             new Set(
-              explicitAccessModules.filter((key) => {
-                if (!VISITOR_ACCESS_KEYS.has(key)) return true;
-                if (!hasVisitorModuleEnabled) return false;
-                return true;
-              }),
+              explicitAccessModules
+                .filter((key) => {
+                  if (!VISITOR_ACCESS_KEYS.has(key)) return true;
+                  if (!hasVisitorModuleEnabled) return false;
+                  return true;
+                })
+                .filter((key) => {
+                  if (!ORGANIZATION_ACCESS_KEYS.has(key)) return true;
+                  if (!hasOrganizationModuleEnabled) return false;
+                  return true;
+                }),
             ),
           )
         : derivedGrantedModules;
+    const workspaceEnabledSet = new Set(
+      (Array.isArray(workspaceEnabledIds) ? workspaceEnabledIds : [])
+        .map((id) => String(id || "").trim())
+        .filter(Boolean),
+    );
+    const grantedModules = hasWorkspaceDoc
+      ? grantedModulesRaw.filter((key) => workspaceEnabledSet.has(String(key || "").trim()))
+      : grantedModulesRaw;
     const currentAccess = Array.isArray(member.workspaceAccess)
       ? member.workspaceAccess.filter(
-          (item) => normalizeWorkspaceId(item?.workspaceId) !== nextWorkspaceId,
+          (item) => normalizeWorkspaceId(item?.workspaceId) !== effectiveWorkspaceId,
         )
       : [];
 
     currentAccess.push({
-      workspaceId: nextWorkspaceId,
+      workspaceId: effectiveWorkspaceId,
       workspaceName: nextWorkspaceName,
       moduleAccess: clampedModuleAccess,
+      grantedModules: grantedModules,
       accessSource:
         String(accessSource || "").trim() === "plan_role_preset"
           ? "plan_role_preset"
@@ -1705,7 +2014,7 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
       message: "Workspace access updated successfully",
       data: {
         member,
-        workspaceId: nextWorkspaceId,
+        workspaceId: effectiveWorkspaceId,
         workspaceName: nextWorkspaceName,
         grantedModules: filteredGrantedModules,
       },
@@ -1733,9 +2042,12 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
       return res.status(404).json({ message: "Workspace not found" });
     }
     const ensuredVisitor = ensureVisitorHierarchyInModules(currentWorkspaceRaw?.modules || []);
+    const ensuredOrganization = ensureOrganizationHierarchyInModules(
+      ensuredVisitor.modules || [],
+    );
     const currentWorkspace = {
       ...currentWorkspaceRaw,
-      modules: ensuredVisitor.modules,
+      modules: ensuredOrganization.modules,
     };
 
     const sanitizedRequested = sanitizeEnabledModuleIds(
@@ -1780,9 +2092,7 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
       const memberOps = members.map((membership) => {
         const current = Array.isArray(membership?.grantedModules)
           ? membership.grantedModules
-          : Array.isArray(membership?.enabledModules)
-            ? membership.enabledModules
-            : [];
+          : [];
         const filtered = current
           .map((id) => String(id || "").trim())
           .filter((id) => id && workspaceEnabledSet.has(id));
@@ -1866,8 +2176,11 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
     for (const workspace of workspaces) {
       const mergedDept = mergeDepartmentAccessModules(workspace?.modules || []);
       const mergedVisitor = ensureVisitorHierarchyInModules(mergedDept.modules || []);
-      const modules = mergedVisitor.modules;
-      const changed = mergedDept.changed || mergedVisitor.changed;
+      const mergedOrganization = ensureOrganizationHierarchyInModules(
+        mergedVisitor.modules || [],
+      );
+      const modules = mergedOrganization.modules;
+      const changed = mergedDept.changed || mergedVisitor.changed || mergedOrganization.changed;
       const rawWorkspaceEnabled = Array.isArray(workspace?.enabledModuleIds)
         ? workspace.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean)
         : [];
@@ -1907,9 +2220,7 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
       memberships.forEach((membership) => {
         const current = Array.isArray(membership?.grantedModules)
           ? membership.grantedModules
-          : Array.isArray(membership?.enabledModules)
-            ? membership.enabledModules
-            : [];
+          : [];
         const filtered = current
           .map((id) => String(id || "").trim())
           .filter((id) => id && workspaceEnabled.includes(id));

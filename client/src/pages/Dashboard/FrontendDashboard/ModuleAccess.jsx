@@ -79,10 +79,24 @@ const MODULE_SECTIONS = [
       {
         name: "Organization Management",
         children: [
-          { name: "User Count", children: [] },
-          { name: "Add User", children: [] },
-          { name: "Departments Tab", children: [] },
-          { name: "Global Count Card", children: [] },
+          {
+            name: "Users",
+            children: [
+              { name: "Invite Member", children: [] },
+              { name: "Change Role", children: [] },
+              { name: "Toggle Access", children: [] },
+            ],
+          },
+          {
+            name: "Departments",
+            children: [
+              { name: "Create Department", children: [] },
+              { name: "Edit Department", children: [] },
+              { name: "Assign Manager", children: [] },
+              { name: "Assign Acting Manager", children: [] },
+              { name: "Remove Acting Manager", children: [] },
+            ],
+          },
         ],
       },
       {
@@ -335,6 +349,40 @@ const CANONICAL_VISITOR_NODE = {
     },
   ],
 };
+const CANONICAL_ORGANIZATION_NODE = {
+  name: "Organization Management",
+  moduleId: "organization-management",
+  children: [
+    {
+      name: "Users",
+      moduleId: "org_tab_users",
+      children: [
+        { name: "Invite Member", moduleId: "org_users_invite_member", children: [] },
+        { name: "Change Role", moduleId: "org_users_change_role", children: [] },
+        { name: "Toggle Access", moduleId: "org_users_toggle_access", children: [] },
+      ],
+    },
+    {
+      name: "Departments",
+      moduleId: "org_tab_departments",
+      children: [
+        { name: "Create Department", moduleId: "org_departments_create", children: [] },
+        { name: "Edit Department", moduleId: "org_departments_edit", children: [] },
+        { name: "Assign Manager", moduleId: "org_departments_assign_manager", children: [] },
+        {
+          name: "Assign Acting Manager",
+          moduleId: "org_departments_assign_acting_manager",
+          children: [],
+        },
+        {
+          name: "Remove Acting Manager",
+          moduleId: "org_departments_remove_acting_manager",
+          children: [],
+        },
+      ],
+    },
+  ],
+};
 const VISITOR_PATH_KEY_MAP = {
   "KEY APPS::Visitor Management": "visitor-management",
   "DEPARTMENT ACCESSES::Administration Department::Visitor Management":
@@ -359,6 +407,47 @@ const VISITOR_PATH_KEY_MAP = {
     "visitors_standard_type_department",
   "KEY APPS::Visitor Management::New Frontdesk Action::Standard Visitor Tabs::Tenant Company Visitor Tab":
     "visitors_standard_type_tenant",
+};
+
+const ORGANIZATION_PATH_KEY_MAP = {
+  "COMPANY SETTINGS::Organization Management": "organization-management",
+  "FOUNDER CORE MODULE::Organization Management": "organization-management",
+  "COMPANY SETTINGS::Organization Management::Users": "org_tab_users",
+  "FOUNDER CORE MODULE::Organization Management::Users": "org_tab_users",
+  "COMPANY SETTINGS::Organization Management::Users::Invite Member":
+    "org_users_invite_member",
+  "FOUNDER CORE MODULE::Organization Management::Users::Invite Member":
+    "org_users_invite_member",
+  "COMPANY SETTINGS::Organization Management::Users::Change Role":
+    "org_users_change_role",
+  "FOUNDER CORE MODULE::Organization Management::Users::Change Role":
+    "org_users_change_role",
+  "COMPANY SETTINGS::Organization Management::Users::Toggle Access":
+    "org_users_toggle_access",
+  "FOUNDER CORE MODULE::Organization Management::Users::Toggle Access":
+    "org_users_toggle_access",
+  "COMPANY SETTINGS::Organization Management::Departments": "org_tab_departments",
+  "FOUNDER CORE MODULE::Organization Management::Departments": "org_tab_departments",
+  "COMPANY SETTINGS::Organization Management::Departments::Create Department":
+    "org_departments_create",
+  "FOUNDER CORE MODULE::Organization Management::Departments::Create Department":
+    "org_departments_create",
+  "COMPANY SETTINGS::Organization Management::Departments::Edit Department":
+    "org_departments_edit",
+  "FOUNDER CORE MODULE::Organization Management::Departments::Edit Department":
+    "org_departments_edit",
+  "COMPANY SETTINGS::Organization Management::Departments::Assign Manager":
+    "org_departments_assign_manager",
+  "FOUNDER CORE MODULE::Organization Management::Departments::Assign Manager":
+    "org_departments_assign_manager",
+  "COMPANY SETTINGS::Organization Management::Departments::Assign Acting Manager":
+    "org_departments_assign_acting_manager",
+  "FOUNDER CORE MODULE::Organization Management::Departments::Assign Acting Manager":
+    "org_departments_assign_acting_manager",
+  "COMPANY SETTINGS::Organization Management::Departments::Remove Acting Manager":
+    "org_departments_remove_acting_manager",
+  "FOUNDER CORE MODULE::Organization Management::Departments::Remove Acting Manager":
+    "org_departments_remove_acting_manager",
 };
 
 const buildPathKey = (pathParts) => pathParts.join("::");
@@ -497,6 +586,41 @@ const ensureVisitorModuleInTree = (rawModules = []) => {
     }
   }
 
+  const getChildRef = (node = {}) => {
+    if (Array.isArray(node?.items)) return "items";
+    if (Array.isArray(node?.children)) return "children";
+    if (Array.isArray(node?.modules)) return "modules";
+    if (Array.isArray(node?.submodules)) return "submodules";
+    return "children";
+  };
+  const getChildren = (node = {}) => {
+    const ref = getChildRef(node);
+    return Array.isArray(node?.[ref]) ? node[ref] : [];
+  };
+
+  let founderCoreNode = null;
+  let organizationNode = null;
+  const visit = (nodes = []) => {
+    (Array.isArray(nodes) ? nodes : []).forEach((node) => {
+      const nodeName = String(node?.name || node?.moduleName || "").trim().toLowerCase();
+      if (nodeName === "founder core module") founderCoreNode = node;
+      if (nodeName === "organization management") organizationNode = node;
+      visit(getChildren(node));
+    });
+  };
+  source.forEach((section) => visit(getChildren(section)));
+
+  if (organizationNode) {
+    const orgRef = getChildRef(organizationNode);
+    organizationNode.name = CANONICAL_ORGANIZATION_NODE.name;
+    organizationNode.moduleId = CANONICAL_ORGANIZATION_NODE.moduleId;
+    organizationNode[orgRef] = CANONICAL_ORGANIZATION_NODE.children;
+  } else if (founderCoreNode) {
+    const founderRef = getChildRef(founderCoreNode);
+    const founderChildren = getChildren(founderCoreNode);
+    founderCoreNode[founderRef] = [...founderChildren, CANONICAL_ORGANIZATION_NODE];
+  }
+
   return source;
 };
 
@@ -504,9 +628,13 @@ const normalizeModulesTree = (nodes = [], parentPath = []) => {
   const nodeList = toArray(nodes);
   return nodeList
     .map((node, index) => {
-      const categoryName = String(
+      const rawCategoryName = String(
         node?.category || node?.departmentName || node?.groupName || "",
       ).trim();
+      const categoryName =
+        rawCategoryName.toLowerCase() === "company settings"
+          ? "FOUNDER CORE MODULE"
+          : rawCategoryName;
       if (categoryName) {
         const categoryChildren = normalizeModulesTree(
           node?.items || node?.children || node?.modules || node?.submodules || [],
@@ -653,18 +781,19 @@ const collectEnabledModuleIds = (nodes = [], treeState = {}, path = [], enabled 
 };
 
 const collectEnabledAccessModules = (nodes = [], treeState = {}, path = [], enabled = new Set()) => {
+  const ACCESS_PATH_KEY_MAP = { ...VISITOR_PATH_KEY_MAP, ...ORGANIZATION_PATH_KEY_MAP };
   nodes.forEach((node) => {
     const currentPath = [...path, node.name];
     const key = buildPathKey(currentPath);
     const moduleId = String(node?.moduleId || "").trim();
-    const mappedVisitorKey = VISITOR_PATH_KEY_MAP[key];
+    const mappedAccessKey = ACCESS_PATH_KEY_MAP[key];
 
     if (treeState[key]) {
       if (moduleId && !moduleId.startsWith("idx::")) {
         enabled.add(moduleId);
       }
-      if (mappedVisitorKey) {
-        enabled.add(mappedVisitorKey);
+      if (mappedAccessKey) {
+        enabled.add(mappedAccessKey);
       }
     }
 
@@ -677,13 +806,14 @@ const collectEnabledAccessModules = (nodes = [], treeState = {}, path = [], enab
 
 const applyAccessModulesToTreeState = (baseState = {}, accessModules = []) => {
   const next = { ...(baseState || {}) };
+  const ACCESS_PATH_KEY_MAP = { ...VISITOR_PATH_KEY_MAP, ...ORGANIZATION_PATH_KEY_MAP };
   const accessSet = new Set(
     (Array.isArray(accessModules) ? accessModules : [])
       .map((key) => String(key || "").trim())
       .filter(Boolean),
   );
 
-  Object.entries(VISITOR_PATH_KEY_MAP).forEach(([pathKey, moduleKey]) => {
+  Object.entries(ACCESS_PATH_KEY_MAP).forEach(([pathKey, moduleKey]) => {
     if (accessSet.has(moduleKey)) {
       const parts = pathKey.split("::").filter(Boolean);
       for (let i = 1; i <= parts.length; i += 1) {
