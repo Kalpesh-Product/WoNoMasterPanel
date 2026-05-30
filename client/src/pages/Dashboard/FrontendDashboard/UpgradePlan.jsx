@@ -120,11 +120,11 @@ const UpgradePlan = () => {
         updateCompaniesCache((row) =>
           row.companyId === company.companyId
             ? {
-                ...row,
-                paymentLinkUrl,
-                paymentLinkSentAt,
-                upgradeStatus: "payment_link_sent",
-              }
+              ...row,
+              paymentLinkUrl,
+              paymentLinkSentAt,
+              upgradeStatus: "payment_link_sent",
+            }
             : row,
         );
 
@@ -162,20 +162,20 @@ const UpgradePlan = () => {
       updateCompaniesCache((company) =>
         company.companyId === companyId
           ? {
-              ...company,
-              paymentStatus,
-              paymentConfirmedAt,
-              plan: paymentStatus
-                ? String(company.requestedPlan || company.plan || "")
-                    .trim()
-                    .toLowerCase() || company.plan
-                : company.plan,
-              upgradeStatus: paymentStatus
-                ? "paid"
-                : company.paymentLinkSentAt
+            ...company,
+            paymentStatus,
+            paymentConfirmedAt,
+            plan: paymentStatus
+              ? String(company.requestedPlan || company.plan || "")
+                .trim()
+                .toLowerCase() || company.plan
+              : company.plan,
+            upgradeStatus: paymentStatus
+              ? "paid"
+              : company.paymentLinkSentAt
                 ? "payment_link_sent"
                 : "requested",
-            }
+          }
           : company,
       );
 
@@ -225,10 +225,10 @@ const UpgradePlan = () => {
         updateCompaniesCache((row) =>
           row.companyId === company.companyId
             ? {
-                ...row,
-                upgradeSuccessSentAt,
-                upgradeStatus: "upgraded",
-              }
+              ...row,
+              upgradeSuccessSentAt,
+              upgradeStatus: "upgraded",
+            }
             : row,
         );
 
@@ -244,7 +244,7 @@ const UpgradePlan = () => {
 
         toast.error(
           error?.response?.data?.message ||
-            "Failed to send upgrade success email",
+          "Failed to send upgrade success email",
         );
       },
       onSettled: () => {
@@ -509,10 +509,10 @@ const UpgradePlan = () => {
             label="Upgrade Status"
             value={formatPlan(selectedCompany?.upgradeStatus)}
           />
-          <DetailRow
+          {/* <DetailRow
             label="7 Day Trial"
             value={getTrialStatusLabel(selectedCompany)}
-          />
+          /> */}
           <DetailRow
             label="Trial Start"
             value={formatDateTime(selectedCompany?.trialStartAt)}

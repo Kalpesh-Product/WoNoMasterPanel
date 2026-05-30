@@ -16,21 +16,21 @@ const PrimaryButton = ({
 
   return (
     <motion.button
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.9 }}
+      whileHover={{ scale: disabled || isLoading ? 1 : 1.01 }}
+      whileTap={{ scale: disabled || isLoading ? 1 : 0.98 }}
       disabled={disabled || isLoading} // Disable if loading
       type={type}
-      className={` flex items-center justify-center gap-2 ${
-        disabled || isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-primary"
-      } motion-preset-slide-up-sm text-white rounded-md ${
-        fontSize ? fontSize : "text-content leading-5"
-      } ${externalStyles} ${padding ? padding : "px-8 py-2"} ${className}`}
+      className={`flex items-center justify-center gap-2 whitespace-nowrap border transition-all duration-200 ${
+        disabled || isLoading
+          ? "bg-slate-300 border-slate-300 text-white cursor-not-allowed shadow-none"
+          : "bg-[#2563EB] border-blue-600 text-white hover:bg-[#1d4ed8] shadow-[0_10px_18px_rgba(37,99,235,0.22)]"
+      } motion-preset-slide-up-sm rounded-xl ${
+        fontSize ? fontSize : "text-[12px] font-semibold leading-5"
+      } ${externalStyles} ${padding ? padding : "px-4 py-2.5"} ${className}`}
       onClick={handleSubmit}>
-      {isLoading && <CircularProgress size={16} color="#1E3D73" />}{" "}
+      {isLoading && <CircularProgress size={16} sx={{ color: "#ffffff" }} />}{" "}
       {/* Spinner */}
-      <span className="whitespace-nowrap">
-        {isLoading ? `${title}` : title}
-      </span>
+      <span>{isLoading ? `${title}` : title}</span>
     </motion.button>
   );
 };

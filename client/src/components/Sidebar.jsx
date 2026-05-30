@@ -1,12 +1,24 @@
 import React, { useState } from "react";
-import { FaAngleDown, FaChevronUp, FaBoxesStacked } from "react-icons/fa6";
-import { FaChartLine } from "react-icons/fa";
+import { FaAngleDown, FaChevronUp } from "react-icons/fa6";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
-import { MdHome } from "react-icons/md";
-import { FaLaptopCode } from "react-icons/fa";
-import { FaUserTie } from "react-icons/fa6";
-import { VscPersonAdd } from "react-icons/vsc";
+import {
+  LuLayoutDashboard,
+  LuBuilding2,
+  LuUsers,
+  LuUserPlus,
+  LuHeadset,
+  LuBoxes,
+  LuGlobe,
+  LuUpload,
+  LuUser,
+  LuFileText,
+  LuMessageSquareText,
+  LuNewspaper,
+  LuChartLine,
+  LuPlane,
+  LuShieldCheck,
+} from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
 
 const Sidebar = ({ onCloseDrawer }) => {
@@ -37,105 +49,105 @@ const Sidebar = ({ onCloseDrawer }) => {
   const defaultModules = [
     {
       id: 1,
-      icon: <MdHome />,
+      icon: LuLayoutDashboard,
       title: "Dashboard",
       route: "/dashboard",
       submenus: [
         {
           id: 2,
           title: "Companies",
-          icon: <FaLaptopCode />,
+          icon: LuBuilding2,
           route: "/dashboard/companies",
         },
         {
           id: 3,
           title: "All Leads",
-          icon: <FaUserTie />,
+          icon: LuUsers,
           route: "/dashboard/all-leads",
         },
         {
           id: 4,
           title: "Value Adds Leads",
-          icon: <FaUserTie />,
+          icon: LuUsers,
           route: "/dashboard/value-adds-leads",
         },
         {
           id: 5,
-          title: "Host Companies",
-          icon: <FaLaptopCode />,
-          route: "/dashboard/host-companies",
-        },
-        {
-          id: 6,
           title: "Signup Leads",
-          icon: <VscPersonAdd />,
+          icon: LuUserPlus,
           route: "/dashboard/signup-leads",
         },
         {
+          id: 6,
+          title: "Host Companies",
+          icon: LuBuilding2,
+          route: "/dashboard/host-companies",
+        },
+        {
           id: 7,
-          title: "Customer Support",
-          icon: <VscPersonAdd />,
-          route: "/dashboard/customer-support",
+          title: "Module Access Logs",
+          icon: LuShieldCheck,
+          route: "/dashboard/module-access-logs",
         },
         {
           id: 8,
-          title: "Requested Services",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/requested-services",
+          title: "Customer Support",
+          icon: LuHeadset,
+          route: "/dashboard/customer-support",
         },
         {
           id: 9,
-          title: "Inactive Websites",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/inactive-websites",
+          title: "Requested Services",
+          icon: LuBoxes,
+          route: "/dashboard/requested-services",
         },
         {
           id: 10,
-          title: "Data Upload",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/data-upload",
+          title: "Inactive Websites",
+          icon: LuGlobe,
+          route: "/dashboard/inactive-websites",
         },
         {
           id: 11,
-          title: "Profile",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/profile/my-profile",
+          title: "Data Upload",
+          icon: LuUpload,
+          route: "/dashboard/data-upload",
         },
         {
           id: 12,
-          title: "Logs",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/logs-layout",
+          title: "Profile",
+          icon: LuUser,
+          route: "/dashboard/profile/my-profile",
         },
         {
           id: 13,
-          title: "Reviews",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/company-reviews",
+          title: "Logs",
+          icon: LuFileText,
+          route: "/dashboard/logs-layout",
         },
         {
           id: 14,
-          title: "Blogs and news",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/BlogsAndNews",
+          title: "Reviews",
+          icon: LuMessageSquareText,
+          route: "/dashboard/company-reviews",
         },
         {
           id: 15,
-          title: "World Ranking Weights",
-          icon: <FaChartLine />,
-          route: "/dashboard/world-ranking-weights",
+          title: "Blogs and news",
+          icon: LuNewspaper,
+          route: "/dashboard/BlogsAndNews",
         },
         {
           id: 16,
-          title: "Visa Countries",
-          icon: <FaChartLine />,
-          route: "/dashboard/visa-countries",
+          title: "World Ranking Weights",
+          icon: LuChartLine,
+          route: "/dashboard/world-ranking-weights",
         },
         {
           id: 17,
-          title: "Module Access Logs",
-          icon: <FaBoxesStacked />,
-          route: "/dashboard/module-access-logs",
+          title: "Visa Countries",
+          icon: LuPlane,
+          route: "/dashboard/visa-countries",
         },
       ],
     },
@@ -148,6 +160,15 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   const toggleModule = (index) => {
     setExpandedModule((prev) => (prev === index ? null : index));
+  };
+
+  const handleModuleClick = (module, index) => {
+    if (module.submenus?.length) {
+      toggleModule(index);
+      return;
+    }
+    navigate(module.route);
+    if (onCloseDrawer) onCloseDrawer();
   };
 
   const isActive = (path) => location.pathname.startsWith(path);
@@ -167,106 +188,95 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   const filteredModules = isRestrictedUser
     ? defaultModules.map((module) => ({
-        ...module,
-        submenus: module.submenus.filter((submenu) =>
-          restrictedVisibleSubmenuTitles.includes(submenu.title),
-        ),
-      }))
+      ...module,
+      submenus: module.submenus.filter((submenu) =>
+        restrictedVisibleSubmenuTitles.includes(submenu.title),
+      ),
+    }))
     : defaultModules;
 
   return (
-    <div className="flex flex-col px-2 bg-gray">
-      <div
-        className={`${isSidebarOpen ? "w-60" : "w-16"} bg-white text-black flex flex-shrink-0 h-[90vh] hideScrollBar overflow-y-auto transition-all duration-100 z-[1]`}
-      >
-        <div className="flex relative w-full">
-          <div className="p-0 flex flex-col gap-2 w-full">
-            <div
-              className={`rounded-md ${expandedModule === 0 ? "bg-gray-200" : "bg-white"}`}
-            >
-              {filteredModules.map((module, index) => (
-                <div key={module.id}>
-                  <div
-                    className={`cursor-pointer text-gray-500 flex ${
-                      expandedModule === null && isSidebarOpen
-                        ? "justify-between pr-2"
-                        : expandedModule === 0 && isSidebarOpen
-                          ? "justify-between text-[#1E3D73] pr-2"
-                          : "justify-center pr-0"
-                    } items-center ${expandedModule === 0 && "bg-gray-200 rounded-t-md text-black"} ${
-                      isActive(module.route)
-                        ? "text-primary border-r-4 transition-all duration-100 rounded-tl-md rounded-bl-md "
-                        : ""
-                    }`}
-                    onClick={() => navigate(module.route)}
-                  >
-                    <div className="flex justify-start items-center">
-                      <div
-                        className={`flex items-center justify-center text-sm h-9 w-9 ${
-                          expandedModule === 0
-                            ? "bg-primary text-white rounded-md"
-                            : ""
-                        }`}
-                      >
-                        {module.icon}
-                      </div>
-                      {isSidebarOpen && (
-                        <span className="pl-5 text-sm">{module.title}</span>
-                      )}
-                    </div>
-                    {isSidebarOpen && module.submenus && (
-                      <span
-                        onClick={() => module.submenus && toggleModule(index)}
-                        className={`transition-transform duration-300 ease-in-out ${
-                          expandedModule === index ? "rotate-180" : "rotate-0"
-                        }`}
-                      >
-                        {expandedModule === index ? (
-                          <FaChevronUp />
-                        ) : (
-                          <FaAngleDown />
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                      expandedModule === index ? "max-h-[2000px]" : "max-h-0"
-                    }`}
-                  >
-                    {module.submenus && (
-                      <div>
-                        {module.submenus.map((submenu) => (
-                          <div
-                            key={submenu.id}
-                            className={`cursor-pointer hover:text-[#1E3D73] transition-all duration-100 ${
-                              isActive(submenu.route)
-                                ? "text-[#1E3D73]"
-                                : "text-gray-500"
-                            } py-3`}
-                            onClick={() => handleMenuOpen(submenu)}
-                          >
-                            <div
-                              className={`flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"}`}
-                            >
-                              <div className="flex justify-center items-center w-8 text-sm">
-                                {submenu.icon}
-                              </div>
-                              {isSidebarOpen && (
-                                <span className="pl-4 text-sm">
-                                  {submenu.title}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+    <div
+      className={`${isSidebarOpen ? "w-64" : "w-16"} h-[90vh] bg-[#f3f4f6] flex flex-col border-r border-gray-200 shadow-sm overflow-hidden transition-all duration-100`}
+    >
+      <div className="px-4 py-3 flex justify-center">
+        <span className="text-[10px] font-bold tracking-wider text-gray-600 bg-gray-200 px-3 py-1 rounded-full uppercase">
+          {isSidebarOpen ? "Master Panel" : "MP"}
+        </span>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-5 hideScrollBar">
+        {!isSidebarOpen ? (
+          <div className="px-2 pt-1 pb-2">
+            <div className="text-[10px] font-pbold tracking-wider text-gray-500 uppercase text-center">
+              MNU
             </div>
+            <div className="mt-2 h-px bg-gray-300" />
           </div>
+        ) : null}
+
+        <div className="space-y-1">
+          {filteredModules.map((module, index) => (
+            <div key={module.id}>
+              {isSidebarOpen ? (
+                <button
+                  type="button"
+                  className="w-full mb-1 px-3 flex items-center justify-between text-left"
+                  onClick={() => toggleModule(index)}
+                >
+                  <span className="text-[12px] font-pbold text-gray-500 tracking-wider uppercase">
+                    {module.title}
+                  </span>
+                  <span
+                    className={`text-gray-400 transition-transform duration-300 ${expandedModule === index ? "rotate-180" : "rotate-0"
+                      }`}
+                  >
+                    {expandedModule === index ? <FaChevronUp size={12} /> : <FaAngleDown size={12} />}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  title={module.title}
+                  className={`w-full flex items-center justify-center py-2.5 px-3 rounded-md transition-colors ${isActive(module.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
+                    }`}
+                  onClick={() => handleModuleClick(module, index)}
+                >
+                  <span className="text-gray-500">
+                    <module.icon size={16} />
+                  </span>
+                </button>
+              )}
+
+              <div
+                className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isSidebarOpen && expandedModule === index ? "max-h-[2600px]" : "max-h-0"
+                  }`}
+              >
+                {isSidebarOpen && module.submenus?.map((submenu) => (
+                  <button
+                    type="button"
+                    key={submenu.id}
+                    title={!isSidebarOpen ? submenu.title : ""}
+                    className={`w-full flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"
+                      } py-2.5 px-3 rounded-md transition-colors ${isActive(submenu.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
+                      }`}
+                    onClick={() => handleMenuOpen(submenu)}
+                  >
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className="text-gray-500">
+                        <submenu.icon size={15} />
+                      </span>
+                      {isSidebarOpen && (
+                        <span className="text-[12px] font-pmedium truncate uppercase">
+                          {submenu.title}
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

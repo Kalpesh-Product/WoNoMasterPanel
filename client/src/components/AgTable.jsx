@@ -198,23 +198,22 @@ const AgTableComponent = React.memo(
       : "No Rows To Show";
 
     return (
-      <div className="border-b-[1px] border-borderGray">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.06)] overflow-hidden">
         <div className=" flex gap-4 items-center">
           <div
-            className={`flex items-center ${
-              tableTitle
-                ? "justify-between w-full items-center"
-                : "justify-end w-full"
-            } `}
+            className={`flex items-center ${tableTitle
+              ? "justify-between w-full items-center"
+              : "justify-end w-full"
+              } px-4 pt-4`}
           >
             {!hideTitle && (
-              <div className="flex items-center justify-between pb-4">
-                <span className="font-pmedium text-title text-primary uppercase">
+              <div className="flex items-center justify-between pb-3">
+                <span className="font-pmedium text-title text-color-black uppercase ml-2">
                   {tableTitle}
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               {exportData ? (
                 <PrimaryButton
                   title={"Export"}
@@ -254,12 +253,11 @@ const AgTableComponent = React.memo(
           </div>
         </div>
 
-        <hr className="my-2" />
+        <hr className="my-0 border-slate-200" />
 
         <div
-          className={`flex ${
-            search ? "justify-between" : "justify-end"
-          }  items-center py-2`}
+          className={`flex ${search ? "justify-between" : "justify-end"
+            } items-center px-4 py-3`}
         >
           {search ? (
             <TextField
@@ -269,9 +267,25 @@ const AgTableComponent = React.memo(
               value={searchQuery}
               onChange={handleSearch}
               placeholder="Search"
+              sx={{
+                minWidth: 260,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "10px",
+                  backgroundColor: "#f8fafc",
+                  "& fieldset": {
+                    borderColor: "#e2e8f0",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#cbd5e1",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#2563EB",
+                  },
+                },
+              }}
               InputProps={{
                 startAdornment: (
-                  <IoIosSearch size={20} style={{ marginRight: 8 }} />
+                  <IoIosSearch size={18} style={{ marginRight: 8, color: "#64748b" }} />
                 ),
               }}
             />
@@ -285,7 +299,7 @@ const AgTableComponent = React.memo(
               <div className="flex items-center gap-4">
                 <div className="flex justify-end items-center w-full">
                   <div
-                    className="p-2 hover:bg-gray-200 cursor-pointer rounded-full border-[1px] border-borderGray"
+                    className="p-2 hover:bg-slate-100 cursor-pointer rounded-full border border-slate-200 text-slate-600 transition-colors"
                     onClick={() => setFilterDrawerOpen(true)}
                   >
                     <IoFilter />
@@ -295,13 +309,20 @@ const AgTableComponent = React.memo(
             )}
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 px-4 pb-2">
           {Object.keys(appliedFilters).map((field) =>
             appliedFilters[field] ? (
               <Chip
                 key={field}
                 label={`${field}: ${appliedFilters[field]}`}
                 onDelete={() => removeFilter(field)}
+                sx={{
+                  borderRadius: "9999px",
+                  fontWeight: 600,
+                  backgroundColor: "#eff6ff",
+                  color: "#1d4ed8",
+                  border: "1px solid #dbeafe",
+                }}
               />
             ) : null,
           )}
@@ -360,7 +381,18 @@ const AgTableComponent = React.memo(
         <div
           ref={tableRef}
           className="ag-theme-quartz border-none w-full font-pregular"
-          style={{ height: 440 }}
+          style={{
+            height: 440,
+            "--ag-borders": "none",
+            "--ag-border-color": "#e2e8f0",
+            "--ag-header-height": "44px",
+            "--ag-row-height": "50px",
+            "--ag-font-size": "12px",
+            "--ag-header-background-color": "#f8fafc",
+            "--ag-row-hover-color": "#f1f5f9",
+            "--ag-selected-row-background-color": "#eaf2ff",
+            "--ag-odd-row-background-color": "#fcfdff",
+          }}
         >
           <AgGridReact
             ref={gridRef}

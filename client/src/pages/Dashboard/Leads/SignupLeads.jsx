@@ -498,7 +498,7 @@ const SignupLeads = () => {
 
   return (
     <>
-      <div className="border border-borderGray rounded-md p-3">
+      <div className="rounded-md p-3">
         <AgTable
           data={leads}
           columns={columns}

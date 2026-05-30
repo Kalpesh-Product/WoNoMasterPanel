@@ -250,37 +250,37 @@ const HostCompanies = () => {
                     );
                 },
             },
-            {
-                field: "trialStatus",
-                headerName: "7 Day Trial",
-                flex: 1,
-                cellRenderer: (params) => {
-                    const isTrialActive = params.data.isTrialActive === true;
-                    const hasUsedTrial = params.data.hasUsedTrial === true;
+            // {
+            //     field: "trialStatus",
+            //     headerName: "7 Day Trial",
+            //     flex: 1,
+            //     cellRenderer: (params) => {
+            //         const isTrialActive = params.data.isTrialActive === true;
+            //         const hasUsedTrial = params.data.hasUsedTrial === true;
 
-                    let label = "Not Started";
-                    let backgroundColor = "#F3F4F6";
-                    let color = "#4B5563";
+            //         let label = "Not Started";
+            //         let backgroundColor = "#F3F4F6";
+            //         let color = "#4B5563";
 
-                    if (isTrialActive) {
-                        label = "Active";
-                        backgroundColor = "#DBEAFE";
-                        color = "#1D4ED8";
-                    } else if (hasUsedTrial) {
-                        label = "Used";
-                        backgroundColor = "#FEF3C7";
-                        color = "#B45309";
-                    }
+            //         if (isTrialActive) {
+            //             label = "Active";
+            //             backgroundColor = "#DBEAFE";
+            //             color = "#1D4ED8";
+            //         } else if (hasUsedTrial) {
+            //             label = "Used";
+            //             backgroundColor = "#FEF3C7";
+            //             color = "#B45309";
+            //         }
 
-                    return (
-                        <Chip
-                            label={label}
-                            style={{ backgroundColor, color }}
-                            size="small"
-                        />
-                    );
-                },
-            },
+            //         return (
+            //             <Chip
+            //                 label={label}
+            //                 style={{ backgroundColor, color }}
+            //                 size="small"
+            //             />
+            //         );
+            //     },
+            // },
             {
                 field: "actions",
                 headerName: "Actions",
@@ -433,10 +433,10 @@ const HostCompanies = () => {
                     <DetailRow label="POC Name" value={selectedCompany?.pocName} />
                     <DetailRow label="POC Email" value={selectedCompany?.pocEmail} />
                     <DetailRow label="POC Phone" value={selectedCompany?.pocPhone} />
-                    <DetailRow
+                    {/* <DetailRow
                         label="7 Day Trial"
                         value={getTrialStatusLabel(selectedCompany)}
-                    />
+                    /> */}
                     <DetailRow
                         label="Trial Start"
                         value={formatDateTime(selectedCompany?.trialStartAt)}
