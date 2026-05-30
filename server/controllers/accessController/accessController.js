@@ -5,6 +5,11 @@ const CustomError = require("../../utils/customErrorlogs");
 const UserData = require("../../models/hr/UserData");
 const Department = require("../../models/Departments");
 const { createLog } = require("../../utils/moduleLogs");
+const {
+  createModuleAccessLog,
+  getActorFromRequest,
+  resolveSourcePanel,
+} = require("../../utils/moduleAccessLogs");
 
 const getPermissions = async (req, res, next) => {
   try {
@@ -37,6 +42,9 @@ const updatePermissions = async (req, res, next) => {
     const uniquePermissions = [...new Set(permissions)];
 
     let userPermissions = await Permissions.findOne({ user: userId });
+    const previousPermissions = Array.isArray(userPermissions?.permissions)
+      ? userPermissions.permissions.map((id) => String(id))
+      : [];
 
     if (!userPermissions) {
       userPermissions = new Permissions({
@@ -51,6 +59,42 @@ const updatePermissions = async (req, res, next) => {
 
     await UserData.findByIdAndUpdate(userId, {
       permissions: savedPermissions._id,
+    });
+
+    const targetUser = await UserData.findById(userId)
+      .select("firstName middleName lastName email")
+      .lean();
+    const actor = getActorFromRequest(req);
+    const previousSet = new Set(previousPermissions);
+    const nextSet = new Set(uniquePermissions);
+    const enabledModules = uniquePermissions.filter((id) => !previousSet.has(id));
+    const disabledModules = previousPermissions.filter((id) => !nextSet.has(id));
+
+    await createModuleAccessLog({
+      ...actor,
+      sourcePanel: resolveSourcePanel(req, "master_panel"),
+      action: "master_permissions_updated",
+      targetType: "user",
+      targetId: String(userId || ""),
+      targetName:
+        [targetUser?.firstName, targetUser?.middleName, targetUser?.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || targetUser?.email || "",
+      companyId: String(req?.company || ""),
+      enabledModules,
+      disabledModules,
+      enabledCount: enabledModules.length,
+      disabledCount: disabledModules.length,
+      changes: {
+        previousPermissions,
+        nextPermissions: uniquePermissions,
+        enabledModules,
+        disabledModules,
+        enabledCount: enabledModules.length,
+        disabledCount: disabledModules.length,
+      },
+      ipAddress: req.ip || "",
     });
 
     return res.status(200).json({

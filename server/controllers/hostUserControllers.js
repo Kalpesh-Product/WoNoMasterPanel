@@ -8,6 +8,11 @@ const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
 const { randomUUID } = require("crypto");
 const jwt = require("jsonwebtoken");
+const {
+  createModuleAccessLog,
+  getActorFromRequest,
+  resolveSourcePanel,
+} = require("../utils/moduleAccessLogs");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -1899,6 +1904,31 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     const nextWorkspaceName = normalizeWorkspaceName(
       workspaceDocRaw?.workspaceName || workspaceName,
     );
+      const previousWorkspaceAccess = normalizeMemberWorkspaceAccess(member, {
+        allowFallback: true,
+      }).find((entry) => {
+      const entryWorkspaceId = normalizeWorkspaceId(entry?.workspaceId);
+      const entryWorkspaceName = normalizeWorkspaceName(entry?.workspaceName);
+      return (
+        entryWorkspaceId === effectiveWorkspaceId ||
+        entryWorkspaceName === nextWorkspaceName
+      );
+      });
+      let previousGrantedModules = Array.isArray(previousWorkspaceAccess?.grantedModules)
+        ? previousWorkspaceAccess.grantedModules
+            .map((id) => String(id || "").trim())
+            .filter(Boolean)
+        : [];
+      if (
+        !previousGrantedModules.length &&
+        previousWorkspaceAccess?.moduleAccess &&
+        typeof previousWorkspaceAccess.moduleAccess === "object"
+      ) {
+        previousGrantedModules = Object.entries(previousWorkspaceAccess.moduleAccess)
+          .filter(([, isEnabled]) => Boolean(isEnabled))
+          .map(([moduleKey]) => String(moduleKey || "").trim())
+          .filter(Boolean);
+      }
     const hasWorkspaceDoc = Boolean(workspaceDocRaw?._id);
     const ensuredVisitor = ensureVisitorHierarchyInModules(workspaceDocRaw?.modules || []);
     const ensuredOrganization = ensureOrganizationHierarchyInModules(
@@ -1992,12 +2022,24 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     member.workspaceAccess = currentAccess;
     await member.save();
 
-    const filteredGrantedModules = grantedModules;
+      const filteredGrantedModules = grantedModules;
 
-    if (workspaceDoc?._id) {
-      await WorkspaceMember.findOneAndUpdate(
-        {
+      if (workspaceDoc?._id) {
+        const existingWorkspaceMember = await WorkspaceMember.findOne({
           user: member._id,
+          workspace: workspaceDoc._id,
+        })
+          .select("grantedModules")
+          .lean();
+        if (Array.isArray(existingWorkspaceMember?.grantedModules)) {
+          previousGrantedModules = existingWorkspaceMember.grantedModules
+            .map((id) => String(id || "").trim())
+            .filter(Boolean);
+        }
+
+        await WorkspaceMember.findOneAndUpdate(
+          {
+            user: member._id,
           workspace: workspaceDoc._id,
         },
         {
@@ -2009,6 +2051,40 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
         { new: true, upsert: true, setDefaultsOnInsert: true },
       );
     }
+
+    const actor = getActorFromRequest(req);
+    const previousGrantedSet = new Set(previousGrantedModules);
+    const nextGrantedSet = new Set(filteredGrantedModules);
+    const enabledModules = filteredGrantedModules.filter((id) => !previousGrantedSet.has(id));
+    const disabledModules = previousGrantedModules.filter((id) => !nextGrantedSet.has(id));
+    await createModuleAccessLog({
+      ...actor,
+      sourcePanel: resolveSourcePanel(req, "host_panel"),
+      action: "host_member_workspace_access_updated",
+      targetType: "user",
+      targetId: String(member._id || ""),
+      targetName: String(member?.name || member?.email || "").trim(),
+      companyId: String(member?.companyId || workspaceDoc?.companyId || ""),
+      workspaceId: String(effectiveWorkspaceId || ""),
+      workspaceName: String(nextWorkspaceName || ""),
+      enabledModules,
+      disabledModules,
+      enabledCount: enabledModules.length,
+      disabledCount: disabledModules.length,
+      changes: {
+        previousGrantedModules,
+        grantedModules: filteredGrantedModules,
+        enabledModules,
+        disabledModules,
+        enabledCount: enabledModules.length,
+        disabledCount: disabledModules.length,
+        accessSource:
+          String(accessSource || "").trim() === "plan_role_preset"
+            ? "plan_role_preset"
+            : "custom_workspace_grant",
+      },
+      ipAddress: req.ip || "",
+    });
 
     return res.status(200).json({
       message: "Workspace access updated successfully",
@@ -2036,7 +2112,7 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
     const requestedEnabled = Array.isArray(enabledModuleIds) ? enabledModuleIds : [];
 
     const currentWorkspaceRaw = await Workspace.findById(workspaceId)
-      .select("_id modules")
+      .select("_id workspaceName companyId modules enabledModuleIds")
       .lean();
     if (!currentWorkspaceRaw?._id) {
       return res.status(404).json({ message: "Workspace not found" });
@@ -2052,6 +2128,15 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
 
     const sanitizedRequested = sanitizeEnabledModuleIds(
       requestedEnabled,
+      currentWorkspace?.modules || [],
+    );
+    const previousEnabled = expandLinkedModuleIds(
+      sanitizeEnabledModuleIds(
+        Array.isArray(currentWorkspaceRaw?.enabledModuleIds)
+          ? currentWorkspaceRaw.enabledModuleIds
+          : [],
+        currentWorkspace?.modules || [],
+      ),
       currentWorkspace?.modules || [],
     );
     const nextEnabled = expandLinkedModuleIds(
@@ -2147,6 +2232,36 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
         await HostUser.bulkWrite(userOps);
       }
     }
+
+    const actor = getActorFromRequest(req);
+    const previousSet = new Set(previousEnabled);
+    const nextSet = new Set(nextEnabled);
+    const enabledModules = nextEnabled.filter((id) => !previousSet.has(id));
+    const disabledModules = previousEnabled.filter((id) => !nextSet.has(id));
+    await createModuleAccessLog({
+      ...actor,
+      sourcePanel: resolveSourcePanel(req, "host_panel"),
+      action: "host_workspace_enabled_modules_updated",
+      targetType: "workspace",
+      targetId: String(workspace?._id || workspaceId || ""),
+      targetName: String(workspace?.workspaceName || "").trim(),
+      companyId: String(workspace?.companyId || ""),
+      workspaceId: String(workspace?._id || workspaceId || ""),
+      workspaceName: String(workspace?.workspaceName || ""),
+      enabledModules,
+      disabledModules,
+      enabledCount: enabledModules.length,
+      disabledCount: disabledModules.length,
+      changes: {
+        previousEnabledModuleIds: previousEnabled,
+        enabledModuleIds: Array.isArray(nextEnabled) ? nextEnabled : [],
+        enabledModules,
+        disabledModules,
+        enabledCount: enabledModules.length,
+        disabledCount: disabledModules.length,
+      },
+      ipAddress: req.ip || "",
+    });
 
     return res.status(200).json({
       message: "Workspace enabled modules updated successfully",

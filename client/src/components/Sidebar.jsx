@@ -131,6 +131,12 @@ const Sidebar = ({ onCloseDrawer }) => {
           icon: <FaChartLine />,
           route: "/dashboard/visa-countries",
         },
+        {
+          id: 17,
+          title: "Module Access Logs",
+          icon: <FaBoxesStacked />,
+          route: "/dashboard/module-access-logs",
+        },
       ],
     },
   ];
