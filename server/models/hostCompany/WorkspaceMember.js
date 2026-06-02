@@ -30,6 +30,10 @@ const workspaceMemberSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    enabledModules: {
+      type: [String],
+      default: [],
+    },
     isPrimary: {
       type: Boolean,
       default: true,

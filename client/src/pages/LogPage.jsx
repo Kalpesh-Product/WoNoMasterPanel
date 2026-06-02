@@ -40,7 +40,7 @@ const LogPage = () => {
       flex: 1,
       cellRenderer: (params) => (
         <div role="button" onClick={() => handleViewlog(params.data.payload)}>
-          <span className="underline text-primary cursor-pointer">
+          <span className="underline text-blue-600 cursor-pointer">
             {params.value}
           </span>
         </div>
@@ -77,19 +77,18 @@ const LogPage = () => {
   const tableData = isLoading
     ? []
     : data.map((item, index) => ({
-        srNo: index + 1,
-        ...item,
-        user:
-          item.fullName ||
-          (item.performedBy
-            ? `${item.performedBy.firstName ?? ""} ${
-                item.performedBy.lastName ?? ""
-              }`.trim()
-            : "-"),
-        path: item.path ? item.path.split("/").splice(2).join(" > ") : "-",
-        createdAt: item.createdAt,
-        payload: item.payload,
-      }));
+      srNo: index + 1,
+      ...item,
+      user:
+        item.fullName ||
+        (item.performedBy
+          ? `${item.performedBy.firstName ?? ""} ${item.performedBy.lastName ?? ""
+            }`.trim()
+          : "-"),
+      path: item.path ? item.path.split("/").splice(2).join(" > ") : "-",
+      createdAt: item.createdAt,
+      payload: item.payload,
+    }));
 
   //////////////////////Format data for view modal/////////////////////////
 
@@ -234,7 +233,7 @@ const LogPage = () => {
   };
 
   return (
-    <div className="p-4">
+    <div>
       <YearWiseTable
         data={tableData || []}
         columns={columns}

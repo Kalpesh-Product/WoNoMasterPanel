@@ -1,12 +1,17 @@
 import React, { useEffect } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import { TextField, MenuItem, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
+import Input from '@mui/joy/Input';
+import Select from '@mui/joy/Select';
+import Option from '@mui/joy/Option';
+import Textarea from '@mui/joy/Textarea';
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import SecondaryButton from "../../../components/SecondaryButton";
 
 // const VITE_DEV_LINK = "http://localhost:5007/api";
 const VITE_PROD_LINK = "https://wonomasterbe.vercel.app/api";
@@ -137,21 +142,27 @@ const EditBlogNews = () => {
                         name="destination"
                         control={control}
                         rules={{ required: "Destination is required" }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                select
-                                label="Destination"
-                                size="small"
-                                fullWidth
-                                error={!!errors.destination}
-                                helperText={errors.destination?.message}
-                            >
-                                <MenuItem value="">Select Destination</MenuItem>
-                                {destinations.map((dest) => (
-                                    <MenuItem key={dest} value={dest}>{dest}</MenuItem>
-                                ))}
-                            </TextField>
+                        render={({ field, fieldState }) => (
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <label className="text-sm text-slate-700">Destination</label>
+                                <Select
+                                    value={field.value || null}
+                                    placeholder="Select Destination"
+                                    variant="outlined"
+                                    color="neutral"
+                                    error={!!fieldState.error}
+                                    onChange={(_, val) => field.onChange(val)}
+                                >
+                                    {destinations.map((dest) => (
+                                        <Option key={dest} value={dest}>{dest}</Option>
+                                    ))}
+                                </Select>
+                                {fieldState.error ? (
+                                    <span className="text-xs text-red-600">
+                                        {fieldState.error.message}
+                                    </span>
+                                ) : null}
+                            </div>
                         )}
                     />
 
@@ -159,8 +170,22 @@ const EditBlogNews = () => {
                     <Controller
                         name="link"
                         control={control}
-                        render={({ field }) => (
-                            <TextField {...field} label="Link" size="small" fullWidth />
+                        render={({ field, fieldState }) => (
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <label className="text-sm text-slate-700">Link</label>
+                                <Input
+                                    {...field}
+                                    placeholder="Type URL here"
+                                    variant="outlined"
+                                    color="neutral"
+                                    error={!!fieldState.error}
+                                />
+                                {fieldState.error ? (
+                                    <span className="text-xs text-red-600">
+                                        {fieldState.error.message}
+                                    </span>
+                                ) : null}
+                            </div>
                         )}
                     />
 
@@ -172,15 +197,22 @@ const EditBlogNews = () => {
                             required: "Title is required",
                             minLength: { value: 5, message: "Title must be at least 5 characters" }
                         }}
-                        render={({ field }) => (
-                            <TextField
-                                {...field}
-                                label="Main Title"
-                                size="small"
-                                fullWidth
-                                error={!!errors.mainTitle}
-                                helperText={errors.mainTitle?.message}
-                            />
+                        render={({ field, fieldState }) => (
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <label className="text-sm text-slate-700">Main Title</label>
+                                <Input
+                                    {...field}
+                                    placeholder="Type title here"
+                                    variant="outlined"
+                                    color="neutral"
+                                    error={!!fieldState.error}
+                                />
+                                {fieldState.error ? (
+                                    <span className="text-xs text-red-600">
+                                        {fieldState.error.message}
+                                    </span>
+                                ) : null}
+                            </div>
                         )}
                     />
 
@@ -188,8 +220,22 @@ const EditBlogNews = () => {
                     <Controller
                         name="mainImage"
                         control={control}
-                        render={({ field }) => (
-                            <TextField {...field} label="Main Image URL" size="small" fullWidth />
+                        render={({ field, fieldState }) => (
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <label className="text-sm text-slate-700">Main Image URL</label>
+                                <Input
+                                    {...field}
+                                    placeholder="Type URL here"
+                                    variant="outlined"
+                                    color="neutral"
+                                    error={!!fieldState.error}
+                                />
+                                {fieldState.error ? (
+                                    <span className="text-xs text-red-600">
+                                        {fieldState.error.message}
+                                    </span>
+                                ) : null}
+                            </div>
                         )}
                     />
 
@@ -198,47 +244,69 @@ const EditBlogNews = () => {
                         <Controller
                             name="author"
                             control={control}
-                            render={({ field }) => (
-                                <TextField {...field} label="Author" size="small" fullWidth />
+                            render={({ field, fieldState }) => (
+                                <div className="flex flex-col gap-2 w-full mt-4">
+                                    <label className="text-sm text-slate-700">Author</label>
+                                    <Input
+                                        {...field}
+                                        placeholder="Author name"
+                                        variant="outlined"
+                                        color="neutral"
+                                        error={!!fieldState.error}
+                                    />
+                                </div>
                             )}
                         />
                         <Controller
                             name="source"
                             control={control}
-                            render={({ field }) => (
-                                <TextField {...field} label="Source" size="small" fullWidth />
+                            render={({ field, fieldState }) => (
+                                <div className="flex flex-col gap-2 w-full mt-4">
+                                    <label className="text-sm text-slate-700">Source</label>
+                                    <Input
+                                        {...field}
+                                        placeholder="Source name"
+                                        variant="outlined"
+                                        color="neutral"
+                                        error={!!fieldState.error}
+                                    />
+                                </div>
                             )}
                         />
                         <Controller
                             name="date"
                             control={control}
-                            render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Date"
-                                    size="small"
-                                    fullWidth
-                                    type="date"
-                                    InputLabelProps={{ shrink: true }}
-                                />
+                            render={({ field, fieldState }) => (
+                                <div className="flex flex-col gap-2 w-full mt-4">
+                                    <label className="text-sm text-slate-700">Date</label>
+                                    <Input
+                                        {...field}
+                                        type="date"
+                                        variant="outlined"
+                                        color="neutral"
+                                        error={!!fieldState.error}
+                                    />
+                                </div>
                             )}
                         />
                         <Controller
                             name="isActive"
                             control={control}
-                            render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    select
-                                    label="Status"
-                                    size="small"
-                                    fullWidth
-                                    value={field.value ?? true}
-                                    onChange={(e) => field.onChange(e.target.value === "true" || e.target.value === true)}
-                                >
-                                    <MenuItem value={true}>Active</MenuItem>
-                                    <MenuItem value={false}>Inactive</MenuItem>
-                                </TextField>
+                            render={({ field, fieldState }) => (
+                                <div className="flex flex-col gap-2 w-full mt-4">
+                                    <label className="text-sm text-slate-700">Status</label>
+                                    <Select
+                                        value={field.value !== undefined ? field.value : true}
+                                        placeholder="Select status"
+                                        variant="outlined"
+                                        color="neutral"
+                                        error={!!fieldState.error}
+                                        onChange={(_, val) => field.onChange(val)}
+                                    >
+                                        <Option value={true}>Active</Option>
+                                        <Option value={false}>Inactive</Option>
+                                    </Select>
+                                </div>
                             )}
                         />
                     </div>
@@ -248,15 +316,23 @@ const EditBlogNews = () => {
                         <Controller
                             name="mainContent"
                             control={control}
-                            render={({ field }) => (
-                                <TextField
-                                    {...field}
-                                    label="Main Content"
-                                    size="small"
-                                    fullWidth
-                                    multiline
-                                    minRows={3}
-                                />
+                            render={({ field, fieldState }) => (
+                                <div className="flex flex-col gap-2 w-full mt-4">
+                                    <label className="text-sm text-slate-700">Main Content</label>
+                                    <Textarea
+                                        {...field}
+                                        placeholder="Type main content here..."
+                                        minRows={4}
+                                        variant="outlined"
+                                        color="neutral"
+                                        error={!!fieldState.error}
+                                    />
+                                    {fieldState.error ? (
+                                        <span className="text-xs text-red-600">
+                                            {fieldState.error.message}
+                                        </span>
+                                    ) : null}
+                                </div>
                             )}
                         />
                     </div>
@@ -287,24 +363,52 @@ const EditBlogNews = () => {
                                 <Controller
                                     name={`sections.${index}.title`}
                                     control={control}
-                                    render={({ field }) => (
-                                        <TextField {...field} label="Section Title" size="small" fullWidth sx={{ mb: 2 }} />
+                                    render={({ field, fieldState }) => (
+                                        <div className="flex flex-col gap-2 w-full mb-3">
+                                            <label className="text-sm text-slate-700">Section Title</label>
+                                            <Input
+                                                {...field}
+                                                placeholder="Section Title"
+                                                variant="outlined"
+                                                color="neutral"
+                                                error={!!fieldState.error}
+                                            />
+                                        </div>
                                     )}
                                 />
 
                                 <Controller
                                     name={`sections.${index}.image`}
                                     control={control}
-                                    render={({ field }) => (
-                                        <TextField {...field} label="Section Image URL" size="small" fullWidth sx={{ mb: 2 }} />
+                                    render={({ field, fieldState }) => (
+                                        <div className="flex flex-col gap-2 w-full mb-3">
+                                            <label className="text-sm text-slate-700">Section Image URL</label>
+                                            <Input
+                                                {...field}
+                                                placeholder="Section Image URL"
+                                                variant="outlined"
+                                                color="neutral"
+                                                error={!!fieldState.error}
+                                            />
+                                        </div>
                                     )}
                                 />
 
                                 <Controller
                                     name={`sections.${index}.content`}
                                     control={control}
-                                    render={({ field }) => (
-                                        <TextField {...field} label="Section Content" size="small" fullWidth multiline minRows={3} />
+                                    render={({ field, fieldState }) => (
+                                        <div className="flex flex-col gap-2 w-full mb-3">
+                                            <label className="text-sm text-slate-700">Section Content</label>
+                                            <Textarea
+                                                {...field}
+                                                placeholder="Type section content here..."
+                                                minRows={3}
+                                                variant="outlined"
+                                                color="neutral"
+                                                error={!!fieldState.error}
+                                            />
+                                        </div>
                                     )}
                                 />
                             </div>
@@ -327,13 +431,14 @@ const EditBlogNews = () => {
                             isLoading={isPending}
                             disabled={isPending}
                         />
-                        <button
+                        <SecondaryButton
                             type="button"
                             onClick={() => navigate("/dashboard/BlogsAndNews")}
                             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                        >
-                            Cancel
-                        </button>
+                            title="Cancel"
+                            isLoading={isPending}
+                            disabled={isPending}
+                        />
                     </div>
                 </form>
             </PageFrame>

@@ -9,13 +9,13 @@ const cards = [
 ];
 
 const CompanyOverview = () => {
-  const { companyId:companyName } = useParams();
+  const { companyId: companyName } = useParams();
   const navigate = useNavigate();
   const location = useLocation()
-  const {companyId} = location?.state || ""
+  const { companyId } = location?.state || ""
 
   return (
-    <div className="p-6">
+    <div className="p-4 border-default border-borderGray rounded-xl">
       <h1 className="text-title font-pmedium text-primary uppercase mb-6">
         Company Overview
       </h1>
@@ -26,7 +26,7 @@ const CompanyOverview = () => {
             key={card.title}
             className="cursor-pointer border border-gray-200 rounded-2xl p-6 shadow hover:shadow-lg transition bg-white"
             onClick={() =>
-              navigate(`/dashboard/companies/${companyName}/${card.path}`,{state:{companyId}})
+              navigate(`/dashboard/companies/${companyName}/${card.path}`, { state: { companyId } })
             }>
             <h2 className="text-subtitle font-pmedium text-gray-800">
               {card.title}

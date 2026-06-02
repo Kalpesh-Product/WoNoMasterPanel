@@ -225,6 +225,8 @@ const Companies = () => {
         field: "actions",
         headerName: "Actions",
         width: 120,
+        pinned: "right",
+        lockPinned: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
             rowId={
@@ -235,21 +237,21 @@ const Companies = () => {
             menuItems={[
               params?.data?.isRegistered
                 ? {
-                    label: "Mark As Inactive",
-                    onClick: () =>
-                      toggleCompanyStatus({
-                        companyId: params?.data?.companyId,
-                        status: false,
-                      }),
-                  }
+                  label: "Mark As Inactive",
+                  onClick: () =>
+                    toggleCompanyStatus({
+                      companyId: params?.data?.companyId,
+                      status: false,
+                    }),
+                }
                 : {
-                    label: "Mark As Active",
-                    onClick: () =>
-                      toggleCompanyStatus({
-                        companyId: params?.data?.companyId,
-                        status: true,
-                      }),
-                  },
+                  label: "Mark As Active",
+                  onClick: () =>
+                    toggleCompanyStatus({
+                      companyId: params?.data?.companyId,
+                      status: true,
+                    }),
+                },
               {
                 label: "Edit",
                 onClick: () => {
@@ -291,8 +293,8 @@ const Companies = () => {
     return <div className="p-6 text-red-500">Failed to load companies.</div>;
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={sortedCompanies}
           columns={columns}
@@ -304,7 +306,7 @@ const Companies = () => {
           filterExcludeColumns={["logo", "isRegistered"]}
           loading={isLoading}
         />
-      </PageFrame>
+      </>
     </div>
   );
 };

@@ -18,6 +18,7 @@ const ValueAddsLeads = () => {
       basePath="/dashboard/value-adds-leads"
       tabs={tabItems}
       defaultTabPath="visa-support"
+      tabUiVariant="glass"
     />
   );
 };

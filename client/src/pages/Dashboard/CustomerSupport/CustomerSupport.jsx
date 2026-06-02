@@ -22,9 +22,10 @@ const formatDateTime = (value) => {
 
 const getFullName = (user) => {
   if (!user) return "-";
+  if (typeof user === "string") return user;
 
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim();
-  return fullName || user.email || "-";
+  return fullName || user.name || user.fullName || user.email || "-";
 };
 
 const getStatusValue = (item) => item?.status || item?.ticket?.status || "-";
@@ -41,12 +42,13 @@ const statusColorMap = {
 
 const getAvailableStatusActions = (currentStatus) => {
   switch (currentStatus) {
-    case "Pending":
     case "Open":
       return ["Accepted", "Rejected"];
     case "Accepted":
       return ["In Progress", "Rejected"];
     case "In Progress":
+      return ["Pending", "Closed", "Rejected"];
+    case "Pending":
       return ["Closed", "Rejected"];
     default:
       return [];
@@ -68,10 +70,10 @@ const CustomerSupport = () => {
 
   const { mutate: updateStatus, isPending: isStatusUpdating } = useMutation({
     mutationKey: ["dashboard-customer-support-status"],
-    mutationFn: async ({ supportTicketId, status }) => {
+    mutationFn: async ({ supportTicketId, status, resolutionMessage }) => {
       const response = await axios.patch(
         `/api/tickets/support-tickets/${supportTicketId}/status`,
-        { status }
+        { status, resolutionMessage }
       );
       return response.data;
     },
@@ -108,12 +110,22 @@ const CustomerSupport = () => {
         role: item?.role || "-",
         workspaceName: item?.workspaceName || item?.ticket?.workspace?.name || "-",
         department: item?.department || item?.ticket?.raisedToDepartment?.name || "-",
-        acceptedBy: getFullName(item?.acceptedBy || item?.ticket?.acceptedBy),
+        acceptedBy:
+          String(item?.acceptedByName || "").trim() ||
+          String(item?.acceptedByEmail || "").trim() ||
+          getFullName(item?.acceptedBy || item?.ticket?.acceptedBy),
         requestedAt: formatDateTime(item?.requestedAt || item?.createdAt),
         ticketStatus: getStatusValue(item),
         image: item?.image?.url || "",
-        requestedBy: getFullName(item?.requestedBy || item?.user),
-        resolvedBy: getFullName(item?.resolvedBy || item?.ticket?.closedBy),
+        requestedBy:
+          String(item?.requestedByName || "").trim() ||
+          String(item?.requestedByEmail || "").trim() ||
+          getFullName(item?.requestedBy),
+        resolutionMessage: String(item?.resolutionMessage || "").trim(),
+        resolvedBy:
+          String(item?.resolvedByName || "").trim() ||
+          String(item?.resolvedByEmail || "").trim() ||
+          getFullName(item?.resolvedBy || item?.ticket?.closedBy),
         resolvedAt: formatDateTime(item?.resolvedAt),
       })),
     [data],
@@ -126,12 +138,63 @@ const CustomerSupport = () => {
 
   const columns = useMemo(
     () => [
-      { field: "srNo", headerName: "Sr No", width: 90 },
+      { field: "srNo", pinned: "left", lockPinned: true, headerName: "Sr No", width: 90 },
       { field: "ticketNumber", headerName: "Ticket ID", minWidth: 140 },
+      { field: "requestedAt", headerName: "Requested At", minWidth: 190 },
       { field: "title", headerName: "Title", minWidth: 180 },
       { field: "companyName", headerName: "Company Name", minWidth: 180 },
+      { field: "requestedBy", headerName: "Requested By", minWidth: 180 },
       // { field: "department", headerName: "Department", minWidth: 160 },
       // { field: "acceptedBy", headerName: "Accepted By", minWidth: 180 },
+      {
+        field: "actions",
+        headerName: "Actions",
+        minWidth: 120,
+        pinned: "right",
+        lockPinned: true,
+        cellRenderer: (params) => (
+          <div className="flex items-center gap-2">
+            <div
+              role="button"
+              onClick={() => handleView(params.data)}
+              className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+            >
+              <MdOutlineRemoveRedEye />
+            </div>
+            <ThreeDotMenu
+              rowId={params.data.supportTicketId}
+              isLoading={isStatusUpdating}
+              menuItems={getAvailableStatusActions(params.data.ticketStatus).map(
+                (status) => ({
+                  label: status,
+                  onClick: () => {
+                    if (status === "Pending") {
+                      const message = window.prompt(
+                        "Enter resolution message for the user:"
+                      );
+                      if (!message || !message.trim()) {
+                        toast.error("Resolution message is required for Pending status");
+                        return;
+                      }
+                      updateStatus({
+                        supportTicketId: params.data.supportTicketId,
+                        status,
+                        resolutionMessage: message.trim(),
+                      });
+                      return;
+                    }
+
+                    updateStatus({
+                      supportTicketId: params.data.supportTicketId,
+                      status,
+                    });
+                  },
+                }),
+              )}
+            />
+          </div>
+        ),
+      },
       {
         field: "ticketStatus",
         headerName: "Status",
@@ -151,39 +214,6 @@ const CustomerSupport = () => {
           );
         },
       },
-      { field: "requestedAt", headerName: "Requested At", minWidth: 190 },
-      { field: "requestedBy", headerName: "Requested By", minWidth: 180 },
-      {
-        field: "actions",
-        headerName: "Actions",
-        minWidth: 120,
-        pinned: "right",
-        cellRenderer: (params) => (
-          <div className="flex items-center gap-2">
-            <div
-              role="button"
-              onClick={() => handleView(params.data)}
-              className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
-            >
-              <MdOutlineRemoveRedEye />
-            </div>
-            <ThreeDotMenu
-              rowId={params.data.supportTicketId}
-              isLoading={isStatusUpdating}
-              menuItems={getAvailableStatusActions(params.data.ticketStatus).map(
-                (status) => ({
-                  label: status,
-                  onClick: () =>
-                    updateStatus({
-                      supportTicketId: params.data.supportTicketId,
-                      status,
-                    }),
-                }),
-              )}
-            />
-          </div>
-        ),
-      },
     ],
     [isStatusUpdating],
   );
@@ -193,8 +223,8 @@ const CustomerSupport = () => {
   }
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={tableData}
           columns={columns}
@@ -203,7 +233,7 @@ const CustomerSupport = () => {
           tableHeight={500}
           loading={isPending}
         />
-      </PageFrame>
+      </>
 
       <MuiModal
         open={openView}
@@ -222,6 +252,7 @@ const CustomerSupport = () => {
           <DetalisFormatted title="Requested At" detail={selectedTicket?.requestedAt} />
           <DetalisFormatted title="Status" detail={selectedTicket?.ticketStatus} />
           <DetalisFormatted title="Requested By" detail={selectedTicket?.requestedBy} />
+          <DetalisFormatted title="Resolution Message" detail={selectedTicket?.resolutionMessage || "-"} />
           <DetalisFormatted title="Resolved By" detail={selectedTicket?.resolvedBy} />
           <DetalisFormatted title="Resolved At" detail={selectedTicket?.resolvedAt} />
           <div>

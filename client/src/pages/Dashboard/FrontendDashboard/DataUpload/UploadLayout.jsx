@@ -28,11 +28,11 @@ const UploadLayout = () => {
   // ✅ Filtered tabs for restricted users
   const filteredTabs = restrictedEmails.includes(userEmail)
     ? tabs.filter(
-        (tab) =>
-          tab.label === "Bulk Upload Images" ||
-          tab.label === "Bulk Reupload Images" ||
-          tab.label === "Upload Single Image",
-      )
+      (tab) =>
+        tab.label === "Bulk Upload Images" ||
+        tab.label === "Bulk Reupload Images" ||
+        tab.label === "Upload Single Image",
+    )
     : tabs;
 
   return (
@@ -44,6 +44,7 @@ const UploadLayout = () => {
           ? "bulk-upload-images"
           : "company-upload"
       }
+      tabUiVariant="glass"
     />
   );
 };

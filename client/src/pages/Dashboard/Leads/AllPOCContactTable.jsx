@@ -39,6 +39,7 @@ const AllPOCContactTable = () => {
 
   return (
     <AgTable
+      tableTitle={"All POC Contact"}
       data={transformData}
       columns={columns}
       search

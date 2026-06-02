@@ -27,6 +27,18 @@ const workspaceSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    modules: {
+      type: mongoose.Schema.Types.Mixed,
+      default: [],
+    },
+    enabledModules: {
+      type: [String],
+      default: [],
+    },
+    enabledModuleIds: {
+      type: [String],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       default: true,

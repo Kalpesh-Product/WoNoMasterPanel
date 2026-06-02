@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chip } from "@mui/material";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
@@ -16,7 +16,6 @@ const DEFAULT_TEST_PAYMENT_LINK = "https://example.com/test-payment-link";
 
 const UpgradePlan = () => {
   const navigate = useNavigate();
-  const { companyId: companySlug } = useParams();
   const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
@@ -30,8 +29,8 @@ const UpgradePlan = () => {
     const storedCompanyId = String(sessionStorage.getItem("companyId") || "").trim();
     if (storedCompanyId) return storedCompanyId;
 
-    return String(companySlug || "").trim();
-  }, [companySlug, location.state]);
+    return "";
+  }, [location.state]);
 
   const userEmail = auth?.user?.email;
   const restrictedEmails = [
@@ -121,11 +120,11 @@ const UpgradePlan = () => {
         updateCompaniesCache((row) =>
           row.companyId === company.companyId
             ? {
-                ...row,
-                paymentLinkUrl,
-                paymentLinkSentAt,
-                upgradeStatus: "payment_link_sent",
-              }
+              ...row,
+              paymentLinkUrl,
+              paymentLinkSentAt,
+              upgradeStatus: "payment_link_sent",
+            }
             : row,
         );
 
@@ -163,20 +162,20 @@ const UpgradePlan = () => {
       updateCompaniesCache((company) =>
         company.companyId === companyId
           ? {
-              ...company,
-              paymentStatus,
-              paymentConfirmedAt,
-              plan: paymentStatus
-                ? String(company.requestedPlan || company.plan || "")
-                    .trim()
-                    .toLowerCase() || company.plan
-                : company.plan,
-              upgradeStatus: paymentStatus
-                ? "paid"
-                : company.paymentLinkSentAt
+            ...company,
+            paymentStatus,
+            paymentConfirmedAt,
+            plan: paymentStatus
+              ? String(company.requestedPlan || company.plan || "")
+                .trim()
+                .toLowerCase() || company.plan
+              : company.plan,
+            upgradeStatus: paymentStatus
+              ? "paid"
+              : company.paymentLinkSentAt
                 ? "payment_link_sent"
                 : "requested",
-            }
+          }
           : company,
       );
 
@@ -226,10 +225,10 @@ const UpgradePlan = () => {
         updateCompaniesCache((row) =>
           row.companyId === company.companyId
             ? {
-                ...row,
-                upgradeSuccessSentAt,
-                upgradeStatus: "upgraded",
-              }
+              ...row,
+              upgradeSuccessSentAt,
+              upgradeStatus: "upgraded",
+            }
             : row,
         );
 
@@ -245,7 +244,7 @@ const UpgradePlan = () => {
 
         toast.error(
           error?.response?.data?.message ||
-            "Failed to send upgrade success email",
+          "Failed to send upgrade success email",
         );
       },
       onSettled: () => {
@@ -462,7 +461,7 @@ const UpgradePlan = () => {
 
   return (
     <div className="p-4">
-      <PageFrame>
+      <>
         <AgTable
           data={sortedCompanies}
           columns={columns}
@@ -472,7 +471,7 @@ const UpgradePlan = () => {
           filterExcludeColumns={["actions"]}
           loading={isLoading}
         />
-      </PageFrame>
+      </>
 
       <MuiModal
         open={isViewModalOpen}
@@ -510,10 +509,10 @@ const UpgradePlan = () => {
             label="Upgrade Status"
             value={formatPlan(selectedCompany?.upgradeStatus)}
           />
-          <DetailRow
+          {/* <DetailRow
             label="7 Day Trial"
             value={getTrialStatusLabel(selectedCompany)}
-          />
+          /> */}
           <DetailRow
             label="Trial Start"
             value={formatDateTime(selectedCompany?.trialStartAt)}

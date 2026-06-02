@@ -28,7 +28,7 @@ const JobApplicationsTable = () => {
 
   const data = []; // Replace with API data later
 
-  return <AgTable data={data} columns={columns} search tableHeight={350} />;
+  return <AgTable tableTitle={"Job Applications"} data={data} columns={columns} search tableHeight={350} />;
 };
 
 export default JobApplicationsTable;

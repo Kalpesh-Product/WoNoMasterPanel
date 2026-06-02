@@ -13,6 +13,64 @@ const {
 } = require("../../config/s3config");
 const HostCompany = require("../../models/hostCompany/hostCompany");
 
+const safeParse = (val, fallback) => {
+  try {
+    return typeof val === "string" ? JSON.parse(val) : val || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const toBool = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "on"].includes(normalized)) return true;
+    if (["false", "0", "no", "off"].includes(normalized)) return false;
+  }
+  return fallback;
+};
+
+const toNum = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const normalizePageNavItems = (items = []) =>
+  Array.isArray(items)
+    ? items.map((item) => ({
+        name: item?.name || "",
+        slug: item?.slug || "",
+        enabled: toBool(item?.enabled, true),
+        pageHeading: item?.pageHeading || "",
+        pageIntro: item?.pageIntro || "",
+        metaTitle: item?.metaTitle || "",
+        metaDescription: item?.metaDescription || "",
+      }))
+    : [];
+
+const normalizeProductDropdownPages = (items = []) =>
+  Array.isArray(items)
+    ? items.map((item) => ({
+        name: item?.name || "",
+        slug: item?.slug || "",
+        enabled: toBool(item?.enabled, true),
+        heroHeading: item?.heroHeading || "",
+        heroSubHeading: item?.heroSubHeading || "",
+        heroMode: item?.heroMode || "",
+        heroImage: item?.heroImage || null,
+        heroImages: Array.isArray(item?.heroImages) ? item.heroImages : [],
+        heroButtonText: item?.heroButtonText || "",
+        homeCardHeading: item?.homeCardHeading || "",
+        homeCardSubText: item?.homeCardSubText || "",
+        homeCardImage: item?.homeCardImage || null,
+        leadEnabled: toBool(item?.leadEnabled, true),
+        leadFormLabel: item?.leadFormLabel || "",
+      }))
+    : [];
+
 const createTemplate = async (req, res, next) => {
   //Master Panel
   //Create template and store in Master Panel DB
@@ -28,19 +86,24 @@ const createTemplate = async (req, res, next) => {
 
     // `products` might arrive as a JSON string in multipart. Normalize it.
 
-    let { products, testimonials, about, source = "Master Panel" } = req.body;
-
-    const safeParse = (val, fallback) => {
-      try {
-        return typeof val === "string" ? JSON.parse(val) : val || fallback;
-      } catch {
-        return fallback;
-      }
-    };
+    let {
+      products,
+      testimonials,
+      about,
+      source = "Master Panel",
+      pageNavItems,
+      productDropdownPages,
+      aboutPageImageCards,
+    } = req.body;
 
     about = safeParse(about, []);
     products = safeParse(products, []);
     testimonials = safeParse(testimonials, []);
+    pageNavItems = normalizePageNavItems(safeParse(pageNavItems, []));
+    productDropdownPages = normalizeProductDropdownPages(
+      safeParse(productDropdownPages, []),
+    );
+    aboutPageImageCards = safeParse(aboutPageImageCards, []);
 
     const hostCompanyExists = await HostCompany.findOne(
       { companyName: req.body.companyName }, //can't use company Id as the host signup form can't send any company Id
@@ -87,6 +150,12 @@ const createTemplate = async (req, res, next) => {
       title: req.body.title,
       subTitle: req.body.subTitle,
       CTAButtonText: req.body.CTAButtonText,
+      verticalType: req.body.verticalType,
+      heroVariant: req.body.heroVariant,
+      themeVariant: req.body.themeVariant,
+      enabledSections: safeParse(req.body.enabledSections, []),
+      sectionOverrides: safeParse(req.body.sectionOverrides, {}),
+      styleConfig: safeParse(req.body.styleConfig, {}),
       about: about,
       productTitle: req.body?.productTitle,
       galleryTitle: req.body?.galleryTitle,
@@ -101,6 +170,40 @@ const createTemplate = async (req, res, next) => {
       isWebsiteTemplate: true,
       products: [],
       testimonials: [],
+      pageNavItems,
+      productDropdownPages,
+      aboutPageIntro: req.body.aboutPageIntro,
+      aboutPageOverview: req.body.aboutPageOverview,
+      aboutPageStory: req.body.aboutPageStory,
+      aboutPageMission: req.body.aboutPageMission,
+      aboutPageVision: req.body.aboutPageVision,
+      aboutPageValues: req.body.aboutPageValues,
+      aboutPageTeamHeading: req.body.aboutPageTeamHeading,
+      aboutPageImages: [],
+      aboutPageImageCards: Array.isArray(aboutPageImageCards)
+        ? aboutPageImageCards.map((card) => ({
+            title: card?.title || "",
+            description: card?.description || "",
+          }))
+        : [],
+      galleryPageHeading: req.body.galleryPageHeading,
+      testimonialsPageHeading: req.body.testimonialsPageHeading,
+      testimonialsPageIntro: req.body.testimonialsPageIntro,
+      testimonialsHomePreviewCount: toNum(req.body.testimonialsHomePreviewCount, 3),
+      testimonialsEnableWriteReview: toBool(
+        req.body.testimonialsEnableWriteReview,
+        true,
+      ),
+      testimonialsSuccessMessage: req.body.testimonialsSuccessMessage,
+      contactPageHeading: req.body.contactPageHeading,
+      contactPageIntro: req.body.contactPageIntro,
+      contactEnableInquiryForm: toBool(req.body.contactEnableInquiryForm, true),
+      contactInquirySuccessMessage: req.body.contactInquirySuccessMessage,
+      contactBusinessHours: req.body.contactBusinessHours,
+      contactPersonName: req.body.contactPersonName,
+      contactPersonRole: req.body.contactPersonRole,
+      contactPersonEmail: req.body.contactPersonEmail,
+      contactPersonPhone: req.body.contactPersonPhone,
     });
 
     const uploadImages = async (files = [], folder) => {
@@ -201,6 +304,34 @@ const createTemplate = async (req, res, next) => {
       });
     }
 
+    const aboutPageImagesFiles = filesByField.aboutPageImages || [];
+    if (aboutPageImagesFiles.length > 12) {
+      return res.status(400).json({
+        message: `Cannot exceed 12 about page images (received ${aboutPageImagesFiles.length}).`,
+      });
+    }
+
+    for (let i = 0; i < productDropdownPages.length; i++) {
+      const heroImageSingle = filesByField[`productPageHeroImage_${i}`] || [];
+      const heroImageMulti = filesByField[`productPageHeroImages_${i}`] || [];
+      const homeCardImage = filesByField[`productPageHomeCardImage_${i}`] || [];
+      if (heroImageSingle.length > 1) {
+        return res.status(400).json({
+          message: `Only one hero image is allowed for product page ${i + 1}.`,
+        });
+      }
+      if (heroImageMulti.length > 5) {
+        return res.status(400).json({
+          message: `Cannot exceed 5 hero carousel images for product page ${i + 1}.`,
+        });
+      }
+      if (homeCardImage.length > 1) {
+        return res.status(400).json({
+          message: `Only one home card image is allowed for product page ${i + 1}.`,
+        });
+      }
+    }
+
     // Testimonials: max 1 image per testimonial
     for (let i = 0; i < testimonials.length; i++) {
       const tFiles = filesByField[`testimonialImages_${i}`] || [];
@@ -242,6 +373,56 @@ const createTemplate = async (req, res, next) => {
         filesByField.gallery,
         `${baseFolder}/gallery`,
       );
+    }
+
+    if (aboutPageImagesFiles.length) {
+      template.aboutPageImages = await uploadImages(
+        aboutPageImagesFiles,
+        `${baseFolder}/aboutPage/images`,
+      );
+    }
+
+    for (let i = 0; i < template.aboutPageImageCards.length; i++) {
+      const cardImage = filesByField[`aboutPageImageCardImage_${i}`] || [];
+      if (cardImage[0]) {
+        const uploaded = await uploadImages(
+          [cardImage[0]],
+          `${baseFolder}/aboutPage/cards/${i}`,
+        );
+        template.aboutPageImageCards[i].image = uploaded[0];
+      }
+    }
+
+    if (Array.isArray(template.productDropdownPages)) {
+      for (let i = 0; i < template.productDropdownPages.length; i++) {
+        const page = template.productDropdownPages[i];
+        const singleHero = filesByField[`productPageHeroImage_${i}`] || [];
+        const multiHero = filesByField[`productPageHeroImages_${i}`] || [];
+        const homeCard = filesByField[`productPageHomeCardImage_${i}`] || [];
+
+        if (singleHero[0]) {
+          const uploaded = await uploadImages(
+            [singleHero[0]],
+            `${baseFolder}/productDropdownPages/${i}/hero`,
+          );
+          page.heroImage = uploaded[0];
+        }
+
+        if (multiHero.length) {
+          page.heroImages = await uploadImages(
+            multiHero,
+            `${baseFolder}/productDropdownPages/${i}/heroImages`,
+          );
+        }
+
+        if (homeCard[0]) {
+          const uploaded = await uploadImages(
+            [homeCard[0]],
+            `${baseFolder}/productDropdownPages/${i}/homeCard`,
+          );
+          page.homeCardImage = uploaded[0];
+        }
+      }
     }
 
     if (Array.isArray(products) && products.length) {
@@ -521,19 +702,24 @@ const editTemplate = async (req, res, next) => {
   session.startTransaction();
 
   try {
-    let { products, testimonials, about, companyName } = req.body;
-
-    const safeParse = (val, fallback) => {
-      try {
-        return typeof val === "string" ? JSON.parse(val) : val || fallback;
-      } catch {
-        return fallback;
-      }
-    };
+    let {
+      products,
+      testimonials,
+      about,
+      companyName,
+      pageNavItems,
+      productDropdownPages,
+      aboutPageImageCards,
+    } = req.body;
 
     about = safeParse(about, []);
     products = safeParse(products, []);
     testimonials = safeParse(testimonials, []);
+    pageNavItems = normalizePageNavItems(safeParse(pageNavItems, []));
+    productDropdownPages = normalizeProductDropdownPages(
+      safeParse(productDropdownPages, []),
+    );
+    aboutPageImageCards = safeParse(aboutPageImageCards, []);
 
     const formatCompanyName = (name) =>
       (name || "").toLowerCase().split("-")[0].replace(/\s+/g, "");
@@ -744,6 +930,21 @@ const editTemplate = async (req, res, next) => {
       title: req.body.title ?? template.title,
       subTitle: req.body.subTitle ?? template.subTitle,
       CTAButtonText: req.body.CTAButtonText ?? template.CTAButtonText,
+      verticalType: req.body.verticalType ?? template.verticalType,
+      heroVariant: req.body.heroVariant ?? template.heroVariant,
+      themeVariant: req.body.themeVariant ?? template.themeVariant,
+      enabledSections:
+        req.body.enabledSections !== undefined
+          ? safeParse(req.body.enabledSections, [])
+          : template.enabledSections,
+      sectionOverrides:
+        req.body.sectionOverrides !== undefined
+          ? safeParse(req.body.sectionOverrides, {})
+          : template.sectionOverrides,
+      styleConfig:
+        req.body.styleConfig !== undefined
+          ? safeParse(req.body.styleConfig, {})
+          : template.styleConfig,
       about: Array.isArray(about) ? about : template.about,
       productTitle: req.body.productTitle ?? template.productTitle,
       galleryTitle: req.body.galleryTitle ?? template.galleryTitle,
@@ -756,7 +957,69 @@ const editTemplate = async (req, res, next) => {
       registeredCompanyName:
         req.body.registeredCompanyName ?? template.registeredCompanyName,
       copyrightText: req.body.copyrightText ?? template.copyrightText,
+      pageNavItems:
+        req.body.pageNavItems !== undefined ? pageNavItems : template.pageNavItems,
+      productDropdownPages:
+        req.body.productDropdownPages !== undefined
+          ? productDropdownPages
+          : template.productDropdownPages,
+      aboutPageIntro: req.body.aboutPageIntro ?? template.aboutPageIntro,
+      aboutPageOverview: req.body.aboutPageOverview ?? template.aboutPageOverview,
+      aboutPageStory: req.body.aboutPageStory ?? template.aboutPageStory,
+      aboutPageMission: req.body.aboutPageMission ?? template.aboutPageMission,
+      aboutPageVision: req.body.aboutPageVision ?? template.aboutPageVision,
+      aboutPageValues: req.body.aboutPageValues ?? template.aboutPageValues,
+      aboutPageTeamHeading:
+        req.body.aboutPageTeamHeading ?? template.aboutPageTeamHeading,
+      galleryPageHeading: req.body.galleryPageHeading ?? template.galleryPageHeading,
+      testimonialsPageHeading:
+        req.body.testimonialsPageHeading ?? template.testimonialsPageHeading,
+      testimonialsPageIntro:
+        req.body.testimonialsPageIntro ?? template.testimonialsPageIntro,
+      testimonialsHomePreviewCount:
+        req.body.testimonialsHomePreviewCount !== undefined
+          ? toNum(
+              req.body.testimonialsHomePreviewCount,
+              template.testimonialsHomePreviewCount ?? 3,
+            )
+          : template.testimonialsHomePreviewCount,
+      testimonialsEnableWriteReview:
+        req.body.testimonialsEnableWriteReview !== undefined
+          ? toBool(
+              req.body.testimonialsEnableWriteReview,
+              template.testimonialsEnableWriteReview ?? true,
+            )
+          : template.testimonialsEnableWriteReview,
+      testimonialsSuccessMessage:
+        req.body.testimonialsSuccessMessage ?? template.testimonialsSuccessMessage,
+      contactPageHeading: req.body.contactPageHeading ?? template.contactPageHeading,
+      contactPageIntro: req.body.contactPageIntro ?? template.contactPageIntro,
+      contactEnableInquiryForm:
+        req.body.contactEnableInquiryForm !== undefined
+          ? toBool(req.body.contactEnableInquiryForm, true)
+          : template.contactEnableInquiryForm,
+      contactInquirySuccessMessage:
+        req.body.contactInquirySuccessMessage ??
+        template.contactInquirySuccessMessage,
+      contactBusinessHours:
+        req.body.contactBusinessHours ?? template.contactBusinessHours,
+      contactPersonName: req.body.contactPersonName ?? template.contactPersonName,
+      contactPersonRole: req.body.contactPersonRole ?? template.contactPersonRole,
+      contactPersonEmail:
+        req.body.contactPersonEmail ?? template.contactPersonEmail,
+      contactPersonPhone:
+        req.body.contactPersonPhone ?? template.contactPersonPhone,
     });
+
+    if (req.body.aboutPageImageCards !== undefined) {
+      template.aboutPageImageCards = Array.isArray(aboutPageImageCards)
+        ? aboutPageImageCards.map((card, index) => ({
+            title: card?.title || "",
+            description: card?.description || "",
+            image: template.aboutPageImageCards?.[index]?.image || null,
+          }))
+        : template.aboutPageImageCards;
+    }
 
     // === COMPANY LOGO ===
     // if (filesByField.companyLogo?.[0]) {
@@ -879,6 +1142,113 @@ const editTemplate = async (req, res, next) => {
         40,
       );
       template.gallery.push(...newGallery);
+    }
+
+    // === ABOUT PAGE IMAGES / TEAM CARDS ===
+    const newAboutPageImages = filesByField.aboutPageImages || [];
+    const aboutKeepIds = safeParse(req.body.aboutPageImageIds, []);
+    if (req.body.aboutPageImageIds !== undefined) {
+      const toDelete = (template.aboutPageImages || []).filter(
+        (img) => !aboutKeepIds.includes(img.id),
+      );
+      await deleteImagesFromS3(toDelete);
+      template.aboutPageImages = (template.aboutPageImages || []).filter((img) =>
+        aboutKeepIds.includes(img.id),
+      );
+    }
+    if ((template.aboutPageImages?.length || 0) + newAboutPageImages.length > 12) {
+      throw new Error("Cannot exceed 12 about page images.");
+    }
+    if (newAboutPageImages.length) {
+      const uploaded = await uploadImages(
+        newAboutPageImages,
+        `${baseFolder}/aboutPage/images`,
+        12,
+      );
+      template.aboutPageImages = [...(template.aboutPageImages || []), ...uploaded];
+    }
+
+    for (let i = 0; i < (template.aboutPageImageCards || []).length; i++) {
+      const cardFiles = filesByField[`aboutPageImageCardImage_${i}`] || [];
+      if (cardFiles.length > 1) {
+        throw new Error(`Only one image allowed for about page card ${i + 1}.`);
+      }
+      if (cardFiles[0]) {
+        const currentImage = template.aboutPageImageCards?.[i]?.image;
+        if (currentImage?.url) await deleteImagesFromS3([currentImage]);
+        const uploaded = await uploadImages(
+          [cardFiles[0]],
+          `${baseFolder}/aboutPage/cards/${i}`,
+          1,
+        );
+        template.aboutPageImageCards[i].image = uploaded[0];
+      }
+    }
+
+    // === PRODUCT DROPDOWN PAGE ASSETS ===
+    for (let i = 0; i < (template.productDropdownPages || []).length; i++) {
+      const page = template.productDropdownPages[i];
+      const singleHero = filesByField[`productPageHeroImage_${i}`] || [];
+      const multiHero = filesByField[`productPageHeroImages_${i}`] || [];
+      const homeCard = filesByField[`productPageHomeCardImage_${i}`] || [];
+
+      if (singleHero.length > 1) {
+        throw new Error(`Only one hero image allowed for product page ${i + 1}.`);
+      }
+      if (multiHero.length > 5) {
+        throw new Error(
+          `Cannot exceed 5 hero carousel images for product page ${i + 1}.`,
+        );
+      }
+      if (homeCard.length > 1) {
+        throw new Error(
+          `Only one home card image allowed for product page ${i + 1}.`,
+        );
+      }
+
+      if (singleHero[0]) {
+        if (page.heroImage?.url) await deleteImagesFromS3([page.heroImage]);
+        const uploaded = await uploadImages(
+          [singleHero[0]],
+          `${baseFolder}/productDropdownPages/${i}/hero`,
+          1,
+        );
+        page.heroImage = uploaded[0];
+      }
+
+      const keepHeroIds = safeParse(req.body[`productPageHeroImageIds_${i}`], []);
+      if (req.body[`productPageHeroImageIds_${i}`] !== undefined) {
+        const toDelete = (page.heroImages || []).filter(
+          (img) => !keepHeroIds.includes(img.id),
+        );
+        await deleteImagesFromS3(toDelete);
+        page.heroImages = (page.heroImages || []).filter((img) =>
+          keepHeroIds.includes(img.id),
+        );
+      }
+      if ((page.heroImages?.length || 0) + multiHero.length > 5) {
+        throw new Error(
+          `Cannot exceed 5 hero carousel images for product page ${i + 1}.`,
+        );
+      }
+      if (multiHero.length) {
+        const uploaded = await uploadImages(
+          multiHero,
+          `${baseFolder}/productDropdownPages/${i}/heroImages`,
+          5,
+        );
+        page.heroImages = [...(page.heroImages || []), ...uploaded];
+      }
+
+      if (homeCard[0]) {
+        if (page.homeCardImage?.url) await deleteImagesFromS3([page.homeCardImage]);
+        const uploaded = await uploadImages(
+          [homeCard[0]],
+          `${baseFolder}/productDropdownPages/${i}/homeCard`,
+          1,
+        );
+        page.homeCardImage = uploaded[0];
+      }
     }
 
     // === PRODUCTS === (FIX: Use frontend's index mapping)

@@ -165,6 +165,7 @@ import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/Bu
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
 import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkReuploadImages";
 import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
+import ModuleAccessLogs from "../pages/Dashboard/FrontendDashboard/ModuleAccessLogs";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -372,6 +373,10 @@ export const routes = createBrowserRouter([
                     //     element: <ChangePassword />,
                     //   },
                     // ],
+                  },
+                  {
+                    path: "module-access-logs",
+                    element: <ModuleAccessLogs />,
                   },
                   {
                     path: "company-reviews",

@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 const cards = [
     { title: "Upgrade Plan", path: "upgrade-plan" },
     { title: "Module Access", path: "module-access" },
-    { title: "Website Credit Requests", path: "website-credit-requests" },
+    // { title: "Website Credit Requests", path: "website-credit-requests" },
 ];
 
 const HostCompanyOverview = () => {
@@ -21,7 +21,7 @@ const HostCompanyOverview = () => {
         .trim();
 
     return (
-        <div className="p-6">
+        <div className="p-4 border-default border-borderGray rounded-xl">
             <h1 className="text-title font-pmedium text-primary uppercase mb-6">
                 {finalPageTitle} Overview
             </h1>

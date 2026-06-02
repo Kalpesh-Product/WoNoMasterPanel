@@ -167,8 +167,8 @@ const RequestedServices = () => {
   }
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={tableData}
           columns={columns}
@@ -180,7 +180,7 @@ const RequestedServices = () => {
           filterExcludeColumns={["logo"]}
           loading={isLoading}
         />
-      </PageFrame>
+      </>
     </div>
   );
 };

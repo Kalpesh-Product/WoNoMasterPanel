@@ -43,33 +43,38 @@ const ProfileLayout = () => {
           variant="fullWidth"
           TabIndicatorProps={{ style: { display: "none" } }}
           sx={{
-            backgroundColor: "white",
-            borderRadius: 2,
-            border: "1px solid #d1d5db",
+            backgroundColor: "#f1f5f9",
+            borderRadius: "9999px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "inset 0 1px 1px rgba(255,255,255,0.7)",
+            p: "4px",
             "& .MuiTab-root": {
               textTransform: "none",
-              fontWeight: "medium",
-              padding: "12px 16px",
-              borderRight: "0.1px solid #d1d5db",
+              fontWeight: 600,
+              padding: "8px 16px",
+              borderRight: "none",
             },
             "& .Mui-selected": {
-              backgroundColor: "#1E3D73",
-              color: "white",
+              backgroundColor: "#ffffff",
+              color: "#2563EB",
             },
           }}>
           {tabs.map((tab, index) => (
             <NavLink
               key={index}
-              className={"border-r-[1px] border-borderGray"}
+              className={""}
               to={tab.path}
               style={({ isActive }) => ({
                 textDecoration: "none",
-                color: isActive ? "white" : "#1E3D73",
+                color: isActive ? "#2563EB" : "#475569",
                 flex: 1,
                 textAlign: "center",
-                padding: "12px 16px",
+                padding: "8px 16px",
                 display: "block",
-                backgroundColor: isActive ? "#1E3D73" : "white",
+                backgroundColor: isActive ? "#ffffff" : "transparent",
+                borderRadius: "9999px",
+                fontWeight: 600,
+                boxShadow: isActive ? "0 1px 4px rgba(15,23,42,0.12)" : "none",
               })}>
               {tab.label}
             </NavLink>

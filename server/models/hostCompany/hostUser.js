@@ -16,6 +16,12 @@ const workspaceAccessSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       default: {},
     },
+    accessSource: {
+      type: String,
+      trim: true,
+      enum: ["plan_role_preset", "custom_workspace_grant"],
+      default: "custom_workspace_grant",
+    },
   },
   {
     _id: false,

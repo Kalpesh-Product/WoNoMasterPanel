@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { MenuItem, TextField } from "@mui/material";
+import { Chip, MenuItem, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import { Controller, useForm } from "react-hook-form";
 import PrimaryButton from "../../../components/PrimaryButton";
@@ -268,6 +268,54 @@ const SignupLeads = () => {
     });
   };
 
+  const getSelectChipSx = (styles, value) => ({
+    minWidth: 130,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "9999px",
+      minHeight: 30,
+      px: 1,
+      fontWeight: 600,
+      fontSize: "0.75rem",
+      backgroundColor: styles[value]?.bg,
+      color: styles[value]?.color,
+      border: "1px solid rgba(148, 163, 184, 0.35)",
+      "& fieldset": { border: "none" },
+    },
+    "& .MuiSelect-select": {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      py: "4px !important",
+      pr: "22px !important",
+      pl: "10px !important",
+      textTransform: "capitalize",
+    },
+    "& .MuiSelect-icon": {
+      right: 8,
+      color: styles[value]?.color,
+      fontSize: "1rem",
+    },
+  });
+
+  const selectMenuProps = {
+    PaperProps: {
+      sx: {
+        mt: 1,
+        borderRadius: "18px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 20px 40px rgba(15, 23, 42, 0.18)",
+        p: 0.5,
+        overflow: "hidden",
+      },
+    },
+    MenuListProps: {
+      dense: true,
+      sx: {
+        p: 0,
+      },
+    },
+  };
+
   const columns = [
     { field: "name", headerName: "Name" },
     { field: "email", headerName: "Email" },
@@ -291,31 +339,28 @@ const SignupLeads = () => {
               size="small"
               value={planValue}
               onChange={(e) => handlePlanChange(params.data._id, e.target.value)}
-              sx={{
-                minWidth: 140,
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "9999px",
-                  px: 1.5,
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                  backgroundColor: planStyles[planValue]?.bg,
-                  color: planStyles[planValue]?.color,
-                  "& fieldset": { border: "none" },
-                },
-              }}
+              sx={getSelectChipSx(planStyles, planValue)}
+              MenuProps={selectMenuProps}
             >
               {["basic", "professional", "customise"].map((option) => (
                 <MenuItem
                   key={option}
                   value={option}
                   sx={{
-                    justifyContent: "center",
+                    justifyContent: "flex-start",
+                    alignItems: "center",
                     fontWeight: 600,
-                    fontSize: "0.85rem",
-                    borderRadius: "9999px",
-                    backgroundColor: planStyles[option]?.bg,
-                    color: planStyles[option]?.color,
-                    my: 0.5,
+                    fontSize: "0.75rem",
+                    borderRadius: 0,
+                    backgroundColor: "transparent",
+                    color: "#0f172a",
+                    my: 0,
+                    px: 1.5,
+                    py: 1,
+                    textTransform: "capitalize",
+                    "&:hover": {
+                      backgroundColor: "#f8fafc",
+                    },
                   }}
                 >
                   {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -347,30 +392,28 @@ const SignupLeads = () => {
               onChange={(e) =>
                 handleStatusChange(params.data._id, e.target.value)
               }
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "9999px",
-                  px: 1.5,
-                  fontWeight: 600,
-                  fontSize: "0.85rem",
-                  backgroundColor: statusStyles[statusValue]?.bg,
-                  color: statusStyles[statusValue]?.color,
-                  "& fieldset": { border: "none" },
-                },
-              }}
+              sx={getSelectChipSx(statusStyles, statusValue)}
+              MenuProps={selectMenuProps}
             >
               {["pending", "contacted", "closed", "rejected"].map((option) => (
                 <MenuItem
                   key={option}
                   value={option}
                   sx={{
-                    justifyContent: "center",
+                    justifyContent: "flex-start",
+                    alignItems: "center",
                     fontWeight: 600,
-                    fontSize: "0.85rem",
-                    borderRadius: "9999px",
-                    backgroundColor: statusStyles[option]?.bg,
-                    color: statusStyles[option]?.color,
-                    my: 0.5,
+                    fontSize: "0.75rem",
+                    borderRadius: 0,
+                    backgroundColor: "transparent",
+                    color: "#0f172a",
+                    my: 0,
+                    px: 1.5,
+                    py: 1,
+                    textTransform: "capitalize",
+                    "&:hover": {
+                      backgroundColor: "#f8fafc",
+                    },
                   }}
                 >
                   {option.charAt(0).toUpperCase() + option.slice(1)}
@@ -408,23 +451,16 @@ const SignupLeads = () => {
 
         return (
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                minWidth: 96,
-                minHeight: 40,
-                padding: "0 12px",
-                borderRadius: "9999px",
-                fontSize: "0.85rem",
-                fontWeight: 600,
+            <Chip
+              label={labelMap[inviteStatus]}
+              size="small"
+              sx={{
                 backgroundColor: statusStyles[inviteStatus]?.bg,
                 color: statusStyles[inviteStatus]?.color,
+                fontWeight: 600,
+                fontSize: "0.75rem",
               }}
-            >
-              {labelMap[inviteStatus]}
-            </span>
+            />
           </div>
         );
       },
@@ -498,7 +534,7 @@ const SignupLeads = () => {
 
   return (
     <>
-      <div className="border border-borderGray rounded-md p-3">
+      <div className="rounded-md">
         <AgTable
           data={leads}
           columns={columns}

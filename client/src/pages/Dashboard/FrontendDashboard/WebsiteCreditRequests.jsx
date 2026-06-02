@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Chip, TextField } from "@mui/material";
 import { toast } from "sonner";
@@ -12,7 +12,6 @@ import { queryClient } from "../../../main";
 
 const WebsiteCreditRequests = () => {
   const axiosPrivate = useAxiosPrivate();
-  const { companyId: companySlug } = useParams();
   const location = useLocation();
   const [statusFilter, setStatusFilter] = useState("all");
   const [fromDate, setFromDate] = useState("");
@@ -21,9 +20,6 @@ const WebsiteCreditRequests = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   const resolvedCompanyId = useMemo(() => {
-    const routeCompanyId = String(companySlug || "").trim();
-    if (routeCompanyId) return routeCompanyId;
-
     const stateCompanyId = String(location.state?.companyId || "").trim();
     if (stateCompanyId) return stateCompanyId;
 
@@ -31,7 +27,7 @@ const WebsiteCreditRequests = () => {
     if (storedCompanyId) return storedCompanyId;
 
     return "";
-  }, [companySlug, location.state]);
+  }, [location.state]);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ["website-credit-requests", resolvedCompanyId, statusFilter, fromDate, toDate],

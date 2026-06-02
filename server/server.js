@@ -86,7 +86,6 @@ app.use("/api/employee", employeeRoutes);
 app.use("/api/admin", verifyJwt, auditLogger, adminUserRoutes);
 app.use("/api/host-user", hostUserRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); //not protected in order to be accessed by website template site (eg:biznest.wono.co)
-app.post("/api/editor/create-website", createTemplate); //not protected in order to be accessed by host sign up page (eg:hosts.wono.co/signup)
 
 app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);

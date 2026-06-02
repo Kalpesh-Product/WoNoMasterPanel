@@ -13,6 +13,9 @@ export default function useAxiosPrivate() {
         if (!config.headers["Authorization"]) {
           config.headers["Authorization"] = `Bearer ${auth.accessToken}`;
         }
+        if (!config.headers["x-panel-source"]) {
+          config.headers["x-panel-source"] = "master_panel";
+        }
         return config;
       },
       (error) => Promise.reject(error)

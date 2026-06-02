@@ -13,7 +13,7 @@ const ConnectWithUsTable = () => {
 
   const data = []; // Replace with API data later
 
-  return <AgTable data={data} columns={columns} search tableHeight={350} />;
+  return <AgTable tableTitle={"Connect With Us"} data={data} columns={columns} search tableHeight={350} />;
 };
 
 export default ConnectWithUsTable;

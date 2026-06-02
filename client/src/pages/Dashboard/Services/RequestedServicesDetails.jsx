@@ -194,7 +194,7 @@ const RequestedServicesDetails = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 border-default border-borderGray rounded-xl">
       <h1 className="text-2xl font-bold mb-6">
         Requested Services for Company: {company.companyName}
       </h1>

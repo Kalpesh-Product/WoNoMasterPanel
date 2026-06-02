@@ -1,6 +1,8 @@
 import { RouterProvider, useLocation, useNavigate } from "react-router-dom";
 import { routes } from "./routes/Routes";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { createTheme, ThemeProvider, THEME_ID } from "@mui/material/styles";
+import { CssVarsProvider } from "@mui/joy/styles";
+import CssBaseline from "@mui/joy/CssBaseline";
 import { Toaster } from "sonner";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -56,12 +58,15 @@ const theme = createTheme({
 function App() {
 
   return (
-    <ThemeProvider theme={theme}>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <RouterProvider router={routes} />
-        <Toaster richColors />
-      </LocalizationProvider>
-    </ThemeProvider>
+    <CssVarsProvider>
+      <CssBaseline />
+      <ThemeProvider theme={{ [THEME_ID]: theme }}>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <RouterProvider router={routes} />
+          <Toaster richColors />
+        </LocalizationProvider>
+      </ThemeProvider>
+    </CssVarsProvider>
   );
 }
 
