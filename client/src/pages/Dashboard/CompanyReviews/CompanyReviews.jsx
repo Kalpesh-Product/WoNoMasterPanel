@@ -257,10 +257,11 @@ const CompanyReviews = () => {
   }, [data, getEffectiveStatus]);
 
   const columns = [
-    { field: "srNo", headerName: "SrNo", width: 100 },
+    { field: "srNo", lockPinned: true, pinned: "left", headerName: "SrNo", width: 100 },
     {
       field: "reviewerName",
       headerName: "Reviewer Name",
+      width: 300,
       valueGetter: (params) =>
         params.data.reviewerName ||
         params.data.reviewreName ||
@@ -280,11 +281,13 @@ const CompanyReviews = () => {
     {
       field: "approvedOrRejectedBy",
       headerName: "Approved/Rejected by",
+      width: 250,
       valueGetter: (params) => getReviewerActionByName(params.data),
     },
     {
       field: "status",
       headerName: "Status",
+      width: 200,
       cellRenderer: (params) => {
         const value = formatStatusLabel(params.data.status);
         const isFinalStatus = value === "Approved" || value === "Rejected";
@@ -359,6 +362,7 @@ const CompanyReviews = () => {
       headerName: "Actions",
       minWidth: 120,
       pinned: "right",
+      lockPinned: true,
       cellRenderer: (params) => (
         <div className="flex items-center gap-2">
           <div

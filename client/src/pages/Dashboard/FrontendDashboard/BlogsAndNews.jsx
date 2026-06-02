@@ -394,6 +394,8 @@ const BlogsAndNews = () => {
         field: "srNo",
         headerName: "Sr No",
         width: 80,
+        lockPinned: true,
+        pinned: "left",
         valueGetter: (params) => params.node.rowIndex + 1,
       },
       { field: "mainTitle", headerName: "Title", flex: 2 },
@@ -421,6 +423,8 @@ const BlogsAndNews = () => {
       {
         headerName: "Action",
         width: 100,
+        pinned: "right",
+        lockPinned: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
             rowId={params.data._id}

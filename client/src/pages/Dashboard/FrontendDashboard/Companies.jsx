@@ -225,6 +225,8 @@ const Companies = () => {
         field: "actions",
         headerName: "Actions",
         width: 120,
+        pinned: "right",
+        lockPinned: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
             rowId={

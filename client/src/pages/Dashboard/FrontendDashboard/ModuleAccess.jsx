@@ -1960,6 +1960,8 @@ const ModuleAccess = () => {
       {
         headerName: "Action",
         field: "action",
+        pinned: "right",
+        lockPinned: true,
         width: 100,
         cellRenderer: (params) => {
           const member = params.data;

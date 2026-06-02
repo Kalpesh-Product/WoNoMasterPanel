@@ -284,6 +284,8 @@ const HostCompanies = () => {
             {
                 field: "actions",
                 headerName: "Actions",
+                pinned: "right",
+                lockPinned: true,
                 width: 120,
                 cellRenderer: (params) => (
                     <div className="flex items-center gap-2">

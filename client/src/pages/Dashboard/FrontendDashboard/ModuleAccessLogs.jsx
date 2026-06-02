@@ -40,7 +40,7 @@ const ModuleAccessLogs = () => {
   );
 
   const columns = [
-    { headerName: "Sr No", field: "srNo", width: 90 },
+    { headerName: "Sr No", field: "srNo", lockPinned: true, pinned: "left", width: 90 },
     { headerName: "Panel", field: "panel", width: 130 },
     { headerName: "Host Company", field: "hostCompany", flex: 1 },
     { headerName: "Access Given By", field: "givenBy", flex: 1 },
@@ -57,6 +57,8 @@ const ModuleAccessLogs = () => {
     {
       field: "actions",
       headerName: "Actions",
+      pinned: "right",
+      lockPinned: true,
       width: 100,
       cellRenderer: (params) => (
         <div

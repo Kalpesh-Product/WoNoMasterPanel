@@ -197,7 +197,7 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   return (
     <div
-      className={`${isSidebarOpen ? "w-64" : "w-16"} h-[90vh] bg-[#f3f4f6] flex flex-col border-r border-gray-200 shadow-sm overflow-hidden transition-all duration-100`}
+      className={`${isSidebarOpen ? "w-64" : "w-16"} h-[90vh] bg-[#f1f5f9] flex flex-col border-r border-gray-200 shadow-sm overflow-hidden transition-all duration-100`}
     >
       <div className="px-4 py-3 flex justify-center">
         <span className="text-[10px] font-bold tracking-wider text-gray-600 bg-gray-200 px-3 py-1 rounded-full uppercase">
@@ -257,8 +257,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                     type="button"
                     key={submenu.id}
                     title={!isSidebarOpen ? submenu.title : ""}
-                    className={`w-full flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"
-                      } py-2.5 px-3 rounded-md transition-colors ${isActive(submenu.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
+                    className={`my-1.5 w-full flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"
+                      } py-2.5 px-3 rounded-full transition-colors ${isActive(submenu.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
                       }`}
                     onClick={() => handleMenuOpen(submenu)}
                   >
