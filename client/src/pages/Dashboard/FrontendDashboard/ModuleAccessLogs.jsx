@@ -4,6 +4,7 @@ import YearWiseTable from "../../../components/Tables/YearWiseTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import humanDate from "../../../utils/humanDateForamt";
 import MuiModal from "../../../components/MuiModal";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 
 const ModuleAccessLogs = () => {
   const axios = useAxiosPrivate();
@@ -54,20 +55,20 @@ const ModuleAccessLogs = () => {
       cellRenderer: (params) => humanDate(params.value),
     },
     {
-      headerName: "View",
-      field: "viewModules",
+      field: "actions",
+      headerName: "Actions",
       width: 100,
       cellRenderer: (params) => (
-        <button
-          type="button"
-          className="underline text-primary"
+        <div
+          role="button"
           onClick={() => {
             setSelectedRow(params.data || {});
             setOpenModal(true);
           }}
+          className="p-4 rounded-full hover:bg-borderGray cursor-pointer"
         >
-          View
-        </button>
+          <MdOutlineRemoveRedEye />
+        </div>
       ),
     },
   ];
