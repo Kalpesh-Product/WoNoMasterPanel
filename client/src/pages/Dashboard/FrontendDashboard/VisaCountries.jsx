@@ -165,17 +165,15 @@ const VisaCountries = () => {
   }
 
   return (
-    <div className="p-4">
-      <PageFrame>
-        <AgTable
-          data={tableRows}
-          columns={columns}
-          search={true}
-          tableTitle="Visa Countries"
-          tableHeight={500}
-          loading={isLoading}
-        />
-      </PageFrame>
+    <div>
+      <AgTable
+        data={tableRows}
+        columns={columns}
+        search={true}
+        tableTitle="Visa Countries"
+        tableHeight={500}
+        loading={isLoading}
+      />
 
       <MuiModal
         open={isModalOpen}

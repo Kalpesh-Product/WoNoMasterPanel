@@ -287,7 +287,7 @@ const YearWiseTable = ({
             </div>
           </div>
           <div
-            className="p-2 rounded-md bg-primary text-white cursor-pointer hover:bg-[#1E3D55]"
+            className="p-2 rounded-md bg-primary text-white cursor-pointer hover:bg-primary"
             onClick={handleOpenCalendar}
           >
             <MdCalendarToday size={17} />

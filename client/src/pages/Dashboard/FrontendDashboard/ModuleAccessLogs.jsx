@@ -73,7 +73,7 @@ const ModuleAccessLogs = () => {
   ];
 
   return (
-    <div className="p-4">
+    <div>
       <YearWiseTable
         data={rows}
         columns={columns}
