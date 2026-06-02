@@ -11,17 +11,17 @@ module.exports = {
         pbold: ['Poppins-Bold', 'serif'],
       },
       colors: {
-        primary: '#1E3D73',
-        wonoGreen : "#80bf01",
+        primary: '#000000',
+        wonoGreen: "#80bf01",
         borderGray: '#d1d5db',
-        successGreen : "#BAE4C9"
+        successGreen: "#BAE4C9"
       },
       fontSize: {
         title: '1.5rem', // Equivalent to text-2xl
         subtitle: '1.125rem', // Equivalent to text-lg
         widgetTitle: '1.3rem',
         mobileTitle: '1rem',
-        content: '0.875rem', // Equivalent to text-sm
+        content: '0.75rem', // Equivalent to text-sm
         small: '0.7rem',
       },
       borderWidth: {
@@ -32,5 +32,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require('tailwindcss-motion')], 
+  plugins: [require('tailwindcss-motion')],
 };

@@ -146,7 +146,7 @@ const HostCompanies = () => {
                 flex: 1,
                 cellRenderer: (params) => (
                     <span
-                        className="text-primary hover:underline cursor-pointer"
+                        className="text-blue-600 hover:underline cursor-pointer"
                         onClick={() => {
                             dispatch(setSelectedCompany(params.data));
                             sessionStorage.setItem("companyId", params.data.companyId);
@@ -355,8 +355,8 @@ const HostCompanies = () => {
     }
 
     return (
-        <div className="p-4">
-            <PageFrame>
+        <div>
+            <>
                 <AgTable
                     data={sortedCompanies}
                     columns={columns}
@@ -366,7 +366,7 @@ const HostCompanies = () => {
                     filterExcludeColumns={["logo", "isRegistered"]}
                     loading={isLoading}
                 />
-            </PageFrame>
+            </>
 
             <MuiModal
                 open={isViewModalOpen}

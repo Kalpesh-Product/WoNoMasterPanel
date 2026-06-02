@@ -461,7 +461,7 @@ const UpgradePlan = () => {
 
   return (
     <div className="p-4">
-      <PageFrame>
+      <>
         <AgTable
           data={sortedCompanies}
           columns={columns}
@@ -471,7 +471,7 @@ const UpgradePlan = () => {
           filterExcludeColumns={["actions"]}
           loading={isLoading}
         />
-      </PageFrame>
+      </>
 
       <MuiModal
         open={isViewModalOpen}

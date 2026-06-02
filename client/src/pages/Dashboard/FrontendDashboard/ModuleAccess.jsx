@@ -28,6 +28,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CircularProgress from "@mui/material/CircularProgress";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import AgTable from "../../../components/AgTable";
 
 const MODULE_SECTIONS = [
   {
@@ -651,12 +652,12 @@ const normalizeModulesTree = (nodes = [], parentPath = []) => {
 
       const name = String(
         node?.name ||
-          node?.title ||
-          node?.dropdownTitle ||
-          node?.label ||
-          node?.moduleName ||
-          node?.submoduleName ||
-          "",
+        node?.title ||
+        node?.dropdownTitle ||
+        node?.label ||
+        node?.moduleName ||
+        node?.submoduleName ||
+        "",
       ).trim();
       if (!name) return null;
 
@@ -1243,11 +1244,10 @@ const TreeNodeCard = ({
 
   return (
     <div
-      className={`rounded-xl border ${
-        level === 0
-          ? "border-slate-200 bg-slate-50/70"
-          : "border-slate-100 bg-white"
-      } p-3.5`}
+      className={`rounded-xl border ${level === 0
+        ? "border-slate-200 bg-slate-50/70"
+        : "border-slate-100 bg-white"
+        } p-3.5`}
       style={{ marginLeft: level * 16 }}
     >
       <div className="flex items-start justify-between gap-4">
@@ -1256,23 +1256,23 @@ const TreeNodeCard = ({
             {getNodeKind(level)}
           </div>
           <h3 className="mt-2 text-sm font-semibold text-slate-900">{node.name}</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              {hasChildren
-                ? `${node.children.length} child ${node.children.length === 1 ? "node" : "nodes"}`
-                : "Leaf access item"}
-            </p>
-            {isLocked && <p className="mt-1 text-xs font-semibold text-rose-500">Locked</p>}
-          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            {hasChildren
+              ? `${node.children.length} child ${node.children.length === 1 ? "node" : "nodes"}`
+              : "Leaf access item"}
+          </p>
+          {isLocked && <p className="mt-1 text-xs font-semibold text-rose-500">Locked</p>}
+        </div>
 
         <FormControlLabel
           sx={{ mr: 0 }}
           onClick={(event) => event.stopPropagation()}
           control={
-              <Switch
-                checked={isEnabled}
-                disabled={!isWorkspaceMode && isLocked}
-                onChange={(event) => onToggle(pathParts, event.target.checked)}
-              />
+            <Switch
+              checked={isEnabled}
+              disabled={!isWorkspaceMode && isLocked}
+              onChange={(event) => onToggle(pathParts, event.target.checked)}
+            />
           }
           label=""
         />
@@ -1286,13 +1286,13 @@ const TreeNodeCard = ({
                 key={child.name}
                 node={child}
                 pathParts={[...pathParts, child.name]}
-                  level={level + 1}
-                  treeState={treeState}
-                  onToggle={onToggle}
-                  isPathLocked={isPathLocked}
-                  isPathEnabled={isPathEnabled}
-                  isWorkspaceMode={isWorkspaceMode}
-                />
+                level={level + 1}
+                treeState={treeState}
+                onToggle={onToggle}
+                isPathLocked={isPathLocked}
+                isPathEnabled={isPathEnabled}
+                isWorkspaceMode={isWorkspaceMode}
+              />
             ))}
           </div>
         </div>
@@ -1452,8 +1452,8 @@ const AccessEditorModal = ({
                     "&:hover": { backgroundColor: "#111827" },
                   }}
                 >
-                    {isSaving ? "Saving..." : isWorkspaceMode ? "Save Enabled Modules" : "Save Access"}
-                  </Button>
+                  {isSaving ? "Saving..." : isWorkspaceMode ? "Save Enabled Modules" : "Save Access"}
+                </Button>
               </div>
 
               <div className="flex-1 overflow-y-auto px-5 py-4">
@@ -1791,17 +1791,17 @@ const ModuleAccess = () => {
         {
           workspaceId: selectedWorkspace?.workspaceId,
           workspaceName: selectedWorkspace?.workspaceName,
-              moduleAccess: clampStateToPlan(
-                treeState,
-                workspaceEnabledPlanState,
-              ),
-            accessModules: Array.from(
-              collectEnabledAccessModules(activeModuleSections, treeState),
-            ),
-            accessFeatures: [],
-            accessSource: selectedEmployee?.hasSavedWorkspaceAccess
-              ? "custom_workspace_grant"
-              : "plan_role_preset",
+          moduleAccess: clampStateToPlan(
+            treeState,
+            workspaceEnabledPlanState,
+          ),
+          accessModules: Array.from(
+            collectEnabledAccessModules(activeModuleSections, treeState),
+          ),
+          accessFeatures: [],
+          accessSource: selectedEmployee?.hasSavedWorkspaceAccess
+            ? "custom_workspace_grant"
+            : "plan_role_preset",
         },
       );
 
@@ -1877,6 +1877,110 @@ const ModuleAccess = () => {
   const employeeVisibleModuleSections = useMemo(
     () => filterTreeByState(activeModuleSections, workspaceEnabledPlanState),
     [activeModuleSections, workspaceEnabledPlanState],
+  );
+  const Columns = useMemo(
+    () => [
+      {
+        headerName: "Employee",
+        field: "name",
+        flex: 1.5,
+        cellRenderer: (params) => {
+          const member = params.data;
+          if (!member) return null;
+          return (
+            <div>
+              {member.name || "-"}
+            </div>
+          );
+        }
+      },
+      {
+        headerName: "Employee Email",
+        field: "email",
+        flex: 1.5,
+        cellRenderer: (params) => {
+          const member = params.data;
+          if (!member) return null;
+          return (
+            <div>
+              {member.email || "-"}
+            </div >
+          );
+        }
+      },
+
+      {
+        headerName: "Role",
+        field: "designation",
+        flex: 1,
+        valueFormatter: (params) => params.value || "-",
+      },
+      {
+        headerName: "Workspace",
+        field: "workspaces",
+        flex: 2,
+        cellRenderer: (params) => {
+          const member = params.data;
+          if (!member) return null;
+          const memberWorkspaces = getMemberWorkspaces(member, {
+            allowFallback: !hasRealWorkspaces,
+          });
+          return (
+            <div>
+              {memberWorkspaces.map((workspace) => (
+                <Chip
+                  key={`${member._id}-${workspace.workspaceId}`}
+                  label={workspace.workspaceName}
+                  size="small"
+                  sx={{ fontSize: "10px", height: "20px" }}
+                />
+              ))}
+            </div>
+          );
+        }
+      },
+      {
+        headerName: "Status",
+        field: "isActive",
+        flex: 1,
+        cellRenderer: (params) => {
+          const member = params.data;
+          if (!member) return null;
+          return (
+            <Chip
+              label={member.isActive ? "Active" : "Inactive"}
+              size="small"
+              color={member.isActive ? "success" : "default"}
+              variant="outlined"
+              sx={{ height: "20px", fontSize: "10px" }}
+            />
+          );
+        }
+      },
+      {
+        headerName: "Action",
+        field: "action",
+        width: 100,
+        cellRenderer: (params) => {
+          const member = params.data;
+          if (!member) return null;
+          return (
+            <div>
+              <IconButton
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openEmployeeAccess(member);
+                }}
+                size="small"
+              >
+                <VisibilityIcon fontSize="small" />
+              </IconButton>
+            </div>
+          );
+        }
+      },
+    ],
+    [hasRealWorkspaces]
   );
 
   return (
@@ -1960,7 +2064,7 @@ const ModuleAccess = () => {
               Configure Workspace Modules
             </Button>
 
-              <TextField
+            {/* <TextField
                 value={employeeSearch}
                 onChange={(event) => setEmployeeSearch(event.target.value)}
                 fullWidth
@@ -1970,9 +2074,9 @@ const ModuleAccess = () => {
                 InputProps={{
                   startAdornment: <SearchIcon fontSize="small" className="mr-2 text-slate-400" />,
                 }}
-              />
+              /> */}
 
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1">
               <BusinessIcon fontSize="small" sx={{ color: "#64748b" }} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900">{pageTitle}</p>
@@ -1987,7 +2091,7 @@ const ModuleAccess = () => {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
+        {/* <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
           <div className="border-b border-slate-100 px-6 py-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -2017,8 +2121,8 @@ const ModuleAccess = () => {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                  <TableCell colSpan={5}>
-                    <div className="flex items-center justify-center gap-3 py-10 text-slate-500">
+                    <TableCell colSpan={5}>
+                      <div className="flex items-center justify-center gap-3 py-10 text-slate-500">
                         <CircularProgress size={16} color="inherit" />
                         Loading employees...
                       </div>
@@ -2087,7 +2191,16 @@ const ModuleAccess = () => {
               </TableBody>
             </Table>
           </TableContainer>
-        </div>
+        </div> */}
+
+        <AgTable
+          data={filteredMembers}
+          columns={Columns}
+          search
+          tableTitle="Employee List"
+          tableHeight={500}
+          loading={isLoading}
+        />
       </div>
 
       <AccessEditorModal

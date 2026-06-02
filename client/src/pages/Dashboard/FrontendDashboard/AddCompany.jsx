@@ -2,7 +2,10 @@ import React from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
-import { MenuItem, TextField } from "@mui/material";
+import Input from '@mui/joy/Input';
+import Select from '@mui/joy/Select';
+import Option from '@mui/joy/Option';
+import Textarea from '@mui/joy/Textarea';
 import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
 import axios from "axios";
 import PrimaryButton from "../../../components/PrimaryButton";
@@ -295,56 +298,86 @@ const AddCompany = () => {
             control={control}
             rules={{ required: "Company Name is required" }}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Company Name"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Company Name</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="industry"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Industry"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Industry</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="companySize"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Company Size"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Company Size</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
           <Controller
             name="registeredEntityName"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Registered Entity Name"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Registered Entity Name</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
@@ -367,28 +400,32 @@ const AddCompany = () => {
             name="companyCountry"
             control={control}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                select
-                label="Company Country"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  field.onChange(value);
-                  setValue("companyState", "");
-                  setValue("companyCity", "");
-                }}
-              >
-                {Country.getAllCountries().map((c) => (
-                  <MenuItem key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Company Country</label>
+                <Select
+                  value={field.value || null}
+                  placeholder="Select Country"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                  onChange={(_, val) => {
+                    field.onChange(val);
+                    setValue("companyState", "");
+                    setValue("companyCity", "");
+                  }}
+                >
+                  {Country.getAllCountries().map((c) => (
+                    <Option key={c.isoCode} value={c.name}>
+                      {c.name}
+                    </Option>
+                  ))}
+                </Select>
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
@@ -405,28 +442,32 @@ const AddCompany = () => {
                 : [];
 
               return (
-                <TextField
-                  {...field}
-                  select
-                  label="Company State"
-                  fullWidth
-                  margin="normal"
-                  variant="standard"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  disabled={!companyCountryObj}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    field.onChange(value);
-                    setValue("companyCity", "");
-                  }}
-                >
-                  {states.map((s) => (
-                    <MenuItem key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="flex flex-col gap-2 w-full mt-4">
+                  <label className="text-sm text-slate-700">Company State</label>
+                  <Select
+                    value={field.value || null}
+                    placeholder="Select State"
+                    variant="outlined"
+                    color="neutral"
+                    disabled={!companyCountryObj}
+                    error={!!fieldState.error}
+                    onChange={(_, val) => {
+                      field.onChange(val);
+                      setValue("companyCity", "");
+                    }}
+                  >
+                    {states.map((s) => (
+                      <Option key={s.isoCode} value={s.name}>
+                        {s.name}
+                      </Option>
+                    ))}
+                  </Select>
+                  {fieldState.error ? (
+                    <span className="text-xs text-red-600">
+                      {fieldState.error.message}
+                    </span>
+                  ) : null}
+                </div>
               );
             }}
           />
@@ -456,23 +497,31 @@ const AddCompany = () => {
                   : [];
 
               return (
-                <TextField
-                  {...field}
-                  select
-                  label="Company City"
-                  fullWidth
-                  margin="normal"
-                  variant="standard"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  disabled={!companyStateObj}
-                >
-                  {cities.map((city) => (
-                    <MenuItem key={city.name} value={city.name}>
-                      {city.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="flex flex-col gap-2 w-full mt-4">
+                  <label className="text-sm text-slate-700">Company City</label>
+                  <Select
+                    value={field.value || null}
+                    placeholder="Select City"
+                    variant="outlined"
+                    color="neutral"
+                    disabled={!companyStateObj}
+                    error={!!fieldState.error}
+                    onChange={(_, val) => {
+                      field.onChange(val);
+                    }}
+                  >
+                    {cities.map((city) => (
+                      <Option key={city.name} value={city.name}>
+                        {city.name}
+                      </Option>
+                    ))}
+                  </Select>
+                  {fieldState.error ? (
+                    <span className="text-xs text-red-600">
+                      {fieldState.error.message}
+                    </span>
+                  ) : null}
+                </div>
               );
             }}
           />
@@ -480,87 +529,141 @@ const AddCompany = () => {
           <Controller
             name="companyContinent"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Company Continent"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Company Continent</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="websiteURL"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Website URL"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Website URL</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="linkedinURL"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Company LinkedIn URL"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Company LinkedIn URL</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="selectedApps"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Apps (comma separated)"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                helperText="Allowed: tickets, meetings, tasks, performance, visitors, assets"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Apps (comma separated)</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                <span className="text-xs text-slate-500">
+                  Allowed: tickets, meetings, tasks, performance, visitors, assets
+                </span>
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="selectedModules"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Modules (comma separated)"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                helperText="Allowed: finance, sales, hr, admin, maintenance, it"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Modules (comma separated)</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                <span className="text-xs text-slate-500">
+                  Allowed: finance, sales, hr, admin, maintenance, it
+                </span>
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="selectedDefaults"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Defaults (comma separated)"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                helperText="Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Defaults (comma separated)</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                <span className="text-xs text-slate-500">
+                  Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets
+                </span>
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
@@ -576,29 +679,43 @@ const AddCompany = () => {
             control={control}
             rules={{ required: "POC Name is required" }}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="POC Name"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">POC Name</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="pocDesignation"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="POC Designation"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">POC Designation</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
@@ -610,15 +727,21 @@ const AddCompany = () => {
               pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
             }}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="POC Email"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">POC Email</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
@@ -627,71 +750,110 @@ const AddCompany = () => {
             control={control}
             rules={{ required: "POC Phone is required" }}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="POC Phone"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">POC Phone</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="pocLinkedInProfile"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="LinkedIn Profile URL"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">LinkedIn Profile URL</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="pocLanguages"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Languages (comma separated)"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Languages (comma separated)</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="pocAddress"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="POC Address"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">POC Address</label>
+                <Textarea
+                  {...field}
+                  placeholder="Type address here..."
+                  minRows={3}
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 
           <Controller
             name="pocProfileImage"
             control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Profile Image URL"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
+            render={({ field, fieldState }) => (
+              <div className="flex flex-col gap-2 w-full mt-4">
+                <label className="text-sm text-slate-700">Profile Image URL</label>
+                <Input
+                  {...field}
+                  placeholder="Type in here"
+                  variant="outlined"
+                  color="neutral"
+                  error={!!fieldState.error}
+                />
+                {fieldState.error ? (
+                  <span className="text-xs text-red-600">
+                    {fieldState.error.message}
+                  </span>
+                ) : null}
+              </div>
             )}
           />
 

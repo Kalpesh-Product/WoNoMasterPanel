@@ -8,11 +8,9 @@ import React, {
 import { AgGridReact } from "ag-grid-react";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-quartz.css";
-import { TextField, MenuItem, Chip } from "@mui/material";
-import MuiAside from "./MuiAside";
+import { TextField, MenuItem, Chip, Popover } from "@mui/material";
 import PrimaryButton from "./PrimaryButton";
 import SecondaryButton from "./SecondaryButton";
-import { MdFilterAlt, MdFilterAltOff } from "react-icons/md";
 import { IoIosSearch } from "react-icons/io";
 import { IoFilter } from "react-icons/io5";
 const AgTableComponent = React.memo(
@@ -46,7 +44,7 @@ const AgTableComponent = React.memo(
     const [searchQuery, setSearchQuery] = useState("");
     const [filters, setFilters] = useState({});
     const [appliedFilters, setAppliedFilters] = useState({});
-    const [isFilterDrawerOpen, setFilterDrawerOpen] = useState(false);
+    const [filterAnchorEl, setFilterAnchorEl] = useState(null);
     const [selectedRows, setSelectedRows] = useState([]); // ✅ Track selected rows
     const [isSmallScreen, setIsSmallScreen] = useState(false);
     const gridRef = useRef(null);
@@ -138,7 +136,7 @@ const AgTableComponent = React.memo(
         });
       });
       setFilteredData(filtered);
-      setFilterDrawerOpen(false);
+      setFilterAnchorEl(null);
     };
 
     const removeFilter = (field) => {
@@ -190,6 +188,7 @@ const AgTableComponent = React.memo(
         (column) => !filterExcludeColumns.includes(column.field),
       );
     }, [columns, filterExcludeColumns]);
+    const isFilterOpen = Boolean(filterAnchorEl);
 
     const showLoadingMessage =
       loading && (!filteredData || filteredData.length === 0);
@@ -300,7 +299,7 @@ const AgTableComponent = React.memo(
                 <div className="flex justify-end items-center w-full">
                   <div
                     className="p-2 hover:bg-slate-100 cursor-pointer rounded-full border border-slate-200 text-slate-600 transition-colors"
-                    onClick={() => setFilterDrawerOpen(true)}
+                    onClick={(event) => setFilterAnchorEl(event.currentTarget)}
                   >
                     <IoFilter />
                   </div>
@@ -328,55 +327,81 @@ const AgTableComponent = React.memo(
           )}
         </div>
 
-        <MuiAside
-          open={isFilterDrawerOpen}
-          onClose={() => setFilterDrawerOpen(false)}
-          title="Advanced Filter"
+        <Popover
+          open={isFilterOpen}
+          anchorEl={filterAnchorEl}
+          onClose={() => setFilterAnchorEl(null)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+          transformOrigin={{ vertical: "top", horizontal: "right" }}
+          PaperProps={{
+            sx: {
+              mt: 1,
+              width: 420,
+              maxWidth: "calc(100vw - 32px)",
+              maxHeight: "70vh",
+              borderRadius: "14px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 18px 36px rgba(15, 23, 42, 0.14)",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+            },
+          }}
         >
-          {filterableColumns.map((column) =>
-            dropdownColumns.includes(column.field) ? (
-              <TextField
-                key={column.field}
-                label={column.headerName}
-                variant="outlined"
-                size="small"
-                select
-                fullWidth
-                margin="normal"
-                value={filters[column.field] || ""}
-                onChange={(e) =>
-                  handleFilterChange(column.field, e.target.value)
-                }
-              >
-                <MenuItem value="">All</MenuItem>
-                {columnOptions[column.field]?.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : (
-              <TextField
-                key={column.field}
-                label={column.headerName}
-                variant="outlined"
-                size="small"
-                fullWidth
-                margin="normal"
-                onChange={(e) =>
-                  handleFilterChange(column.field, e.target.value)
-                }
-              />
-            ),
-          )}
-          <div className="flex items-center gap-4 justify-center py-4">
-            <PrimaryButton title="Apply Filters" handleSubmit={applyFilters} />
-            <SecondaryButton
-              title="Clear Filters"
-              handleSubmit={clearFilters}
-            />
+          <div className="p-4 border-b border-slate-200 bg-slate-50">
+            <div className="text-sm font-pmedium text-slate-800">Advanced Filter</div>
           </div>
-        </MuiAside>
+
+          <div className="p-4 overflow-y-auto" style={{ maxHeight: "46vh" }}>
+            {filterableColumns.length ? (
+              filterableColumns.map((column) =>
+                dropdownColumns.includes(column.field) ? (
+                  <TextField
+                    key={column.field}
+                    label={column.headerName}
+                    variant="outlined"
+                    size="small"
+                    select
+                    fullWidth
+                    margin="normal"
+                    value={filters[column.field] || ""}
+                    onChange={(e) =>
+                      handleFilterChange(column.field, e.target.value)
+                    }
+                  >
+                    <MenuItem value="">All</MenuItem>
+                    {columnOptions[column.field]?.map((option) => (
+                      <MenuItem key={option} value={option}>
+                        {option}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    key={column.field}
+                    label={column.headerName}
+                    variant="outlined"
+                    size="small"
+                    fullWidth
+                    margin="normal"
+                    value={filters[column.field] || ""}
+                    onChange={(e) =>
+                      handleFilterChange(column.field, e.target.value)
+                    }
+                  />
+                ),
+              )
+            ) : (
+              <div className="text-sm text-slate-500 py-4 text-center">
+                No filter fields available
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-4 py-3 border-t border-slate-200 bg-white">
+            <SecondaryButton title="Clear" handleSubmit={clearFilters} />
+            <PrimaryButton title="Apply" handleSubmit={applyFilters} />
+          </div>
+        </Popover>
 
         <div
           ref={tableRef}

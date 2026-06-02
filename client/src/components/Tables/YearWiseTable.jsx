@@ -191,18 +191,18 @@ const YearWiseTable = ({
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3 p-4 border-default border-borderGray rounded-xl">
       {/* Header */}
-      <div className="grid grid-cols-9 items-center w-full">
+      <div className="flex items-center justify-between gap-3 w-full px-1">
         {tableTitle ? (
-          <span className="text-title text-primary font-pmedium uppercase col-span-6">
+          <span className="text-[24px] font-pbold tracking-wide text-slate-900 uppercase">
             {tableTitle}
           </span>
         ) : (
-          <span></span>
+          <span />
         )}
 
-        <div className="flex gap-2 items-center justify-end flex-wrap col-span-3">
+        <div className="flex gap-2 items-center justify-end flex-wrap">
           {/* ✅ Show calendar only if data is not empty */}
 
           <Popover
@@ -290,7 +290,7 @@ const YearWiseTable = ({
             className="p-2 rounded-md bg-primary text-white cursor-pointer hover:bg-[#1E3D55]"
             onClick={handleOpenCalendar}
           >
-            <MdCalendarToday size={19} />
+            <MdCalendarToday size={17} />
           </div>
         </div>
       )}
@@ -312,6 +312,7 @@ const YearWiseTable = ({
             filterExcludeColumns={filterExcludeColumns}
             checkAll={checkAll}
             tableTitle={tableTitle}
+            hideTitle={true}
             tableHeight={tableHeight || 300}
             columns={formattedColumns}
             data={finalTableData}
@@ -321,7 +322,6 @@ const YearWiseTable = ({
             isRowSelectable={isRowSelectable}
             onSelectionChange={(rows) => setSelectedRows(rows)}
             batchButton={batchButton}
-            hideTitle={hideTitle}
           />
         ) : (
           <div

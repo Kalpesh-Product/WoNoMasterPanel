@@ -6,6 +6,8 @@ import YearWiseTable from "../../../components/Tables/YearWiseTable";
 import PageFrame from "../../../components/Pages/PageFrame";
 import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import AgTable from "../../../components/AgTable";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 
 const CompanyReviews = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
@@ -108,9 +110,8 @@ const CompanyReviews = () => {
         const nestedUser = actionBy?.user;
 
         if (userType === "MASTER") {
-          const masterName = `${nestedUser?.firstName || ""} ${
-            nestedUser?.lastName || ""
-          }`.trim();
+          const masterName = `${nestedUser?.firstName || ""} ${nestedUser?.lastName || ""
+            }`.trim();
 
           return masterName || extractName(nestedUser) || extractName(actionBy);
         }
@@ -180,6 +181,54 @@ const CompanyReviews = () => {
     }
   };
 
+  const getSelectChipSx = (styles, value) => ({
+    minWidth: 130,
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "9999px",
+      minHeight: 30,
+      px: 1,
+      fontWeight: 600,
+      fontSize: "0.75rem",
+      backgroundColor: styles[value]?.bg,
+      color: styles[value]?.color,
+      border: "1px solid rgba(148, 163, 184, 0.35)",
+      "& fieldset": { border: "none" },
+    },
+    "& .MuiSelect-select": {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      py: "4px !important",
+      pr: "22px !important",
+      pl: "10px !important",
+      textTransform: "capitalize",
+    },
+    "& .MuiSelect-icon": {
+      right: 8,
+      color: styles[value]?.color,
+      fontSize: "1rem",
+    },
+  });
+
+  const selectMenuProps = {
+    PaperProps: {
+      sx: {
+        mt: 1,
+        borderRadius: "18px",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 20px 40px rgba(15, 23, 42, 0.18)",
+        p: 0.5,
+        overflow: "hidden",
+      },
+    },
+    MenuListProps: {
+      dense: true,
+      sx: {
+        p: 0,
+      },
+    },
+  };
+
   const rows = useMemo(() => {
     const statusOrder = {
       pending: 0,
@@ -229,6 +278,11 @@ const CompanyReviews = () => {
         "-",
     },
     {
+      field: "approvedOrRejectedBy",
+      headerName: "Approved/Rejected by",
+      valueGetter: (params) => getReviewerActionByName(params.data),
+    },
+    {
       field: "status",
       headerName: "Status",
       cellRenderer: (params) => {
@@ -267,31 +321,28 @@ const CompanyReviews = () => {
                 onChange={(e) =>
                   handleStatusChange(params.data, e.target.value.toLowerCase())
                 }
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: "9999px",
-                    px: 1.5,
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    backgroundColor: statusStyles[value]?.bg,
-                    color: statusStyles[value]?.color,
-                    "& fieldset": { border: "none" },
-                  },
-                  "& .MuiSelect-select": {
-                    textAlign: "center",
-                  },
-                }}
+                sx={getSelectChipSx(statusStyles, value)}
+                MenuProps={selectMenuProps}
               >
                 {["Pending", "Approved", "Rejected"].map((option) => (
                   <MenuItem
                     key={option}
                     value={option}
                     sx={{
-                      justifyContent: "center",
+                      justifyContent: "flex-start",
+                      alignItems: "center",
                       fontWeight: 600,
-                      fontSize: "0.85rem",
-                      borderRadius: "9999px",
-                      my: 0.5,
+                      fontSize: "0.75rem",
+                      borderRadius: 0,
+                      backgroundColor: "transparent",
+                      color: "#0f172a",
+                      my: 0,
+                      px: 1.5,
+                      py: 1,
+                      textTransform: "capitalize",
+                      "&:hover": {
+                        backgroundColor: "#f8fafc",
+                      },
                     }}
                   >
                     {option}
@@ -304,27 +355,21 @@ const CompanyReviews = () => {
       },
     },
     {
-      field: "comment",
-
-      headerName: "Description",
+      field: "actions",
+      headerName: "Actions",
+      minWidth: 120,
+      pinned: "right",
       cellRenderer: (params) => (
-        <div style={{ display: "flex", justifyContent: "center" }}>
-          {/* <IconButton onClick={() => handleOpenModal(params.data)}>
-            <MdOutlineRateReview />
-          </IconButton> */}
-          <button
-            className="text-blue-500 underline font-semibold"
+        <div className="flex items-center gap-2">
+          <div
+            role="button"
             onClick={() => handleOpenModal(params.data)}
+            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
           >
-            View Description
-          </button>
+            <MdOutlineRemoveRedEye />
+          </div>
         </div>
       ),
-    },
-    {
-      field: "approvedOrRejectedBy",
-      headerName: "Approved/Rejected by",
-      valueGetter: (params) => getReviewerActionByName(params.data),
     },
   ];
 
@@ -333,14 +378,14 @@ const CompanyReviews = () => {
     return <span className="text-red-500">Error Loading Reviews</span>;
 
   return (
-    <div className="p-4">
-      <PageFrame>
-        <YearWiseTable data={rows} tableTitle={"Reviews"} columns={columns} />
+    <div>
+      <>
+        <AgTable data={rows} search tableTitle={"Reviews"} columns={columns} />
 
         {rows.length === 0 && (
           <div className="text-center text-gray-500 py-4">No records found</div>
         )}
-      </PageFrame>
+      </>
 
       <MuiModal
         open={openModal}

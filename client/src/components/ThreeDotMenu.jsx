@@ -42,11 +42,10 @@ const ThreeDotMenu = ({ rowId, menuItems, isLoading, disabled = false }) => {
                     handleClose(); // optionally close after click
                   }
                 }}
-                className={`${
-                  label === "Cancel"
-                    ? "bg-red-100 text-red-600"
-                    : "bg-white text-primary"
-                }  
+                className={`${label === "Cancel"
+                  ? "bg-red-100 text-red-600"
+                  : "bg-white text-primary"
+                  }  
                 p-4 py-2 border-b-[1px] border-borderGray cursor-pointer text-content hover:bg-gray-200
                 ${itemDisabled ? "text-gray-400 cursor-not-allowed" : ""}`}
               >

@@ -59,11 +59,11 @@ const MAX_IMAGES = 5;
 const getImageUrlsFromRow = (row = {}) =>
   normalizeImageUrls(
     row?.imageUrls ??
-      row?.imageurls ??
-      row?.imageURLS ??
-      row?.imageUrl ??
-      row?.imageurl ??
-      row?.images,
+    row?.imageurls ??
+    row?.imageURLS ??
+    row?.imageUrl ??
+    row?.imageurl ??
+    row?.images,
   );
 
 const fmtNumber = (value, digits = 2) => {
@@ -966,7 +966,7 @@ const WorldRankingWeights = () => {
     onError: (error) => {
       toast.error(
         error?.response?.data?.message ||
-          "Failed to update world ranking weight",
+        "Failed to update world ranking weight",
       );
     },
   });
@@ -1284,13 +1284,13 @@ const WorldRankingWeights = () => {
             },
             ...(labelCol
               ? [
-                  {
-                    ...labelCol,
-                    valueGetter: (params) =>
-                      params.data?.labels?.[labelCol.field] ??
-                      params.data?.[labelCol.field],
-                  },
-                ]
+                {
+                  ...labelCol,
+                  valueGetter: (params) =>
+                    params.data?.labels?.[labelCol.field] ??
+                    params.data?.[labelCol.field],
+                },
+              ]
               : []),
           ];
         },
@@ -1300,8 +1300,8 @@ const WorldRankingWeights = () => {
   );
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={rowData}
           columns={columns}
@@ -1318,7 +1318,7 @@ const WorldRankingWeights = () => {
             connectivity.
           </p>
         ) : null}
-      </PageFrame>
+      </>
 
       <MuiModal
         open={isEditOpen}

@@ -222,8 +222,8 @@ const CustomerSupport = () => {
   }
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={tableData}
           columns={columns}
@@ -232,7 +232,7 @@ const CustomerSupport = () => {
           tableHeight={500}
           loading={isPending}
         />
-      </PageFrame>
+      </>
 
       <MuiModal
         open={openView}
