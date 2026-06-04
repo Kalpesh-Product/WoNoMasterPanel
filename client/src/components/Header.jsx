@@ -231,7 +231,7 @@ const Header = ({
           vertical: "top",
           horizontal: "center",
         }}>
-        <div className="p-4 w-48">
+        <div className="p-2 w-48">
           <List>
             {/* Profile Option */}
             <ListItem

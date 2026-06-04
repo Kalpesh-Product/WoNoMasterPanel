@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
@@ -144,12 +144,11 @@ const fetchFirstSuccessfulArray = async (axios, endpoints) => {
       console.log(error);
     }
   }
-  return { allBlogs: [], allNews: [], companies: [] };
+  return [];
 };
 
 const BlogsAndNews = () => {
   const { locationType } = useParams();
-  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
 
@@ -191,7 +190,9 @@ const BlogsAndNews = () => {
   });
 
   const stats = useMemo(() => {
-    const { allBlogs, allNews, companies } = data;
+    const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
+    const allNews = Array.isArray(data?.allNews) ? data.allNews : [];
+    const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
     const locationLookup = new Map();
 
@@ -363,7 +364,7 @@ const BlogsAndNews = () => {
         flex: 1,
         cellRenderer: (params) => (
           <button
-            className="text-primary hover:underline font-medium"
+            className="text-blue-600 hover:underline font-medium"
             onClick={() => handleViewDetail(params.data.destination, "blog")}
           >
             {params.value}
@@ -376,7 +377,7 @@ const BlogsAndNews = () => {
         flex: 1,
         cellRenderer: (params) => (
           <button
-            className="text-primary hover:underline font-medium"
+            className="text-blue-600 hover:underline font-medium"
             onClick={() => handleViewDetail(params.data.destination, "news")}
           >
             {params.value}
@@ -393,6 +394,8 @@ const BlogsAndNews = () => {
         field: "srNo",
         headerName: "Sr No",
         width: 80,
+        lockPinned: true,
+        pinned: "left",
         valueGetter: (params) => params.node.rowIndex + 1,
       },
       { field: "mainTitle", headerName: "Title", flex: 2 },
@@ -420,6 +423,8 @@ const BlogsAndNews = () => {
       {
         headerName: "Action",
         width: 100,
+        pinned: "right",
+        lockPinned: true,
         cellRenderer: (params) => (
           <ThreeDotMenu
             rowId={params.data._id}
@@ -440,23 +445,23 @@ const BlogsAndNews = () => {
               },
               params.data.isActive !== false
                 ? {
-                    label: "Mark As Inactive",
-                    onClick: () =>
-                      toggleStatus({
-                        id: params.data._id,
-                        currentStatus: params.data.isActive !== false,
-                        itemType: detailType,
-                      }),
-                  }
+                  label: "Mark As Inactive",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                }
                 : {
-                    label: "Mark As Active",
-                    onClick: () =>
-                      toggleStatus({
-                        id: params.data._id,
-                        currentStatus: params.data.isActive !== false,
-                        itemType: detailType,
-                      }),
-                  },
+                  label: "Mark As Active",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                },
             ]}
           />
         ),
@@ -467,15 +472,22 @@ const BlogsAndNews = () => {
 
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
-    const source = detailType === "blog" ? data.allBlogs : data.allNews;
+    const source =
+      detailType === "blog"
+        ? Array.isArray(data?.allBlogs)
+          ? data.allBlogs
+          : []
+        : Array.isArray(data?.allNews)
+          ? data.allNews
+          : [];
     return source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
     );
   }, [currentView, selectedLocation, detailType, data]);
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         {currentView === "summary" ? (
           <AgTable
             data={stats}
@@ -516,7 +528,7 @@ const BlogsAndNews = () => {
             connectivity.
           </p>
         ) : null}
-      </PageFrame>
+      </>
     </div>
   );
 };

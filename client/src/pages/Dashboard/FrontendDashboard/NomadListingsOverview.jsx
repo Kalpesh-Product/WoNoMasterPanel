@@ -189,8 +189,8 @@ export default function NomadListingsOverview() {
   };
 
   return (
-    <div className="p-4 flex flex-col gap-4">
-      <PageFrame>
+    <div className="flex flex-col gap-4">
+      <>
         {/* ✅ PrimaryButton above table */}
         {/* <div className="flex justify-end pb-4">
           <PrimaryButton
@@ -209,7 +209,7 @@ export default function NomadListingsOverview() {
           buttonTitle="Add Product"
           handleClick={handleAddClick}
         />
-      </PageFrame>
+      </>
     </div>
   );
 }

@@ -167,14 +167,14 @@ const MainLayout = () => {
             </div>
             <div
               id="scrollable-content"
-              className="bg-white h-[80vh] overflow-y-auto flex flex-col justify-between"
+              className="flex-1 min-h-0 overflow-y-auto"
             >
               <ScrollToTop />
               {permissionChecked ? <Outlet /> : null}
 
               <div
                 ref={dummyRef}
-                className="h-1 w-1 bg-red-500 text-red-500"
+                className=""
               ></div>
             </div>
           </main>
@@ -183,11 +183,10 @@ const MainLayout = () => {
 
       {showFooter && (
         <footer
-          className={`transition-all duration-500 transform ${
-            showFooter
-              ? "opacity-100 translate-y-0"
-              : "opacity-0 translate-y-10"
-          }`}
+          className={`transition-all duration-500 transform ${showFooter
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-10"
+            }`}
         >
           <Footer />
         </footer>

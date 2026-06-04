@@ -13,6 +13,7 @@ const AllLeads = () => {
       basePath="/dashboard/all-leads"
       tabs={tabItems}
       defaultTabPath="all-enquiry"
+      tabUiVariant="glass"
     />
   );
 };

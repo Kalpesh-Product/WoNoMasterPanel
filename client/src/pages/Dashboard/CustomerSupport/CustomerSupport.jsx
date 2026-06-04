@@ -138,7 +138,7 @@ const CustomerSupport = () => {
 
   const columns = useMemo(
     () => [
-      { field: "srNo", headerName: "Sr No", width: 90 },
+      { field: "srNo", pinned: "left", lockPinned: true, headerName: "Sr No", width: 90 },
       { field: "ticketNumber", headerName: "Ticket ID", minWidth: 140 },
       { field: "requestedAt", headerName: "Requested At", minWidth: 190 },
       { field: "title", headerName: "Title", minWidth: 180 },
@@ -151,6 +151,7 @@ const CustomerSupport = () => {
         headerName: "Actions",
         minWidth: 120,
         pinned: "right",
+        lockPinned: true,
         cellRenderer: (params) => (
           <div className="flex items-center gap-2">
             <div
@@ -222,8 +223,8 @@ const CustomerSupport = () => {
   }
 
   return (
-    <div className="p-4">
-      <PageFrame>
+    <div>
+      <>
         <AgTable
           data={tableData}
           columns={columns}
@@ -232,7 +233,7 @@ const CustomerSupport = () => {
           tableHeight={500}
           loading={isPending}
         />
-      </PageFrame>
+      </>
 
       <MuiModal
         open={openView}

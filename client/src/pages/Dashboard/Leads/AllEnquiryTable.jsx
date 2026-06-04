@@ -39,6 +39,7 @@ const AllEnquiryTable = () => {
 
   return (
     <AgTable
+      tableTitle={"All Enquiry"}
       data={data}
       columns={columns}
       search

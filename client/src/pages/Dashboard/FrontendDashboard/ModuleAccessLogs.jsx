@@ -4,6 +4,7 @@ import YearWiseTable from "../../../components/Tables/YearWiseTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import humanDate from "../../../utils/humanDateForamt";
 import MuiModal from "../../../components/MuiModal";
+import { MdOutlineRemoveRedEye } from "react-icons/md";
 
 const ModuleAccessLogs = () => {
   const axios = useAxiosPrivate();
@@ -39,7 +40,7 @@ const ModuleAccessLogs = () => {
   );
 
   const columns = [
-    { headerName: "Sr No", field: "srNo", width: 90 },
+    { headerName: "Sr No", field: "srNo", lockPinned: true, pinned: "left", width: 90 },
     { headerName: "Panel", field: "panel", width: 130 },
     { headerName: "Host Company", field: "hostCompany", flex: 1 },
     { headerName: "Access Given By", field: "givenBy", flex: 1 },
@@ -54,26 +55,28 @@ const ModuleAccessLogs = () => {
       cellRenderer: (params) => humanDate(params.value),
     },
     {
-      headerName: "View",
-      field: "viewModules",
+      field: "actions",
+      headerName: "Actions",
+      pinned: "right",
+      lockPinned: true,
       width: 100,
       cellRenderer: (params) => (
-        <button
-          type="button"
-          className="underline text-primary"
+        <div
+          role="button"
           onClick={() => {
             setSelectedRow(params.data || {});
             setOpenModal(true);
           }}
+          className="p-4 rounded-full hover:bg-borderGray cursor-pointer"
         >
-          View
-        </button>
+          <MdOutlineRemoveRedEye />
+        </div>
       ),
     },
   ];
 
   return (
-    <div className="p-4">
+    <div>
       <YearWiseTable
         data={rows}
         columns={columns}

@@ -20,6 +20,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
 
   return (
     <AgTable
+      tableTitle={`${queryKey.charAt(0).toUpperCase() + queryKey.slice(1)}`}
       data={data}
       columns={columns}
       search
