@@ -1154,6 +1154,7 @@ const getInitialForm = (row = {}) => {
     continent: row?.continent ?? "",
     country: row?.country ?? "",
     state: row?.state ?? "",
+    title: row?.title ?? "",
     isActive:
       row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
     imageUrls: getImageUrlsFromRow(row),
@@ -1185,6 +1186,7 @@ const buildPayload = (form) => {
     continent: form.continent,
     country: form.country,
     state: form.state,
+    title: form.title?.trim() || "",
     isActive:
       form.isActive === "true"
         ? true
@@ -1405,6 +1407,7 @@ const WorldRankingWeights = () => {
       formData.append("continent", payload.continent || "");
       formData.append("country", payload.country || "");
       formData.append("state", payload.state || "");
+      formData.append("title", payload.title || "");
       formData.append("isActive", String(payload.isActive ?? ""));
       formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
       editForm.imageFiles.forEach((file) => formData.append("images", file));
@@ -1426,6 +1429,7 @@ const WorldRankingWeights = () => {
     formData.append("continent", payload.continent || "");
     formData.append("country", payload.country || "");
     formData.append("state", payload.state || "");
+    formData.append("title", payload.title || "");
     formData.append("isActive", String(payload.isActive ?? ""));
     formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
     formData.append("weight", JSON.stringify(payload.weight));
@@ -1561,6 +1565,11 @@ const WorldRankingWeights = () => {
         suppressMovable: true,
       },
       {
+        field: "title",
+        headerName: "Title",
+        minWidth: 220,
+      },
+      {
         field: "actions",
         headerName: "Actions",
         width: 110,
@@ -1663,6 +1672,28 @@ const WorldRankingWeights = () => {
             <>
               <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
                 <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
+                  <div className="w-full flex justify-end">
+                    {editMode ? (
+                      <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                        <Button onClick={() => setEditMode(false)} disabled={isUpdating}>
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="contained"
+                          onClick={handleUpdateSubmit}
+                          disabled={isUpdating || !editForm}
+                        >
+                          {isUpdating ? "Updating..." : "Update"}
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+                        <Button onClick={() => setEditMode(true)} variant="contained">
+                          Edit
+                        </Button>
+                      </Box>
+                    )}
+                  </div>
                   {editForm?.imageUrls?.length > 0 ? (
                     <Box sx={{ mt: 2 }}>
                       <Typography
@@ -1760,6 +1791,15 @@ const WorldRankingWeights = () => {
                   value={editForm.state}
                   onChange={(event) =>
                     handleFormFieldChange("state", event.target.value)
+                  }
+                  fullWidth
+                />
+                <TextField
+                  label="Title"
+                  value={editForm.title}
+                  disabled={!editMode}
+                  onChange={(event) =>
+                    handleFormFieldChange("title", event.target.value)
                   }
                   fullWidth
                 />
@@ -2044,7 +2084,7 @@ const WorldRankingWeights = () => {
             </TextField>
           </Box>
 
-          <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1 mb-4">
+          <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
             <TextField
               label="State / City"
               select
@@ -2078,6 +2118,14 @@ const WorldRankingWeights = () => {
               <MenuItem value="true">Active</MenuItem>
               <MenuItem value="false">Inactive</MenuItem>
             </TextField>
+            <TextField
+              label="Title"
+              value={addForm.title}
+              onChange={(event) =>
+                setAddForm((prev) => ({ ...prev, title: event.target.value }))
+              }
+              fullWidth
+            />
           </Box>
 
           <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
