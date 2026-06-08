@@ -1262,39 +1262,39 @@ const WorldRankingWeights = () => {
         valueFormatter: (params) => fmtNumber(params.value, 2),
       })),
       // Interleaved Score and Label Columns
-      ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(
-        ([formulaKey, factors]) => {
-          const labelField = SCORE_TO_LABEL_MAP[formulaKey];
-          const labelCol = labelColumns.find((c) => c.field === labelField);
+      // ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(
+      //   ([formulaKey, factors]) => {
+      //     const labelField = SCORE_TO_LABEL_MAP[formulaKey];
+      //     const labelCol = labelColumns.find((c) => c.field === labelField);
 
-          return [
-            {
-              headerName: `${formulaKey} Score`,
-              field: `score_${formulaKey}`,
-              minWidth: 150,
-              valueGetter: (params) => {
-                const weights =
-                  params.data?.weight ||
-                  params.data?.weights ||
-                  params.data ||
-                  {};
-                return calculateScore(weights, factors);
-              },
-              valueFormatter: (params) => fmtNumber(params.value, 3),
-            },
-            ...(labelCol
-              ? [
-                {
-                  ...labelCol,
-                  valueGetter: (params) =>
-                    params.data?.labels?.[labelCol.field] ??
-                    params.data?.[labelCol.field],
-                },
-              ]
-              : []),
-          ];
-        },
-      ),
+      //     return [
+      //       {
+      //         headerName: `${formulaKey} Score`,
+      //         field: `score_${formulaKey}`,
+      //         minWidth: 150,
+      //         valueGetter: (params) => {
+      //           const weights =
+      //             params.data?.weight ||
+      //             params.data?.weights ||
+      //             params.data ||
+      //             {};
+      //           return calculateScore(weights, factors);
+      //         },
+      //         valueFormatter: (params) => fmtNumber(params.value, 3),
+      //       },
+      //       ...(labelCol
+      //         ? [
+      //           {
+      //             ...labelCol,
+      //             valueGetter: (params) =>
+      //               params.data?.labels?.[labelCol.field] ??
+      //               params.data?.[labelCol.field],
+      //           },
+      //         ]
+      //         : []),
+      //     ];
+      //   },
+      // ),
     ],
     [],
   );
