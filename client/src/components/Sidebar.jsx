@@ -153,9 +153,13 @@ const Sidebar = ({ onCloseDrawer }) => {
     },
   ];
 
-  const handleMenuOpen = (item) => {
-    navigate(item.route);
+  const navigateFromSidebar = (route) => {
+    navigate(route, { flushSync: true });
     if (onCloseDrawer) onCloseDrawer();
+  };
+
+  const handleMenuOpen = (item) => {
+    navigateFromSidebar(item.route);
   };
 
   const toggleModule = (index) => {
@@ -167,8 +171,7 @@ const Sidebar = ({ onCloseDrawer }) => {
       toggleModule(index);
       return;
     }
-    navigate(module.route);
-    if (onCloseDrawer) onCloseDrawer();
+    navigateFromSidebar(module.route);
   };
 
   const isActive = (path) => location.pathname.startsWith(path);
@@ -188,11 +191,11 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   const filteredModules = isRestrictedUser
     ? defaultModules.map((module) => ({
-      ...module,
-      submenus: module.submenus.filter((submenu) =>
-        restrictedVisibleSubmenuTitles.includes(submenu.title),
-      ),
-    }))
+        ...module,
+        submenus: module.submenus.filter((submenu) =>
+          restrictedVisibleSubmenuTitles.includes(submenu.title),
+        ),
+      }))
     : defaultModules;
 
   return (
@@ -228,18 +231,26 @@ const Sidebar = ({ onCloseDrawer }) => {
                     {module.title}
                   </span>
                   <span
-                    className={`text-gray-400 transition-transform duration-300 ${expandedModule === index ? "rotate-180" : "rotate-0"
-                      }`}
+                    className={`text-gray-400 transition-transform duration-300 ${
+                      expandedModule === index ? "rotate-180" : "rotate-0"
+                    }`}
                   >
-                    {expandedModule === index ? <FaChevronUp size={12} /> : <FaAngleDown size={12} />}
+                    {expandedModule === index ? (
+                      <FaChevronUp size={12} />
+                    ) : (
+                      <FaAngleDown size={12} />
+                    )}
                   </span>
                 </button>
               ) : (
                 <button
                   type="button"
                   title={module.title}
-                  className={`w-full flex items-center justify-center py-2.5 px-3 rounded-md transition-colors ${isActive(module.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
-                    }`}
+                  className={`w-full flex items-center justify-center py-2.5 px-3 rounded-md transition-colors ${
+                    isActive(module.route)
+                      ? "bg-gray-200 text-gray-900"
+                      : "text-gray-700 hover:bg-gray-200"
+                  }`}
                   onClick={() => handleModuleClick(module, index)}
                 >
                   <span className="text-gray-500">
@@ -249,31 +260,39 @@ const Sidebar = ({ onCloseDrawer }) => {
               )}
 
               <div
-                className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${isSidebarOpen && expandedModule === index ? "max-h-[2600px]" : "max-h-0"
-                  }`}
+                className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+                  isSidebarOpen && expandedModule === index
+                    ? "max-h-[2600px]"
+                    : "max-h-0"
+                }`}
               >
-                {isSidebarOpen && module.submenus?.map((submenu) => (
-                  <button
-                    type="button"
-                    key={submenu.id}
-                    title={!isSidebarOpen ? submenu.title : ""}
-                    className={`my-1.5 w-full flex items-center ${isSidebarOpen ? "justify-start" : "justify-center"
-                      } py-2.5 px-3 rounded-full transition-colors ${isActive(submenu.route) ? "bg-gray-200 text-gray-900" : "text-gray-700 hover:bg-gray-200"
+                {isSidebarOpen &&
+                  module.submenus?.map((submenu) => (
+                    <button
+                      type="button"
+                      key={submenu.id}
+                      title={!isSidebarOpen ? submenu.title : ""}
+                      className={`my-1.5 w-full flex items-center ${
+                        isSidebarOpen ? "justify-start" : "justify-center"
+                      } py-2.5 px-3 rounded-full transition-colors ${
+                        isActive(submenu.route)
+                          ? "bg-gray-200 text-gray-900"
+                          : "text-gray-700 hover:bg-gray-200"
                       }`}
-                    onClick={() => handleMenuOpen(submenu)}
-                  >
-                    <span className="flex items-center gap-3 min-w-0">
-                      <span className="text-gray-500">
-                        <submenu.icon size={15} />
-                      </span>
-                      {isSidebarOpen && (
-                        <span className="text-[12px] font-pmedium truncate uppercase">
-                          {submenu.title}
+                      onClick={() => handleMenuOpen(submenu)}
+                    >
+                      <span className="flex items-center gap-3 min-w-0">
+                        <span className="text-gray-500">
+                          <submenu.icon size={15} />
                         </span>
-                      )}
-                    </span>
-                  </button>
-                ))}
+                        {isSidebarOpen && (
+                          <span className="text-[12px] font-pmedium truncate uppercase">
+                            {submenu.title}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  ))}
               </div>
             </div>
           ))}
