@@ -1,6 +1,7 @@
 const sharp = require("sharp");
 const axios = require("axios");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
+const WebsiteTemplateVersion = require("../../models/website/WebsiteTemplateVersion");
 const {
   handleFileUpload,
   handleFileDelete,
@@ -12,6 +13,26 @@ const {
   deleteFileFromS3ByUrl,
 } = require("../../config/s3config");
 const HostCompany = require("../../models/hostCompany/hostCompany");
+
+const hasDynamicTemplateFields = (templateDoc) => {
+  if (!templateDoc) return false;
+  const navItems = Array.isArray(templateDoc.pageNavItems)
+    ? templateDoc.pageNavItems
+    : [];
+  const productPages = Array.isArray(templateDoc.productDropdownPages)
+    ? templateDoc.productDropdownPages
+    : [];
+  return navItems.length > 0 || productPages.length > 0;
+};
+
+const buildSnapshotFromTemplate = (templateDoc) => {
+  const plain =
+    typeof templateDoc.toObject === "function"
+      ? templateDoc.toObject()
+      : { ...templateDoc };
+  delete plain.__v;
+  return plain;
+};
 
 const safeParse = (val, fallback) => {
   try {
@@ -582,17 +603,117 @@ const getTemplate = async (req, res) => {
     };
 
     const searchKey = formatCompanyName(companyName);
-
-    const template = await WebsiteTemplate.findOne({
+    const latestPublished = await WebsiteTemplateVersion.findOne({
       searchKey,
-    });
+      isLatestPublished: true,
+    })
+      .sort({ publishedAt: -1, version: -1 })
+      .lean();
 
+    if (latestPublished?.templateSnapshot) {
+      return res.json({
+        ...latestPublished.templateSnapshot,
+        isPublished: true,
+        publishedVersion: latestPublished.version,
+        publishedAt: latestPublished.publishedAt,
+      });
+    }
+
+    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
     if (!template) {
       return res.status(200).json([]);
     }
-    res.json(template);
+
+    // Backward compatibility: old templates can still render from live doc.
+    // Dynamic templates must be published before appearing on hosted domain.
+    if (hasDynamicTemplateFields(template)) {
+      return res.status(404).json({
+        message:
+          "No published website version found for this company. Please publish from Website Builder.",
+      });
+    }
+
+    return res.json(template);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+const publishTemplate = async (req, res, next) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const formatCompanyName = (name) => {
+      if (!name) return "";
+      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+    };
+
+    const rawSearchKey =
+      req.body?.searchKey || req.query?.searchKey || req.body?.companyName || "";
+    const searchKey = formatCompanyName(rawSearchKey);
+
+    if (!searchKey) {
+      await session.abortTransaction();
+      session.endSession();
+      return res
+        .status(400)
+        .json({ message: "searchKey or companyName is required" });
+    }
+
+    const template = await WebsiteTemplate.findOne({ searchKey }).session(session);
+    if (!template) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Website template not found" });
+    }
+
+    const nextVersion = Number(template.publishedVersion || 0) + 1;
+    const publishedAt = new Date();
+
+    await WebsiteTemplateVersion.updateMany(
+      { searchKey, isLatestPublished: true },
+      { $set: { isLatestPublished: false } },
+      { session },
+    );
+
+    const snapshot = buildSnapshotFromTemplate(template);
+    snapshot.isPublished = true;
+    snapshot.publishedVersion = nextVersion;
+    snapshot.publishedAt = publishedAt;
+
+    await WebsiteTemplateVersion.create(
+      [
+        {
+          searchKey,
+          companyName: template.companyName || "",
+          companyId: template.companyId || "",
+          version: nextVersion,
+          isLatestPublished: true,
+          publishedAt,
+          templateSnapshot: snapshot,
+        },
+      ],
+      { session },
+    );
+
+    template.isPublished = true;
+    template.publishedVersion = nextVersion;
+    template.publishedAt = publishedAt;
+    await template.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return res.status(200).json({
+      message: "Website published successfully",
+      searchKey,
+      publishedVersion: nextVersion,
+      publishedAt,
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    next(error);
   }
 };
 
@@ -1549,6 +1670,7 @@ const editTemplate = async (req, res, next) => {
 
 module.exports = {
   createTemplate,
+  publishTemplate,
   editTemplate,
   getTemplate,
   getTemplates,

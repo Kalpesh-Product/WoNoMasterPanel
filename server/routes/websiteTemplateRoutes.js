@@ -4,6 +4,7 @@ const { uploadImages } = upload;
 
 const {
   createTemplate,
+  publishTemplate,
   getTemplate,
   editTemplate,
   getTemplates,
@@ -14,6 +15,7 @@ const {
 } = require("../controllers/websiteControllers/websiteTemplateControllers");
 
 router.post("/create-website", uploadImages.any(), createTemplate);
+router.post("/publish-website", publishTemplate);
 router.patch("/edit-website", uploadImages.any(), editTemplate);
 router.patch("/activate-website", activateTemplate);
 router.patch("/delete-website", deleteTemplate);

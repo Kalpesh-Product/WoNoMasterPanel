@@ -1345,17 +1345,6 @@ const getInviteStatuses = async (req, res, next) => {
 
 const sendInviteEmail = async (req, res, next) => {
   try {
-    const canInviteMember = await hasOrganizationAccess({
-      actorUserId: req.user,
-      actorRoles: req.roles,
-      companyId: req.body?.companyId,
-      workspaceId: req.body?.workspaceId,
-      requiredKey: "org_users_invite_member",
-    });
-    if (!canInviteMember) {
-      return res.status(403).json({ message: "Forbidden: invite-member access required" });
-    }
-
     const {
       leadId,
       email,
