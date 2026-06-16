@@ -1,18 +1,29 @@
 import React, { useCallback, useMemo, useState } from "react";
+import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { MenuItem, TextField } from "@mui/material";
-import YearWiseTable from "../../../components/Tables/YearWiseTable";
-import PageFrame from "../../../components/Pages/PageFrame";
+import { MenuItem, Tab, Tabs, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
 
+const REVIEW_TABS = {
+  nomadListings: 0,
+  eventReviews: 1,
+};
+
+const statusStyles = {
+  Pending: { bg: "#FEF3C7", color: "#F59E0B" },
+  Approved: { bg: "#D1FAE5", color: "#10B981" },
+  Rejected: { bg: "#FEE2E2", color: "#EF4444" },
+};
+
 const CompanyReviews = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState(REVIEW_TABS.nomadListings);
   const [openModal, setOpenModal] = useState(false);
   const [activeReview, setActiveReview] = useState(null);
   const [statusOverrides, setStatusOverrides] = useState({});
@@ -54,6 +65,24 @@ const CompanyReviews = () => {
     },
   });
 
+  const {
+    data: eventReviews = [],
+    isPending: isEventReviewsPending,
+    isError: isEventReviewsError,
+  } = useQuery({
+    queryKey: ["eventReviews"],
+    enabled: activeTab === REVIEW_TABS.eventReviews,
+    queryFn: async () => {
+      const response = await axios.get(
+        "http://localhost:3000/api/event-reviews/all",
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
+      return Array.isArray(response?.data?.data) ? response.data.data : [];
+    },
+  });
+
   // const rows = useMemo(
   //   () =>
   //     (Array.isArray(data) ? data : []).map((review, index) => ({
@@ -72,6 +101,20 @@ const CompanyReviews = () => {
     if (!status) return "Pending";
     const normalized = String(status).toLowerCase();
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  };
+
+  const formatDateTime = (date) => {
+    if (!date) return "-";
+    const parsedDate = new Date(date);
+    if (Number.isNaN(parsedDate.getTime())) return "-";
+
+    return parsedDate.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const getEffectiveStatus = useCallback(
@@ -256,6 +299,40 @@ const CompanyReviews = () => {
       }));
   }, [data, getEffectiveStatus]);
 
+  const eventReviewRows = useMemo(
+    () =>
+      (Array.isArray(eventReviews) ? eventReviews : []).map((review, index) => ({
+        ...review,
+        srNo: index + 1,
+        status: formatStatusLabel(review?.status),
+        createdAtFormatted: formatDateTime(review?.createdAt),
+        updatedAtFormatted: formatDateTime(review?.updatedAt),
+      })),
+    [eventReviews],
+  );
+
+  const renderStatusBadge = (status) => {
+    const value = formatStatusLabel(status);
+    const badgeStyles = {
+      borderRadius: "9999px",
+      padding: "4px 16px",
+      fontWeight: 600,
+      fontSize: "0.85rem",
+      backgroundColor: statusStyles[value]?.bg,
+      color: statusStyles[value]?.color,
+      lineHeight: 1.5,
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+    };
+
+    return (
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <span style={badgeStyles}>{value}</span>
+      </div>
+    );
+  };
+
   const columns = [
     { field: "srNo", lockPinned: true, pinned: "left", headerName: "SrNo", width: 100 },
     {
@@ -291,12 +368,6 @@ const CompanyReviews = () => {
       cellRenderer: (params) => {
         const value = formatStatusLabel(params.data.status);
         const isFinalStatus = value === "Approved" || value === "Rejected";
-
-        const statusStyles = {
-          Pending: { bg: "#FEF3C7", color: "#F59E0B" },
-          Approved: { bg: "#D1FAE5", color: "#10B981" },
-          Rejected: { bg: "#FEE2E2", color: "#EF4444" },
-        };
 
         const badgeStyles = {
           borderRadius: "9999px",
@@ -377,19 +448,155 @@ const CompanyReviews = () => {
     },
   ];
 
-  if (isPending) return <>Loading Reviews</>;
-  if (isError)
-    return <span className="text-red-500">Error Loading Reviews</span>;
+  const eventReviewColumns = [
+    {
+      field: "srNo",
+      lockPinned: true,
+      pinned: "left",
+      headerName: "SrNo",
+      width: 100,
+    },
+    {
+      field: "name",
+      headerName: "Reviewer Name",
+      width: 220,
+      valueGetter: (params) => params.data.name || "-",
+    },
+    {
+      field: "eventId",
+      headerName: "Event ID",
+      width: 240,
+      valueGetter: (params) => params.data.eventId || params.data.event || "-",
+    },
+    {
+      field: "starCount",
+      headerName: "Rating",
+      width: 120,
+      valueGetter: (params) => params.data.starCount ?? "-",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 180,
+      cellRenderer: (params) => renderStatusBadge(params.data.status),
+    },
+    {
+      field: "reviewer",
+      headerName: "Reviewer ID",
+      width: 240,
+      valueGetter: (params) => params.data.reviewer || "-",
+    },
+    {
+      field: "createdAtFormatted",
+      headerName: "Created At",
+      width: 190,
+      valueGetter: (params) => params.data.createdAtFormatted || "-",
+    },
+    {
+      field: "updatedAtFormatted",
+      headerName: "Updated At",
+      width: 190,
+      valueGetter: (params) => params.data.updatedAtFormatted || "-",
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      minWidth: 120,
+      pinned: "right",
+      lockPinned: true,
+      cellRenderer: (params) => (
+        <div className="flex items-center gap-2">
+          <div
+            role="button"
+            onClick={() => handleOpenModal(params.data)}
+            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+          >
+            <MdOutlineRemoveRedEye />
+          </div>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div>
-      <>
-        <AgTable data={rows} search tableTitle={"Reviews"} columns={columns} />
+      <Tabs
+        value={activeTab}
+        onChange={(_, newValue) => setActiveTab(newValue)}
+        variant="fullWidth"
+        TabIndicatorProps={{ style: { display: "none" } }}
+        sx={{
+          backgroundColor: "white",
+          borderRadius: 2,
+          border: "1px solid #d1d5db",
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: "medium",
+            padding: "12px 16px",
+            borderRight: "0.1px solid #d1d5db",
+            color: "#1E3D73",
+          },
+          "& .Mui-selected": {
+            backgroundColor: "#1E3D73",
+            color: "white !important",
+          },
+        }}
+      >
+        <Tab label="Nomad listing reviews" />
+        <Tab label="Event reviews" />
+      </Tabs>
 
-        {rows.length === 0 && (
-          <div className="text-center text-gray-500 py-4">No records found</div>
+      <div className="py-4">
+        {activeTab === REVIEW_TABS.nomadListings && (
+          <>
+            {isPending ? (
+              <>Loading Reviews</>
+            ) : isError ? (
+              <span className="text-red-500">Error Loading Reviews</span>
+            ) : (
+              <>
+                <AgTable
+                  data={rows}
+                  search
+                  tableTitle={"Nomad Listing Reviews"}
+                  columns={columns}
+                />
+
+                {rows.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    No records found
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
-      </>
+
+        {activeTab === REVIEW_TABS.eventReviews && (
+          <>
+            {isEventReviewsPending ? (
+              <>Loading Event Reviews</>
+            ) : isEventReviewsError ? (
+              <span className="text-red-500">Error Loading Event Reviews</span>
+            ) : (
+              <>
+                <AgTable
+                  data={eventReviewRows}
+                  search
+                  tableTitle={"Event Reviews"}
+                  columns={eventReviewColumns}
+                />
+
+                {eventReviewRows.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    No records found
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </div>
 
       <MuiModal
         open={openModal}
