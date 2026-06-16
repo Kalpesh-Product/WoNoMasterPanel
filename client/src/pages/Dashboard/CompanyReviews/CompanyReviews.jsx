@@ -475,16 +475,41 @@ const CompanyReviews = () => {
       width: 100,
     },
     {
-      field: "name",
+      field: "reviewerName",
       headerName: "Reviewer Name",
       width: 220,
-      valueGetter: (params) => params.data.name || "-",
+      valueGetter: (params) =>
+        params.data.reviewerName || params.data.name || "-",
     },
     {
-      field: "eventId",
-      headerName: "Event ID",
+      field: "eventName",
+      headerName: "Event Name",
       width: 240,
-      valueGetter: (params) => params.data.eventId || params.data.event || "-",
+      valueGetter: (params) => params.data.eventName || "-",
+    },
+    // {
+    //   field: "eventId",
+    //   headerName: "Event ID",
+    //   width: 240,
+    //   valueGetter: (params) => params.data.eventId || params.data.event || "-",
+    // },
+    {
+      field: "continent",
+      headerName: "Continent",
+      width: 160,
+      valueGetter: (params) => params.data.continent || "-",
+    },
+    {
+      field: "country",
+      headerName: "Country",
+      width: 160,
+      valueGetter: (params) => params.data.country || "-",
+    },
+    {
+      field: "state",
+      headerName: "State",
+      width: 180,
+      valueGetter: (params) => params.data.state || "-",
     },
     {
       field: "starCount",
@@ -562,12 +587,12 @@ const CompanyReviews = () => {
         );
       },
     },
-    {
-      field: "reviewer",
-      headerName: "Reviewer ID",
-      width: 240,
-      valueGetter: (params) => params.data.reviewer || "-",
-    },
+    // {
+    //   field: "reviewer",
+    //   headerName: "Reviewer ID",
+    //   width: 240,
+    //   valueGetter: (params) => params.data.reviewer || "-",
+    // },
     {
       field: "createdAtFormatted",
       headerName: "Created At",
