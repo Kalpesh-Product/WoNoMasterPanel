@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
-import { MenuItem, Tab, Tabs, TextField } from "@mui/material";
+import { MenuItem, TextField } from "@mui/material";
 import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
@@ -153,8 +153,9 @@ const CompanyReviews = () => {
         const nestedUser = actionBy?.user;
 
         if (userType === "MASTER") {
-          const masterName = `${nestedUser?.firstName || ""} ${nestedUser?.lastName || ""
-            }`.trim();
+          const masterName = `${nestedUser?.firstName || ""} ${
+            nestedUser?.lastName || ""
+          }`.trim();
 
           return masterName || extractName(nestedUser) || extractName(actionBy);
         }
@@ -301,13 +302,15 @@ const CompanyReviews = () => {
 
   const eventReviewRows = useMemo(
     () =>
-      (Array.isArray(eventReviews) ? eventReviews : []).map((review, index) => ({
-        ...review,
-        srNo: index + 1,
-        status: formatStatusLabel(review?.status),
-        createdAtFormatted: formatDateTime(review?.createdAt),
-        updatedAtFormatted: formatDateTime(review?.updatedAt),
-      })),
+      (Array.isArray(eventReviews) ? eventReviews : []).map(
+        (review, index) => ({
+          ...review,
+          srNo: index + 1,
+          status: formatStatusLabel(review?.status),
+          createdAtFormatted: formatDateTime(review?.createdAt),
+          updatedAtFormatted: formatDateTime(review?.updatedAt),
+        }),
+      ),
     [eventReviews],
   );
 
@@ -334,7 +337,13 @@ const CompanyReviews = () => {
   };
 
   const columns = [
-    { field: "srNo", lockPinned: true, pinned: "left", headerName: "SrNo", width: 100 },
+    {
+      field: "srNo",
+      lockPinned: true,
+      pinned: "left",
+      headerName: "SrNo",
+      width: 100,
+    },
     {
       field: "reviewerName",
       headerName: "Reviewer Name",
@@ -520,31 +529,38 @@ const CompanyReviews = () => {
 
   return (
     <div>
-      <Tabs
-        value={activeTab}
-        onChange={(_, newValue) => setActiveTab(newValue)}
-        variant="fullWidth"
-        TabIndicatorProps={{ style: { display: "none" } }}
-        sx={{
-          backgroundColor: "white",
-          borderRadius: 2,
-          border: "1px solid #d1d5db",
-          "& .MuiTab-root": {
-            textTransform: "none",
-            fontWeight: "medium",
-            padding: "12px 16px",
-            borderRight: "0.1px solid #d1d5db",
-            color: "#1E3D73",
-          },
-          "& .Mui-selected": {
-            backgroundColor: "#1E3D73",
-            color: "white !important",
-          },
-        }}
+      <div
+        role="tablist"
+        aria-label="Review type"
+        className="grid grid-cols-2 gap-1 rounded-full border border-[#e2e8f0] bg-[#f1f5f9] p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]"
       >
-        <Tab label="Nomad listing reviews" />
-        <Tab label="Event reviews" />
-      </Tabs>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === REVIEW_TABS.nomadListings}
+          onClick={() => setActiveTab(REVIEW_TABS.nomadListings)}
+          className={`rounded-full px-4 py-2 text-center font-semibold transition-colors ${
+            activeTab === REVIEW_TABS.nomadListings
+              ? "bg-white text-[#2563EB] shadow-[0_1px_4px_rgba(15,23,42,0.12)]"
+              : "bg-transparent text-[#475569]"
+          }`}
+        >
+          Nomad Listing Reviews
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === REVIEW_TABS.eventReviews}
+          onClick={() => setActiveTab(REVIEW_TABS.eventReviews)}
+          className={`rounded-full px-4 py-2 text-center font-semibold transition-colors ${
+            activeTab === REVIEW_TABS.eventReviews
+              ? "bg-white text-[#2563EB] shadow-[0_1px_4px_rgba(15,23,42,0.12)]"
+              : "bg-transparent text-[#475569]"
+          }`}
+        >
+          Event Reviews
+        </button>
+      </div>
 
       <div className="py-4">
         {activeTab === REVIEW_TABS.nomadListings && (
