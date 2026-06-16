@@ -74,7 +74,8 @@ const CompanyReviews = () => {
     enabled: activeTab === REVIEW_TABS.eventReviews,
     queryFn: async () => {
       const response = await axios.get(
-        "http://localhost:3000/api/event-reviews/all",
+        // "http://localhost:3000/api/event-reviews/all",
+        "https://wononomadsbe.vercel.app/api/event-reviews/all",
         {
           headers: { "Cache-Control": "no-cache" },
         },
@@ -214,7 +215,8 @@ const CompanyReviews = () => {
   const updateEventReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, status }) => {
       const response = await axiosPrivate.patch(
-        `http://localhost:3000/api/event-reviews/${reviewId}/status`,
+        // `http://localhost:3000/api/event-reviews/${reviewId}/status`,
+        `https://wononomadsbe.vercel.app/api/event-reviews/${reviewId}/status`,
         {
           status,
         },

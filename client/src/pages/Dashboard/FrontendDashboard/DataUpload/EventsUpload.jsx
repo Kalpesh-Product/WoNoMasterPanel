@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const TYPE_MAP = {
-  api: "http://localhost:3000/api/events/bulk-insert",
+  // api: "http://localhost:3000/api/events/bulk-insert",
+  api: "https://wononomadsbe.vercel.app/api/events/bulk-insert",
   formKey: "events-file",
 };
 
