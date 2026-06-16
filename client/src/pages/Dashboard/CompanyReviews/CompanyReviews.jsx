@@ -211,6 +211,23 @@ const CompanyReviews = () => {
     },
   });
 
+  const updateEventReviewStatusMutation = useMutation({
+    mutationFn: async ({ reviewId, status }) => {
+      const response = await axiosPrivate.patch(
+        `http://localhost:3000/api/event-reviews/${reviewId}/status`,
+        {
+          status,
+        },
+      );
+      return response?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["eventReviews"],
+      });
+    },
+  });
+
   const handleStatusChange = (review, newStatus) => {
     const reviewId = review?._id || review?.id;
     if (!reviewId) return;
@@ -222,6 +239,20 @@ const CompanyReviews = () => {
 
     if (newStatus === "approved" || newStatus === "rejected") {
       updateReviewStatusMutation.mutate({ reviewId, status: newStatus });
+    }
+  };
+
+  const handleEventStatusChange = (review, newStatus) => {
+    const reviewId = review?._id || review?.id;
+    if (!reviewId) return;
+
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [reviewId]: newStatus,
+    }));
+
+    if (newStatus === "approved" || newStatus === "rejected") {
+      updateEventReviewStatusMutation.mutate({ reviewId, status: newStatus });
     }
   };
 
@@ -306,35 +337,13 @@ const CompanyReviews = () => {
         (review, index) => ({
           ...review,
           srNo: index + 1,
-          status: formatStatusLabel(review?.status),
+          status: getEffectiveStatus(review) || review?.status,
           createdAtFormatted: formatDateTime(review?.createdAt),
           updatedAtFormatted: formatDateTime(review?.updatedAt),
         }),
       ),
-    [eventReviews],
+    [eventReviews, getEffectiveStatus],
   );
-
-  const renderStatusBadge = (status) => {
-    const value = formatStatusLabel(status);
-    const badgeStyles = {
-      borderRadius: "9999px",
-      padding: "4px 16px",
-      fontWeight: 600,
-      fontSize: "0.85rem",
-      backgroundColor: statusStyles[value]?.bg,
-      color: statusStyles[value]?.color,
-      lineHeight: 1.5,
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-    };
-
-    return (
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <span style={badgeStyles}>{value}</span>
-      </div>
-    );
-  };
 
   const columns = [
     {
@@ -487,7 +496,71 @@ const CompanyReviews = () => {
       field: "status",
       headerName: "Status",
       width: 180,
-      cellRenderer: (params) => renderStatusBadge(params.data.status),
+      cellRenderer: (params) => {
+        const value = formatStatusLabel(params.data.status);
+        const isFinalStatus = value === "Approved" || value === "Rejected";
+
+        const badgeStyles = {
+          borderRadius: "9999px",
+          padding: "4px 16px",
+          fontWeight: 600,
+          fontSize: "0.85rem",
+          backgroundColor: statusStyles[value]?.bg,
+          color: statusStyles[value]?.color,
+          lineHeight: 1.5,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        };
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            {isFinalStatus ? (
+              <span style={badgeStyles}>{value}</span>
+            ) : (
+              <TextField
+                select
+                size="small"
+                value={value}
+                disabled={updateEventReviewStatusMutation.isPending}
+                onChange={(e) =>
+                  handleEventStatusChange(
+                    params.data,
+                    e.target.value.toLowerCase(),
+                  )
+                }
+                sx={getSelectChipSx(statusStyles, value)}
+                MenuProps={selectMenuProps}
+              >
+                {["Pending", "Approved", "Rejected"].map((option) => (
+                  <MenuItem
+                    key={option}
+                    value={option}
+                    sx={{
+                      justifyContent: "flex-start",
+                      alignItems: "center",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
+                      borderRadius: 0,
+                      backgroundColor: "transparent",
+                      color: "#0f172a",
+                      my: 0,
+                      px: 1.5,
+                      py: 1,
+                      textTransform: "capitalize",
+                      "&:hover": {
+                        backgroundColor: "#f8fafc",
+                      },
+                    }}
+                  >
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          </div>
+        );
+      },
     },
     {
       field: "reviewer",
