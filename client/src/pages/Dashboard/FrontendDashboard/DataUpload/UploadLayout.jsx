@@ -23,6 +23,7 @@ const UploadLayout = () => {
     { label: "Upload Single Image", path: "upload-single-image" },
     { label: "News Upload", path: "news-upload" },
     { label: "Blogs Upload", path: "blogs-upload" },
+    { label: "Events Upload", path: "events-upload" },
   ];
 
   // ✅ Filtered tabs for restricted users
