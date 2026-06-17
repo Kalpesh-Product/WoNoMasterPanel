@@ -1146,6 +1146,24 @@ const deriveLabelsFromCalculatedScores = (weights, existingLabels = {}) => {
   return nextLabels;
 };
 
+const deriveCalculatedScores = (weights = {}) =>
+  Object.fromEntries(
+    CALCULATION_CONFIG.map((config) => {
+      const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+      return [config.formula, calculateScore(weights, factors)];
+    }),
+  );
+
+const getCalculatedScoreValue = (form, config) => {
+  const scoreValue = form?.calculatedScores?.[config.formula];
+  if (scoreValue !== undefined && scoreValue !== null && scoreValue !== "") {
+    return scoreValue;
+  }
+
+  const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
+  return calculateScore(form?.weight || {}, factors);
+};
+
 const getInitialForm = (row = {}) => {
   const rowWeights = row?.weight || row?.weights || {};
   const initialForm = {
@@ -1161,6 +1179,7 @@ const getInitialForm = (row = {}) => {
     imageFiles: [],
     weight: {},
     labels: {},
+    calculatedScores: row?.calculatedScores || {},
   };
 
   weightColumns.forEach((column) => {
@@ -1173,6 +1192,10 @@ const getInitialForm = (row = {}) => {
     initialForm.labels[column.field] =
       rowLabels?.[column.field] ?? row?.[column.field] ?? "";
   });
+
+  if (!row?.calculatedScores) {
+    initialForm.calculatedScores = deriveCalculatedScores(initialForm.weight);
+  }
 
   return initialForm;
 };
@@ -1360,6 +1383,7 @@ const WorldRankingWeights = () => {
     const setForm = formType === "edit" ? setEditForm : setAddForm;
     setForm((prev) => {
       const nextWeight = { ...prev.weight, [field]: value };
+      const nextCalculatedScores = deriveCalculatedScores(nextWeight);
       const nextLabels = deriveLabelsFromCalculatedScores(
         nextWeight,
         prev.labels,
@@ -1368,6 +1392,7 @@ const WorldRankingWeights = () => {
       return {
         ...prev,
         weight: nextWeight,
+        calculatedScores: nextCalculatedScores,
         labels: nextLabels,
       };
     });
@@ -1857,11 +1882,9 @@ const WorldRankingWeights = () => {
                   const labelCol = labelColumns.find(
                     (c) => c.field === config.field,
                   );
-                  const factors =
-                    STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
-                  const currentScore = calculateScore(
-                    editForm.weight || {},
-                    factors,
+                  const currentScore = getCalculatedScoreValue(
+                    editForm,
+                    config,
                   );
 
                   return (
@@ -2166,11 +2189,7 @@ const WorldRankingWeights = () => {
               const labelCol = labelColumns.find(
                 (c) => c.field === config.field,
               );
-              const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
-              const currentScore = calculateScore(
-                addForm.weight || {},
-                factors,
-              );
+              const currentScore = getCalculatedScoreValue(addForm, config);
 
               return (
                 <React.Fragment key={config.formula}>
