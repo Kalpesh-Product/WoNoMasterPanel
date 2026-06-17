@@ -21,6 +21,9 @@ const NEWS_ENDPOINTS = [
   "/api/news/get-all-news",
 ];
 
+// const EVENT_ENDPOINTS = ["http://localhost:3000/api/events"];
+const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
+
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
 const toArray = (payload) => {
@@ -174,24 +177,26 @@ const BlogsAndNews = () => {
   }, [locationType]);
 
   const {
-    data = { allBlogs: [], allNews: [], companies: [] },
+    data = { allBlogs: [], allNews: [], allEvents: [], companies: [] },
     isPending,
     isError,
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
-      const [companies, blogs, news] = await Promise.all([
+      const [companies, blogs, news, events] = await Promise.all([
         fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
+        fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
       ]);
-      return { allBlogs: blogs, allNews: news, companies };
+      return { allBlogs: blogs, allNews: news, allEvents: events, companies };
     },
   });
 
   const stats = useMemo(() => {
     const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
     const allNews = Array.isArray(data?.allNews) ? data.allNews : [];
+    const allEvents = Array.isArray(data?.allEvents) ? data.allEvents : [];
     const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
     const locationLookup = new Map();
@@ -236,6 +241,7 @@ const BlogsAndNews = () => {
           continent: finalContinent || "-",
           blogCount: 0,
           newsCount: 0,
+          eventCount: 0,
         });
       }
       return destinationMap.get(safeDest);
@@ -267,6 +273,16 @@ const BlogsAndNews = () => {
         normalizeContinent(newsItem),
       );
       row.newsCount += 1;
+    });
+
+    allEvents.forEach((event) => {
+      if (event.isActive === false) return;
+      const row = ensureDestination(
+        normalizeDestination(event),
+        normalizeCountry(event),
+        normalizeContinent(event),
+      );
+      row.eventCount += 1;
     });
 
     return Array.from(destinationMap.values())
@@ -384,6 +400,11 @@ const BlogsAndNews = () => {
           </button>
         ),
       },
+      {
+        field: "eventCount",
+        headerName: "Event Count",
+        flex: 1,
+      },
     ],
     [handleViewDetail],
   );
@@ -445,23 +466,23 @@ const BlogsAndNews = () => {
               },
               params.data.isActive !== false
                 ? {
-                  label: "Mark As Inactive",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                }
+                    label: "Mark As Inactive",
+                    onClick: () =>
+                      toggleStatus({
+                        id: params.data._id,
+                        currentStatus: params.data.isActive !== false,
+                        itemType: detailType,
+                      }),
+                  }
                 : {
-                  label: "Mark As Active",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                },
+                    label: "Mark As Active",
+                    onClick: () =>
+                      toggleStatus({
+                        id: params.data._id,
+                        currentStatus: params.data.isActive !== false,
+                        itemType: detailType,
+                      }),
+                  },
             ]}
           />
         ),
