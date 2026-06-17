@@ -21,7 +21,8 @@ const NEWS_ENDPOINTS = [
   "/api/news/get-all-news",
 ];
 
-const EVENT_ENDPOINTS = ["http://localhost:3000/api/events"];
+// const EVENT_ENDPOINTS = ["http://localhost:3000/api/events"];
+const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
@@ -465,23 +466,23 @@ const BlogsAndNews = () => {
               },
               params.data.isActive !== false
                 ? {
-                  label: "Mark As Inactive",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                }
+                    label: "Mark As Inactive",
+                    onClick: () =>
+                      toggleStatus({
+                        id: params.data._id,
+                        currentStatus: params.data.isActive !== false,
+                        itemType: detailType,
+                      }),
+                  }
                 : {
-                  label: "Mark As Active",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                },
+                    label: "Mark As Active",
+                    onClick: () =>
+                      toggleStatus({
+                        id: params.data._id,
+                        currentStatus: params.data.isActive !== false,
+                        itemType: detailType,
+                      }),
+                  },
             ]}
           />
         ),
