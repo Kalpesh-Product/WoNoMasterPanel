@@ -21,11 +21,9 @@ const NEWS_ENDPOINTS = [
   "/api/news/get-all-news",
 ];
 
-// const EVENT_ENDPOINTS = ["http://localhost:3000/api/events"];
+// Keep the existing Event Count source independent from the event-management APIs.
 const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
-const EVENT_DESTINATION_ENDPOINT =
-  // "http://localhost:3000/api/events/destination";
-  "https://wononomadsbe.vercel.app/api/events/destination";
+const EVENT_DESTINATION_ENDPOINT = "/api/events/destination";
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
@@ -322,12 +320,19 @@ const BlogsAndNews = () => {
 
   const { mutate: toggleStatus, isPending: isTogglePending } = useMutation({
     mutationFn: async ({ id, currentStatus, itemType }) => {
-      const endpoint = itemType === "blog" ? "blogs" : "news";
       const newStatus = !currentStatus;
 
-      const response = await axios.patch(`/api/${endpoint}/${id}`, {
-        isActive: newStatus,
-      });
+      const response =
+        itemType === "event"
+          ? await axios.patch(`/api/events/${id}/status`, {
+              isActive: newStatus,
+            })
+          : await axios.patch(
+              `/api/${itemType === "blog" ? "blogs" : "news"}/${id}`,
+              {
+                isActive: newStatus,
+              },
+            );
 
       return response.data;
     },
@@ -345,7 +350,12 @@ const BlogsAndNews = () => {
         ["country-content-stats", "blogs-news-comprehensive"],
         (old) => {
           if (!old) return old;
-          const field = itemType === "blog" ? "allBlogs" : "allNews";
+          const field =
+            itemType === "blog"
+              ? "allBlogs"
+              : itemType === "news"
+                ? "allNews"
+                : "allEvents";
           return {
             ...old,
             [field]: old[field].map((item) =>
@@ -458,6 +468,53 @@ const BlogsAndNews = () => {
       ),
     };
 
+    const actionColumn = {
+      headerName: "Action",
+      width: 100,
+      pinned: "right",
+      lockPinned: true,
+      cellRenderer: (params) => (
+        <ThreeDotMenu
+          rowId={params.data._id}
+          menuItems={[
+            {
+              label: "Edit",
+              onClick: () =>
+                navigate(
+                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                  {
+                    state: {
+                      item: params.data,
+                      type: detailType,
+                      destinations: stats.map((s) => s.destination),
+                    },
+                  },
+                ),
+            },
+            params.data.isActive !== false
+              ? {
+                  label: "Mark As Inactive",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                }
+              : {
+                  label: "Mark As Active",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                },
+          ]}
+        />
+      ),
+    };
+
     if (detailType === "event") {
       return [
         serialNumberColumn,
@@ -481,6 +538,7 @@ const BlogsAndNews = () => {
           valueFormatter: (params) => params.value || "-",
         },
         statusColumn,
+        actionColumn,
       ];
     }
 
@@ -500,52 +558,7 @@ const BlogsAndNews = () => {
         valueFormatter: (params) => params.value || "-",
       },
       statusColumn,
-      {
-        headerName: "Action",
-        width: 100,
-        pinned: "right",
-        lockPinned: true,
-        cellRenderer: (params) => (
-          <ThreeDotMenu
-            rowId={params.data._id}
-            menuItems={[
-              {
-                label: "Edit",
-                onClick: () =>
-                  navigate(
-                    `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                    {
-                      state: {
-                        item: params.data,
-                        type: detailType,
-                        destinations: stats.map((s) => s.destination),
-                      },
-                    },
-                  ),
-              },
-              params.data.isActive !== false
-                ? {
-                    label: "Mark As Inactive",
-                    onClick: () =>
-                      toggleStatus({
-                        id: params.data._id,
-                        currentStatus: params.data.isActive !== false,
-                        itemType: detailType,
-                      }),
-                  }
-                : {
-                    label: "Mark As Active",
-                    onClick: () =>
-                      toggleStatus({
-                        id: params.data._id,
-                        currentStatus: params.data.isActive !== false,
-                        itemType: detailType,
-                      }),
-                  },
-            ]}
-          />
-        ),
-      },
+      actionColumn,
     ];
   }, [detailType, navigate, stats, toggleStatus, selectedLocation]);
 
@@ -588,25 +601,25 @@ const BlogsAndNews = () => {
               search
               tableTitle={`${detailLabel} in ${selectedLocation}`}
               tableHeight={500}
-              buttonTitle={
-                detailType === "event"
-                  ? undefined
-                  : `Add ${detailType === "blog" ? "Blog" : "News"}`
-              }
-              handleClick={
-                detailType === "event"
-                  ? undefined
-                  : () =>
-                      navigate(
-                        `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
-                        {
-                          state: {
-                            item: null,
-                            type: detailType,
-                            destinations: stats.map((s) => s.destination),
-                          },
-                        },
-                      )
+              buttonTitle={`Add ${
+                detailType === "blog"
+                  ? "Blog"
+                  : detailType === "news"
+                    ? "News"
+                    : "Event"
+              }`}
+              handleClick={() =>
+                navigate(
+                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
+                  {
+                    state: {
+                      item: null,
+                      type: detailType,
+                      destinations: stats.map((s) => s.destination),
+                      selectedLocation,
+                    },
+                  },
+                )
               }
               loading={
                 isPending ||

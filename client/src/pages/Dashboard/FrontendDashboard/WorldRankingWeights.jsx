@@ -378,6 +378,7 @@ const CALCULATION_CONFIG = [
   {
     label: "Startup Incubators & Accelerators",
     formula: "startupIncubatorsAndAccelerators",
+    scoreField: "startupIncubatorsAccelerators",
     field: "labelStartupIncubatorsAccelerators",
   },
   {
@@ -393,6 +394,7 @@ const CALCULATION_CONFIG = [
   {
     label: "Conferences & Events",
     formula: "conferencesAndEvents",
+    scoreField: "conferencesEvents",
     field: "labelConferencesEvents",
   },
 ];
@@ -1150,14 +1152,21 @@ const deriveCalculatedScores = (weights = {}) =>
   Object.fromEntries(
     CALCULATION_CONFIG.map((config) => {
       const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
-      return [config.formula, calculateScore(weights, factors)];
+      return [
+        config.scoreField || config.formula,
+        calculateScore(weights, factors),
+      ];
     }),
   );
 
 const getCalculatedScoreValue = (form, config) => {
-  const scoreValue = form?.calculatedScores?.[config.formula];
-  if (scoreValue !== undefined && scoreValue !== null && scoreValue !== "") {
-    return scoreValue;
+  const scoreKeys = [config.scoreField, config.formula].filter(Boolean);
+
+  for (const scoreKey of scoreKeys) {
+    const scoreValue = form?.calculatedScores?.[scoreKey];
+    if (scoreValue !== undefined && scoreValue !== null && scoreValue !== "") {
+      return scoreValue;
+    }
   }
 
   const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || [];
