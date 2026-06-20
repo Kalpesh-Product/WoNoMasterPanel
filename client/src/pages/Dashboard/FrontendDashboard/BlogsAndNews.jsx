@@ -23,6 +23,9 @@ const NEWS_ENDPOINTS = [
 
 // const EVENT_ENDPOINTS = ["http://localhost:3000/api/events"];
 const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
+const EVENT_DESTINATION_ENDPOINT =
+  // "http://localhost:3000/api/events/destination";
+  "https://wononomadsbe.vercel.app/api/events/destination";
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
@@ -191,6 +194,24 @@ const BlogsAndNews = () => {
       ]);
       return { allBlogs: blogs, allNews: news, allEvents: events, companies };
     },
+  });
+
+  const {
+    data: destinationEvents = [],
+    isPending: isDestinationEventsPending,
+    isError: isDestinationEventsError,
+  } = useQuery({
+    queryKey: ["destination-events", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${EVENT_DESTINATION_ENDPOINT}/${encodeURIComponent(selectedLocation)}`,
+      );
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "event" &&
+      Boolean(selectedLocation),
   });
 
   const stats = useMemo(() => {
@@ -404,21 +425,67 @@ const BlogsAndNews = () => {
         field: "eventCount",
         headerName: "Event Count",
         flex: 1,
+        cellRenderer: (params) => (
+          <button
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() => handleViewDetail(params.data.destination, "event")}
+          >
+            {params.value}
+          </button>
+        ),
       },
     ],
     [handleViewDetail],
   );
 
-  const detailColumns = useMemo(
-    () => [
-      {
-        field: "srNo",
-        headerName: "Sr No",
-        width: 80,
-        lockPinned: true,
-        pinned: "left",
-        valueGetter: (params) => params.node.rowIndex + 1,
-      },
+  const detailColumns = useMemo(() => {
+    const serialNumberColumn = {
+      field: "srNo",
+      headerName: "Sr No",
+      width: 80,
+      lockPinned: true,
+      pinned: "left",
+      valueGetter: (params) => params.node.rowIndex + 1,
+    };
+
+    const statusColumn = {
+      field: "isActive",
+      headerName: "Status",
+      flex: 1,
+      minWidth: 140,
+      cellRenderer: (params) => (
+        <StatusChip status={params.value === false ? "Inactive" : "Active"} />
+      ),
+    };
+
+    if (detailType === "event") {
+      return [
+        serialNumberColumn,
+        { field: "eventName", headerName: "Event Name", flex: 2 },
+        {
+          field: "category",
+          headerName: "Category",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "month",
+          headerName: "Month",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "venue",
+          headerName: "Venue",
+          flex: 1.5,
+          valueFormatter: (params) => params.value || "-",
+        },
+        statusColumn,
+      ];
+    }
+
+    return [
+      serialNumberColumn,
       { field: "mainTitle", headerName: "Title", flex: 2 },
       {
         field: "author",
@@ -432,15 +499,7 @@ const BlogsAndNews = () => {
         flex: 1,
         valueFormatter: (params) => params.value || "-",
       },
-      {
-        field: "isActive",
-        headerName: "Status",
-        flex: 1,
-        minWidth: 140,
-        cellRenderer: (params) => (
-          <StatusChip status={params.value === false ? "Inactive" : "Active"} />
-        ),
-      },
+      statusColumn,
       {
         headerName: "Action",
         width: 100,
@@ -487,12 +546,12 @@ const BlogsAndNews = () => {
           />
         ),
       },
-    ],
-    [detailType, navigate, stats, toggleStatus, selectedLocation],
-  );
+    ];
+  }, [detailType, navigate, stats, toggleStatus, selectedLocation]);
 
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
+    if (detailType === "event") return destinationEvents;
     const source =
       detailType === "blog"
         ? Array.isArray(data?.allBlogs)
@@ -504,7 +563,10 @@ const BlogsAndNews = () => {
     return source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
     );
-  }, [currentView, selectedLocation, detailType, data]);
+  }, [currentView, selectedLocation, detailType, data, destinationEvents]);
+
+  const detailLabel =
+    detailType === "blog" ? "Blogs" : detailType === "news" ? "News" : "Events";
 
   return (
     <div>
@@ -524,26 +586,37 @@ const BlogsAndNews = () => {
               data={filteredDetailData}
               columns={detailColumns}
               search
-              tableTitle={`${detailType === "blog" ? "Blogs" : "News"} in ${selectedLocation}`}
+              tableTitle={`${detailLabel} in ${selectedLocation}`}
               tableHeight={500}
-              buttonTitle={`Add ${detailType === "blog" ? "Blog" : "News"}`}
-              handleClick={() =>
-                navigate(
-                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
-                  {
-                    state: {
-                      item: null,
-                      type: detailType,
-                      destinations: stats.map((s) => s.destination),
-                    },
-                  },
-                )
+              buttonTitle={
+                detailType === "event"
+                  ? undefined
+                  : `Add ${detailType === "blog" ? "Blog" : "News"}`
               }
-              loading={isPending || isTogglePending}
+              handleClick={
+                detailType === "event"
+                  ? undefined
+                  : () =>
+                      navigate(
+                        `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
+                        {
+                          state: {
+                            item: null,
+                            type: detailType,
+                            destinations: stats.map((s) => s.destination),
+                          },
+                        },
+                      )
+              }
+              loading={
+                isPending ||
+                isTogglePending ||
+                (detailType === "event" && isDestinationEventsPending)
+              }
             />
           </div>
         )}
-        {isError ? (
+        {isError || isDestinationEventsError ? (
           <p className="pt-3 text-sm text-red-500">
             Could not load all remote data. Please verify Nomads API
             connectivity.
