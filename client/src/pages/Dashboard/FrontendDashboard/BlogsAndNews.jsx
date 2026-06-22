@@ -23,7 +23,7 @@ const NEWS_ENDPOINTS = [
 
 // Keep the existing Event Count source independent from the event-management APIs.
 const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
-const EVENT_DESTINATION_ENDPOINT = "/api/events/destination";
+const EVENT_API_BASE_URL = "http://localhost:3000";
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
@@ -202,7 +202,7 @@ const BlogsAndNews = () => {
     queryKey: ["destination-events", selectedLocation],
     queryFn: async () => {
       const response = await axios.get(
-        `${EVENT_DESTINATION_ENDPOINT}/${encodeURIComponent(selectedLocation)}`,
+        `${EVENT_API_BASE_URL}/api/events/destination/${encodeURIComponent(selectedLocation)}`,
       );
       return toArray(response.data);
     },
