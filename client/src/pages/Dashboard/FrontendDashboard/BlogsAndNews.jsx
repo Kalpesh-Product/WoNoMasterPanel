@@ -23,7 +23,8 @@ const NEWS_ENDPOINTS = [
 
 // Keep the existing Event Count source independent from the event-management APIs.
 const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
-const EVENT_API_BASE_URL = "http://localhost:3000";
+// const EVENT_API_BASE_URL = "http://localhost:3000";
+const EVENT_API_BASE_URL = "https://wononomadsbe.vercel.app";
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
