@@ -26,6 +26,9 @@ const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
 // const EVENT_API_BASE_URL = "http://localhost:3000";
 const EVENT_API_BASE_URL = "https://wononomadsbe.vercel.app";
 
+const PLACE_ENDPOINTS = ["http://localhost:3000/api/places"];
+const PLACE_API_BASE_URL = "http://localhost:3000";
+
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
 const toArray = (payload) => {
@@ -179,19 +182,32 @@ const BlogsAndNews = () => {
   }, [locationType]);
 
   const {
-    data = { allBlogs: [], allNews: [], allEvents: [], companies: [] },
+    data = {
+      allBlogs: [],
+      allNews: [],
+      allEvents: [],
+      allPlaces: [],
+      companies: [],
+    },
     isPending,
     isError,
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
-      const [companies, blogs, news, events] = await Promise.all([
+      const [companies, blogs, news, events, places] = await Promise.all([
         fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
+        fetchFirstSuccessfulArray(axios, PLACE_ENDPOINTS),
       ]);
-      return { allBlogs: blogs, allNews: news, allEvents: events, companies };
+      return {
+        allBlogs: blogs,
+        allNews: news,
+        allEvents: events,
+        allPlaces: places,
+        companies,
+      };
     },
   });
 
@@ -213,10 +229,29 @@ const BlogsAndNews = () => {
       Boolean(selectedLocation),
   });
 
+  const {
+    data: destinationPlaces = [],
+    isPending: isDestinationPlacesPending,
+    isError: isDestinationPlacesError,
+  } = useQuery({
+    queryKey: ["destination-places", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${PLACE_API_BASE_URL}/api/places/destination/${encodeURIComponent(selectedLocation)}`,
+      );
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "place" &&
+      Boolean(selectedLocation),
+  });
+
   const stats = useMemo(() => {
     const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
     const allNews = Array.isArray(data?.allNews) ? data.allNews : [];
     const allEvents = Array.isArray(data?.allEvents) ? data.allEvents : [];
+    const allPlaces = Array.isArray(data?.allPlaces) ? data.allPlaces : [];
     const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
     const locationLookup = new Map();
@@ -262,6 +297,7 @@ const BlogsAndNews = () => {
           blogCount: 0,
           newsCount: 0,
           eventCount: 0,
+          placeCount: 0,
         });
       }
       return destinationMap.get(safeDest);
@@ -305,6 +341,16 @@ const BlogsAndNews = () => {
       row.eventCount += 1;
     });
 
+    allPlaces.forEach((place) => {
+      if (place.isActive === false) return;
+      const row = ensureDestination(
+        normalizeDestination(place),
+        normalizeCountry(place),
+        normalizeContinent(place),
+      );
+      row.placeCount += 1;
+    });
+
     return Array.from(destinationMap.values())
       .sort((a, b) => {
         const contComp = a.continent.localeCompare(b.continent);
@@ -324,10 +370,13 @@ const BlogsAndNews = () => {
       const newStatus = !currentStatus;
 
       const response =
-        itemType === "event"
-          ? await axios.patch(`/api/events/${id}/status`, {
-              isActive: newStatus,
-            })
+        itemType === "event" || itemType === "place"
+          ? await axios.patch(
+              `/api/${itemType === "event" ? "events" : "places"}/${id}/status`,
+              {
+                isActive: newStatus,
+              },
+            )
           : await axios.patch(
               `/api/${itemType === "blog" ? "blogs" : "news"}/${id}`,
               {
@@ -356,7 +405,9 @@ const BlogsAndNews = () => {
               ? "allBlogs"
               : itemType === "news"
                 ? "allNews"
-                : "allEvents";
+                : itemType === "place"
+                  ? "allPlaces"
+                  : "allEvents";
           return {
             ...old,
             [field]: old[field].map((item) =>
@@ -385,6 +436,8 @@ const BlogsAndNews = () => {
       queryClient.invalidateQueries({
         queryKey: ["country-content-stats", "blogs-news-comprehensive"],
       });
+      queryClient.invalidateQueries({ queryKey: ["destination-events"] });
+      queryClient.invalidateQueries({ queryKey: ["destination-places"] });
     },
   });
 
@@ -440,6 +493,19 @@ const BlogsAndNews = () => {
           <button
             className="text-blue-600 hover:underline font-medium"
             onClick={() => handleViewDetail(params.data.destination, "event")}
+          >
+            {params.value}
+          </button>
+        ),
+      },
+      {
+        field: "placeCount",
+        headerName: "Places",
+        flex: 1,
+        cellRenderer: (params) => (
+          <button
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() => handleViewDetail(params.data.destination, "place")}
           >
             {params.value}
           </button>
@@ -516,6 +582,33 @@ const BlogsAndNews = () => {
       ),
     };
 
+    if (detailType === "place") {
+      return [
+        serialNumberColumn,
+        { field: "placeName", headerName: "Place Name", flex: 2 },
+        {
+          field: "category",
+          headerName: "Category",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "rating",
+          headerName: "Rating",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "address",
+          headerName: "Address",
+          flex: 2,
+          valueFormatter: (params) => params.value || "-",
+        },
+        statusColumn,
+        actionColumn,
+      ];
+    }
+
     if (detailType === "event") {
       return [
         serialNumberColumn,
@@ -566,6 +659,7 @@ const BlogsAndNews = () => {
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
     if (detailType === "event") return destinationEvents;
+    if (detailType === "place") return destinationPlaces;
     const source =
       detailType === "blog"
         ? Array.isArray(data?.allBlogs)
@@ -577,10 +671,23 @@ const BlogsAndNews = () => {
     return source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
     );
-  }, [currentView, selectedLocation, detailType, data, destinationEvents]);
+  }, [
+    currentView,
+    selectedLocation,
+    detailType,
+    data,
+    destinationEvents,
+    destinationPlaces,
+  ]);
 
   const detailLabel =
-    detailType === "blog" ? "Blogs" : detailType === "news" ? "News" : "Events";
+    detailType === "blog"
+      ? "Blogs"
+      : detailType === "news"
+        ? "News"
+        : detailType === "place"
+          ? "Places"
+          : "Events";
 
   return (
     <div>
@@ -607,7 +714,9 @@ const BlogsAndNews = () => {
                   ? "Blog"
                   : detailType === "news"
                     ? "News"
-                    : "Event"
+                    : detailType === "place"
+                      ? "Place"
+                      : "Event"
               }`}
               handleClick={() =>
                 navigate(
@@ -625,12 +734,13 @@ const BlogsAndNews = () => {
               loading={
                 isPending ||
                 isTogglePending ||
-                (detailType === "event" && isDestinationEventsPending)
+                (detailType === "event" && isDestinationEventsPending) ||
+                (detailType === "place" && isDestinationPlacesPending)
               }
             />
           </div>
         )}
-        {isError || isDestinationEventsError ? (
+        {isError || isDestinationEventsError || isDestinationPlacesError ? (
           <p className="pt-3 text-sm text-red-500">
             Could not load all remote data. Please verify Nomads API
             connectivity.

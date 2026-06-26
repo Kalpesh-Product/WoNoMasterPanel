@@ -1,17 +1,50 @@
 import React, { useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
+import { toast } from "sonner";
+import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+
+const TYPE_MAP = {
+  api: "http://localhost:3000/api/places/bulk-insert",
+  formKey: "places-file",
+};
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const PlacesUpload = () => {
+  const axios = useAxiosPrivate();
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
+
+  const { mutate, isPending } = useMutation({
+    mutationKey: ["places-bulk-upload"],
+    mutationFn: async ({ file }) => {
+      const { api, formKey } = TYPE_MAP;
+      const form = new FormData();
+      form.append(formKey, file);
+
+      const res = await axios.post(api, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      setError(null);
+      toast.success(data?.message || "Upload successful");
+      setFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    },
+    onError: (err) => {
+      toast.error(err?.response?.data?.message || "Upload failed");
+      setError(err?.message || "Something went wrong");
+    },
+  });
 
   function validateAndSet(f) {
     setError(null);
@@ -46,6 +79,7 @@ const PlacesUpload = () => {
 
   function handleUpload() {
     if (!file) return setError("Select a CSV file first.");
+    mutate({ file });
   }
 
   const handleReset = () => {
@@ -98,15 +132,16 @@ const PlacesUpload = () => {
           <div className="flex gap-4 justify-center">
             <PrimaryButton
               type="button"
-              title="Upload"
+              title={isPending ? "Uploading..." : "Upload"}
               handleSubmit={handleUpload}
-              disabled={!file}
+              isLoading={isPending}
+              disabled={!file || isPending}
             />
             <SecondaryButton
               type="button"
               title="Reset"
               handleSubmit={handleReset}
-              disabled={!file}
+              disabled={isPending && !file}
             />
           </div>
         </div>
