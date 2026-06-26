@@ -20,17 +20,27 @@ const defaultValues = {
   mainTitle: "",
   mainContent: "",
   eventName: "",
+  placeName: "",
   shortDescription: "",
+  address: "",
+  googleMapsLink: "",
+  rating: "",
   category: "",
   month: "",
   venue: "",
   destination: "",
   eventType: "",
+  placeType: "",
   author: "",
   source: "",
   date: "",
   sections: [],
   isActive: true,
+};
+
+const stripGeneratedFields = (payload, { omitStatus = false } = {}) => {
+  const { _id, id, __v, createdAt, updatedAt, isActive, ...rest } = payload;
+  return omitStatus ? rest : { ...rest, isActive };
 };
 
 const stripSectionIds = (sections = []) =>
@@ -58,18 +68,21 @@ const EditBlogNews = () => {
   const stateItem = location.state?.item || null;
   const destinations = location.state?.destinations || [];
   const isEvent = type === "event";
+  const isPlace = type === "place";
   const isEdit = !!stateItem?._id;
 
-  const { data: fetchedEvent, isPending: isEventLoading } = useQuery({
-    queryKey: ["event-detail", stateItem?._id],
+  const { data: fetchedItem, isPending: isItemLoading } = useQuery({
+    queryKey: [type, "detail", stateItem?._id],
     queryFn: async () => {
-      const response = await axiosPrivate.get(`/api/events/${stateItem._id}`);
+      const response = await axiosPrivate.get(
+        `/api/${isPlace ? "places" : "events"}/${stateItem._id}`,
+      );
       return response.data?.data || response.data;
     },
-    enabled: isEvent && isEdit,
+    enabled: (isEvent || isPlace) && isEdit,
   });
 
-  const item = isEvent && fetchedEvent ? fetchedEvent : stateItem;
+  const item = (isEvent || isPlace) && fetchedItem ? fetchedItem : stateItem;
 
   const { control, handleSubmit, reset } = useForm({ defaultValues });
 
@@ -99,15 +112,17 @@ const EditBlogNews = () => {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (data) => {
-      const cleanData = {
-        ...data,
-        sections: stripSectionIds(data.sections),
-      };
+      const cleanData = stripGeneratedFields(
+        {
+          ...data,
+          sections: stripSectionIds(data.sections),
+        },
+        { omitStatus: !isEdit },
+      );
 
-      const resourceType = type === "blog" ? "blogs" : "news";
-      const url = isEvent
-        ? `/api/events${isEdit ? `/${item._id}` : ""}`
-        : `/api/${resourceType}${isEdit ? `/${item._id}` : ""}`;
+      const resourceType =
+        type === "blog" ? "blogs" : type === "place" ? "places" : "news";
+      const url = `/api/${isEvent ? "events" : resourceType}${isEdit ? `/${item._id}` : ""}`;
       const method = isEdit ? "PATCH" : "POST";
 
       const response = await axiosPrivate({ method, url, data: cleanData });
@@ -119,6 +134,7 @@ const EditBlogNews = () => {
         queryKey: ["country-content-stats", "blogs-news-comprehensive"],
       });
       queryClient.invalidateQueries({ queryKey: ["destination-events"] });
+      queryClient.invalidateQueries({ queryKey: ["destination-places"] });
       navigate(-1);
     },
     onError: (err) => {
@@ -131,8 +147,13 @@ const EditBlogNews = () => {
 
   const onSubmit = (data) => mutate(data);
 
-  const titleFieldName = isEvent ? "eventName" : "mainTitle";
-  const contentFieldName = isEvent ? "shortDescription" : "mainContent";
+  const titleFieldName = isEvent
+    ? "eventName"
+    : isPlace
+      ? "placeName"
+      : "mainTitle";
+  const contentFieldName =
+    isEvent || isPlace ? "shortDescription" : "mainContent";
 
   return (
     <div className="p-4">
@@ -171,7 +192,7 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent ? (
+          {isEvent || isPlace ? (
             <Controller
               name="serialNumber"
               control={control}
@@ -213,7 +234,11 @@ const EditBlogNews = () => {
             render={({ field }) => (
               <div className="flex flex-col gap-2 w-full mt-4">
                 <label className="text-sm text-slate-700">
-                  {isEvent ? "Event Name" : "Main Title"}
+                  {isEvent
+                    ? "Event Name"
+                    : isPlace
+                      ? "Place Name"
+                      : "Main Title"}
                 </label>
                 <Input
                   {...field}
@@ -241,9 +266,20 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent ? (
+          {isEvent || isPlace ? (
             <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
-              {["category", "month", "venue", "eventType"].map((name) => (
+              {(isPlace
+                ? [
+                    "category",
+                    "rating",
+                    "address",
+                    "googleMapsLink",
+                    "month",
+                    "venue",
+                    "placeType",
+                  ]
+                : ["category", "month", "venue", "eventType"]
+              ).map((name) => (
                 <Controller
                   key={name}
                   name={name}
@@ -253,7 +289,11 @@ const EditBlogNews = () => {
                       <label className="text-sm text-slate-700">
                         {name === "eventType"
                           ? "Event Type"
-                          : name.charAt(0).toUpperCase() + name.slice(1)}
+                          : name === "placeType"
+                            ? "Place Type"
+                            : name === "googleMapsLink"
+                              ? "Google Maps Link"
+                              : name.charAt(0).toUpperCase() + name.slice(1)}
                       </label>
                       <Input
                         {...field}
@@ -332,7 +372,7 @@ const EditBlogNews = () => {
               render={({ field }) => (
                 <div className="flex flex-col gap-2 w-full mt-4">
                   <label className="text-sm text-slate-700">
-                    {isEvent ? "Short Description" : "Main Content"}
+                    {isEvent || isPlace ? "Short Description" : "Main Content"}
                   </label>
                   <Textarea
                     {...field}
@@ -431,9 +471,9 @@ const EditBlogNews = () => {
           <div className="col-span-2 flex gap-4 mt-6 justify-center">
             <PrimaryButton
               type="submit"
-              title={isPending || isEventLoading ? "Saving..." : "Save"}
-              isLoading={isPending || isEventLoading}
-              disabled={isPending || isEventLoading}
+              title={isPending || isItemLoading ? "Saving..." : "Save"}
+              isLoading={isPending || isItemLoading}
+              disabled={isPending || isItemLoading}
             />
             <SecondaryButton
               type="button"
