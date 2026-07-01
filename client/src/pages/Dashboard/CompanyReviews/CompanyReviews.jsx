@@ -11,6 +11,7 @@ import { MdOutlineRemoveRedEye } from "react-icons/md";
 const REVIEW_TABS = {
   nomadListings: 0,
   eventReviews: 1,
+  placeReviews: 2,
 };
 
 const statusStyles = {
@@ -76,6 +77,24 @@ const CompanyReviews = () => {
       const response = await axios.get(
         // "http://localhost:3000/api/event-reviews/all",
         "https://wononomadsbe.vercel.app/api/event-reviews/all",
+        {
+          headers: { "Cache-Control": "no-cache" },
+        },
+      );
+      return Array.isArray(response?.data?.data) ? response.data.data : [];
+    },
+  });
+
+  const {
+    data: placeReviews = [],
+    isPending: isPlaceReviewsPending,
+    isError: isPlaceReviewsError,
+  } = useQuery({
+    queryKey: ["placeReviews"],
+    enabled: activeTab === REVIEW_TABS.placeReviews,
+    queryFn: async () => {
+      const response = await axios.get(
+        "https://wononomadsbe.vercel.app/api/place-reviews/all",
         {
           headers: { "Cache-Control": "no-cache" },
         },
@@ -230,6 +249,23 @@ const CompanyReviews = () => {
     },
   });
 
+  const updatePlaceReviewStatusMutation = useMutation({
+    mutationFn: async ({ reviewId, status }) => {
+      const response = await axiosPrivate.patch(
+        `https://wononomadsbe.vercel.app/api/place-reviews/${reviewId}/status`,
+        {
+          status,
+        },
+      );
+      return response?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["placeReviews"],
+      });
+    },
+  });
+
   const handleStatusChange = (review, newStatus) => {
     const reviewId = review?._id || review?.id;
     if (!reviewId) return;
@@ -255,6 +291,20 @@ const CompanyReviews = () => {
 
     if (newStatus === "approved" || newStatus === "rejected") {
       updateEventReviewStatusMutation.mutate({ reviewId, status: newStatus });
+    }
+  };
+
+  const handlePlaceStatusChange = (review, newStatus) => {
+    const reviewId = review?._id || review?.id;
+    if (!reviewId) return;
+
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [reviewId]: newStatus,
+    }));
+
+    if (newStatus === "approved" || newStatus === "rejected") {
+      updatePlaceReviewStatusMutation.mutate({ reviewId, status: newStatus });
     }
   };
 
@@ -345,6 +395,20 @@ const CompanyReviews = () => {
         }),
       ),
     [eventReviews, getEffectiveStatus],
+  );
+
+  const placeReviewRows = useMemo(
+    () =>
+      (Array.isArray(placeReviews) ? placeReviews : []).map(
+        (review, index) => ({
+          ...review,
+          srNo: index + 1,
+          status: getEffectiveStatus(review) || review?.status,
+          createdAtFormatted: formatDateTime(review?.createdAt),
+          updatedAtFormatted: formatDateTime(review?.updatedAt),
+        }),
+      ),
+    [placeReviews, getEffectiveStatus],
   );
 
   const columns = [
@@ -627,12 +691,159 @@ const CompanyReviews = () => {
     },
   ];
 
+  const placeReviewColumns = [
+    {
+      field: "srNo",
+      lockPinned: true,
+      pinned: "left",
+      headerName: "SrNo",
+      width: 100,
+    },
+    {
+      field: "reviewerName",
+      headerName: "Reviewer Name",
+      width: 220,
+      valueGetter: (params) =>
+        params.data.reviewerName || params.data.name || "-",
+    },
+    {
+      field: "placeName",
+      headerName: "Place Name",
+      width: 240,
+      valueGetter: (params) => params.data.placeName || "-",
+    },
+    {
+      field: "continent",
+      headerName: "Continent",
+      width: 160,
+      valueGetter: (params) => params.data.continent || "-",
+    },
+    {
+      field: "country",
+      headerName: "Country",
+      width: 160,
+      valueGetter: (params) => params.data.country || "-",
+    },
+    {
+      field: "state",
+      headerName: "State",
+      width: 180,
+      valueGetter: (params) => params.data.state || "-",
+    },
+    {
+      field: "starCount",
+      headerName: "Rating",
+      width: 120,
+      valueGetter: (params) => params.data.starCount ?? "-",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      width: 180,
+      cellRenderer: (params) => {
+        const value = formatStatusLabel(params.data.status);
+        const isFinalStatus = value === "Approved" || value === "Rejected";
+
+        const badgeStyles = {
+          borderRadius: "9999px",
+          padding: "4px 16px",
+          fontWeight: 600,
+          fontSize: "0.85rem",
+          backgroundColor: statusStyles[value]?.bg,
+          color: statusStyles[value]?.color,
+          lineHeight: 1.5,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        };
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            {isFinalStatus ? (
+              <span style={badgeStyles}>{value}</span>
+            ) : (
+              <TextField
+                select
+                size="small"
+                value={value}
+                disabled={updatePlaceReviewStatusMutation.isPending}
+                onChange={(e) =>
+                  handlePlaceStatusChange(
+                    params.data,
+                    e.target.value.toLowerCase(),
+                  )
+                }
+                sx={getSelectChipSx(statusStyles, value)}
+                MenuProps={selectMenuProps}
+              >
+                {["Pending", "Approved", "Rejected"].map((option) => (
+                  <MenuItem
+                    key={option}
+                    value={option}
+                    sx={{
+                      justifyContent: "flex-start",
+                      alignItems: "center",
+                      fontWeight: 600,
+                      fontSize: "0.75rem",
+                      borderRadius: 0,
+                      backgroundColor: "transparent",
+                      color: "#0f172a",
+                      my: 0,
+                      px: 1.5,
+                      py: 1,
+                      textTransform: "capitalize",
+                      "&:hover": {
+                        backgroundColor: "#f8fafc",
+                      },
+                    }}
+                  >
+                    {option}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      field: "createdAtFormatted",
+      headerName: "Created At",
+      width: 190,
+      valueGetter: (params) => params.data.createdAtFormatted || "-",
+    },
+    {
+      field: "updatedAtFormatted",
+      headerName: "Updated At",
+      width: 190,
+      valueGetter: (params) => params.data.updatedAtFormatted || "-",
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      minWidth: 120,
+      pinned: "right",
+      lockPinned: true,
+      cellRenderer: (params) => (
+        <div className="flex items-center gap-2">
+          <div
+            role="button"
+            onClick={() => handleOpenModal(params.data)}
+            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
+          >
+            <MdOutlineRemoveRedEye />
+          </div>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div>
       <div
         role="tablist"
         aria-label="Review type"
-        className="grid grid-cols-2 gap-1 rounded-full border border-[#e2e8f0] bg-[#f1f5f9] p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)]"
+        className="grid grid-cols-1 gap-1 rounded-2xl border border-[#e2e8f0] bg-[#f1f5f9] p-1 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] sm:grid-cols-3 sm:rounded-full"
       >
         <button
           type="button"
@@ -659,6 +870,19 @@ const CompanyReviews = () => {
           }`}
         >
           Event Reviews
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === REVIEW_TABS.placeReviews}
+          onClick={() => setActiveTab(REVIEW_TABS.placeReviews)}
+          className={`rounded-full px-4 py-2 text-center font-semibold transition-colors ${
+            activeTab === REVIEW_TABS.placeReviews
+              ? "bg-white text-[#2563EB] shadow-[0_1px_4px_rgba(15,23,42,0.12)]"
+              : "bg-transparent text-[#475569]"
+          }`}
+        >
+          Places Reviews
         </button>
       </div>
 
@@ -704,6 +928,31 @@ const CompanyReviews = () => {
                 />
 
                 {eventReviewRows.length === 0 && (
+                  <div className="text-center text-gray-500 py-4">
+                    No records found
+                  </div>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === REVIEW_TABS.placeReviews && (
+          <>
+            {isPlaceReviewsPending ? (
+              <>Loading Places Reviews</>
+            ) : isPlaceReviewsError ? (
+              <span className="text-red-500">Error Loading Places Reviews</span>
+            ) : (
+              <>
+                <AgTable
+                  data={placeReviewRows}
+                  search
+                  tableTitle={"Places Reviews"}
+                  columns={placeReviewColumns}
+                />
+
+                {placeReviewRows.length === 0 && (
                   <div className="text-center text-gray-500 py-4">
                     No records found
                   </div>
