@@ -25,6 +25,7 @@ const UploadLayout = () => {
     { label: "Blogs Upload", path: "blogs-upload" },
     { label: "Events Upload", path: "events-upload" },
     { label: "Places Upload", path: "places-upload" },
+    { label: "Restaurants Upload", path: "restaurants-upload" },
   ];
 
   // ✅ Filtered tabs for restricted users
