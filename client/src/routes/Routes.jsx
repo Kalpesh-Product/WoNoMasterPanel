@@ -162,6 +162,7 @@ import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUplo
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
 import EventsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/EventsUpload";
 import PlacesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/PlacesUpload";
+import RestaurantsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/RestaurantsUpload";
 import AccessTree from "../components/AccessTree";
 import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkUploadImages";
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
@@ -324,6 +325,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "places-upload",
                         element: <PlacesUpload />,
+                      },
+                      {
+                        path: "restaurants-upload",
+                        element: <RestaurantsUpload />,
                       },
                       {
                         path: "bulk-upload-images",
