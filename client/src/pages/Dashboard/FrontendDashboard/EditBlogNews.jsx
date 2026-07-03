@@ -21,8 +21,11 @@ const defaultValues = {
   mainContent: "",
   eventName: "",
   placeName: "",
+  restaurantName: "",
   shortDescription: "",
   address: "",
+  contact: "",
+  timeAvailability: "",
   googleMapsLink: "",
   rating: "",
   category: "",
@@ -31,6 +34,7 @@ const defaultValues = {
   destination: "",
   eventType: "",
   placeType: "",
+  restaurantType: "",
   author: "",
   source: "",
   date: "",
@@ -42,6 +46,8 @@ const stripGeneratedFields = (payload, { omitStatus = false } = {}) => {
   const { _id, id, __v, createdAt, updatedAt, isActive, ...rest } = payload;
   return omitStatus ? rest : { ...rest, isActive };
 };
+
+const RESTAURANT_API_BASE_URL = "http://localhost:3000";
 
 const stripSectionIds = (sections = []) =>
   sections.map((section) => {
@@ -69,20 +75,26 @@ const EditBlogNews = () => {
   const destinations = location.state?.destinations || [];
   const isEvent = type === "event";
   const isPlace = type === "place";
+  const isRestaurant = type === "restaurant";
   const isEdit = !!stateItem?._id;
 
   const { data: fetchedItem, isPending: isItemLoading } = useQuery({
     queryKey: [type, "detail", stateItem?._id],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        `/api/${isPlace ? "places" : "events"}/${stateItem._id}`,
+        isRestaurant
+          ? `${RESTAURANT_API_BASE_URL}/api/restaurants/${stateItem._id}`
+          : `/api/${isPlace ? "places" : "events"}/${stateItem._id}`,
       );
       return response.data?.data || response.data;
     },
-    enabled: (isEvent || isPlace) && isEdit,
+    enabled: (isEvent || isPlace || isRestaurant) && isEdit,
   });
 
-  const item = (isEvent || isPlace) && fetchedItem ? fetchedItem : stateItem;
+  const item =
+    (isEvent || isPlace || isRestaurant) && fetchedItem
+      ? fetchedItem
+      : stateItem;
 
   const { control, handleSubmit, reset } = useForm({ defaultValues });
 
@@ -121,8 +133,18 @@ const EditBlogNews = () => {
       );
 
       const resourceType =
-        type === "blog" ? "blogs" : type === "place" ? "places" : "news";
-      const url = `/api/${isEvent ? "events" : resourceType}${isEdit ? `/${item._id}` : ""}`;
+        type === "blog"
+          ? "blogs"
+          : type === "place"
+            ? "places"
+            : type === "restaurant"
+              ? "restaurants"
+              : "news";
+      const baseUrl =
+        isRestaurant
+          ? `${RESTAURANT_API_BASE_URL}/api/restaurants`
+          : `/api/${isEvent ? "events" : resourceType}`;
+      const url = `${baseUrl}${isEdit ? `/${item._id}` : ""}`;
       const method = isEdit ? "PATCH" : "POST";
 
       const response = await axiosPrivate({ method, url, data: cleanData });
@@ -135,6 +157,7 @@ const EditBlogNews = () => {
       });
       queryClient.invalidateQueries({ queryKey: ["destination-events"] });
       queryClient.invalidateQueries({ queryKey: ["destination-places"] });
+      queryClient.invalidateQueries({ queryKey: ["destination-restaurants"] });
       navigate(-1);
     },
     onError: (err) => {
@@ -151,9 +174,11 @@ const EditBlogNews = () => {
     ? "eventName"
     : isPlace
       ? "placeName"
-      : "mainTitle";
+      : isRestaurant
+        ? "restaurantName"
+        : "mainTitle";
   const contentFieldName =
-    isEvent || isPlace ? "shortDescription" : "mainContent";
+    isEvent || isPlace || isRestaurant ? "shortDescription" : "mainContent";
 
   return (
     <div className="p-4">
@@ -192,7 +217,7 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent || isPlace ? (
+          {isEvent || isPlace || isRestaurant ? (
             <Controller
               name="serialNumber"
               control={control}
@@ -238,7 +263,9 @@ const EditBlogNews = () => {
                     ? "Event Name"
                     : isPlace
                       ? "Place Name"
-                      : "Main Title"}
+                      : isRestaurant
+                        ? "Restaurant Name"
+                        : "Main Title"}
                 </label>
                 <Input
                   {...field}
@@ -266,19 +293,31 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent || isPlace ? (
+          {isEvent || isPlace || isRestaurant ? (
             <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
-              {(isPlace
+              {(isRestaurant
                 ? [
                     "category",
+                    "restaurantType",
                     "rating",
                     "address",
+                    "contact",
+                    "timeAvailability",
                     "googleMapsLink",
                     "month",
                     "venue",
-                    "placeType",
                   ]
-                : ["category", "month", "venue", "eventType"]
+                : isPlace
+                  ? [
+                      "category",
+                      "rating",
+                      "address",
+                      "googleMapsLink",
+                      "month",
+                      "venue",
+                      "placeType",
+                    ]
+                  : ["category", "month", "venue", "eventType"]
               ).map((name) => (
                 <Controller
                   key={name}
@@ -291,9 +330,14 @@ const EditBlogNews = () => {
                           ? "Event Type"
                           : name === "placeType"
                             ? "Place Type"
-                            : name === "googleMapsLink"
-                              ? "Google Maps Link"
-                              : name.charAt(0).toUpperCase() + name.slice(1)}
+                            : name === "restaurantType"
+                              ? "Restaurant Type"
+                              : name === "googleMapsLink"
+                                ? "Google Maps Link"
+                                : name === "timeAvailability"
+                                  ? "Time Availability"
+                                  : name.charAt(0).toUpperCase() +
+                                    name.slice(1)}
                       </label>
                       <Input
                         {...field}
@@ -372,7 +416,9 @@ const EditBlogNews = () => {
               render={({ field }) => (
                 <div className="flex flex-col gap-2 w-full mt-4">
                   <label className="text-sm text-slate-700">
-                    {isEvent || isPlace ? "Short Description" : "Main Content"}
+                    {isEvent || isPlace || isRestaurant
+                      ? "Short Description"
+                      : "Main Content"}
                   </label>
                   <Textarea
                     {...field}

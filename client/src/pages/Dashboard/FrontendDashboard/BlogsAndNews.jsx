@@ -29,6 +29,9 @@ const EVENT_API_BASE_URL = "https://wononomadsbe.vercel.app";
 const PLACE_ENDPOINTS = ["http://localhost:3000/api/places"];
 const PLACE_API_BASE_URL = "http://localhost:3000";
 
+const RESTAURANT_ENDPOINTS = ["http://localhost:3000/api/restaurants"];
+const RESTAURANT_API_BASE_URL = "http://localhost:3000";
+
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
 const toArray = (payload) => {
@@ -187,6 +190,7 @@ const BlogsAndNews = () => {
       allNews: [],
       allEvents: [],
       allPlaces: [],
+      allRestaurants: [],
       companies: [],
     },
     isPending,
@@ -194,18 +198,21 @@ const BlogsAndNews = () => {
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
-      const [companies, blogs, news, events, places] = await Promise.all([
-        fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
-        fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
-        fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
-        fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
-        fetchFirstSuccessfulArray(axios, PLACE_ENDPOINTS),
-      ]);
+      const [companies, blogs, news, events, places, restaurants] =
+        await Promise.all([
+          fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
+          fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
+          fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
+          fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
+          fetchFirstSuccessfulArray(axios, PLACE_ENDPOINTS),
+          fetchFirstSuccessfulArray(axios, RESTAURANT_ENDPOINTS),
+        ]);
       return {
         allBlogs: blogs,
         allNews: news,
         allEvents: events,
         allPlaces: places,
+        allRestaurants: restaurants,
         companies,
       };
     },
@@ -247,11 +254,32 @@ const BlogsAndNews = () => {
       Boolean(selectedLocation),
   });
 
+  const {
+    data: destinationRestaurants = [],
+    isPending: isDestinationRestaurantsPending,
+    isError: isDestinationRestaurantsError,
+  } = useQuery({
+    queryKey: ["destination-restaurants", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${RESTAURANT_API_BASE_URL}/api/restaurants/destination/${encodeURIComponent(selectedLocation)}`,
+      );
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "restaurant" &&
+      Boolean(selectedLocation),
+  });
+
   const stats = useMemo(() => {
     const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
     const allNews = Array.isArray(data?.allNews) ? data.allNews : [];
     const allEvents = Array.isArray(data?.allEvents) ? data.allEvents : [];
     const allPlaces = Array.isArray(data?.allPlaces) ? data.allPlaces : [];
+    const allRestaurants = Array.isArray(data?.allRestaurants)
+      ? data.allRestaurants
+      : [];
     const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
     const locationLookup = new Map();
@@ -298,6 +326,7 @@ const BlogsAndNews = () => {
           newsCount: 0,
           eventCount: 0,
           placeCount: 0,
+          restaurantCount: 0,
         });
       }
       return destinationMap.get(safeDest);
@@ -351,6 +380,16 @@ const BlogsAndNews = () => {
       row.placeCount += 1;
     });
 
+    allRestaurants.forEach((restaurant) => {
+      if (restaurant.isActive === false) return;
+      const row = ensureDestination(
+        normalizeDestination(restaurant),
+        normalizeCountry(restaurant),
+        normalizeContinent(restaurant),
+      );
+      row.restaurantCount += 1;
+    });
+
     return Array.from(destinationMap.values())
       .sort((a, b) => {
         const contComp = a.continent.localeCompare(b.continent);
@@ -370,9 +409,13 @@ const BlogsAndNews = () => {
       const newStatus = !currentStatus;
 
       const response =
-        itemType === "event" || itemType === "place"
+        itemType === "event" ||
+        itemType === "place" ||
+        itemType === "restaurant"
           ? await axios.patch(
-              `/api/${itemType === "event" ? "events" : "places"}/${id}/status`,
+              itemType === "restaurant"
+                ? `${RESTAURANT_API_BASE_URL}/api/restaurants/${id}/status`
+                : `/api/${itemType === "event" ? "events" : "places"}/${id}/status`,
               {
                 isActive: newStatus,
               },
@@ -407,7 +450,9 @@ const BlogsAndNews = () => {
                 ? "allNews"
                 : itemType === "place"
                   ? "allPlaces"
-                  : "allEvents";
+                  : itemType === "restaurant"
+                    ? "allRestaurants"
+                    : "allEvents";
           return {
             ...old,
             [field]: old[field].map((item) =>
@@ -438,6 +483,7 @@ const BlogsAndNews = () => {
       });
       queryClient.invalidateQueries({ queryKey: ["destination-events"] });
       queryClient.invalidateQueries({ queryKey: ["destination-places"] });
+      queryClient.invalidateQueries({ queryKey: ["destination-restaurants"] });
     },
   });
 
@@ -506,6 +552,21 @@ const BlogsAndNews = () => {
           <button
             className="text-blue-600 hover:underline font-medium"
             onClick={() => handleViewDetail(params.data.destination, "place")}
+          >
+            {params.value}
+          </button>
+        ),
+      },
+      {
+        field: "restaurantCount",
+        headerName: "Restaurants",
+        flex: 1,
+        cellRenderer: (params) => (
+          <button
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() =>
+              handleViewDetail(params.data.destination, "restaurant")
+            }
           >
             {params.value}
           </button>
@@ -609,6 +670,33 @@ const BlogsAndNews = () => {
       ];
     }
 
+    if (detailType === "restaurant") {
+      return [
+        serialNumberColumn,
+        { field: "restaurantName", headerName: "Restaurant Name", flex: 2 },
+        {
+          field: "restaurantType",
+          headerName: "Type",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "rating",
+          headerName: "Rating",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "address",
+          headerName: "Address",
+          flex: 2,
+          valueFormatter: (params) => params.value || "-",
+        },
+        statusColumn,
+        actionColumn,
+      ];
+    }
+
     if (detailType === "event") {
       return [
         serialNumberColumn,
@@ -660,6 +748,7 @@ const BlogsAndNews = () => {
     if (currentView !== "detail" || !selectedLocation) return [];
     if (detailType === "event") return destinationEvents;
     if (detailType === "place") return destinationPlaces;
+    if (detailType === "restaurant") return destinationRestaurants;
     const source =
       detailType === "blog"
         ? Array.isArray(data?.allBlogs)
@@ -678,6 +767,7 @@ const BlogsAndNews = () => {
     data,
     destinationEvents,
     destinationPlaces,
+    destinationRestaurants,
   ]);
 
   const detailLabel =
@@ -687,7 +777,9 @@ const BlogsAndNews = () => {
         ? "News"
         : detailType === "place"
           ? "Places"
-          : "Events";
+          : detailType === "restaurant"
+            ? "Restaurants"
+            : "Events";
 
   return (
     <div>
@@ -716,7 +808,9 @@ const BlogsAndNews = () => {
                     ? "News"
                     : detailType === "place"
                       ? "Place"
-                      : "Event"
+                      : detailType === "restaurant"
+                        ? "Restaurant"
+                        : "Event"
               }`}
               handleClick={() =>
                 navigate(
@@ -735,12 +829,17 @@ const BlogsAndNews = () => {
                 isPending ||
                 isTogglePending ||
                 (detailType === "event" && isDestinationEventsPending) ||
-                (detailType === "place" && isDestinationPlacesPending)
+                (detailType === "place" && isDestinationPlacesPending) ||
+                (detailType === "restaurant" &&
+                  isDestinationRestaurantsPending)
               }
             />
           </div>
         )}
-        {isError || isDestinationEventsError || isDestinationPlacesError ? (
+        {isError ||
+        isDestinationEventsError ||
+        isDestinationPlacesError ||
+        isDestinationRestaurantsError ? (
           <p className="pt-3 text-sm text-red-500">
             Could not load all remote data. Please verify Nomads API
             connectivity.
