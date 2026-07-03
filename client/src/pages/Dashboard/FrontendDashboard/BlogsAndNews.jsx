@@ -21,6 +21,14 @@ const NEWS_ENDPOINTS = [
   "/api/news/get-all-news",
 ];
 
+// Keep the existing Event Count source independent from the event-management APIs.
+const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
+// const EVENT_API_BASE_URL = "http://localhost:3000";
+const EVENT_API_BASE_URL = "https://wononomadsbe.vercel.app";
+
+const PLACE_ENDPOINTS = ["http://localhost:3000/api/places"];
+const PLACE_API_BASE_URL = "http://localhost:3000";
+
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 
 const toArray = (payload) => {
@@ -174,24 +182,76 @@ const BlogsAndNews = () => {
   }, [locationType]);
 
   const {
-    data = { allBlogs: [], allNews: [], companies: [] },
+    data = {
+      allBlogs: [],
+      allNews: [],
+      allEvents: [],
+      allPlaces: [],
+      companies: [],
+    },
     isPending,
     isError,
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
-      const [companies, blogs, news] = await Promise.all([
+      const [companies, blogs, news, events, places] = await Promise.all([
         fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
         fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
+        fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
+        fetchFirstSuccessfulArray(axios, PLACE_ENDPOINTS),
       ]);
-      return { allBlogs: blogs, allNews: news, companies };
+      return {
+        allBlogs: blogs,
+        allNews: news,
+        allEvents: events,
+        allPlaces: places,
+        companies,
+      };
     },
+  });
+
+  const {
+    data: destinationEvents = [],
+    isPending: isDestinationEventsPending,
+    isError: isDestinationEventsError,
+  } = useQuery({
+    queryKey: ["destination-events", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${EVENT_API_BASE_URL}/api/events/destination/${encodeURIComponent(selectedLocation)}`,
+      );
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "event" &&
+      Boolean(selectedLocation),
+  });
+
+  const {
+    data: destinationPlaces = [],
+    isPending: isDestinationPlacesPending,
+    isError: isDestinationPlacesError,
+  } = useQuery({
+    queryKey: ["destination-places", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${PLACE_API_BASE_URL}/api/places/destination/${encodeURIComponent(selectedLocation)}`,
+      );
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "place" &&
+      Boolean(selectedLocation),
   });
 
   const stats = useMemo(() => {
     const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
     const allNews = Array.isArray(data?.allNews) ? data.allNews : [];
+    const allEvents = Array.isArray(data?.allEvents) ? data.allEvents : [];
+    const allPlaces = Array.isArray(data?.allPlaces) ? data.allPlaces : [];
     const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
     const locationLookup = new Map();
@@ -236,6 +296,8 @@ const BlogsAndNews = () => {
           continent: finalContinent || "-",
           blogCount: 0,
           newsCount: 0,
+          eventCount: 0,
+          placeCount: 0,
         });
       }
       return destinationMap.get(safeDest);
@@ -269,6 +331,26 @@ const BlogsAndNews = () => {
       row.newsCount += 1;
     });
 
+    allEvents.forEach((event) => {
+      if (event.isActive === false) return;
+      const row = ensureDestination(
+        normalizeDestination(event),
+        normalizeCountry(event),
+        normalizeContinent(event),
+      );
+      row.eventCount += 1;
+    });
+
+    allPlaces.forEach((place) => {
+      if (place.isActive === false) return;
+      const row = ensureDestination(
+        normalizeDestination(place),
+        normalizeCountry(place),
+        normalizeContinent(place),
+      );
+      row.placeCount += 1;
+    });
+
     return Array.from(destinationMap.values())
       .sort((a, b) => {
         const contComp = a.continent.localeCompare(b.continent);
@@ -285,12 +367,22 @@ const BlogsAndNews = () => {
 
   const { mutate: toggleStatus, isPending: isTogglePending } = useMutation({
     mutationFn: async ({ id, currentStatus, itemType }) => {
-      const endpoint = itemType === "blog" ? "blogs" : "news";
       const newStatus = !currentStatus;
 
-      const response = await axios.patch(`/api/${endpoint}/${id}`, {
-        isActive: newStatus,
-      });
+      const response =
+        itemType === "event" || itemType === "place"
+          ? await axios.patch(
+              `/api/${itemType === "event" ? "events" : "places"}/${id}/status`,
+              {
+                isActive: newStatus,
+              },
+            )
+          : await axios.patch(
+              `/api/${itemType === "blog" ? "blogs" : "news"}/${id}`,
+              {
+                isActive: newStatus,
+              },
+            );
 
       return response.data;
     },
@@ -308,7 +400,14 @@ const BlogsAndNews = () => {
         ["country-content-stats", "blogs-news-comprehensive"],
         (old) => {
           if (!old) return old;
-          const field = itemType === "blog" ? "allBlogs" : "allNews";
+          const field =
+            itemType === "blog"
+              ? "allBlogs"
+              : itemType === "news"
+                ? "allNews"
+                : itemType === "place"
+                  ? "allPlaces"
+                  : "allEvents";
           return {
             ...old,
             [field]: old[field].map((item) =>
@@ -337,6 +436,8 @@ const BlogsAndNews = () => {
       queryClient.invalidateQueries({
         queryKey: ["country-content-stats", "blogs-news-comprehensive"],
       });
+      queryClient.invalidateQueries({ queryKey: ["destination-events"] });
+      queryClient.invalidateQueries({ queryKey: ["destination-places"] });
     },
   });
 
@@ -384,20 +485,159 @@ const BlogsAndNews = () => {
           </button>
         ),
       },
+      {
+        field: "eventCount",
+        headerName: "Event Count",
+        flex: 1,
+        cellRenderer: (params) => (
+          <button
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() => handleViewDetail(params.data.destination, "event")}
+          >
+            {params.value}
+          </button>
+        ),
+      },
+      {
+        field: "placeCount",
+        headerName: "Places",
+        flex: 1,
+        cellRenderer: (params) => (
+          <button
+            className="text-blue-600 hover:underline font-medium"
+            onClick={() => handleViewDetail(params.data.destination, "place")}
+          >
+            {params.value}
+          </button>
+        ),
+      },
     ],
     [handleViewDetail],
   );
 
-  const detailColumns = useMemo(
-    () => [
-      {
-        field: "srNo",
-        headerName: "Sr No",
-        width: 80,
-        lockPinned: true,
-        pinned: "left",
-        valueGetter: (params) => params.node.rowIndex + 1,
-      },
+  const detailColumns = useMemo(() => {
+    const serialNumberColumn = {
+      field: "srNo",
+      headerName: "Sr No",
+      width: 80,
+      lockPinned: true,
+      pinned: "left",
+      valueGetter: (params) => params.node.rowIndex + 1,
+    };
+
+    const statusColumn = {
+      field: "isActive",
+      headerName: "Status",
+      flex: 1,
+      minWidth: 140,
+      cellRenderer: (params) => (
+        <StatusChip status={params.value === false ? "Inactive" : "Active"} />
+      ),
+    };
+
+    const actionColumn = {
+      headerName: "Action",
+      width: 100,
+      pinned: "right",
+      lockPinned: true,
+      cellRenderer: (params) => (
+        <ThreeDotMenu
+          rowId={params.data._id}
+          menuItems={[
+            {
+              label: "Edit",
+              onClick: () =>
+                navigate(
+                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                  {
+                    state: {
+                      item: params.data,
+                      type: detailType,
+                      destinations: stats.map((s) => s.destination),
+                    },
+                  },
+                ),
+            },
+            params.data.isActive !== false
+              ? {
+                  label: "Mark As Inactive",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                }
+              : {
+                  label: "Mark As Active",
+                  onClick: () =>
+                    toggleStatus({
+                      id: params.data._id,
+                      currentStatus: params.data.isActive !== false,
+                      itemType: detailType,
+                    }),
+                },
+          ]}
+        />
+      ),
+    };
+
+    if (detailType === "place") {
+      return [
+        serialNumberColumn,
+        { field: "placeName", headerName: "Place Name", flex: 2 },
+        {
+          field: "category",
+          headerName: "Category",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "rating",
+          headerName: "Rating",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "address",
+          headerName: "Address",
+          flex: 2,
+          valueFormatter: (params) => params.value || "-",
+        },
+        statusColumn,
+        actionColumn,
+      ];
+    }
+
+    if (detailType === "event") {
+      return [
+        serialNumberColumn,
+        { field: "eventName", headerName: "Event Name", flex: 2 },
+        {
+          field: "category",
+          headerName: "Category",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "month",
+          headerName: "Month",
+          flex: 1,
+          valueFormatter: (params) => params.value || "-",
+        },
+        {
+          field: "venue",
+          headerName: "Venue",
+          flex: 1.5,
+          valueFormatter: (params) => params.value || "-",
+        },
+        statusColumn,
+        actionColumn,
+      ];
+    }
+
+    return [
+      serialNumberColumn,
       { field: "mainTitle", headerName: "Title", flex: 2 },
       {
         field: "author",
@@ -411,67 +651,15 @@ const BlogsAndNews = () => {
         flex: 1,
         valueFormatter: (params) => params.value || "-",
       },
-      {
-        field: "isActive",
-        headerName: "Status",
-        flex: 1,
-        minWidth: 140,
-        cellRenderer: (params) => (
-          <StatusChip status={params.value === false ? "Inactive" : "Active"} />
-        ),
-      },
-      {
-        headerName: "Action",
-        width: 100,
-        pinned: "right",
-        lockPinned: true,
-        cellRenderer: (params) => (
-          <ThreeDotMenu
-            rowId={params.data._id}
-            menuItems={[
-              {
-                label: "Edit",
-                onClick: () =>
-                  navigate(
-                    `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                    {
-                      state: {
-                        item: params.data,
-                        type: detailType,
-                        destinations: stats.map((s) => s.destination),
-                      },
-                    },
-                  ),
-              },
-              params.data.isActive !== false
-                ? {
-                  label: "Mark As Inactive",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                }
-                : {
-                  label: "Mark As Active",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                },
-            ]}
-          />
-        ),
-      },
-    ],
-    [detailType, navigate, stats, toggleStatus, selectedLocation],
-  );
+      statusColumn,
+      actionColumn,
+    ];
+  }, [detailType, navigate, stats, toggleStatus, selectedLocation]);
 
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
+    if (detailType === "event") return destinationEvents;
+    if (detailType === "place") return destinationPlaces;
     const source =
       detailType === "blog"
         ? Array.isArray(data?.allBlogs)
@@ -483,7 +671,23 @@ const BlogsAndNews = () => {
     return source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
     );
-  }, [currentView, selectedLocation, detailType, data]);
+  }, [
+    currentView,
+    selectedLocation,
+    detailType,
+    data,
+    destinationEvents,
+    destinationPlaces,
+  ]);
+
+  const detailLabel =
+    detailType === "blog"
+      ? "Blogs"
+      : detailType === "news"
+        ? "News"
+        : detailType === "place"
+          ? "Places"
+          : "Events";
 
   return (
     <div>
@@ -503,9 +707,17 @@ const BlogsAndNews = () => {
               data={filteredDetailData}
               columns={detailColumns}
               search
-              tableTitle={`${detailType === "blog" ? "Blogs" : "News"} in ${selectedLocation}`}
+              tableTitle={`${detailLabel} in ${selectedLocation}`}
               tableHeight={500}
-              buttonTitle={`Add ${detailType === "blog" ? "Blog" : "News"}`}
+              buttonTitle={`Add ${
+                detailType === "blog"
+                  ? "Blog"
+                  : detailType === "news"
+                    ? "News"
+                    : detailType === "place"
+                      ? "Place"
+                      : "Event"
+              }`}
               handleClick={() =>
                 navigate(
                   `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
@@ -514,15 +726,21 @@ const BlogsAndNews = () => {
                       item: null,
                       type: detailType,
                       destinations: stats.map((s) => s.destination),
+                      selectedLocation,
                     },
                   },
                 )
               }
-              loading={isPending || isTogglePending}
+              loading={
+                isPending ||
+                isTogglePending ||
+                (detailType === "event" && isDestinationEventsPending) ||
+                (detailType === "place" && isDestinationPlacesPending)
+              }
             />
           </div>
         )}
-        {isError ? (
+        {isError || isDestinationEventsError || isDestinationPlacesError ? (
           <p className="pt-3 text-sm text-red-500">
             Could not load all remote data. Please verify Nomads API
             connectivity.
