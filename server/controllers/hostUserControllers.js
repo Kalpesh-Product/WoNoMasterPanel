@@ -2424,4 +2424,5 @@ module.exports = {
   syncWorkspaceDepartmentModules,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
+  resolveHostPanelFrontendUrl,
 };

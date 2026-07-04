@@ -190,7 +190,8 @@ import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
-import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
+import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
+// import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
 
@@ -595,9 +596,13 @@ export const routes = createBrowserRouter([
                       },
                     ],
                   },
+                  // {
+                  //   path: "customer-support",
+                  //   element: <CustomerSupport />,
+                  // },
                   {
-                    path: "customer-support",
-                    element: <CustomerSupport />,
+                    path: "support-tickets",
+                    element: <HostSupportTickets />,
                   },
                   {
                     path: "chat",
