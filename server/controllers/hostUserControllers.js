@@ -316,7 +316,30 @@ const EXTRA_COMMON_MODULES_BLUEPRINT = {
 const KEY_APPS_BLUEPRINT = {
   category: "KEY APPS",
   items: [
-    { id: "visitor-management", name: "Visitor Management" },
+    {
+      id: "visitor-management",
+      name: "Visitor Management",
+      children: [
+        { id: "visitors_manage_internal_visitors", name: "Standard/Internal Visitors (Manage Visitors)" },
+        { id: "visitors_manage_external_clients", name: "External Clients (Manage Visitors)" },
+        { id: "visitors_tab_daily", name: "Daily Visitors Tab" },
+        { id: "visitors_tab_history", name: "Visitor History Tab" },
+        { id: "visitors_tab_bookings", name: "Bookings Tab" },
+        { id: "visitors_tab_clients", name: "Clients Tab" },
+        {
+          id: "visitors_mode_standard",
+          name: "New Frontdesk Action — Standard Visitor",
+          children: [
+            { id: "visitors_standard_type_standard", name: "Standard Subtab" },
+            { id: "visitors_standard_type_department", name: "Department Subtab" },
+            { id: "visitors_standard_type_tenant", name: "Tenant Subtab" },
+          ],
+        },
+        { id: "visitors_mode_workspace_tour", name: "New Frontdesk Action — Unit Tour" },
+        { id: "visitors_mode_walkin_booking", name: "New Frontdesk Action — Walk-in Booking" },
+        { id: "visitors_mode_verify_booking", name: "New Frontdesk Action — Verify Booking" },
+      ],
+    },
     { id: "website-builder", name: "Website Builder" },
     { id: "wono-nomad", name: "Wono Nomad" },
     { id: "website-leads", name: "Website Leads" },
@@ -519,10 +542,40 @@ const LINKED_MODULE_ID_GROUPS = [
   ["visitor-management", "visitors-management"],
 ];
 
-// Visitor Management has no real sub-permission ids in HostPanel (no
-// equivalent of ORGANIZATION_ACCESS_KEYS below exists for it there) — it's a
-// single flat toggle. Kept as a set for the "administration" mirror id.
-const VISITOR_ACCESS_KEYS = new Set(["visitor-management", "visitors-management"]);
+// Hand-synced with HostPanel's server/config/workspaceModuleCatalog.ts
+// (visitors_manage_* ids), server/config/visitorPermissionMap.ts (module +
+// manage-visitors tabs), and constants/permissions.ts VISITORS_TAB_*/
+// VISITORS_MODE_*/VISITORS_STANDARD_TYPE_* (the separate VisitorManagement.tsx
+// start-page + New Frontdesk Action permission scheme). Same
+// module/tabs/actions split as ORGANIZATION_PERMISSION_MAP below, so it gets
+// the same "only usable while the parent module is enabled" gating.
+const VISITOR_PERMISSION_MAP = {
+  module: "visitor-management",
+  tabs: [
+    "visitors_manage_internal_visitors",
+    "visitors_manage_external_clients",
+    "visitors_tab_daily",
+    "visitors_tab_history",
+    "visitors_tab_bookings",
+    "visitors_tab_clients",
+  ],
+  actions: [
+    "visitors_mode_standard",
+    "visitors_mode_workspace_tour",
+    "visitors_mode_walkin_booking",
+    "visitors_mode_verify_booking",
+    "visitors_standard_type_standard",
+    "visitors_standard_type_department",
+    "visitors_standard_type_tenant",
+  ],
+};
+
+const VISITOR_ACCESS_KEYS = new Set([
+  "visitor-management",
+  "visitors-management",
+  ...VISITOR_PERMISSION_MAP.tabs,
+  ...VISITOR_PERMISSION_MAP.actions,
+]);
 
 const ORGANIZATION_PERMISSION_MAP = {
   module: "organization-management",
@@ -1900,8 +1953,10 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
       : flattenGrantedModulesFromTreeState(clampedModuleAccess);
     const hasVisitorModuleEnabled =
       !hasWorkspaceDoc ||
-      workspaceEnabledIds.includes("visitor-management") ||
-      workspaceEnabledIds.includes("visitors-management");
+      workspaceEnabledIds.includes(VISITOR_PERMISSION_MAP.module) ||
+      workspaceEnabledIds.includes("visitors-management") ||
+      VISITOR_PERMISSION_MAP.tabs.some((key) => workspaceEnabledIds.includes(key)) ||
+      VISITOR_PERMISSION_MAP.actions.some((key) => workspaceEnabledIds.includes(key));
     const hasOrganizationModuleEnabled =
       !hasWorkspaceDoc ||
       workspaceEnabledIds.includes(ORGANIZATION_PERMISSION_MAP.module) ||
