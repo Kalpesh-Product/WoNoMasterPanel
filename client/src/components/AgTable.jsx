@@ -26,6 +26,9 @@ const AgTableComponent = React.memo(
     tableTitle,
     handleClick,
     buttonTitle,
+    secondaryButtonTitle,
+    onSecondaryButtonClick,
+    secondaryButtonDisabled,
     tableHeight = 400,
     enableCheckbox, // ✅ New prop to enable checkboxes
     getRowStyle,
@@ -227,6 +230,16 @@ const AgTableComponent = React.memo(
               ) : (
                 ""
               )}
+              {secondaryButtonTitle ? (
+                <PrimaryButton
+                  title={secondaryButtonTitle}
+                  handleSubmit={onSecondaryButtonClick}
+                  disabled={secondaryButtonDisabled}
+                />
+              ) : (
+                ""
+              )}
+
               {buttonTitle ? (
                 <PrimaryButton
                   title={buttonTitle}

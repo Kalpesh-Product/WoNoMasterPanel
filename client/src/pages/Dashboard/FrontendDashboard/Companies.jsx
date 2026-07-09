@@ -1,17 +1,18 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import PageFrame from "../../../components/Pages/PageFrame";
-import { Chip } from "@mui/material";
+import { Chip, Tab, Tabs } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
 import useAuth from "../../../hooks/useAuth";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import { toast } from "sonner";
 import { queryClient } from "../../../main";
+import CompaniesRequests from "./CompaniesRequests";
 
 // ✅ helper to make slugs URL-safe
 const slugify = (str) =>
@@ -24,6 +25,7 @@ const Companies = () => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
   const dispatch = useDispatch();
+  const [activeTab, setActiveTab] = useState("companies");
 
   const { auth } = useAuth();
 
@@ -288,25 +290,66 @@ const Companies = () => {
     });
   }, [companies]);
 
-  if (isLoading) return <div className="p-6">Loading companies…</div>;
-  if (isError)
-    return <div className="p-6 text-red-500">Failed to load companies.</div>;
+  const tabs = ["companies", "requests"];
+  const activeTabIndex = tabs.indexOf(activeTab);
 
   return (
-    <div>
-      <>
-        <AgTable
-          data={sortedCompanies}
-          columns={columns}
-          search={true}
-          tableTitle={"Companies"}
-          tableHeight={500}
-          buttonTitle={"Add Company"}
-          handleClick={() => navigate("add-company")}
-          filterExcludeColumns={["logo", "isRegistered"]}
-          loading={isLoading}
-        />
-      </>
+    <div className="flex flex-col gap-4">
+      <Tabs
+        value={activeTabIndex}
+        onChange={(_e, newIndex) => setActiveTab(tabs[newIndex])}
+        variant="fullWidth"
+        TabIndicatorProps={{ style: { display: "none" } }}
+        sx={{
+          backgroundColor: "#f1f5f9",
+          borderRadius: "9999px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "inset 0 1px 1px rgba(255,255,255,0.7)",
+          p: "4px",
+          width: "100%",
+          minHeight: 0,
+          "& .MuiTabs-flexContainer": { gap: "4px" },
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 600,
+            padding: "8px 16px",
+            minWidth: "auto",
+            minHeight: 0,
+            borderRadius: "9999px",
+            color: "#475569",
+          },
+          "& .Mui-selected": {
+            backgroundColor: "#ffffff !important",
+            color: "#2563EB !important",
+            boxShadow: "0 1px 4px rgba(15,23,42,0.12)",
+          },
+        }}
+      >
+        <Tab label="Companies" disableRipple />
+        <Tab label="Requests" disableRipple />
+      </Tabs>
+
+      {activeTab === "companies" ? (
+        isLoading ? (
+          <div className="p-6">Loading companies…</div>
+        ) : isError ? (
+          <div className="p-6 text-red-500">Failed to load companies.</div>
+        ) : (
+          <AgTable
+            data={sortedCompanies}
+            columns={columns}
+            search={true}
+            tableTitle={"Companies"}
+            tableHeight={500}
+            buttonTitle={"Add Company"}
+            handleClick={() => navigate("add-company")}
+            filterExcludeColumns={["logo", "isRegistered"]}
+            loading={isLoading}
+          />
+        )
+      ) : (
+        <CompaniesRequests />
+      )}
     </div>
   );
 };
