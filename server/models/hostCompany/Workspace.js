@@ -27,6 +27,10 @@ const workspaceSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    selectedPlan: {
+      type: String,
+      enum: ["basic", "professional", "custom"],
+    },
     modules: {
       type: mongoose.Schema.Types.Mixed,
       default: [],

@@ -9,6 +9,7 @@ const { randomUUID } = require("crypto");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const TestCompany = require("../../models/hostCompany/testCompany");
 const HostUser = require("../../models/hostCompany/hostUser");
+const Workspace = require("../../models/hostCompany/Workspace");
 const {
   uploadFileToS3,
   deleteFileFromS3ByUrl,
@@ -39,6 +40,26 @@ const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Same prefix-match convention getCompanyMembers uses in hostUserControllers.js
+// (a workspace's companyId can be "<companyId>" or "<companyId>-<suffix>").
+const buildCompanyIdPrefixRegex = (companyId = "") => {
+  const normalized = String(companyId || "").trim();
+  if (!normalized) return null;
+  return new RegExp(`^${escapeRegex(normalized)}(?:$|-)`, "i");
+};
+
+// Same name-fallback convention getCompanyMembers uses — a workspace's
+// companyId doesn't always line up with the lead record's companyId (e.g.
+// duplicate/stray lead records), but its businessName usually still matches
+// the lead's companyName.
+const buildExactCaseInsensitiveRegex = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  return new RegExp(`^${escapeRegex(normalized)}$`, "i");
+};
+
+const WORKSPACE_PLAN_VALUES = new Set(["basic", "professional", "custom"]);
 
 const validateServices = (selectedServices = {}) => {
   const errors = [];
@@ -443,13 +464,42 @@ const getCompanies = async (req, res, next) => {
 
 const getHostLeadCompanies = async (req, res, next) => {
   try {
-    const companies = await HostLeadCompany.find().sort({ createdAt: -1 });
+    const companies = await HostLeadCompany.find().sort({ createdAt: -1 }).lean();
 
     if (!companies || !companies.length) {
       return res.status(200).json([]);
     }
 
-    return res.status(200).json(companies);
+    // Tell the Upgrade Plan page whether the requested plan has actually
+    // been applied to a real workspace yet (via Module Access, or via this
+    // controller's own updateUpgradePaymentStatus sync) — staff shouldn't be
+    // able to send the "you've been upgraded" success email before that's
+    // true, otherwise the host gets told they're upgraded while still
+    // seeing their old plan (exactly today's duplicate-lead-record bug).
+    const allWorkspaces = await Workspace.find({ isActive: true })
+      .select("companyId businessName selectedPlan")
+      .lean();
+
+    const companiesWithPlanStatus = companies.map((company) => {
+      const requestedPlan = String(company?.requestedPlan || "").trim().toLowerCase();
+      if (!requestedPlan) {
+        return { ...company, workspacePlanApplied: false };
+      }
+      const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
+      const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+      const matchedWorkspace = allWorkspaces.find(
+        (ws) =>
+          (companyIdRegex && companyIdRegex.test(String(ws?.companyId || ""))) ||
+          (companyNameRegex && companyNameRegex.test(String(ws?.businessName || ""))),
+      );
+      const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "").trim().toLowerCase();
+      return {
+        ...company,
+        workspacePlanApplied: Boolean(matchedWorkspace) && workspaceSelectedPlan === requestedPlan,
+      };
+    });
+
+    return res.status(200).json(companiesWithPlanStatus);
   } catch (error) {
     next(error);
   }
@@ -505,11 +555,23 @@ const requestUpgradePlan = async (req, res, next) => {
       return res.status(400).json({ message: "requestedPlan is required" });
     }
 
+    // A new upgrade request starts a fresh review cycle on this row — reset
+    // the previous cycle's payment-link/paid/upgraded tracking so the
+    // Upgrade Plan page shows this as a new pending request instead of
+    // still displaying "Sent / Paid / Upgraded" left over from whatever was
+    // requested and completed last time (e.g. Basic -> Professional fully
+    // done, then the host separately requests Professional -> Custom).
     const company = await HostLeadCompany.findOneAndUpdate(
       { companyId: String(companyId).trim() },
       {
         $set: {
           requestedPlan: String(requestedPlan).trim().toLowerCase(),
+          paymentLinkUrl: "",
+          paymentLinkSentAt: null,
+          paymentStatus: false,
+          paymentConfirmedAt: null,
+          upgradeSuccessSentAt: null,
+          upgradeStatus: "requested",
         },
       },
       { new: true },
@@ -550,6 +612,8 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
 
     company.paymentStatus = paymentStatus;
 
+    let workspacePlanUpdate = null;
+
     if (paymentStatus) {
       company.paymentConfirmedAt = new Date();
       company.upgradeStatus = "paid";
@@ -559,6 +623,32 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
         .toLowerCase();
       if (requestedPlan) {
         company.plan = requestedPlan;
+
+        // Actually apply the upgrade to the live workspace, not just this
+        // tracking record — this is the step that used to be missing:
+        // "Mark As Paid" previously only updated HostLeadCompany.plan for
+        // display here, leaving Workspace.selectedPlan (the field HostPanel
+        // actually gates modules on, via canPlanAccess()) untouched. Master
+        // panel and HostPanel share the same DB, so this writes directly
+        // into HostPanel's Workspace collection, same pattern already used
+        // by updateWorkspaceEnabledModules above. Module *visibility* is
+        // computed live from selectedPlan on every HostPanel request
+        // (buildWorkspaceModulesStructure), so no enabledModuleIds
+        // recomputation is needed here for the plan's own defaults to
+        // unlock.
+        if (WORKSPACE_PLAN_VALUES.has(requestedPlan)) {
+          const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
+          const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+          const matchOr = [];
+          if (companyIdRegex) matchOr.push({ companyId: { $regex: companyIdRegex } });
+          if (companyNameRegex) matchOr.push({ businessName: { $regex: companyNameRegex } });
+          if (matchOr.length) {
+            workspacePlanUpdate = await Workspace.updateMany(
+              { $or: matchOr, isActive: true },
+              { $set: { selectedPlan: requestedPlan } },
+            );
+          }
+        }
       }
     } else {
       company.paymentConfirmedAt = null;
@@ -566,6 +656,9 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
       company.upgradeStatus = company.paymentLinkSentAt
         ? "payment_link_sent"
         : "requested";
+      // Deliberately not reverting Workspace.selectedPlan on un-marking
+      // payment — downgrading a live workspace automatically here would be
+      // a destructive side effect of what's meant as a status correction.
     }
 
     await company.save();
@@ -573,6 +666,7 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
     return res.status(200).json({
       message: "Payment status updated successfully",
       company,
+      workspacesUpgraded: workspacePlanUpdate?.modifiedCount || 0,
     });
   } catch (error) {
     next(error);

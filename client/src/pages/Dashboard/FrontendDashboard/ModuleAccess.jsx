@@ -727,6 +727,7 @@ const AccessEditorModal = ({
   isFounderReadOnly,
   activePlanTier,
   onPlanButtonClick,
+  pendingRequestedPlan,
 }) => {
   const filteredSections = useMemo(() => {
     const query = treeSearch.trim().toLowerCase();
@@ -823,6 +824,17 @@ const AccessEditorModal = ({
                   </div>
                 </div>
               </div>
+
+              {isWorkspaceMode && pendingRequestedPlan && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-800">
+                    Host requested {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-amber-700">
+                    Not yet applied here. Click {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan} below to give this workspace those modules.
+                  </p>
+                </div>
+              )}
 
               {isWorkspaceMode && (
                 <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -1026,6 +1038,27 @@ const ModuleAccess = () => {
   });
 
   const company = companyMemberPayload?.company || null;
+
+  // `company` above (getCompanyMembers) prefers the HostCompany model once a
+  // host is onboarded, which has no requestedPlan/upgradeStatus fields — so
+  // it silently loses the pending-upgrade-request context for exactly the
+  // companies staff are configuring modules for here. Fetch the
+  // HostLeadCompany record directly instead (same source UpgradePlan.jsx
+  // reads) so the "host requested X" banner below is reliable.
+  const { data: hostLeadCompanies = [] } = useQuery({
+    queryKey: ["host-lead-companies-for-module-access", resolvedCompanyId],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/host-companies");
+      return Array.isArray(response.data) ? response.data : [];
+    },
+    enabled: Boolean(resolvedCompanyId),
+  });
+
+  const hostLeadCompany = useMemo(
+    () => hostLeadCompanies.find((item) => String(item?.companyId || "").trim() === resolvedCompanyId) || null,
+    [hostLeadCompanies, resolvedCompanyId],
+  );
+
   const members = useMemo(
     () =>
       Array.isArray(companyMemberPayload?.members)
@@ -1092,6 +1125,13 @@ const ModuleAccess = () => {
       ) || workspaces[0]
     );
   }, [selectedWorkspaceId, workspaces]);
+
+  const pendingRequestedPlan = useMemo(() => {
+    const requested = String(hostLeadCompany?.requestedPlan || "").trim().toLowerCase();
+    if (!requested) return "";
+    const actualPlan = String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase();
+    return requested !== actualPlan ? requested : "";
+  }, [hostLeadCompany?.requestedPlan, selectedWorkspace?.selectedPlan]);
 
   const activeModuleSections = useMemo(() => {
     const parsedModules = parseWorkspaceModules(selectedWorkspace?.modules);
@@ -1684,6 +1724,7 @@ const ModuleAccess = () => {
         isFounderReadOnly={isFounderReadOnly}
         activePlanTier={activePlanTier}
         onPlanButtonClick={handlePlanButtonClick}
+        pendingRequestedPlan={pendingRequestedPlan}
       />
 
       {pendingPlanTier && (
@@ -1697,13 +1738,28 @@ const ModuleAccess = () => {
               transform: "translate(-50%, -50%)",
             }}
           >
-            <p className="text-base font-semibold text-slate-900">
-              This workspace has a {PLAN_LABELS[String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase()] || "Basic"} plan.
-            </p>
-            <p className="mt-2 text-sm text-slate-600">
-              Do you still want to give it {PLAN_LABELS[pendingPlanTier]} modules? This won't change
-              the workspace's actual assigned plan — only which modules are enabled here.
-            </p>
+            {pendingRequestedPlan === pendingPlanTier ? (
+              <>
+                <p className="text-base font-semibold text-slate-900">
+                  Host requested {PLAN_LABELS[pendingPlanTier]}.
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Apply {PLAN_LABELS[pendingPlanTier]}'s modules to this workspace now? This won't
+                  change the workspace's actual assigned plan — that's set separately from the
+                  Upgrade Plan page once payment is confirmed.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-semibold text-slate-900">
+                  This workspace has a {PLAN_LABELS[String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase()] || "Basic"} plan.
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Do you still want to give it {PLAN_LABELS[pendingPlanTier]} modules? This won't change
+                  the workspace's actual assigned plan — only which modules are enabled here.
+                </p>
+              </>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <Button
                 onClick={() => setPendingPlanTier(null)}
