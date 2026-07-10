@@ -2,10 +2,10 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { NOMADS_BACKEND_URL } from "../../../constants/api";
 
 const API_BASE_URL =
-  import.meta.env.VITE_VALUE_ADDS_API_BASE_URL ||
-  "https://wononomadsbe.vercel.app";
+  import.meta.env.VITE_VALUE_ADDS_API_BASE_URL || NOMADS_BACKEND_URL;
 
 const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
   const axios = useAxiosPrivate();

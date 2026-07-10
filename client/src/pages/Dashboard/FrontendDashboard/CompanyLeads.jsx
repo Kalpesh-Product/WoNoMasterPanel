@@ -4,6 +4,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import { useSelector } from "react-redux";
 import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const CompanyLeads = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
@@ -19,8 +20,7 @@ const CompanyLeads = () => {
   //   enabled: !!selectedCompany,
   //   queryFn: async () => {
   //     const response = await axios.get(
-  //       // `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?._id}`,
-  //       `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?.companyId}`,
+  //       `${NOMADS_API_BASE_URL}/company/leads?companyId=${selectedCompany?.companyId}`,
   //       { headers: { "Cache-Control": "no-cache" } }
   //     );
   //     return response?.data;
@@ -36,7 +36,7 @@ const CompanyLeads = () => {
     enabled: !!selectedCompany,
     queryFn: async () => {
       const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/leads?companyId=${selectedCompany?.companyId}`,
+        `${NOMADS_API_BASE_URL}/company/leads?companyId=${selectedCompany?.companyId}`,
         { headers: { "Cache-Control": "no-cache" } }
       );
 

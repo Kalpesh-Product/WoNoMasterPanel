@@ -9,6 +9,7 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import { toast } from "sonner";
 import { queryClient } from "../../../main";
 import StatusChip from "../../../components/StatusChip";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 export default function NomadListingsOverview() {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function NomadListingsOverview() {
     queryKey: ["nomad-listings", companyId],
     queryFn: async () => {
       const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`,
+        `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
       );
 
       return res.data || [];

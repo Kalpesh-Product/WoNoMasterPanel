@@ -12,6 +12,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import SecondaryButton from "../../../components/SecondaryButton";
+import { NOMADS_BACKEND_URL } from "../../../constants/api";
 
 const defaultValues = {
   serialNumber: "",
@@ -47,7 +48,7 @@ const stripGeneratedFields = (payload, { omitStatus = false } = {}) => {
   return omitStatus ? rest : { ...rest, isActive };
 };
 
-const RESTAURANT_API_BASE_URL = "http://localhost:3000";
+const RESTAURANT_API_BASE_URL = NOMADS_BACKEND_URL;
 
 const stripSectionIds = (sections = []) =>
   sections.map((section) => {

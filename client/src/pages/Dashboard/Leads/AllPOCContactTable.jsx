@@ -3,6 +3,7 @@ import AgTable from "../../../components/AgTable";
 import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import dayjs from "dayjs";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const AllPOCContactTable = () => {
   const axios = useAxiosPrivate();
@@ -14,9 +15,7 @@ const AllPOCContactTable = () => {
   } = useQuery({
     queryKey: ["poc"],
     queryFn: async () => {
-      const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/poc/poc`,
-      );
+      const response = await axios.get(`${NOMADS_API_BASE_URL}/poc/poc`);
       return response?.data;
     },
   });

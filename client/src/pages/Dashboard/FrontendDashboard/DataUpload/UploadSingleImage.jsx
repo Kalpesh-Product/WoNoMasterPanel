@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
-const API_BASE = "https://wononomadsbe.vercel.app/api";
+const API_BASE = NOMADS_API_BASE_URL;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const UPLOAD_FILTERS_STORAGE_KEY = "dataUploadFilters";
 

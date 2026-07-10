@@ -7,8 +7,9 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
-const API_BASE = "https://wononomadsbe.vercel.app/api";
+const API_BASE = NOMADS_API_BASE_URL;
 
 const KIND_OPTIONS = ["products", "poc", "reviews"];
 
