@@ -11,6 +11,7 @@ import { Button } from "@mui/material";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import DetalisFormatted from "../../../components/DetalisFormatted";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
@@ -91,8 +92,7 @@ const SignupLeads = () => {
     queryFn: async () => {
       //   const response = await axios.get("/api/forms/host-users");
       const response = await axios.get(
-        // "http://localhost:3000/api/forms/host-users",
-        "https://wononomadsbe.vercel.app/api/forms/host-users",
+        `${NOMADS_API_BASE_URL}/forms/host-users`,
       );
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
@@ -120,8 +120,7 @@ const SignupLeads = () => {
   const updateLeadMutation = useMutation({
     mutationFn: async ({ hostUserId, ...payload }) => {
       const response = await axios.patch(
-        // `http://localhost:3000/api/forms/host-users/${hostUserId}`,
-        `https://wononomadsbe.vercel.app/api/forms/host-users/${hostUserId}`,
+        `${NOMADS_API_BASE_URL}/forms/host-users/${hostUserId}`,
         payload,
       );
       return response.data;
@@ -164,7 +163,7 @@ const SignupLeads = () => {
         // status/comment/goals is present, so we include the current status.
         try {
           await axios.patch(
-            `https://wononomadsbe.vercel.app/api/forms/host-users/${lead._id}`,
+            `${NOMADS_API_BASE_URL}/forms/host-users/${lead._id}`,
             {
               status: String(lead?.status || "closed").toLowerCase(),
               inviteStatus: "invite_sent",

@@ -20,10 +20,9 @@ import {
   calculateScore,
   STATEWISE_WEIGHT_FORMULAS,
 } from "../../../utils/weightCalculations";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
-const WORLD_RANKING_ENDPOINT =
-  "https://wononomadsbe.vercel.app/api/state-wise-weight";
-// const WORLD_RANKING_ENDPOINT = "http://localhost:3000/api/state-wise-weight";
+const WORLD_RANKING_ENDPOINT = `${NOMADS_API_BASE_URL}/state-wise-weight`;
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;

@@ -5,9 +5,10 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const TYPE_MAP = {
-  api: "http://localhost:3000/api/places/bulk-insert",
+  api: `${NOMADS_API_BASE_URL}/places/bulk-insert`,
   formKey: "places-file",
 };
 

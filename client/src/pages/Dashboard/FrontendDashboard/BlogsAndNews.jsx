@@ -8,6 +8,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import StatusChip from "../../../components/StatusChip";
 import { queryClient } from "../../../main";
+import { NOMADS_BACKEND_URL, NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const BLOG_ENDPOINTS = [
   "/api/blogs",
@@ -22,15 +23,14 @@ const NEWS_ENDPOINTS = [
 ];
 
 // Keep the existing Event Count source independent from the event-management APIs.
-const EVENT_ENDPOINTS = ["https://wononomadsbe.vercel.app/api/events"];
-// const EVENT_API_BASE_URL = "http://localhost:3000";
-const EVENT_API_BASE_URL = "https://wononomadsbe.vercel.app";
+const EVENT_ENDPOINTS = [`${NOMADS_API_BASE_URL}/events`];
+const EVENT_API_BASE_URL = NOMADS_BACKEND_URL;
 
-const PLACE_ENDPOINTS = ["http://localhost:3000/api/places"];
-const PLACE_API_BASE_URL = "http://localhost:3000";
+const PLACE_ENDPOINTS = [`${NOMADS_API_BASE_URL}/places`];
+const PLACE_API_BASE_URL = NOMADS_BACKEND_URL;
 
-const RESTAURANT_ENDPOINTS = ["http://localhost:3000/api/restaurants"];
-const RESTAURANT_API_BASE_URL = "http://localhost:3000";
+const RESTAURANT_ENDPOINTS = [`${NOMADS_API_BASE_URL}/restaurants`];
+const RESTAURANT_API_BASE_URL = NOMADS_BACKEND_URL;
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 

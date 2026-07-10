@@ -2,6 +2,7 @@ import React from "react";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { useQuery } from "@tanstack/react-query";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const AllEnquiryTable = () => {
   const axios = useAxiosPrivate();
@@ -13,9 +14,7 @@ const AllEnquiryTable = () => {
   } = useQuery({
     queryKey: ["leadCompany"],
     queryFn: async () => {
-      const response = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/all-leads`,
-      );
+      const response = await axios.get(`${NOMADS_API_BASE_URL}/company/all-leads`);
       return response?.data;
     },
   });

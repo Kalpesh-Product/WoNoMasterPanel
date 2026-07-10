@@ -19,6 +19,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 // Dummy inclusions
 const inclusionOptions = [
@@ -119,7 +120,7 @@ const EditNomadListing = () => {
     enabled: !!companyId && !!businessId, // <- changed
     queryFn: async () => {
       const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}?companyType=${companyType}`,
+        `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}?companyType=${companyType}`,
       );
       const all = Array.isArray(res.data) ? res.data : [];
       return all.find((x) => x.businessId === businessId) || null;

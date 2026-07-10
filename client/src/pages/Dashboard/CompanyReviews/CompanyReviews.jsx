@@ -7,6 +7,7 @@ import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 import { MdOutlineRemoveRedEye } from "react-icons/md";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const REVIEW_TABS = {
   nomadListings: 0,
@@ -75,8 +76,7 @@ const CompanyReviews = () => {
     enabled: activeTab === REVIEW_TABS.eventReviews,
     queryFn: async () => {
       const response = await axios.get(
-        // "http://localhost:3000/api/event-reviews/all",
-        "https://wononomadsbe.vercel.app/api/event-reviews/all",
+        `${NOMADS_API_BASE_URL}/event-reviews/all`,
         {
           headers: { "Cache-Control": "no-cache" },
         },
@@ -94,7 +94,7 @@ const CompanyReviews = () => {
     enabled: activeTab === REVIEW_TABS.placeReviews,
     queryFn: async () => {
       const response = await axios.get(
-        "https://wononomadsbe.vercel.app/api/place-reviews/all",
+        `${NOMADS_API_BASE_URL}/place-reviews/all`,
         {
           headers: { "Cache-Control": "no-cache" },
         },
@@ -234,8 +234,7 @@ const CompanyReviews = () => {
   const updateEventReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, status }) => {
       const response = await axiosPrivate.patch(
-        // `http://localhost:3000/api/event-reviews/${reviewId}/status`,
-        `https://wononomadsbe.vercel.app/api/event-reviews/${reviewId}/status`,
+        `${NOMADS_API_BASE_URL}/event-reviews/${reviewId}/status`,
         {
           status,
         },
@@ -252,7 +251,7 @@ const CompanyReviews = () => {
   const updatePlaceReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, status }) => {
       const response = await axiosPrivate.patch(
-        `https://wononomadsbe.vercel.app/api/place-reviews/${reviewId}/status`,
+        `${NOMADS_API_BASE_URL}/place-reviews/${reviewId}/status`,
         {
           status,
         },
