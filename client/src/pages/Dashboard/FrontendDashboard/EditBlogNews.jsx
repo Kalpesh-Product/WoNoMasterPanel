@@ -79,7 +79,7 @@ const EditBlogNews = () => {
   const isRestaurant = type === "restaurant";
   const isEdit = !!stateItem?._id;
 
-  const { data: fetchedItem, isPending: isItemLoading } = useQuery({
+  const { data: fetchedItem, isFetching: isItemFetching } = useQuery({
     queryKey: [type, "detail", stateItem?._id],
     queryFn: async () => {
       const response = await axiosPrivate.get(
@@ -518,9 +518,9 @@ const EditBlogNews = () => {
           <div className="col-span-2 flex gap-4 mt-6 justify-center">
             <PrimaryButton
               type="submit"
-              title={isPending || isItemLoading ? "Saving..." : "Save"}
-              isLoading={isPending || isItemLoading}
-              disabled={isPending || isItemLoading}
+              title={isPending ? "Saving..." : "Save"}
+              isLoading={isPending}
+              disabled={isPending || isItemFetching}
             />
             <SecondaryButton
               type="button"
