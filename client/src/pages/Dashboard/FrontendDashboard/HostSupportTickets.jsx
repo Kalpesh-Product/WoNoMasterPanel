@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import AgTable from "../../../components/AgTable";
 import MuiModal from "../../../components/MuiModal";
 import DetalisFormatted from "../../../components/DetalisFormatted";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { queryClient } from "../../../main";
 import { MdOutlineRemoveRedEye, MdOpenInNew } from "react-icons/md";
 
 const formatDateTime = (value) => {
@@ -32,6 +34,21 @@ const statusColorMap = {
   Rejected: { backgroundColor: "#E5E7EB", color: "#4B5563" },
 };
 
+const getAvailableStatusActions = (currentStatus) => {
+  switch (currentStatus) {
+    case "Open":
+      return ["Accepted", "Rejected"];
+    case "Accepted":
+      return ["In Progress", "Rejected"];
+    case "In Progress":
+      return ["Pending", "Closed", "Rejected"];
+    case "Pending":
+      return ["Closed", "Rejected"];
+    default:
+      return [];
+  }
+};
+
 const HostSupportTickets = () => {
   const axios = useAxiosPrivate();
   const [openView, setOpenView] = useState(false);
@@ -44,6 +61,45 @@ const HostSupportTickets = () => {
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
   });
+
+  const { mutate: updateStatus, isPending: isStatusUpdating } = useMutation({
+    mutationKey: ["host-support-ticket-status"],
+    mutationFn: async ({ supportTicketId, status, resolutionMessage }) => {
+      const response = await axios.patch(
+        `/api/tickets/support-tickets/${supportTicketId}/status`,
+        { status, resolutionMessage },
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "Status updated");
+      queryClient.invalidateQueries({ queryKey: ["host-support-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-customer-support"] });
+      queryClient.invalidateQueries({ queryKey: ["supported-tickets"] });
+      queryClient.invalidateQueries({ queryKey: ["tickets-data"] });
+      if (selectedTicket && data?.data?._id === selectedTicket.id) {
+        setSelectedTicket((prev) =>
+          prev ? { ...prev, status: data.data.status } : prev,
+        );
+      }
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update status");
+    },
+  });
+
+  const handleStatusAction = (ticket, status) => {
+    if (status === "Pending") {
+      const message = window.prompt("Enter resolution message for the user:");
+      if (!message || !message.trim()) {
+        toast.error("Resolution message is required for Pending status");
+        return;
+      }
+      updateStatus({ supportTicketId: ticket.id, status, resolutionMessage: message.trim() });
+      return;
+    }
+    updateStatus({ supportTicketId: ticket.id, status });
+  };
 
   const tableData = useMemo(
     () =>
@@ -105,6 +161,18 @@ const HostSupportTickets = () => {
       { field: "companyName", headerName: "Company Name", minWidth: 180 },
       { field: "requestedBy", headerName: "Requested By", minWidth: 180 },
       {
+        field: "status",
+        headerName: "Status",
+        minWidth: 150,
+        cellRenderer: (params) => {
+          const statusStyle = statusColorMap[params.value] || {
+            backgroundColor: "#E5E7EB",
+            color: "#374151",
+          };
+          return <Chip label={params.value} size="small" style={statusStyle} />;
+        },
+      },
+      {
         field: "actions",
         headerName: "Actions",
         minWidth: 100,
@@ -130,23 +198,19 @@ const HostSupportTickets = () => {
                 <MdOpenInNew />
               </div>
             ) : null}
+            <ThreeDotMenu
+              rowId={params.data.id}
+              isLoading={isStatusUpdating}
+              menuItems={getAvailableStatusActions(params.data.status).map((status) => ({
+                label: status,
+                onClick: () => handleStatusAction(params.data, status),
+              }))}
+            />
           </div>
         ),
       },
-      {
-        field: "status",
-        headerName: "Status",
-        minWidth: 150,
-        cellRenderer: (params) => {
-          const statusStyle = statusColorMap[params.value] || {
-            backgroundColor: "#E5E7EB",
-            color: "#374151",
-          };
-          return <Chip label={params.value} size="small" style={statusStyle} />;
-        },
-      },
     ],
-    [viewAs],
+    [viewAs, isStatusUpdating],
   );
 
   if (isError) {
