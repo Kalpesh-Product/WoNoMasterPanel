@@ -9,10 +9,12 @@ const { randomUUID } = require("crypto");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const TestCompany = require("../../models/hostCompany/testCompany");
 const HostUser = require("../../models/hostCompany/hostUser");
+const Workspace = require("../../models/hostCompany/Workspace");
 const {
   uploadFileToS3,
   deleteFileFromS3ByUrl,
 } = require("../../config/s3config");
+const { getContinentForCountry } = require("../../utils/countryContinent");
 
 const serviceOptions = [
   {
@@ -38,6 +40,26 @@ const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Same prefix-match convention getCompanyMembers uses in hostUserControllers.js
+// (a workspace's companyId can be "<companyId>" or "<companyId>-<suffix>").
+const buildCompanyIdPrefixRegex = (companyId = "") => {
+  const normalized = String(companyId || "").trim();
+  if (!normalized) return null;
+  return new RegExp(`^${escapeRegex(normalized)}(?:$|-)`, "i");
+};
+
+// Same name-fallback convention getCompanyMembers uses — a workspace's
+// companyId doesn't always line up with the lead record's companyId (e.g.
+// duplicate/stray lead records), but its businessName usually still matches
+// the lead's companyName.
+const buildExactCaseInsensitiveRegex = (value = "") => {
+  const normalized = String(value || "").trim();
+  if (!normalized) return null;
+  return new RegExp(`^${escapeRegex(normalized)}$`, "i");
+};
+
+const WORKSPACE_PLAN_VALUES = new Set(["basic", "professional", "custom"]);
 
 const validateServices = (selectedServices = {}) => {
   const errors = [];
@@ -442,13 +464,42 @@ const getCompanies = async (req, res, next) => {
 
 const getHostLeadCompanies = async (req, res, next) => {
   try {
-    const companies = await HostLeadCompany.find().sort({ createdAt: -1 });
+    const companies = await HostLeadCompany.find().sort({ createdAt: -1 }).lean();
 
     if (!companies || !companies.length) {
       return res.status(200).json([]);
     }
 
-    return res.status(200).json(companies);
+    // Tell the Upgrade Plan page whether the requested plan has actually
+    // been applied to a real workspace yet (via Module Access, or via this
+    // controller's own updateUpgradePaymentStatus sync) — staff shouldn't be
+    // able to send the "you've been upgraded" success email before that's
+    // true, otherwise the host gets told they're upgraded while still
+    // seeing their old plan (exactly today's duplicate-lead-record bug).
+    const allWorkspaces = await Workspace.find({ isActive: true })
+      .select("companyId businessName selectedPlan")
+      .lean();
+
+    const companiesWithPlanStatus = companies.map((company) => {
+      const requestedPlan = String(company?.requestedPlan || "").trim().toLowerCase();
+      if (!requestedPlan) {
+        return { ...company, workspacePlanApplied: false };
+      }
+      const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
+      const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+      const matchedWorkspace = allWorkspaces.find(
+        (ws) =>
+          (companyIdRegex && companyIdRegex.test(String(ws?.companyId || ""))) ||
+          (companyNameRegex && companyNameRegex.test(String(ws?.businessName || ""))),
+      );
+      const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "").trim().toLowerCase();
+      return {
+        ...company,
+        workspacePlanApplied: Boolean(matchedWorkspace) && workspaceSelectedPlan === requestedPlan,
+      };
+    });
+
+    return res.status(200).json(companiesWithPlanStatus);
   } catch (error) {
     next(error);
   }
@@ -504,11 +555,23 @@ const requestUpgradePlan = async (req, res, next) => {
       return res.status(400).json({ message: "requestedPlan is required" });
     }
 
+    // A new upgrade request starts a fresh review cycle on this row — reset
+    // the previous cycle's payment-link/paid/upgraded tracking so the
+    // Upgrade Plan page shows this as a new pending request instead of
+    // still displaying "Sent / Paid / Upgraded" left over from whatever was
+    // requested and completed last time (e.g. Basic -> Professional fully
+    // done, then the host separately requests Professional -> Custom).
     const company = await HostLeadCompany.findOneAndUpdate(
       { companyId: String(companyId).trim() },
       {
         $set: {
           requestedPlan: String(requestedPlan).trim().toLowerCase(),
+          paymentLinkUrl: "",
+          paymentLinkSentAt: null,
+          paymentStatus: false,
+          paymentConfirmedAt: null,
+          upgradeSuccessSentAt: null,
+          upgradeStatus: "requested",
         },
       },
       { new: true },
@@ -549,6 +612,8 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
 
     company.paymentStatus = paymentStatus;
 
+    let workspacePlanUpdate = null;
+
     if (paymentStatus) {
       company.paymentConfirmedAt = new Date();
       company.upgradeStatus = "paid";
@@ -558,6 +623,32 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
         .toLowerCase();
       if (requestedPlan) {
         company.plan = requestedPlan;
+
+        // Actually apply the upgrade to the live workspace, not just this
+        // tracking record — this is the step that used to be missing:
+        // "Mark As Paid" previously only updated HostLeadCompany.plan for
+        // display here, leaving Workspace.selectedPlan (the field HostPanel
+        // actually gates modules on, via canPlanAccess()) untouched. Master
+        // panel and HostPanel share the same DB, so this writes directly
+        // into HostPanel's Workspace collection, same pattern already used
+        // by updateWorkspaceEnabledModules above. Module *visibility* is
+        // computed live from selectedPlan on every HostPanel request
+        // (buildWorkspaceModulesStructure), so no enabledModuleIds
+        // recomputation is needed here for the plan's own defaults to
+        // unlock.
+        if (WORKSPACE_PLAN_VALUES.has(requestedPlan)) {
+          const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
+          const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+          const matchOr = [];
+          if (companyIdRegex) matchOr.push({ companyId: { $regex: companyIdRegex } });
+          if (companyNameRegex) matchOr.push({ businessName: { $regex: companyNameRegex } });
+          if (matchOr.length) {
+            workspacePlanUpdate = await Workspace.updateMany(
+              { $or: matchOr, isActive: true },
+              { $set: { selectedPlan: requestedPlan } },
+            );
+          }
+        }
       }
     } else {
       company.paymentConfirmedAt = null;
@@ -565,6 +656,9 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
       company.upgradeStatus = company.paymentLinkSentAt
         ? "payment_link_sent"
         : "requested";
+      // Deliberately not reverting Workspace.selectedPlan on un-marking
+      // payment — downgrading a live workspace automatically here would be
+      // a destructive side effect of what's meant as a status correction.
     }
 
     await company.save();
@@ -572,6 +666,7 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
     return res.status(200).json({
       message: "Payment status updated successfully",
       company,
+      workspacesUpgraded: workspacePlanUpdate?.modifiedCount || 0,
     });
   } catch (error) {
     next(error);
@@ -1100,6 +1195,244 @@ const bulkInsertLogos = async (req, res, next) => {
   }
 };
 
+// Links ALL of a Nomads company's listings to a staff-selected Host Company —
+// a reference only, no data is duplicated into our own DB.
+const transferNomadListing = async (req, res, next) => {
+  try {
+    const { nomadsCompanyId, hostCompanyId } = req.body || {};
+
+    if (!String(nomadsCompanyId || "").trim()) {
+      return res.status(400).json({ message: "nomadsCompanyId is required" });
+    }
+    if (!String(hostCompanyId || "").trim()) {
+      return res.status(400).json({ message: "hostCompanyId is required" });
+    }
+
+    const sourceCompany = await HostCompany.findOne({
+      companyId: String(nomadsCompanyId).trim(),
+    }).lean();
+
+    if (!sourceCompany) {
+      return res.status(404).json({ message: "Nomads company not found" });
+    }
+
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: String(hostCompanyId).trim(),
+    });
+
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+
+    hostLeadCompany.linkedNomadsCompanyId = String(nomadsCompanyId).trim();
+    await hostLeadCompany.save();
+
+    return res.status(200).json({
+      message: `All products linked to Host Company "${hostLeadCompany.companyName}"`,
+      hostCompanyId: hostLeadCompany.companyId,
+      hostCompanyName: hostLeadCompany.companyName,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Tells the frontend which Nomads company (if any) is linked to this Host
+// Company, so it can reuse the same Nomad-listings table/logic as the
+// Companies page instead of a separate read-only view. Also reports whether
+// a "list me in Companies" request is pending or already resolved, so the
+// Host Company's own Nomad Listing tab can show the same data + status
+// (and a "Transfer to Company" action) instead of a dead-end "not linked"
+// message whenever the host has already added listings themselves.
+const getLinkedNomadCompanyMeta = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+
+    const hostLeadCompany = await HostLeadCompany.findOne({ companyId }).lean();
+
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+
+    let companyName = hostLeadCompany.companyName;
+
+    if (hostLeadCompany.linkedNomadsCompanyId) {
+      const sourceCompany = await HostCompany.findOne({
+        companyId: hostLeadCompany.linkedNomadsCompanyId,
+      }).lean();
+      companyName = sourceCompany?.companyName || companyName;
+    }
+
+    const linkedCompaniesEntry = await HostCompany.findOne({
+      linkedHostCompanyId: hostLeadCompany.companyId,
+    })
+      .select("companyId")
+      .lean();
+
+    return res.status(200).json({
+      linkedNomadsCompanyId: hostLeadCompany.linkedNomadsCompanyId || "",
+      ownCompanyId: hostLeadCompany.companyId,
+      companyName,
+      companyCity: hostLeadCompany.companyCity,
+      companyState: hostLeadCompany.companyState,
+      companyCountry: hostLeadCompany.companyCountry,
+      companyContinent: hostLeadCompany.companyContinent,
+      companiesListingRequestedAt: hostLeadCompany.companiesListingRequestedAt || null,
+      alreadyInCompanies: !!linkedCompaniesEntry,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// For a Companies-page entry, tells the frontend which Nomads companyId to
+// actually fetch listings from. Usually that's just the entry's own
+// companyId — but if this entry was created from a host's "request to be
+// listed" (getCompaniesListingRequests/approveCompaniesListingRequest), the
+// real Nomads data lives under the Host Company's own companyId instead.
+const getEffectiveNomadSourceForCompany = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+
+    const company = await HostCompany.findOne({ companyId }).lean();
+
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    return res.status(200).json({
+      effectiveNomadsCompanyId: company.linkedHostCompanyId || company.companyId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Lists Host Companies that asked (from HostPanel) to have a matching
+// Companies-page entry created for the listing(s) they already added
+// themselves. Never auto-matched by name — companies can share a name, so
+// staff must manually review and pick the right data before creating one.
+const getCompaniesListingRequests = async (req, res, next) => {
+  try {
+    const pendingRequests = await HostLeadCompany.find({
+      companiesListingRequestedAt: { $ne: null },
+    })
+      .sort({ companiesListingRequestedAt: -1 })
+      .lean();
+
+    if (!pendingRequests.length) {
+      return res.status(200).json([]);
+    }
+
+    const requestedIds = pendingRequests.map((r) => r.companyId);
+    const alreadyLinked = await HostCompany.find({
+      linkedHostCompanyId: { $in: requestedIds },
+    })
+      .select("linkedHostCompanyId")
+      .lean();
+    const linkedIdSet = new Set(alreadyLinked.map((c) => c.linkedHostCompanyId));
+
+    const stillPending = pendingRequests.filter(
+      (r) => !linkedIdSet.has(r.companyId),
+    );
+
+    return res.status(200).json(stillPending);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff review a request and create the matching Companies-page entry,
+// linking it back to the Host Company so the Nomad Listing tab can find the
+// data that already exists in Nomads under the Host Company's own ID.
+const approveCompaniesListingRequest = async (req, res, next) => {
+  try {
+    const { hostCompanyId } = req.params;
+    const { companyName, companyCity, companyState, companyCountry, companyContinent } =
+      req.body || {};
+
+    const hostLeadCompany = await HostLeadCompany.findOne({ companyId: hostCompanyId });
+
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+
+    if (!hostLeadCompany.companiesListingRequestedAt) {
+      return res.status(400).json({ message: "No pending request for this company" });
+    }
+
+    const existingLink = await HostCompany.findOne({ linkedHostCompanyId: hostCompanyId });
+    if (existingLink) {
+      return res.status(400).json({
+        message: "A Companies entry is already linked to this host company",
+      });
+    }
+
+    const finalCompanyName = String(companyName || hostLeadCompany.companyName || "").trim();
+    if (!finalCompanyName) {
+      return res.status(400).json({ message: "companyName is required" });
+    }
+
+    const finalCity = String(companyCity || hostLeadCompany.companyCity || "").trim();
+    const finalState = String(companyState || hostLeadCompany.companyState || "").trim();
+    const finalCountry = String(companyCountry || hostLeadCompany.companyCountry || "").trim();
+    const finalContinent =
+      String(companyContinent || hostLeadCompany.companyContinent || "").trim() ||
+      getContinentForCountry(finalCountry);
+
+    if (!finalCity || !finalState || !finalCountry || !finalContinent) {
+      return res.status(400).json({
+        message:
+          "City, state, country and continent are all required to create the Companies entry",
+      });
+    }
+
+    const newCompany = new HostCompany({
+      companyId: randomUUID(),
+      companyName: finalCompanyName,
+      companyCity: finalCity,
+      companyState: finalState,
+      companyCountry: finalCountry,
+      companyContinent: finalContinent,
+      logo: hostLeadCompany.logo || null,
+      isRegistered: true,
+      linkedHostCompanyId: hostCompanyId,
+    });
+    await newCompany.save();
+
+    hostLeadCompany.companiesListingRequestedAt = null;
+    await hostLeadCompany.save();
+
+    return res.status(201).json({
+      message: `Company "${finalCompanyName}" created and linked`,
+      companyId: newCompany.companyId,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff dismiss a request without creating a Companies entry — the host can
+// send another request later if needed.
+const rejectCompaniesListingRequest = async (req, res, next) => {
+  try {
+    const { hostCompanyId } = req.params;
+
+    const hostLeadCompany = await HostLeadCompany.findOne({ companyId: hostCompanyId });
+
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+
+    hostLeadCompany.companiesListingRequestedAt = null;
+    await hostLeadCompany.save();
+
+    return res.status(200).json({ message: "Request dismissed" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createCompany,
   editCompany,
@@ -1115,4 +1448,10 @@ module.exports = {
   bulkInsertCompanies,
   bulkInsertLogos,
   uploadLogo,
+  transferNomadListing,
+  getLinkedNomadCompanyMeta,
+  getEffectiveNomadSourceForCompany,
+  getCompaniesListingRequests,
+  approveCompaniesListingRequest,
+  rejectCompaniesListingRequest,
 };

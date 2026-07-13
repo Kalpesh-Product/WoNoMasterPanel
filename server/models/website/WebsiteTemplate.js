@@ -11,6 +11,19 @@ const templateSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isPublished: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    publishedVersion: {
+      type: Number,
+      default: 0,
+    },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
     //hero
     companyLogo: {
       id: { type: String },

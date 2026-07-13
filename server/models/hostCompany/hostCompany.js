@@ -101,6 +101,15 @@ const hostCompanySchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Set when this Companies entry was created from a Host Company's own
+    // "request to be listed" — the real Nomads listing data lives under the
+    // Host Company's own companyId, not this record's, so the Nomad Listing
+    // tab needs to fetch via this instead.
+    linkedHostCompanyId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
   },
   { timestamps: true },
 );

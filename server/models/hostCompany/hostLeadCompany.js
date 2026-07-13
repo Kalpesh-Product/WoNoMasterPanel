@@ -150,6 +150,17 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    linkedNomadsCompanyId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Set when the host requests staff to create a matching Companies-page
+    // entry for the listing(s) they've already added themselves from HostPanel.
+    companiesListingRequestedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

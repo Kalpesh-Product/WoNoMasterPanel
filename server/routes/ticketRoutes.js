@@ -31,6 +31,11 @@ const {
   rejectTicketIssue,
   getNewTicketIssues,
 } = require("../controllers/ticketsControllers/ticketIssueController");
+const {
+  getHostSupportTickets,
+  getHostSupportTicketById,
+  generateTicketViewAsLink,
+} = require("../controllers/ticketsControllers/hostSupportTicketsController");
 
 const router = require("express").Router();
 
@@ -44,6 +49,9 @@ router.get("/get-depts-tickets", getAllDeptTickets);
 router.get("/my-tickets", filterMyTickets);
 router.get("/today", filterTodayTickets);
 router.get("/support-tickets", getSupportTickets);
+router.get("/host-support-tickets", getHostSupportTickets);
+router.get("/host-support-tickets/:ticketId", getHostSupportTicketById);
+router.post("/host-support-tickets/:ticketId/view-as", generateTicketViewAsLink);
 router.post("/support-tickets", upload.single("image"), createStandaloneSupportTicket);
 router.patch("/support-tickets/:supportTicketId/status", updateSupportTicketStatus);
 router.get("/:id", getSingleUserTickets);

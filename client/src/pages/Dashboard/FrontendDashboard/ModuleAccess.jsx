@@ -16,6 +16,7 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
 } from "@mui/material";
 import { useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,430 +28,122 @@ import SaveIcon from "@mui/icons-material/Save";
 import SearchIcon from "@mui/icons-material/Search";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CircularProgress from "@mui/material/CircularProgress";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
+import FolderIcon from "@mui/icons-material/Folder";
+import DescriptionIcon from "@mui/icons-material/Description";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
 
-const MODULE_SECTIONS = [
-  {
-    name: "COMPANY SETTINGS",
-    accent: "from-sky-500 via-blue-500 to-indigo-500",
-    children: [
-      {
-        name: "Website Builder",
-        children: [
-          {
-            name: "Static Website",
-            children: [
-              { name: "Pages", children: [] },
-              { name: "Templates", children: [] },
-              { name: "Sections", children: [] },
-            ],
-          },
-          {
-            name: "Dynamic Website",
-            children: [
-              { name: "Forms", children: [] },
-              { name: "Automation", children: [] },
-              { name: "Integrations", children: [] },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Wono Nomad",
-        children: [
-          {
-            name: "Nomad Listing",
-            children: [
-              { name: "List View", children: [] },
-              { name: "Map View", children: [] },
-              { name: "Details Page", children: [] },
-            ],
-          },
-          {
-            name: "Review",
-            children: [
-              { name: "Review List", children: [] },
-              { name: "Moderation", children: [] },
-            ],
-          },
-        ],
-      },
-      { name: "Website Leads", children: [] },
-      {
-        name: "Organization Management",
-        children: [
-          {
-            name: "Users",
-            children: [
-              { name: "Invite Member", children: [] },
-              { name: "Change Role", children: [] },
-              { name: "Toggle Access", children: [] },
-            ],
-          },
-          {
-            name: "Departments",
-            children: [
-              { name: "Create Department", children: [] },
-              { name: "Edit Department", children: [] },
-              { name: "Assign Manager", children: [] },
-              { name: "Assign Acting Manager", children: [] },
-              { name: "Remove Acting Manager", children: [] },
-            ],
-          },
-        ],
-      },
-      {
-        name: "Access Grants",
-        children: [
-          { name: "Transfer Ownership", children: [] },
-          { name: "Access Button", children: [] },
-          { name: "Promote / Demote", children: [] },
-          { name: "Transfer Workspace", children: [] },
-          { name: "Add Workspace Access", children: [] },
-        ],
-      },
-      { name: "Workspace Settings", children: [] },
-      { name: "Customer Support", children: [] },
-    ],
-  },
-  {
-    name: "KEY APPS",
-    accent: "from-emerald-500 via-teal-500 to-cyan-500",
-    children: [
-      {
-        name: "Tickets",
-        children: [
-          { name: "Raise Ticket", children: [] },
-          { name: "Manage Tickets", children: [] },
-          { name: "Team Members", children: [] },
-          { name: "Ticket Reports", children: [] },
-          { name: "Department Wise Tickets", children: [] },
-          { name: "Ticket Settings", children: [] },
-        ],
-      },
-      {
-        name: "Leave Requests",
-        children: [
-          { name: "Apply Leave", children: [] },
-          { name: "Approve Leave", children: [] },
-          { name: "Leave Policies", children: [] },
-        ],
-      },
-      {
-        name: "Meeting Room System",
-        children: [
-          { name: "Book Meetings", children: [] },
-          {
-            name: "Manage Meetings",
-            children: [
-              { name: "Internal Meetings", children: [] },
-              { name: "External Clients", children: [] },
-            ],
-          },
-          { name: "Meeting Settings", children: [] },
-          { name: "Meeting Calendar", children: [] },
-          { name: "Meeting Reports", children: [] },
-          { name: "Meeting Reviews", children: [] },
-        ],
-      },
-      { name: "Calendar", children: [] },
-      {
-        name: "Visitor Management",
-        children: [
-          { name: "Daily Visitors", children: [] },
-          { name: "Bookings", children: [] },
-          { name: "Clients", children: [] },
-          { name: "Visitor History", children: [] },
-          {
-            name: "New Frontdesk Action",
-            children: [
-              { name: "Standard Visitor", children: [] },
-              { name: "Workspace Tour", children: [] },
-              { name: "Walk-In Booking", children: [] },
-              { name: "Verify Booking ID", children: [] },
-              {
-                name: "Standard Visitor Tabs",
-                children: [
-                  { name: "Standard Visitor Tab", children: [] },
-                  { name: "Department Visitor Tab", children: [] },
-                  { name: "Tenant Company Visitor Tab", children: [] },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-      { name: "Attendance", children: [] },
-      {
-        name: "Assets",
-        children: [
-          {
-            name: "View Assets",
-            children: [
-              { name: "Assets Categories", children: [] },
-              { name: "Assets Sub Categories", children: [] },
-              { name: "List Of Assets", children: [] },
-            ],
-          },
-          {
-            name: "Manage Assets",
-            children: [
-              { name: "Assign Assets", children: [] },
-              { name: "Assigned Assets", children: [] },
-              { name: "Approvals", children: [] },
-            ],
-          },
-          { name: "Asset Reports", children: [] },
-          { name: "Assets Settings", children: [{ name: "Bulk Upload", children: [] }] },
-        ],
-      },
-      { name: "Inventory", children: [] },
-      {
-        name: "Finance Management",
-        children: [
-          { name: "Budget", children: [] },
-          { name: "Collections", children: [] },
-          { name: "Payments", children: [] },
-        ],
-      },
-      { name: "Chat Bot", children: [] },
-      { name: "Reports", children: [] },
-      {
-        name: "Tasks",
-        children: [
-          {
-            name: "Department Tasks",
-            children: [
-              { name: "Department Tasks List", children: [] },
-              { name: "Department Task Details", children: [] },
-            ],
-          },
-          { name: "Project List", children: [] },
-          { name: "My Tasks", children: [{ name: "Daily Tasks", children: [] }] },
-          { name: "Task Team Members", children: [] },
-          {
-            name: "Task Reports",
-            children: [
-              { name: "My Task Reports", children: [] },
-              { name: "Assigned Task Reports", children: [] },
-              { name: "Department Task Reports", children: [] },
-            ],
-          },
-          { name: "Task Calendar", children: [] },
-        ],
-      },
-    ],
-  },
-  {
-    name: "DEPARTMENT ACCESSES",
-    accent: "from-amber-500 via-orange-500 to-rose-500",
-    children: [
-      {
-        name: "HR Department",
-        children: [
-          { name: "Employee Management", children: [] },
-          { name: "Leave Requests", children: [] },
-          { name: "Attendance", children: [] },
-        ],
-      },
-      {
-        name: "Administration Department",
-        children: [
-          { name: "Tenant Companies", children: [] },
-          { name: "Bookings", children: [] },
-          { name: "Workspace Layout", children: [] },
-        ],
-      },
-      {
-        name: "Sales Department",
-        children: [
-          { name: "Leads Management", children: [] },
-          { name: "Plans & Pricing", children: [] },
-        ],
-      },
-      {
-        name: "Finance Department",
-        children: [
-          { name: "Finance & Budget", children: [] },
-          { name: "Billing & Payments", children: [] },
-          { name: "Accounting", children: [] },
-        ],
-      },
-      {
-        name: "Maintenance Department",
-        children: [
-          { name: "Maintenance Repair Logs", children: [] },
-          { name: "AMC Scheduler", children: [] },
-        ],
-      },
-      {
-        name: "Tech Department",
-        children: [{ name: "Website Builder", children: [] }],
-      },
-      {
-        name: "IT Department",
-        children: [{ name: "IT Repair Logs", children: [] }],
-      },
-    ],
-  },
+// This screen no longer keeps its own hand-built module tree. The rendered
+// tree (`activeModuleSections`, below) comes straight from each workspace's
+// stored `modules` snapshot, which the backend now reconciles against a
+// single canonical reference (`CANONICAL_SECTION_BLUEPRINTS` in
+// hostUserControllers.js, hand-synced from HostPanel's real catalog) before
+// it's ever sent here — so there's nothing to duplicate on the client.
+
+// Hand-synced with BASIC_DEFAULT_IDS / PROFESSIONAL_DEFAULT_IDS in
+// HostPanel's server/config/workspaceModuleCatalog.ts. "Custom" has no
+// distinct id set of its own — it's Professional's set plus whatever gets
+// added on top per workspace, matching HostPanel's own model.
+const BASIC_PLAN_MODULE_IDS = [
+  "dashboard",
+  "customer-support",
+  "visitor-management",
+  "visitors-management",
+  "visitors_manage_internal_visitors",
+  "visitors_tab_daily",
+  "visitors_tab_history",
+  "visitors_mode_standard",
+  "visitors_standard_type_standard",
+  "wono-nomad",
+  "website-builder",
+  "tech-website-builder",
+  "website-leads",
+  "organization-management",
+  "org_tab_users",
+  "org_tab_departments",
+  "org_users_invite_member",
+  "org_users_change_role",
+  "org_users_toggle_access",
+  "org_departments_create",
+  "org_departments_edit",
+  "org_departments_assign_manager",
+  "org_departments_assign_acting_manager",
+  "org_departments_remove_acting_manager",
+  "access-grants",
 ];
+
+const PROFESSIONAL_PLAN_MODULE_IDS = [
+  ...BASIC_PLAN_MODULE_IDS,
+  "visitors_manage_external_clients",
+  "visitors_tab_bookings",
+  "visitors_tab_clients",
+  "visitors_mode_workspace_tour",
+  "visitors_mode_walkin_booking",
+  "visitors_mode_verify_booking",
+  "visitors_standard_type_department",
+  "visitors_standard_type_tenant",
+  "tickets",
+  "meeting-room-system",
+  "calendar",
+  "workspace-settings",
+  "workspace-management",
+  "tenant-companies-admin",
+  "bookings",
+  "resource-management",
+  "leads-management",
+  "tenant-companies-sales",
+  "resource-pricing",
+  "sales-architecture",
+];
+
+const PLAN_MODULE_ID_SETS = {
+  basic: new Set(BASIC_PLAN_MODULE_IDS),
+  professional: new Set(PROFESSIONAL_PLAN_MODULE_IDS),
+  // Custom's baseline is identical to Professional's — see comment above.
+  custom: new Set(PROFESSIONAL_PLAN_MODULE_IDS),
+};
+
+const PLAN_LABELS = { basic: "Basic", professional: "Professional", custom: "Custom" };
+
+// Custom and Professional share the same id set, so an exact match against
+// that set is ambiguous by ids alone — break the tie using the workspace's
+// actual assigned plan. Anything that isn't an exact match to either set
+// (i.e. has extras or a different mix) counts as Custom.
+// Enabling a department tab (e.g. "visitors-management") also marks its
+// parent department group (e.g. "administration-department") as enabled,
+// for tree consistency — that group has its own real id, which otherwise
+// leaks into the enabled-id set and breaks an exact match against the plan
+// lists below (which only list actual modules, not group containers).
+const DEPARTMENT_GROUP_CONTAINER_IDS = new Set([
+  "hr-department",
+  "administration-department",
+  "sales-department",
+  "finance-department",
+  "maintenance-department",
+  "tech-department",
+  "it-department",
+]);
+
+const computeActivePlanTier = (enabledIdSet, selectedPlan) => {
+  const meaningfulIds = Array.from(enabledIdSet).filter(
+    (id) => !DEPARTMENT_GROUP_CONTAINER_IDS.has(id),
+  );
+  const meaningfulIdSet = new Set(meaningfulIds);
+  const isExactMatch = (ids) =>
+    ids.length === meaningfulIds.length && ids.every((id) => meaningfulIdSet.has(id));
+  if (isExactMatch(BASIC_PLAN_MODULE_IDS)) return "basic";
+  if (isExactMatch(PROFESSIONAL_PLAN_MODULE_IDS)) {
+    return String(selectedPlan || "").trim().toLowerCase() === "custom" ? "custom" : "professional";
+  }
+  return "custom";
+};
 
 const DEFAULT_WORKSPACE_ID = "default-workspace";
 const DEFAULT_WORKSPACE_NAME = "Main Workspace";
-const CANONICAL_VISITOR_NODE = {
-  name: "Visitor Management",
-  moduleId: "visitor-management",
-  children: [
-    { name: "Daily Visitors", moduleId: "add_visitor", children: [] },
-    { name: "Visitor History", moduleId: "visitors_tab_history", children: [] },
-    { name: "Bookings", moduleId: "visitors_tab_bookings", children: [] },
-    { name: "Clients", moduleId: "add_client", children: [] },
-    {
-      name: "New Frontdesk Action",
-      moduleId: "visitors_frontdesk_action",
-      children: [
-        {
-          name: "Standard Visitor",
-          moduleId: "visitors_mode_standard",
-          children: [
-            {
-              name: "Standard Visitor Tab",
-              moduleId: "visitors_standard_type_standard",
-              children: [],
-            },
-            {
-              name: "Department Visitor Tab",
-              moduleId: "visitors_standard_type_department",
-              children: [],
-            },
-            {
-              name: "Tenant Company Visitor Tab",
-              moduleId: "visitors_standard_type_tenant",
-              children: [],
-            },
-          ],
-        },
-        {
-          name: "Workspace Tour",
-          moduleId: "visitors_mode_workspace_tour",
-          children: [],
-        },
-        {
-          name: "Walk-In Booking",
-          moduleId: "visitors_mode_walkin_booking",
-          children: [],
-        },
-        {
-          name: "Verify Booking ID",
-          moduleId: "visitors_mode_verify_booking",
-          children: [],
-        },
-      ],
-    },
-  ],
-};
-const CANONICAL_ORGANIZATION_NODE = {
-  name: "Organization Management",
-  moduleId: "organization-management",
-  children: [
-    {
-      name: "Users",
-      moduleId: "org_tab_users",
-      children: [
-        { name: "Invite Member", moduleId: "org_users_invite_member", children: [] },
-        { name: "Change Role", moduleId: "org_users_change_role", children: [] },
-        { name: "Toggle Access", moduleId: "org_users_toggle_access", children: [] },
-      ],
-    },
-    {
-      name: "Departments",
-      moduleId: "org_tab_departments",
-      children: [
-        { name: "Create Department", moduleId: "org_departments_create", children: [] },
-        { name: "Edit Department", moduleId: "org_departments_edit", children: [] },
-        { name: "Assign Manager", moduleId: "org_departments_assign_manager", children: [] },
-        {
-          name: "Assign Acting Manager",
-          moduleId: "org_departments_assign_acting_manager",
-          children: [],
-        },
-        {
-          name: "Remove Acting Manager",
-          moduleId: "org_departments_remove_acting_manager",
-          children: [],
-        },
-      ],
-    },
-  ],
-};
-const VISITOR_PATH_KEY_MAP = {
-  "KEY APPS::Visitor Management": "visitor-management",
-  "DEPARTMENT ACCESSES::Administration Department::Visitor Management":
-    "administration-visitor-management",
-  "KEY APPS::Visitor Management::Daily Visitors": "visitors_tab_daily",
-  "KEY APPS::Visitor Management::Visitor History": "visitors_tab_history",
-  "KEY APPS::Visitor Management::Bookings": "visitors_tab_bookings",
-  "KEY APPS::Visitor Management::Clients": "visitors_tab_clients",
-  "KEY APPS::Visitor Management::Add Visitor": "add_visitor",
-  "KEY APPS::Visitor Management::Add Client": "add_client",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Standard Visitor":
-    "visitors_mode_standard",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Workspace Tour":
-    "visitors_mode_workspace_tour",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Walk-In Booking":
-    "visitors_mode_walkin_booking",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Verify Booking ID":
-    "visitors_mode_verify_booking",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Standard Visitor Tabs::Standard Visitor Tab":
-    "visitors_standard_type_standard",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Standard Visitor Tabs::Department Visitor Tab":
-    "visitors_standard_type_department",
-  "KEY APPS::Visitor Management::New Frontdesk Action::Standard Visitor Tabs::Tenant Company Visitor Tab":
-    "visitors_standard_type_tenant",
-};
-
-const ORGANIZATION_PATH_KEY_MAP = {
-  "COMPANY SETTINGS::Organization Management": "organization-management",
-  "FOUNDER CORE MODULE::Organization Management": "organization-management",
-  "COMPANY SETTINGS::Organization Management::Users": "org_tab_users",
-  "FOUNDER CORE MODULE::Organization Management::Users": "org_tab_users",
-  "COMPANY SETTINGS::Organization Management::Users::Invite Member":
-    "org_users_invite_member",
-  "FOUNDER CORE MODULE::Organization Management::Users::Invite Member":
-    "org_users_invite_member",
-  "COMPANY SETTINGS::Organization Management::Users::Change Role":
-    "org_users_change_role",
-  "FOUNDER CORE MODULE::Organization Management::Users::Change Role":
-    "org_users_change_role",
-  "COMPANY SETTINGS::Organization Management::Users::Toggle Access":
-    "org_users_toggle_access",
-  "FOUNDER CORE MODULE::Organization Management::Users::Toggle Access":
-    "org_users_toggle_access",
-  "COMPANY SETTINGS::Organization Management::Departments": "org_tab_departments",
-  "FOUNDER CORE MODULE::Organization Management::Departments": "org_tab_departments",
-  "COMPANY SETTINGS::Organization Management::Departments::Create Department":
-    "org_departments_create",
-  "FOUNDER CORE MODULE::Organization Management::Departments::Create Department":
-    "org_departments_create",
-  "COMPANY SETTINGS::Organization Management::Departments::Edit Department":
-    "org_departments_edit",
-  "FOUNDER CORE MODULE::Organization Management::Departments::Edit Department":
-    "org_departments_edit",
-  "COMPANY SETTINGS::Organization Management::Departments::Assign Manager":
-    "org_departments_assign_manager",
-  "FOUNDER CORE MODULE::Organization Management::Departments::Assign Manager":
-    "org_departments_assign_manager",
-  "COMPANY SETTINGS::Organization Management::Departments::Assign Acting Manager":
-    "org_departments_assign_acting_manager",
-  "FOUNDER CORE MODULE::Organization Management::Departments::Assign Acting Manager":
-    "org_departments_assign_acting_manager",
-  "COMPANY SETTINGS::Organization Management::Departments::Remove Acting Manager":
-    "org_departments_remove_acting_manager",
-  "FOUNDER CORE MODULE::Organization Management::Departments::Remove Acting Manager":
-    "org_departments_remove_acting_manager",
-};
-
 const buildPathKey = (pathParts) => pathParts.join("::");
 const toSlug = (value = "") =>
   String(value || "")
@@ -477,165 +170,13 @@ const parseWorkspaceModules = (rawModules) => {
   }
 };
 
-const ensureVisitorModuleInTree = (rawModules = []) => {
-  const source = Array.isArray(rawModules)
-    ? JSON.parse(JSON.stringify(rawModules))
-    : rawModules && typeof rawModules === "object"
-      ? JSON.parse(JSON.stringify(Object.values(rawModules)))
-      : [];
-
-  const keyApps = source.find(
-    (section) => String(section?.category || section?.name || "").trim().toLowerCase() === "key apps",
-  );
-  if (!keyApps) return source;
-
-  const keyItems = Array.isArray(keyApps?.items)
-    ? keyApps.items
-    : Array.isArray(keyApps?.children)
-      ? keyApps.children
-      : Array.isArray(keyApps?.modules)
-        ? keyApps.modules
-        : [];
-
-  const visitorIndex = keyItems.findIndex(
-    (item) => String(item?.name || item?.moduleName || "").trim().toLowerCase() === "visitor management",
-  );
-  if (visitorIndex >= 0) {
-    const existing = keyItems[visitorIndex];
-    const existingChildren = Array.isArray(existing?.children)
-      ? existing.children
-      : Array.isArray(existing?.items)
-        ? existing.items
-        : Array.isArray(existing?.modules)
-          ? existing.modules
-          : Array.isArray(existing?.submodules)
-            ? existing.submodules
-            : [];
-    if (!existingChildren.length) {
-      const replacement = {
-        ...CANONICAL_VISITOR_NODE,
-        sectionName: existing?.sectionName,
-      };
-      if (Array.isArray(keyApps?.items)) {
-        keyApps.items[visitorIndex] = replacement;
-      } else if (Array.isArray(keyApps?.children)) {
-        keyApps.children[visitorIndex] = replacement;
-      } else if (Array.isArray(keyApps?.modules)) {
-        keyApps.modules[visitorIndex] = replacement;
-      }
-    }
-  } else {
-    if (Array.isArray(keyApps?.items)) {
-      keyApps.items = [...keyApps.items, CANONICAL_VISITOR_NODE];
-    } else if (Array.isArray(keyApps?.children)) {
-      keyApps.children = [...keyApps.children, CANONICAL_VISITOR_NODE];
-    } else if (Array.isArray(keyApps?.modules)) {
-      keyApps.modules = [...keyApps.modules, CANONICAL_VISITOR_NODE];
-    } else {
-      keyApps.items = [CANONICAL_VISITOR_NODE];
-    }
-  }
-
-  const deptSection = source.find(
-    (section) =>
-      String(section?.category || section?.name || "").trim().toLowerCase() ===
-      "department accesses",
-  );
-  if (deptSection) {
-    const deptItems = Array.isArray(deptSection?.items)
-      ? deptSection.items
-      : Array.isArray(deptSection?.children)
-        ? deptSection.children
-        : Array.isArray(deptSection?.modules)
-          ? deptSection.modules
-          : [];
-    const adminIndex = deptItems.findIndex(
-      (item) =>
-        String(item?.name || item?.moduleName || "").trim().toLowerCase() ===
-        "administration department",
-    );
-    if (adminIndex >= 0) {
-      const adminNode = deptItems[adminIndex];
-      const adminChildren = Array.isArray(adminNode?.children) ? adminNode.children : [];
-      const adminVisitorIndex = adminChildren.findIndex(
-        (child) =>
-          String(child?.name || "").trim().toLowerCase() === "visitor management",
-      );
-      if (adminVisitorIndex === -1) {
-        adminNode.children = [
-          ...adminChildren,
-          {
-            ...CANONICAL_VISITOR_NODE,
-            moduleId: "administration-visitor-management",
-            children: CANONICAL_VISITOR_NODE.children,
-          },
-        ];
-      } else {
-        const adminVisitor = adminChildren[adminVisitorIndex];
-        if (!Array.isArray(adminVisitor?.children) || !adminVisitor.children.length) {
-          adminChildren[adminVisitorIndex] = {
-            ...adminVisitor,
-            moduleId: "administration-visitor-management",
-            children: CANONICAL_VISITOR_NODE.children,
-          };
-          adminNode.children = adminChildren;
-        }
-      }
-      if (Array.isArray(deptSection?.items)) deptSection.items[adminIndex] = adminNode;
-      if (Array.isArray(deptSection?.children)) deptSection.children[adminIndex] = adminNode;
-      if (Array.isArray(deptSection?.modules)) deptSection.modules[adminIndex] = adminNode;
-    }
-  }
-
-  const getChildRef = (node = {}) => {
-    if (Array.isArray(node?.items)) return "items";
-    if (Array.isArray(node?.children)) return "children";
-    if (Array.isArray(node?.modules)) return "modules";
-    if (Array.isArray(node?.submodules)) return "submodules";
-    return "children";
-  };
-  const getChildren = (node = {}) => {
-    const ref = getChildRef(node);
-    return Array.isArray(node?.[ref]) ? node[ref] : [];
-  };
-
-  let founderCoreNode = null;
-  let organizationNode = null;
-  const visit = (nodes = []) => {
-    (Array.isArray(nodes) ? nodes : []).forEach((node) => {
-      const nodeName = String(node?.name || node?.moduleName || "").trim().toLowerCase();
-      if (nodeName === "founder core module") founderCoreNode = node;
-      if (nodeName === "organization management") organizationNode = node;
-      visit(getChildren(node));
-    });
-  };
-  source.forEach((section) => visit(getChildren(section)));
-
-  if (organizationNode) {
-    const orgRef = getChildRef(organizationNode);
-    organizationNode.name = CANONICAL_ORGANIZATION_NODE.name;
-    organizationNode.moduleId = CANONICAL_ORGANIZATION_NODE.moduleId;
-    organizationNode[orgRef] = CANONICAL_ORGANIZATION_NODE.children;
-  } else if (founderCoreNode) {
-    const founderRef = getChildRef(founderCoreNode);
-    const founderChildren = getChildren(founderCoreNode);
-    founderCoreNode[founderRef] = [...founderChildren, CANONICAL_ORGANIZATION_NODE];
-  }
-
-  return source;
-};
-
 const normalizeModulesTree = (nodes = [], parentPath = []) => {
   const nodeList = toArray(nodes);
   return nodeList
     .map((node, index) => {
-      const rawCategoryName = String(
+      const categoryName = String(
         node?.category || node?.departmentName || node?.groupName || "",
       ).trim();
-      const categoryName =
-        rawCategoryName.toLowerCase() === "company settings"
-          ? "FOUNDER CORE MODULE"
-          : rawCategoryName;
       if (categoryName) {
         const categoryChildren = normalizeModulesTree(
           node?.items || node?.children || node?.modules || node?.submodules || [],
@@ -682,40 +223,6 @@ const normalizeModulesTree = (nodes = [], parentPath = []) => {
     })
     .filter(Boolean);
 };
-
-const reshapeVisitorHierarchy = (nodes = []) =>
-  (Array.isArray(nodes) ? nodes : []).map((node) => {
-    const nextNode = {
-      ...node,
-      children: reshapeVisitorHierarchy(node?.children || []),
-    };
-
-    if (
-      String(nextNode?.name || "").trim().toLowerCase() === "new frontdesk action" &&
-      Array.isArray(nextNode.children)
-    ) {
-      const standardTabs = nextNode.children.find(
-        (child) =>
-          String(child?.name || "").trim().toLowerCase() === "standard visitor tabs",
-      );
-      const standardMode = nextNode.children.find(
-        (child) =>
-          String(child?.name || "").trim().toLowerCase() === "standard visitor",
-      );
-
-      if (standardTabs && standardMode) {
-        const mergedStandard = {
-          ...standardMode,
-          children: standardTabs.children || [],
-        };
-        nextNode.children = nextNode.children
-          .filter((child) => child !== standardTabs && child !== standardMode);
-        nextNode.children.unshift(mergedStandard);
-      }
-    }
-
-    return nextNode;
-  });
 
 const flattenSectionModules = (sections = []) =>
   (Array.isArray(sections) ? sections : []).flatMap((section) => {
@@ -781,116 +288,6 @@ const collectEnabledModuleIds = (nodes = [], treeState = {}, path = [], enabled 
   return enabled;
 };
 
-const collectEnabledAccessModules = (nodes = [], treeState = {}, path = [], enabled = new Set()) => {
-  const ACCESS_PATH_KEY_MAP = { ...VISITOR_PATH_KEY_MAP, ...ORGANIZATION_PATH_KEY_MAP };
-  nodes.forEach((node) => {
-    const currentPath = [...path, node.name];
-    const key = buildPathKey(currentPath);
-    const moduleId = String(node?.moduleId || "").trim();
-    const mappedAccessKey = ACCESS_PATH_KEY_MAP[key];
-
-    if (treeState[key]) {
-      if (moduleId && !moduleId.startsWith("idx::")) {
-        enabled.add(moduleId);
-      }
-      if (mappedAccessKey) {
-        enabled.add(mappedAccessKey);
-      }
-    }
-
-    if (Array.isArray(node?.children) && node.children.length) {
-      collectEnabledAccessModules(node.children, treeState, currentPath, enabled);
-    }
-  });
-  return enabled;
-};
-
-const applyAccessModulesToTreeState = (baseState = {}, accessModules = []) => {
-  const next = { ...(baseState || {}) };
-  const ACCESS_PATH_KEY_MAP = { ...VISITOR_PATH_KEY_MAP, ...ORGANIZATION_PATH_KEY_MAP };
-  const accessSet = new Set(
-    (Array.isArray(accessModules) ? accessModules : [])
-      .map((key) => String(key || "").trim())
-      .filter(Boolean),
-  );
-
-  Object.entries(ACCESS_PATH_KEY_MAP).forEach(([pathKey, moduleKey]) => {
-    if (accessSet.has(moduleKey)) {
-      const parts = pathKey.split("::").filter(Boolean);
-      for (let i = 1; i <= parts.length; i += 1) {
-        const ancestor = parts.slice(0, i).join("::");
-        if (Object.prototype.hasOwnProperty.call(next, ancestor)) {
-          next[ancestor] = true;
-        }
-      }
-    }
-  });
-
-  return next;
-};
-
-const DEPARTMENT_ID_GROUPS = {
-  "HR Department": new Set([
-    "employee-management",
-    "documents",
-    "recruitment",
-    "leave-processing",
-    "attendance-review",
-    "payroll",
-    "exit-management",
-  ]),
-  "Administration Department": new Set([
-    "administration-tenant-companies",
-    "administration-bookings-management",
-    "administration-visitor-management",
-    "resource-management",
-    "housekeeping",
-    "workspace-layout",
-  ]),
-  "Sales Department": new Set([
-    "leads-management",
-    "sales-tenant-companies",
-    "pricing-packages",
-    "sales-architecture",
-  ]),
-  "Finance Department": new Set([
-    "expenses-budget",
-    "billing-payments",
-    "accounting",
-  ]),
-  "Tech Department": new Set(["tech-website-builder"]),
-  "IT Department": new Set(["system-access-management", "repair-logs"]),
-  "Maintenance Department": new Set(["amc-scheduler", "maintenance-repair-logs"]),
-};
-
-const groupDepartmentModules = (modules = []) => {
-  const buckets = Object.keys(DEPARTMENT_ID_GROUPS).reduce((acc, dept) => {
-    acc[dept] = [];
-    return acc;
-  }, {});
-  const others = [];
-
-  modules.forEach((module) => {
-    const moduleId = String(module?.moduleId || "").trim().toLowerCase();
-    let assigned = false;
-    Object.entries(DEPARTMENT_ID_GROUPS).forEach(([dept, idSet]) => {
-      if (assigned) return;
-      if (moduleId && idSet.has(moduleId)) {
-        buckets[dept].push(module);
-        assigned = true;
-      }
-    });
-    if (!assigned) others.push(module);
-  });
-
-  const grouped = Object.entries(buckets)
-    .map(([dept, items]) => ({ name: dept, items }))
-    .filter((entry) => entry.items.length);
-
-  if (others.length) grouped.push({ name: "Other Department Access", items: others });
-  return grouped;
-};
-
 const initializeTreeState = (nodes, pathParts = [], state = {}) => {
   nodes.forEach((node) => {
     const nextPath = [...pathParts, node.name];
@@ -911,21 +308,6 @@ const initializeDisabledTreeState = (nodes, pathParts = [], state = {}) => {
       initializeDisabledTreeState(node.children, nextPath, state);
     }
   });
-  return state;
-};
-
-const enableBranch = (state, branchPath) => {
-  const branchKey = buildPathKey(branchPath);
-  Object.keys(state).forEach((key) => {
-    if (key === branchKey || key.startsWith(`${branchKey}::`)) {
-      state[key] = true;
-    }
-  });
-};
-
-const withEnabledBranches = (branches = []) => {
-  const state = initializeDisabledTreeState(MODULE_SECTIONS);
-  branches.forEach((branch) => enableBranch(state, branch));
   return state;
 };
 
@@ -984,63 +366,6 @@ const buildStateFromEnabledKeys = (nodes = [], enabledKeys = []) => {
     enablePathWithAncestors(raw, { includeDescendants: true });
   });
   return baseState;
-};
-
-const resolvePlanKey = (rawPlan) => {
-  const value = String(rawPlan || "").trim().toLowerCase();
-  if (!value) return "basic";
-  if (value.includes("custom")) return "customize";
-  if (value.includes("pro")) return "professional";
-  return "basic";
-};
-
-const buildPlanState = (rawPlan) => {
-  const basic = [
-    ["COMPANY SETTINGS", "Website Builder", "Static Website"],
-    ["COMPANY SETTINGS", "Wono Nomad"],
-    ["COMPANY SETTINGS", "Website Leads"],
-    ["COMPANY SETTINGS", "Organization Management", "User Count"],
-    ["COMPANY SETTINGS", "Organization Management", "Add User"],
-    ["COMPANY SETTINGS", "Access Grants", "Transfer Ownership"],
-    ["COMPANY SETTINGS", "Access Grants", "Access Button"],
-    ["COMPANY SETTINGS", "Customer Support"],
-    ["KEY APPS", "Visitor Management", "Daily Visitors"],
-    ["KEY APPS", "Visitor Management", "Visitor History"],
-    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor"],
-    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Standard Visitor Tab"],
-  ];
-  const professional = [
-    ["COMPANY SETTINGS", "Workspace Settings"],
-    ["COMPANY SETTINGS", "Organization Management", "Departments Tab"],
-    ["COMPANY SETTINGS", "Organization Management", "Global Count Card"],
-    ["COMPANY SETTINGS", "Access Grants", "Promote / Demote"],
-    ["COMPANY SETTINGS", "Access Grants", "Transfer Workspace"],
-    ["COMPANY SETTINGS", "Access Grants", "Add Workspace Access"],
-    ["COMPANY SETTINGS", "Website Builder", "Dynamic Website"],
-    ["KEY APPS", "Meeting Room System"],
-    ["KEY APPS", "Tickets"],
-    ["KEY APPS", "Calendar"],
-    ["KEY APPS", "Visitor Management"],
-    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Department Visitor Tab"],
-    ["KEY APPS", "Visitor Management", "New Frontdesk Action", "Standard Visitor Tabs", "Tenant Company Visitor Tab"],
-    ["DEPARTMENT ACCESSES", "Sales Department"],
-  ];
-  const customize = [
-    ["COMPANY SETTINGS", "Analytics"],
-    ["KEY APPS", "Attendance"],
-    ["KEY APPS", "Tasks"],
-    ["KEY APPS", "Leave Requests"],
-    ["KEY APPS", "Assets"],
-    ["KEY APPS", "Inventory"],
-    ["KEY APPS", "Finance Management"],
-    ["KEY APPS", "Reports"],
-    ["DEPARTMENT ACCESSES"],
-  ];
-
-  const planKey = resolvePlanKey(rawPlan);
-  if (planKey === "basic") return withEnabledBranches(basic);
-  if (planKey === "professional") return withEnabledBranches([...basic, ...professional]);
-  return withEnabledBranches([...basic, ...professional, ...customize]);
 };
 
 const buildRoleStateFromWorkspace = ({
@@ -1227,6 +552,32 @@ const hasWorkspaceAccessEntry = (member, workspaceId, options = {}) => {
   );
 };
 
+// Recursively counts how many leaf-ish descendants (nodes without children,
+// the actual toggleable access items) sit under a node, and how many of
+// those are currently enabled — powers the "3/7 enabled" summary shown on
+// collapsed module/submodule rows so you can tell at a glance which branch
+// has restrictions without expanding it.
+const countSubtreeAccess = (node, pathParts, isPathEnabled, treeState) => {
+  const children = node?.children || [];
+  if (!children.length) {
+    const key = buildPathKey(pathParts);
+    const enabled = isPathEnabled ? isPathEnabled(pathParts) : Boolean(treeState[key]);
+    return { total: 1, enabled: enabled ? 1 : 0 };
+  }
+  return children.reduce(
+    (acc, child) => {
+      const childResult = countSubtreeAccess(
+        child,
+        [...pathParts, child.name],
+        isPathEnabled,
+        treeState,
+      );
+      return { total: acc.total + childResult.total, enabled: acc.enabled + childResult.enabled };
+    },
+    { total: 0, enabled: 0 },
+  );
+};
+
 const TreeNodeCard = ({
   node,
   pathParts,
@@ -1236,65 +587,121 @@ const TreeNodeCard = ({
   isPathLocked,
   isPathEnabled,
   isWorkspaceMode,
+  isFounderReadOnly,
 }) => {
   const key = buildPathKey(pathParts);
   const isEnabled = isPathEnabled ? isPathEnabled(pathParts) : Boolean(treeState[key]);
   const isLocked = isPathLocked(pathParts);
   const hasChildren = (node.children || []).length > 0;
+  // Top-level modules start expanded so you immediately see what exists;
+  // submodules/tabs start collapsed so the tree doesn't dump everything on
+  // screen at once — expand only where you actually need to drill in.
+  const [isOpen, setIsOpen] = useState(level < 1);
+
+  const summary = hasChildren
+    ? countSubtreeAccess(node, pathParts, isPathEnabled, treeState)
+    : null;
+
+  const nameSizeClass =
+    level === 0 ? "text-[13.5px] font-bold" : level === 1 ? "text-[12.5px] font-semibold" : "text-[12px] font-medium";
+  const rowPadClass = level === 0 ? "py-2.5" : "py-1.5";
+
+  const lockedTooltip = isWorkspaceMode
+    ? undefined
+    : isLocked
+      ? "Not enabled at workspace level yet — enable it under Configure Workspace Module first."
+      : isFounderReadOnly
+        ? "Founders always get everything the workspace has enabled — adjust access at the workspace level instead."
+        : undefined;
 
   return (
-    <div
-      className={`rounded-xl border ${level === 0
-        ? "border-slate-200 bg-slate-50/70"
-        : "border-slate-100 bg-white"
-        } p-3.5`}
-      style={{ marginLeft: level * 16 }}
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center rounded-full bg-white px-3 py-1 text-[11px] font-semibold tracking-[0.22em] text-slate-500 shadow-sm">
-            {getNodeKind(level)}
-          </div>
-          <h3 className="mt-2 text-sm font-semibold text-slate-900">{node.name}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            {hasChildren
-              ? `${node.children.length} child ${node.children.length === 1 ? "node" : "nodes"}`
-              : "Leaf access item"}
-          </p>
-          {isLocked && <p className="mt-1 text-xs font-semibold text-rose-500">Locked</p>}
-        </div>
+    <div>
+      <Tooltip
+        title={isLocked || isFounderReadOnly ? lockedTooltip : ""}
+        placement="top"
+        arrow
+        disableHoverListener={(!isLocked && !isFounderReadOnly) || isWorkspaceMode}
+      >
+        <div
+          className={`flex items-center justify-between gap-3 rounded-lg pr-2 ${rowPadClass} transition-colors ${
+            isLocked ? "opacity-50" : "hover:bg-slate-50"
+          } ${level === 0 ? "bg-slate-50/60" : ""}`}
+          style={{ marginLeft: level * 20, paddingLeft: 8 }}
+        >
+          <button
+            type="button"
+            onClick={() => hasChildren && setIsOpen((prev) => !prev)}
+            className={`flex min-w-0 flex-1 items-center gap-1.5 text-left ${hasChildren ? "cursor-pointer" : "cursor-default"}`}
+          >
+            {hasChildren ? (
+              isOpen ? (
+                <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8", flexShrink: 0 }} />
+              ) : (
+                <ChevronRightIcon sx={{ fontSize: 18, color: "#94a3b8", flexShrink: 0 }} />
+              )
+            ) : (
+              <span className="ml-[3px] mr-[3px] inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-300" />
+            )}
+            {hasChildren ? (
+              <FolderIcon sx={{ fontSize: 15, color: isLocked ? "#cbd5e1" : "#64748b", flexShrink: 0 }} />
+            ) : (
+              <DescriptionIcon sx={{ fontSize: 14, color: isLocked ? "#cbd5e1" : "#94a3b8", flexShrink: 0 }} />
+            )}
+            <span className={`truncate ${nameSizeClass} ${isLocked ? "text-slate-400" : "text-slate-800"}`}>
+              {node.name}
+            </span>
+            {summary && (
+              <span
+                className={`ml-1 flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                  summary.enabled === 0
+                    ? "bg-slate-100 text-slate-400"
+                    : summary.enabled === summary.total
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-amber-50 text-amber-600"
+                }`}
+              >
+                {summary.enabled}/{summary.total}
+              </span>
+            )}
+            {isLocked ? (
+              <LockIcon sx={{ fontSize: 13, color: "#cbd5e1", flexShrink: 0 }} />
+            ) : !hasChildren ? (
+              <LockOpenIcon sx={{ fontSize: 12, color: "#d1fae5", flexShrink: 0 }} />
+            ) : null}
+          </button>
 
-        <FormControlLabel
-          sx={{ mr: 0 }}
-          onClick={(event) => event.stopPropagation()}
-          control={
-            <Switch
-              checked={isEnabled}
-              disabled={!isWorkspaceMode && isLocked}
-              onChange={(event) => onToggle(pathParts, event.target.checked)}
-            />
-          }
-          label=""
-        />
-      </div>
-
-      {hasChildren && (
-        <div className="mt-4 border-l-2 border-dashed border-slate-200 pl-4">
-          <div className="flex flex-col gap-3">
-            {node.children.map((child) => (
-              <TreeNodeCard
-                key={child.name}
-                node={child}
-                pathParts={[...pathParts, child.name]}
-                level={level + 1}
-                treeState={treeState}
-                onToggle={onToggle}
-                isPathLocked={isPathLocked}
-                isPathEnabled={isPathEnabled}
-                isWorkspaceMode={isWorkspaceMode}
+          <FormControlLabel
+            sx={{ m: 0 }}
+            onClick={(event) => event.stopPropagation()}
+            control={
+              <Switch
+                size="small"
+                checked={isEnabled}
+                disabled={!isWorkspaceMode && (isLocked || isFounderReadOnly)}
+                onChange={(event) => onToggle(pathParts, event.target.checked)}
               />
-            ))}
-          </div>
+            }
+            label=""
+          />
+        </div>
+      </Tooltip>
+
+      {hasChildren && isOpen && (
+        <div className="ml-2 flex flex-col border-l border-dashed border-slate-200 pl-1.5">
+          {node.children.map((child) => (
+            <TreeNodeCard
+              key={child.name}
+              node={child}
+              pathParts={[...pathParts, child.name]}
+              level={level + 1}
+              treeState={treeState}
+              onToggle={onToggle}
+              isPathLocked={isPathLocked}
+              isPathEnabled={isPathEnabled}
+              isWorkspaceMode={isWorkspaceMode}
+              isFounderReadOnly={isFounderReadOnly}
+            />
+          ))}
         </div>
       )}
     </div>
@@ -1317,6 +724,10 @@ const AccessEditorModal = ({
   isPathLocked,
   isPathEnabled,
   isWorkspaceMode,
+  isFounderReadOnly,
+  activePlanTier,
+  onPlanButtonClick,
+  pendingRequestedPlan,
 }) => {
   const filteredSections = useMemo(() => {
     const query = treeSearch.trim().toLowerCase();
@@ -1414,6 +825,51 @@ const AccessEditorModal = ({
                 </div>
               </div>
 
+              {isWorkspaceMode && pendingRequestedPlan && (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-800">
+                    Host requested {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-amber-700">
+                    Not yet applied here. Click {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan} below to give this workspace those modules.
+                  </p>
+                </div>
+              )}
+
+              {isWorkspaceMode && (
+                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Plan Module Set
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {["basic", "professional", "custom"].map((tier) => (
+                      <Button
+                        key={tier}
+                        size="small"
+                        variant={activePlanTier === tier ? "contained" : "outlined"}
+                        onClick={() => onPlanButtonClick?.(tier)}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: "10px",
+                          fontWeight: 700,
+                          minWidth: 0,
+                          px: 1.5,
+                          ...(activePlanTier === tier
+                            ? { backgroundColor: "#0F172A", "&:hover": { backgroundColor: "#111827" } }
+                            : {}),
+                        }}
+                      >
+                        {PLAN_LABELS[tier]}
+                      </Button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] leading-4 text-slate-500">
+                    Applies that plan's module set to this workspace. Doesn't change the workspace's
+                    actual assigned plan — only which modules are enabled.
+                  </p>
+                </div>
+              )}
+
               <TextField
                 value={treeSearch}
                 onChange={(event) => setTreeSearch(event.target.value)}
@@ -1424,7 +880,9 @@ const AccessEditorModal = ({
               />
 
               <p className="mt-3 text-xs leading-5 text-slate-500">
-                Toggle modules, submodules, and nested tabs from this workspace-specific view.
+                {isFounderReadOnly
+                  ? "Founders always get everything this workspace has enabled — access can't be individually restricted here. Adjust it under Configure Workspace Modules instead."
+                  : "Toggle modules, submodules, and nested tabs from this workspace-specific view."}
               </p>
 
             </div>
@@ -1443,7 +901,7 @@ const AccessEditorModal = ({
                   onClick={onSave}
                   variant="contained"
                   startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon fontSize="small" />}
-                  disabled={isSaving}
+                  disabled={isSaving || isFounderReadOnly}
                   sx={{
                     borderRadius: "14px",
                     textTransform: "none",
@@ -1485,34 +943,14 @@ const AccessEditorModal = ({
 
                     {openGroups[group.name] && (
                       <div className="space-y-3 px-4 py-3">
-                        {String(group.name || "").toLowerCase().includes("department access") ? (
-                          groupDepartmentModules(Array.isArray(group.children) ? group.children : []).map((deptGroup) => (
-                            <div key={`${group.name}::${deptGroup.name}`} className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-                              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                {deptGroup.name}
-                              </p>
-                              <div className="space-y-2">
-                                {deptGroup.items.map((module) => (
-                                  <TreeNodeCard
-                                    key={`${group.name}::${deptGroup.name}::${module.name}`}
-                                    node={module}
-                                    pathParts={[
-                                      String(module?.sectionName || group.name).trim(),
-                                      module.name,
-                                    ]}
-                                    level={0}
-                                    treeState={treeState}
-                                    onToggle={onToggle}
-                                    isPathLocked={isPathLocked}
-                                    isPathEnabled={isPathEnabled}
-                                    isWorkspaceMode={isWorkspaceMode}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          (Array.isArray(group.children) ? group.children : []).map((module) => (
+                        {(
+                          // Department Accesses' items already arrive as
+                          // department group nodes (HR Department, etc.) with
+                          // their own nested children from the backend's
+                          // canonical merge — no client-side re-bucketing
+                          // needed, same rendering as any other section.
+                          Array.isArray(group.children) ? group.children : []
+                          ).map((module) => (
                             <TreeNodeCard
                               key={`${group.name}::${module.name}`}
                               node={module}
@@ -1526,9 +964,9 @@ const AccessEditorModal = ({
                               isPathLocked={isPathLocked}
                               isPathEnabled={isPathEnabled}
                               isWorkspaceMode={isWorkspaceMode}
+                              isFounderReadOnly={isFounderReadOnly}
                             />
-                          ))
-                        )}
+                          ))}
                       </div>
                     )}
                   </div>
@@ -1600,6 +1038,27 @@ const ModuleAccess = () => {
   });
 
   const company = companyMemberPayload?.company || null;
+
+  // `company` above (getCompanyMembers) prefers the HostCompany model once a
+  // host is onboarded, which has no requestedPlan/upgradeStatus fields — so
+  // it silently loses the pending-upgrade-request context for exactly the
+  // companies staff are configuring modules for here. Fetch the
+  // HostLeadCompany record directly instead (same source UpgradePlan.jsx
+  // reads) so the "host requested X" banner below is reliable.
+  const { data: hostLeadCompanies = [] } = useQuery({
+    queryKey: ["host-lead-companies-for-module-access", resolvedCompanyId],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/host-companies");
+      return Array.isArray(response.data) ? response.data : [];
+    },
+    enabled: Boolean(resolvedCompanyId),
+  });
+
+  const hostLeadCompany = useMemo(
+    () => hostLeadCompanies.find((item) => String(item?.companyId || "").trim() === resolvedCompanyId) || null,
+    [hostLeadCompanies, resolvedCompanyId],
+  );
+
   const members = useMemo(
     () =>
       Array.isArray(companyMemberPayload?.members)
@@ -1637,6 +1096,7 @@ const ModuleAccess = () => {
         enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
           ? workspace.enabledModuleIds
           : [],
+        selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
       }));
     }
 
@@ -1646,6 +1106,7 @@ const ModuleAccess = () => {
         workspaceName: DEFAULT_WORKSPACE_NAME,
         modules: [],
         enabledModuleIds: [],
+        selectedPlan: "basic",
       },
     ];
   }, [companyMemberPayload?.workspaces]);
@@ -1665,11 +1126,16 @@ const ModuleAccess = () => {
     );
   }, [selectedWorkspaceId, workspaces]);
 
+  const pendingRequestedPlan = useMemo(() => {
+    const requested = String(hostLeadCompany?.requestedPlan || "").trim().toLowerCase();
+    if (!requested) return "";
+    const actualPlan = String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase();
+    return requested !== actualPlan ? requested : "";
+  }, [hostLeadCompany?.requestedPlan, selectedWorkspace?.selectedPlan]);
+
   const activeModuleSections = useMemo(() => {
-    const parsedModules = ensureVisitorModuleInTree(
-      parseWorkspaceModules(selectedWorkspace?.modules),
-    );
-    const fromWorkspace = reshapeVisitorHierarchy(normalizeModulesTree(parsedModules));
+    const parsedModules = parseWorkspaceModules(selectedWorkspace?.modules);
+    const fromWorkspace = normalizeModulesTree(parsedModules);
     return fromWorkspace.length ? fromWorkspace : [];
   }, [selectedWorkspace?.modules]);
 
@@ -1686,6 +1152,36 @@ const ModuleAccess = () => {
     () => collectEnabledModuleIds(activeModuleSections, treeState),
     [activeModuleSections, treeState],
   );
+
+  const activePlanTier = useMemo(
+    () => computeActivePlanTier(workspaceDraftEnabledIdSet, selectedWorkspace?.selectedPlan),
+    [workspaceDraftEnabledIdSet, selectedWorkspace?.selectedPlan],
+  );
+
+  // Founders bypass per-member grants entirely in HostPanel (they always get
+  // everything the workspace itself has enabled) — so toggling their
+  // Employee Access off wouldn't actually restrict anything. Lock the
+  // switches on instead of letting staff toggle something that has no real
+  // effect.
+  const isFounderReadOnly =
+    !isWorkspaceMode &&
+    String(selectedEmployee?.designation || "").trim().toLowerCase().includes("founder");
+
+  const [pendingPlanTier, setPendingPlanTier] = useState(null);
+
+  const applyPlanPreset = (tier) => {
+    const targetIds = Array.from(PLAN_MODULE_ID_SETS[tier] || []);
+    setTreeState(buildStateFromEnabledKeys(activeModuleSections, targetIds));
+  };
+
+  const handlePlanButtonClick = (tier) => {
+    const actualPlan = String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase();
+    if (tier === actualPlan) {
+      applyPlanPreset(tier);
+      return;
+    }
+    setPendingPlanTier(tier);
+  };
 
   useEffect(() => {
     if (!workspaces.length) return;
@@ -1772,12 +1268,7 @@ const ModuleAccess = () => {
       hasSavedWorkspaceAccess
         ? clampStateToPlan(workspaceAccess.moduleAccess || {}, workspaceEnabledPlanState)
         : clampStateToPlan(rolePresetState, workspaceEnabledPlanState);
-    setTreeState(
-      applyAccessModulesToTreeState(
-        initialState,
-        Array.isArray(workspaceAccess?.grantedModules) ? workspaceAccess.grantedModules : [],
-      ),
-    );
+    setTreeState(initialState);
     setTreeSearch("");
     setIsModalOpen(true);
   };
@@ -1796,7 +1287,7 @@ const ModuleAccess = () => {
             workspaceEnabledPlanState,
           ),
           accessModules: Array.from(
-            collectEnabledAccessModules(activeModuleSections, treeState),
+            collectEnabledModuleIds(activeModuleSections, treeState),
           ),
           accessFeatures: [],
           accessSource: selectedEmployee?.hasSavedWorkspaceAccess
@@ -2230,7 +1721,72 @@ const ModuleAccess = () => {
         isPathLocked={isPathLocked}
         isPathEnabled={isPathEnabled}
         isWorkspaceMode={isWorkspaceMode}
+        isFounderReadOnly={isFounderReadOnly}
+        activePlanTier={activePlanTier}
+        onPlanButtonClick={handlePlanButtonClick}
+        pendingRequestedPlan={pendingRequestedPlan}
       />
+
+      {pendingPlanTier && (
+        <Modal open onClose={() => setPendingPlanTier(null)}>
+          <Box
+            className="w-[min(420px,90vw)] rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_18px_52px_rgba(15,23,42,0.18)]"
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            {pendingRequestedPlan === pendingPlanTier ? (
+              <>
+                <p className="text-base font-semibold text-slate-900">
+                  Host requested {PLAN_LABELS[pendingPlanTier]}.
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Apply {PLAN_LABELS[pendingPlanTier]}'s modules to this workspace now? This won't
+                  change the workspace's actual assigned plan — that's set separately from the
+                  Upgrade Plan page once payment is confirmed.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-semibold text-slate-900">
+                  This workspace has a {PLAN_LABELS[String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase()] || "Basic"} plan.
+                </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Do you still want to give it {PLAN_LABELS[pendingPlanTier]} modules? This won't change
+                  the workspace's actual assigned plan — only which modules are enabled here.
+                </p>
+              </>
+            )}
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                onClick={() => setPendingPlanTier(null)}
+                sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+              >
+                No
+              </Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  applyPlanPreset(pendingPlanTier);
+                  setPendingPlanTier(null);
+                }}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  backgroundColor: "#0F172A",
+                  "&:hover": { backgroundColor: "#111827" },
+                }}
+              >
+                Yes
+              </Button>
+            </div>
+          </Box>
+        </Modal>
+      )}
     </div>
   );
 };

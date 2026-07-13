@@ -16,6 +16,12 @@ const {
   requestUpgradePlan,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
+  transferNomadListing,
+  getLinkedNomadCompanyMeta,
+  getEffectiveNomadSourceForCompany,
+  getCompaniesListingRequests,
+  approveCompaniesListingRequest,
+  rejectCompaniesListingRequest,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -42,6 +48,12 @@ router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
 router.get("/companies", getCompanies);
 router.get("/host-companies", getHostLeadCompanies);
+router.post("/transfer-nomad-listing", transferNomadListing);
+router.get("/host-companies/:companyId/nomad-link", getLinkedNomadCompanyMeta);
+router.get("/companies/:companyId/nomad-source", getEffectiveNomadSourceForCompany);
+router.get("/companies-requests", getCompaniesListingRequests);
+router.post("/companies-requests/:hostCompanyId/approve", approveCompaniesListingRequest);
+router.post("/companies-requests/:hostCompanyId/reject", rejectCompaniesListingRequest);
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);
 

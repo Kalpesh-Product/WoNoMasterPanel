@@ -393,11 +393,27 @@ const UpgradePlan = () => {
                 }),
             });
           } else if (canSend && !isSuccessSent) {
-            actionMenuItems.push({
-              label: "Send Success Email",
-              disabled: isSendingUpgradeSuccess,
-              onClick: () => sendUpgradeSuccess(params.data),
-            });
+            if (params.data.workspacePlanApplied) {
+              actionMenuItems.push({
+                label: "Send Success Email",
+                disabled: isSendingUpgradeSuccess,
+                onClick: () => sendUpgradeSuccess(params.data),
+              });
+            } else {
+              // Don't let staff tell the host they've been upgraded before
+              // the workspace's real plan actually reflects it. This
+              // normally syncs automatically at "Mark As Paid" — landing
+              // here disabled means that sync didn't find a matching
+              // workspace (e.g. a duplicate/stray lead record for this
+              // company), so re-confirming payment is what to try, not
+              // Module Access (it only edits enabled modules, never the
+              // plan itself).
+              actionMenuItems.push({
+                label: "Workspace plan not synced — re-confirm payment",
+                disabled: true,
+                onClick: () => {},
+              });
+            }
           }
 
           return (
@@ -439,15 +455,14 @@ const UpgradePlan = () => {
         .filter((company) =>
           String(company?.companyId || "").trim() === resolvedCompanyId,
         )
-        .filter((company) => {
-          const currentPlan = normalizePlan(company?.plan);
-          const requestedPlan = normalizePlan(company?.requestedPlan);
-          return (
-            Boolean(requestedPlan) &&
-            (requestedPlan !== currentPlan || !company?.upgradeSuccessSentAt)
-          );
-        })
+        .filter((company) => Boolean(normalizePlan(company?.requestedPlan)))
+        // Completed upgrades (upgradeSuccessSentAt set) are kept in the list
+        // as a log rather than removed — sorted to the bottom since they no
+        // longer need action, with unpaid/in-progress requests surfaced first.
         .sort((a, b) => {
+          const aDone = Boolean(a?.upgradeSuccessSentAt);
+          const bDone = Boolean(b?.upgradeSuccessSentAt);
+          if (aDone !== bDone) return aDone ? 1 : -1;
           if (a.paymentStatus === b.paymentStatus) return 0;
           return a.paymentStatus ? -1 : 1;
         }),

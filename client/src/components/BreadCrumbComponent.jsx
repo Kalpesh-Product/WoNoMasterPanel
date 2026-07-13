@@ -43,7 +43,7 @@ const BreadCrumbComponent = () => {
       companyNameFromState;
     const isCompanyDetailsIdSegment =
       index >= 1 &&
-      ["host-companies", "companies"].includes(pathSegments[index - 1]) &&
+      ["host-companies", "companies", "requests"].includes(pathSegments[index - 1]) &&
       resolvedCompanyName;
 
     // Build the navigation path

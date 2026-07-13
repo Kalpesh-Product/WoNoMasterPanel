@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -211,6 +212,12 @@ const normalizeWorkspaceId = (workspaceId = "") => {
   return normalized || DEFAULT_WORKSPACE_ID;
 };
 
+// Canonical ids/labels below are hand-synced from HostPanel's real catalog
+// (Host Panel/HostPanel/server/config/workspaceModuleCatalog.ts MODULE_GROUPS,
+// excluding its "add-ons" section which is just a flattened duplicate used
+// only for HostPanel's sidebar upsell tray, not a real category). Keeping
+// these ids identical to HostPanel's is what lets a workspace's stored
+// modules snapshot actually match what HostPanel enforces.
 const DEPARTMENT_ACCESS_CATEGORY = "DEPARTMENT ACCESSES";
 const DEPARTMENT_ACCESS_BLUEPRINT = [
   {
@@ -218,27 +225,23 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     name: "HR Department",
     children: [
       { id: "employee-management", name: "Employee Management" },
-      { id: "documents", name: "Documents" },
+      { id: "hr-documents", name: "Documents" },
       { id: "recruitment", name: "Recruitment" },
       { id: "attendance-review", name: "Attendance Review" },
-      { id: "leave-processing", name: "Leave Request Processing" },
-      { id: "payroll", name: "Payroll Management" },
-      { id: "exit-management", name: "Exit Management System" },
+      { id: "leave-request-processing", name: "Leave Request Processing" },
+      { id: "payroll-management", name: "Payroll Management" },
+      { id: "exit-management", name: "Exit Management" },
     ],
   },
   {
     id: "administration-department",
     name: "Administration Department",
     children: [
-      { id: "administration-tenant-companies", name: "Tenant Companies" },
-      { id: "administration-bookings-management", name: "Bookings Management" },
-      {
-        id: "administration-visitor-management",
-        name: "Visitor Management",
-        mirrorFromId: "visitor-management",
-      },
-      { id: "housekeeping", name: "House Keeping" },
-      { id: "workspace-layout", name: "Workspace Layout" },
+      { id: "tenant-companies-admin", name: "Tenant Companies" },
+      { id: "bookings", name: "Bookings" },
+      { id: "visitors-management", name: "Visitors Management" },
+      { id: "resource-management", name: "Resource Management" },
+      { id: "house-keeping", name: "House Keeping" },
     ],
   },
   {
@@ -246,8 +249,8 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     name: "Sales Department",
     children: [
       { id: "leads-management", name: "Leads Management" },
-      { id: "sales-tenant-companies", name: "Tenant Companies" },
-      { id: "pricing-packages", name: "Plans & Pricing" },
+      { id: "tenant-companies-sales", name: "Tenant Companies" },
+      { id: "resource-pricing", name: "Resource & Pricing" },
       { id: "sales-architecture", name: "Sales Architecture" },
     ],
   },
@@ -255,7 +258,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     id: "finance-department",
     name: "Finance Department",
     children: [
-      { id: "expenses-budget", name: "Finance & Budget" },
+      { id: "finance-budget", name: "Finance & Budget" },
       { id: "billing-payments", name: "Billing & Payments" },
       { id: "accounting", name: "Accounting" },
     ],
@@ -265,7 +268,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     name: "Maintenance Department",
     children: [
       { id: "maintenance-repair-logs", name: "Maintenance Repair Logs" },
-      { id: "amc-scheduler", name: "AMC Maintenance Scheduler" },
+      { id: "amc-maintenance-scheduler", name: "AMC Maintenance Scheduler" },
     ],
   },
   {
@@ -282,13 +285,119 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
   {
     id: "it-department",
     name: "IT Department",
-    children: [{ id: "repair-logs", name: "IT Repair Logs" }],
+    children: [{ id: "it-repair-logs", name: "IT Repair Logs" }],
   },
+];
+
+const COMMON_MODULES_BLUEPRINT = {
+  category: "COMMON MODULES",
+  items: [
+    { id: "dashboard", name: "Dashboard" },
+    { id: "customer-support", name: "Customer Support" },
+    { id: "attendance", name: "Attendance" },
+    { id: "tasks", name: "Tasks" },
+    { id: "tickets", name: "Tickets" },
+    { id: "leave-requests", name: "Leave Requests" },
+    { id: "meeting-room-system", name: "Meeting Room Booking" },
+    { id: "calendar", name: "Calendar" },
+  ],
+};
+
+const EXTRA_COMMON_MODULES_BLUEPRINT = {
+  category: "EXTRA COMMON MODULES",
+  items: [
+    { id: "assets", name: "Assets" },
+    { id: "inventory", name: "Inventory" },
+    { id: "finance-management", name: "Finance Management" },
+    { id: "reports", name: "Reports" },
+  ],
+};
+
+const KEY_APPS_BLUEPRINT = {
+  category: "KEY APPS",
+  items: [
+    {
+      id: "visitor-management",
+      name: "Visitor Management",
+      children: [
+        { id: "visitors_manage_internal_visitors", name: "Standard/Internal Visitors (Manage Visitors)" },
+        { id: "visitors_manage_external_clients", name: "External Clients (Manage Visitors)" },
+        { id: "visitors_tab_daily", name: "Daily Visitors Tab" },
+        { id: "visitors_tab_history", name: "Visitor History Tab" },
+        { id: "visitors_tab_bookings", name: "Bookings Tab" },
+        { id: "visitors_tab_clients", name: "Clients Tab" },
+        {
+          id: "visitors_mode_standard",
+          name: "New Frontdesk Action — Standard Visitor",
+          children: [
+            { id: "visitors_standard_type_standard", name: "Standard Subtab" },
+            { id: "visitors_standard_type_department", name: "Department Subtab" },
+            { id: "visitors_standard_type_tenant", name: "Tenant Subtab" },
+          ],
+        },
+        { id: "visitors_mode_workspace_tour", name: "New Frontdesk Action — Unit Tour" },
+        { id: "visitors_mode_walkin_booking", name: "New Frontdesk Action — Walk-in Booking" },
+        { id: "visitors_mode_verify_booking", name: "New Frontdesk Action — Verify Booking" },
+      ],
+    },
+    { id: "website-builder", name: "Website Builder" },
+    { id: "wono-nomad", name: "Wono Nomad" },
+    { id: "website-leads", name: "Website Leads" },
+  ],
+};
+
+const FOUNDER_CORE_MODULES_BLUEPRINT = {
+  category: "FOUNDER CORE MODULES",
+  items: [
+    {
+      id: "organization-management",
+      name: "Organization Management",
+      children: [
+        {
+          id: "org_tab_users",
+          name: "Users",
+          children: [
+            { id: "org_users_invite_member", name: "Invite Member" },
+            { id: "org_users_change_role", name: "Change Role" },
+            { id: "org_users_toggle_access", name: "Toggle Access" },
+          ],
+        },
+        {
+          id: "org_tab_departments",
+          name: "Departments",
+          children: [
+            { id: "org_departments_create", name: "Create Department" },
+            { id: "org_departments_edit", name: "Edit Department" },
+            { id: "org_departments_assign_manager", name: "Assign Manager" },
+            { id: "org_departments_assign_acting_manager", name: "Assign Acting Manager" },
+            { id: "org_departments_remove_acting_manager", name: "Remove Acting Manager" },
+          ],
+        },
+      ],
+    },
+    { id: "access-grants", name: "Access Grants" },
+    { id: "workspace-settings", name: "Unit Settings" },
+    { id: "workspace-management", name: "Unit Management" },
+    { id: "analytics", name: "Analytics" },
+  ],
+};
+
+// One entry per real HostPanel section — the single source every workspace's
+// stored `modules` snapshot gets reconciled against (see
+// mergeCanonicalModulesIntoWorkspace below). Add a module here once, in one
+// place, and every workspace self-heals to include it on its next read/save.
+const CANONICAL_SECTION_BLUEPRINTS = [
+  { category: COMMON_MODULES_BLUEPRINT.category, items: COMMON_MODULES_BLUEPRINT.items },
+  { category: EXTRA_COMMON_MODULES_BLUEPRINT.category, items: EXTRA_COMMON_MODULES_BLUEPRINT.items },
+  { category: KEY_APPS_BLUEPRINT.category, items: KEY_APPS_BLUEPRINT.items },
+  { category: FOUNDER_CORE_MODULES_BLUEPRINT.category, items: FOUNDER_CORE_MODULES_BLUEPRINT.items },
+  { category: DEPARTMENT_ACCESS_CATEGORY, items: DEPARTMENT_ACCESS_BLUEPRINT },
 ];
 
 const buildFallbackWorkspace = () => ({
   workspaceId: DEFAULT_WORKSPACE_ID,
   workspaceName: "Main Workspace",
+  selectedPlan: "basic",
 });
 
 const flattenGrantedModulesFromTreeState = (treeState = {}) =>
@@ -416,63 +525,56 @@ const collectWorkspaceModuleIds = (rawModules = []) => {
   return Array.from(ids);
 };
 
-const collectLeafWorkspaceModuleIds = (rawModules = []) => {
-  const modules = Array.isArray(rawModules)
-    ? rawModules
-    : rawModules && typeof rawModules === "object"
-      ? Object.values(rawModules)
-      : [];
-  const ids = new Set();
-
-  const visit = (nodes = []) => {
-    const list = Array.isArray(nodes) ? nodes : [];
-    list.forEach((node) => {
-      const children = getNodeChildren(node);
-      const moduleId = String(node?.id || node?.moduleId || "").trim();
-      if (moduleId && !moduleId.startsWith("idx::") && children.length === 0) {
-        ids.add(moduleId);
-      }
-      if (children.length) {
-        visit(children);
-      }
-    });
-  };
-
-  modules.forEach((category) => visit(getNodeChildren(category)));
-  return Array.from(ids);
-};
-
 const sanitizeEnabledModuleIds = (enabledIds = [], workspaceModules = []) => {
-  const allowed = new Set(collectLeafWorkspaceModuleIds(workspaceModules));
+  // Allow any real module id regardless of whether it's a leaf or a group
+  // in master panel's own tree (e.g. "organization-management" is a group
+  // here, wrapping its Users/Departments sub-permissions, but it's still a
+  // genuine standalone module id HostPanel checks directly — filtering it
+  // out because it happens to have children was silently stripping it from
+  // enabledModuleIds on every save).
+  const allowed = new Set(collectWorkspaceModuleIds(workspaceModules));
   return (Array.isArray(enabledIds) ? enabledIds : [])
     .map((id) => String(id || "").trim())
     .filter((id) => id && allowed.has(id));
 };
 
 const LINKED_MODULE_ID_GROUPS = [
-  ["visitor-management", "administration-visitor-management"],
+  ["visitor-management", "visitors-management"],
 ];
+
+// Hand-synced with HostPanel's server/config/workspaceModuleCatalog.ts
+// (visitors_manage_* ids), server/config/visitorPermissionMap.ts (module +
+// manage-visitors tabs), and constants/permissions.ts VISITORS_TAB_*/
+// VISITORS_MODE_*/VISITORS_STANDARD_TYPE_* (the separate VisitorManagement.tsx
+// start-page + New Frontdesk Action permission scheme). Same
+// module/tabs/actions split as ORGANIZATION_PERMISSION_MAP below, so it gets
+// the same "only usable while the parent module is enabled" gating.
+const VISITOR_PERMISSION_MAP = {
+  module: "visitor-management",
+  tabs: [
+    "visitors_manage_internal_visitors",
+    "visitors_manage_external_clients",
+    "visitors_tab_daily",
+    "visitors_tab_history",
+    "visitors_tab_bookings",
+    "visitors_tab_clients",
+  ],
+  actions: [
+    "visitors_mode_standard",
+    "visitors_mode_workspace_tour",
+    "visitors_mode_walkin_booking",
+    "visitors_mode_verify_booking",
+    "visitors_standard_type_standard",
+    "visitors_standard_type_department",
+    "visitors_standard_type_tenant",
+  ],
+};
 
 const VISITOR_ACCESS_KEYS = new Set([
   "visitor-management",
-  "visitors_tab_daily",
-  "visitors_tab_history",
-  "visitors_tab_bookings",
-  "visitors_tab_clients",
-  "add_visitor",
-  "add_client",
-  "manage_visitors",
-  "visitor_team_members",
-  "visitor_reports",
-  "visitors_manage_internal_visitors",
-  "visitors_manage_external_clients",
-  "visitors_mode_standard",
-  "visitors_mode_workspace_tour",
-  "visitors_mode_walkin_booking",
-  "visitors_mode_verify_booking",
-  "visitors_standard_type_standard",
-  "visitors_standard_type_department",
-  "visitors_standard_type_tenant",
+  "visitors-management",
+  ...VISITOR_PERMISSION_MAP.tabs,
+  ...VISITOR_PERMISSION_MAP.actions,
 ]);
 
 const ORGANIZATION_PERMISSION_MAP = {
@@ -495,101 +597,6 @@ const ORGANIZATION_ACCESS_KEYS = new Set([
   ...ORGANIZATION_PERMISSION_MAP.tabs,
   ...ORGANIZATION_PERMISSION_MAP.actions,
 ]);
-
-const VISITOR_CANONICAL_NODE = {
-  id: "visitor-management",
-  moduleId: "visitor-management",
-  name: "Visitor Management",
-  children: [
-    { id: "visitors_tab_daily", moduleId: "visitors_tab_daily", name: "Daily Visitors", children: [] },
-    { id: "visitors_tab_history", moduleId: "visitors_tab_history", name: "Visitor History", children: [] },
-    { id: "visitors_tab_bookings", moduleId: "visitors_tab_bookings", name: "Bookings", children: [] },
-    { id: "visitors_tab_clients", moduleId: "visitors_tab_clients", name: "Clients", children: [] },
-    {
-      id: "visitors_mode_standard",
-      moduleId: "visitors_mode_standard",
-      name: "Standard Visitor",
-      children: [
-        {
-          id: "visitors_standard_type_standard",
-          moduleId: "visitors_standard_type_standard",
-          name: "Standard Visitor Tab",
-          children: [],
-        },
-        {
-          id: "visitors_standard_type_department",
-          moduleId: "visitors_standard_type_department",
-          name: "Department Visitor Tab",
-          children: [],
-        },
-        {
-          id: "visitors_standard_type_tenant",
-          moduleId: "visitors_standard_type_tenant",
-          name: "Tenant Company Visitor Tab",
-          children: [],
-        },
-      ],
-    },
-    {
-      id: "visitors_mode_workspace_tour",
-      moduleId: "visitors_mode_workspace_tour",
-      name: "Workspace Tour",
-      children: [],
-    },
-    {
-      id: "visitors_mode_walkin_booking",
-      moduleId: "visitors_mode_walkin_booking",
-      name: "Walk-In Booking",
-      children: [],
-    },
-    {
-      id: "visitors_mode_verify_booking",
-      moduleId: "visitors_mode_verify_booking",
-      name: "Verify Booking ID",
-      children: [],
-    },
-  ],
-};
-
-const ORGANIZATION_CANONICAL_NODE = {
-  id: "organization-management",
-  moduleId: "organization-management",
-  name: "Organization Management",
-  children: [
-    {
-      id: "org_tab_users",
-      moduleId: "org_tab_users",
-      name: "Users",
-      children: [
-        { id: "org_users_invite_member", moduleId: "org_users_invite_member", name: "Invite Member", children: [] },
-        { id: "org_users_change_role", moduleId: "org_users_change_role", name: "Change Role", children: [] },
-        { id: "org_users_toggle_access", moduleId: "org_users_toggle_access", name: "Toggle Access", children: [] },
-      ],
-    },
-    {
-      id: "org_tab_departments",
-      moduleId: "org_tab_departments",
-      name: "Departments",
-      children: [
-        { id: "org_departments_create", moduleId: "org_departments_create", name: "Create Department", children: [] },
-        { id: "org_departments_edit", moduleId: "org_departments_edit", name: "Edit Department", children: [] },
-        { id: "org_departments_assign_manager", moduleId: "org_departments_assign_manager", name: "Assign Manager", children: [] },
-        {
-          id: "org_departments_assign_acting_manager",
-          moduleId: "org_departments_assign_acting_manager",
-          name: "Assign Acting Manager",
-          children: [],
-        },
-        {
-          id: "org_departments_remove_acting_manager",
-          moduleId: "org_departments_remove_acting_manager",
-          name: "Remove Acting Manager",
-          children: [],
-        },
-      ],
-    },
-  ],
-};
 
 const expandLinkedModuleIds = (enabledIds = [], workspaceModules = []) => {
   const allowed = new Set(collectWorkspaceModuleIds(workspaceModules));
@@ -619,105 +626,6 @@ const getChildrenRef = (node = {}) => {
 };
 
 const deepCloneJson = (value) => JSON.parse(JSON.stringify(value));
-
-const ensureVisitorHierarchyInModules = (rawModules = []) => {
-  const modules = Array.isArray(rawModules)
-    ? deepCloneJson(rawModules)
-    : rawModules && typeof rawModules === "object"
-      ? deepCloneJson(Object.values(rawModules))
-      : [];
-  let changed = false;
-
-  const keyApps = modules.find(
-    (category) =>
-      String(category?.category || category?.name || "")
-        .trim()
-        .toLowerCase() === "key apps",
-  );
-  if (!keyApps) return { modules, changed };
-
-  const keyRef = getChildrenRef(keyApps);
-  if (!Array.isArray(keyApps[keyRef])) keyApps[keyRef] = [];
-  const keyItems = keyApps[keyRef];
-  const visitorIdx = keyItems.findIndex(
-    (item) => String(item?.name || item?.moduleName || "").trim().toLowerCase() === "visitor management",
-  );
-
-  if (visitorIdx === -1) {
-    keyItems.push(deepCloneJson(VISITOR_CANONICAL_NODE));
-    changed = true;
-  } else {
-    const existing = keyItems[visitorIdx];
-    const existingRef = getChildrenRef(existing);
-    const existingChildren = Array.isArray(existing?.[existingRef]) ? existing[existingRef] : [];
-    if (!existingChildren.length) {
-      keyItems[visitorIdx] = {
-        ...existing,
-        ...deepCloneJson(VISITOR_CANONICAL_NODE),
-      };
-      changed = true;
-    }
-  }
-
-  return { modules, changed };
-};
-
-const ensureOrganizationHierarchyInModules = (rawModules = []) => {
-  const modules = Array.isArray(rawModules)
-    ? deepCloneJson(rawModules)
-    : rawModules && typeof rawModules === "object"
-      ? deepCloneJson(Object.values(rawModules))
-      : [];
-  let changed = false;
-
-  let orgReplaced = false;
-  let founderNode = null;
-
-  const rootNodes = modules.flatMap((category) => getNodeChildren(category));
-  const walk = (nodes = []) => {
-    for (const node of Array.isArray(nodes) ? nodes : []) {
-      const nodeName = String(node?.name || node?.moduleName || "").trim().toLowerCase();
-      if (nodeName === "organization management") return { type: "org", node };
-      if (nodeName === "founder core module") founderNode = node;
-      const found = walk(getNodeChildren(node));
-      if (found) return found;
-    }
-    return null;
-  };
-
-  const found = walk(rootNodes);
-  if (found?.type === "org") {
-    const orgNode = found.node;
-    const orgRef = getChildrenRef(orgNode);
-    const normalizedExisting = JSON.stringify({
-      id: String(orgNode?.id || orgNode?.moduleId || "").trim(),
-      name: String(orgNode?.name || orgNode?.moduleName || "").trim(),
-      children: getNodeChildren(orgNode),
-    });
-    const normalizedCanonical = JSON.stringify({
-      id: ORGANIZATION_CANONICAL_NODE.id,
-      name: ORGANIZATION_CANONICAL_NODE.name,
-      children: ORGANIZATION_CANONICAL_NODE.children,
-    });
-    if (normalizedExisting !== normalizedCanonical) {
-      orgNode.id = ORGANIZATION_CANONICAL_NODE.id;
-      orgNode.moduleId = ORGANIZATION_CANONICAL_NODE.moduleId;
-      orgNode.name = ORGANIZATION_CANONICAL_NODE.name;
-      orgNode[orgRef] = deepCloneJson(ORGANIZATION_CANONICAL_NODE.children);
-      changed = true;
-    }
-    orgReplaced = true;
-  }
-
-  if (!orgReplaced && founderNode) {
-    const founderRef = getChildrenRef(founderNode);
-    if (!Array.isArray(founderNode[founderRef])) founderNode[founderRef] = [];
-    founderNode[founderRef].push(deepCloneJson(ORGANIZATION_CANONICAL_NODE));
-    changed = true;
-  }
-
-  return { modules, changed };
-};
 
 const resolveGrantedModuleIdsFromTreeState = ({
   moduleAccess = {},
@@ -788,6 +696,66 @@ const clampModuleAccessStateToWorkspace = ({
   return clamped;
 };
 
+// WorkspaceMember.role is an ObjectId into the shared `roles` collection
+// (HostPanel's Role model), not a plain string — see the schema comment in
+// WorkspaceMember.js for why we deliberately query the raw collection
+// instead of going through any Mongoose model.
+const isObjectIdLike = (value) => {
+  if (!value) return false;
+  if (typeof value === "object") return true;
+  return typeof value === "string" && /^[a-f0-9]{24}$/i.test(value);
+};
+
+let cachedFounderRoleId = null;
+const resolveFounderRoleId = async () => {
+  if (cachedFounderRoleId) return cachedFounderRoleId;
+
+  const rolesCollection = mongoose.connection.db.collection("roles");
+  let founderRole = await rolesCollection.findOne({ name: "founder", isSystemRole: true });
+  if (!founderRole) {
+    const insertResult = await rolesCollection.insertOne({
+      name: "founder",
+      workspaceId: null,
+      permissions: ["*"],
+      isSystemRole: true,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    cachedFounderRoleId = insertResult.insertedId;
+    return cachedFounderRoleId;
+  }
+
+  cachedFounderRoleId = founderRole._id;
+  return cachedFounderRoleId;
+};
+
+// Batch-resolves a list of raw `role` values (ObjectId or legacy plain
+// string) to their real role names in one query, keyed by the raw value's
+// string form — avoids one `roles` lookup per member in a list endpoint.
+const resolveMemberRoleNames = async (rawRoles = []) => {
+  const objectIdKeys = new Set();
+  rawRoles.forEach((raw) => {
+    if (isObjectIdLike(raw)) objectIdKeys.add(String(raw?._id || raw));
+  });
+  if (!objectIdKeys.size) return new Map();
+
+  const roleDocs = await mongoose.connection.db
+    .collection("roles")
+    .find({ _id: { $in: Array.from(objectIdKeys).map((id) => new mongoose.Types.ObjectId(id)) } })
+    .project({ name: 1 })
+    .toArray();
+
+  const map = new Map();
+  roleDocs.forEach((doc) => map.set(String(doc._id), String(doc?.name || "").trim()));
+  return map;
+};
+
+const resolveMemberRoleName = (rawRole, roleNameMap) => {
+  if (!isObjectIdLike(rawRole)) return String(rawRole || "").trim();
+  return roleNameMap?.get(String(rawRole?._id || rawRole)) || "";
+};
+
 const upsertFounderWorkspaceMembership = async ({
   workspaceId,
   founderUserId,
@@ -798,6 +766,7 @@ const upsertFounderWorkspaceMembership = async ({
   const normalizedEnabled = (Array.isArray(enabledModuleIds) ? enabledModuleIds : [])
     .map((id) => String(id || "").trim())
     .filter(Boolean);
+  const founderRoleId = await resolveFounderRoleId();
 
   return WorkspaceMember.findOneAndUpdate(
     {
@@ -806,7 +775,7 @@ const upsertFounderWorkspaceMembership = async ({
     },
     {
       $set: {
-        role: "founder",
+        role: founderRoleId,
         status: "active",
         isPrimary: true,
         isActive: true,
@@ -854,115 +823,128 @@ const findNodeByModuleId = (nodes = [], moduleId = "") => {
   return null;
 };
 
-const mergeDepartmentAccessModules = (rawModules = []) => {
-  const modules = Array.isArray(rawModules)
+// Builds one blueprint node (recursively, so it covers Organization
+// Management's 3-level nesting as well as flat leaves) against whatever
+// mirror source already exists in the workspace's current raw modules.
+const buildBlueprintNode = (entry, allRootNodes) => {
+  if (entry.mirrorFromId) {
+    const mirroredNode = findNodeByModuleId(allRootNodes, entry.mirrorFromId);
+    if (mirroredNode) {
+      return {
+        ...deepClone(mirroredNode),
+        id: entry.id,
+        moduleId: entry.id,
+        name: entry.name,
+      };
+    }
+  }
+  return {
+    id: entry.id,
+    moduleId: entry.id,
+    name: entry.name,
+    children: (entry.children || []).map((child) => buildBlueprintNode(child, allRootNodes)),
+  };
+};
+
+// Recursively reconciles a blueprint's nodes against whatever's already
+// stored for that branch — keeps existing node data (so manual per-node
+// edits aren't clobbered) but corrects id/name and appends any blueprint
+// node missing from the existing set, at any depth.
+const mergeBlueprintNodes = (blueprintNodes = [], existingNodes = []) => {
+  const itemMapByName = new Map(
+    (existingNodes || []).map((item) => [normalizeNodeName(item), item]).filter(([key]) => key),
+  );
+
+  let changed = existingNodes.length !== blueprintNodes.length;
+  const mergedNodes = blueprintNodes.map((blueprintNode) => {
+    const existingItem = itemMapByName.get(normalizeNodeName(blueprintNode));
+    if (!existingItem) {
+      changed = true;
+      return blueprintNode;
+    }
+
+    const hasBlueprintChildren = Array.isArray(blueprintNode.children) && blueprintNode.children.length;
+    if (!hasBlueprintChildren) {
+      return {
+        ...deepClone(existingItem),
+        id: blueprintNode.id,
+        moduleId: blueprintNode.id,
+        name: blueprintNode.name,
+      };
+    }
+
+    const existingChildren = getNodeChildren(existingItem);
+    const { mergedNodes: mergedChildren, changed: childrenChanged } = mergeBlueprintNodes(
+      blueprintNode.children,
+      existingChildren,
+    );
+    if (childrenChanged) changed = true;
+
+    return {
+      ...deepClone(existingItem),
+      id: blueprintNode.id,
+      moduleId: blueprintNode.id,
+      name: blueprintNode.name,
+      children: mergedChildren,
+    };
+  });
+
+  return { mergedNodes, changed };
+};
+
+// Reconciles a workspace's stored `modules` snapshot against
+// CANONICAL_SECTION_BLUEPRINTS (the single copy of HostPanel's real catalog
+// kept in this file) — adds any section/module/tab missing from the stored
+// snapshot, at any depth, and corrects ids/labels that drifted. Replaces the
+// old department-only merge plus the separate visitor/organization patch
+// functions, which duplicated this same reconciliation three different ways.
+const mergeCanonicalModulesIntoWorkspace = (rawModules = []) => {
+  const sourceModules = Array.isArray(rawModules)
     ? deepClone(rawModules)
     : rawModules && typeof rawModules === "object"
       ? deepClone(Object.values(rawModules))
       : [];
 
-  const allRootNodes = modules.flatMap((category) => getNodeChildren(category));
-  const blueprintDepartmentItems = DEPARTMENT_ACCESS_BLUEPRINT.map((department) => {
-    const children = (department.children || []).map((entry) => {
-      if (entry.mirrorFromId) {
-        const mirroredNode = findNodeByModuleId(allRootNodes, entry.mirrorFromId);
-        if (mirroredNode) {
-          return {
-            ...deepClone(mirroredNode),
-            id: entry.id,
-            moduleId: entry.id,
-            name: entry.name,
-          };
-        }
-      }
-      return {
-        id: entry.id,
-        moduleId: entry.id,
-        name: entry.name,
-        children: [],
-      };
-    });
-
-    return {
-      id: department.id,
-      moduleId: department.id,
-      name: department.name,
-      children,
-    };
-  });
-
-  const targetCategoryIndex = modules.findIndex((category) => {
-    const name = String(category?.category || category?.name || "").trim().toLowerCase();
-    return name === DEPARTMENT_ACCESS_CATEGORY.toLowerCase();
-  });
-
-  if (targetCategoryIndex === -1) {
-    modules.push({
-      category: DEPARTMENT_ACCESS_CATEGORY,
-      items: blueprintDepartmentItems,
-    });
-    return { modules, changed: true };
-  }
-
-  const existingCategory = modules[targetCategoryIndex] || {};
-  const existingItems = Array.isArray(existingCategory?.items)
-    ? existingCategory.items
-    : Array.isArray(existingCategory?.children)
-      ? existingCategory.children
-      : Array.isArray(existingCategory?.modules)
-        ? existingCategory.modules
-        : [];
-
-  const itemMapByName = new Map(
-    existingItems.map((item) => [normalizeNodeName(item), item]).filter(([key]) => key),
-  );
-
+  const allRootNodes = sourceModules.flatMap((category) => getNodeChildren(category));
   let changed = false;
-  const mergedItems = blueprintDepartmentItems.map((departmentItem) => {
-    const existingItem = itemMapByName.get(normalizeNodeName(departmentItem));
-    if (!existingItem) {
+
+  // Rebuilds the modules array from scratch as exactly the 5 real canonical
+  // sections — this both adds anything missing AND drops anything that
+  // shouldn't be there (e.g. an "Add-ons" category some workspaces were
+  // written with at creation time: HostPanel's own catalog still includes
+  // an "add-ons" section that's just a flattened duplicate of every other
+  // section, used only for its sidebar's locked-items upsell tray — never a
+  // real category here).
+  const nextModules = CANONICAL_SECTION_BLUEPRINTS.map(({ category, items }) => {
+    const blueprintItems = items.map((entry) => buildBlueprintNode(entry, allRootNodes));
+
+    const existingCategory = sourceModules.find((candidate) => {
+      const name = String(candidate?.category || candidate?.name || "").trim().toLowerCase();
+      return name === category.toLowerCase();
+    });
+
+    if (!existingCategory) {
       changed = true;
-      return departmentItem;
+      return { category, items: blueprintItems };
     }
 
-    const existingChildren = getNodeChildren(existingItem);
-    const childMapByName = new Map(
-      existingChildren.map((child) => [normalizeNodeName(child), child]).filter(([key]) => key),
+    const existingItems = getNodeChildren(existingCategory);
+    const { mergedNodes: mergedItems, changed: categoryChanged } = mergeBlueprintNodes(
+      blueprintItems,
+      existingItems,
     );
-
-    const mergedChildren = departmentItem.children.map((blueprintChild) => {
-      const existingChild = childMapByName.get(normalizeNodeName(blueprintChild));
-      if (!existingChild) {
-        changed = true;
-        return blueprintChild;
-      }
-      return {
-        ...deepClone(existingChild),
-        id: blueprintChild.id,
-        moduleId: blueprintChild.id,
-        name: blueprintChild.name,
-      };
-    });
+    if (categoryChanged) changed = true;
 
     return {
-      ...deepClone(existingItem),
-      id: departmentItem.id,
-      moduleId: departmentItem.id,
-      name: departmentItem.name,
-      children: mergedChildren,
+      ...existingCategory,
+      category,
+      items: mergedItems,
     };
   });
 
-  const sameLength = existingItems.length === mergedItems.length;
-  if (!sameLength) changed = true;
+  if (sourceModules.length !== nextModules.length) changed = true;
 
-  modules[targetCategoryIndex] = {
-    ...existingCategory,
-    category: DEPARTMENT_ACCESS_CATEGORY,
-    items: mergedItems,
-  };
-
-  return { modules, changed };
+  return { modules: nextModules, changed };
 };
 
 const getEnabledCommonModuleIds = (workspace = {}) => {
@@ -1128,8 +1110,15 @@ const hasOrganizationAccess = async ({
     })
       .select("grantedModules enabledModules role isPrimary")
       .lean();
-    const membershipRole = String(membership?.role || "").trim().toLowerCase();
-    if (membership?.isPrimary === true || membershipRole === "founder") {
+    if (membership?.isPrimary === true) {
+      return true;
+    }
+    if (isObjectIdLike(membership?.role)) {
+      const roleNameMap = await resolveMemberRoleNames([membership.role]);
+      if (resolveMemberRoleName(membership.role, roleNameMap).toLowerCase() === "founder") {
+        return true;
+      }
+    } else if (String(membership?.role || "").trim().toLowerCase() === "founder") {
       return true;
     }
     const granted = Array.isArray(membership?.grantedModules)
@@ -1345,17 +1334,6 @@ const getInviteStatuses = async (req, res, next) => {
 
 const sendInviteEmail = async (req, res, next) => {
   try {
-    const canInviteMember = await hasOrganizationAccess({
-      actorUserId: req.user,
-      actorRoles: req.roles,
-      companyId: req.body?.companyId,
-      workspaceId: req.body?.workspaceId,
-      requiredKey: "org_users_invite_member",
-    });
-    if (!canInviteMember) {
-      return res.status(403).json({ message: "Forbidden: invite-member access required" });
-    }
-
     const {
       leadId,
       email,
@@ -1563,14 +1541,14 @@ const getCompanyMembers = async (req, res, next) => {
           : companyId,
         isActive: true,
       })
-        .select("_id workspaceName companyId modules enabledModuleIds")
+        .select("_id workspaceName companyId modules enabledModuleIds selectedPlan")
         .lean(),
       companyNameRegex
         ? Workspace.find({
             businessName: { $regex: companyNameRegex },
             isActive: true,
           })
-            .select("_id workspaceName companyId businessName modules enabledModuleIds")
+            .select("_id workspaceName companyId businessName modules enabledModuleIds selectedPlan")
             .lean()
         : Promise.resolve([]),
     ]);
@@ -1612,7 +1590,7 @@ const getCompanyMembers = async (req, res, next) => {
           _id: { $in: membershipWorkspaceIds },
           isActive: true,
         })
-          .select("_id workspaceName companyId businessName modules enabledModuleIds")
+          .select("_id workspaceName companyId businessName modules enabledModuleIds selectedPlan")
           .lean()
       : [];
 
@@ -1628,16 +1606,11 @@ const getCompanyMembers = async (req, res, next) => {
     ];
 
     const workspaceDocsWithDepartmentAccess = allWorkspaceDocs.map((workspace) => {
-      const mergedDept = mergeDepartmentAccessModules(workspace?.modules || []);
-      const mergedVisitor = ensureVisitorHierarchyInModules(mergedDept.modules || []);
-      const mergedOrganization = ensureOrganizationHierarchyInModules(
-        mergedVisitor.modules || [],
-      );
+      const merged = mergeCanonicalModulesIntoWorkspace(workspace?.modules || []);
       return {
         ...workspace,
-        modules: mergedOrganization.modules,
-        __departmentModulesChanged:
-          mergedDept.changed || mergedVisitor.changed || mergedOrganization.changed,
+        modules: merged.modules,
+        __departmentModulesChanged: merged.changed,
       };
     });
 
@@ -1716,8 +1689,13 @@ const getCompanyMembers = async (req, res, next) => {
         workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
         modules: workspace?.modules || [],
         enabledModuleIds: sanitizedEnabled,
+        selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
       });
     });
+
+    const membershipRoleNameMap = await resolveMemberRoleNames(
+      memberships.map((membership) => membership?.role),
+    );
 
     memberships.forEach((membership) => {
       const workspaceDoc = workspaceDocsWithDepartmentAccess.find(
@@ -1740,12 +1718,16 @@ const getCompanyMembers = async (req, res, next) => {
         workspaceName,
         modules: workspaceDoc?.modules || [],
         enabledModuleIds: sanitizedEnabled,
+        selectedPlan: String(workspaceDoc?.selectedPlan || "basic").trim().toLowerCase(),
       });
 
       const populatedUser = membership?.user || {};
       const member = ensureMemberRecord({
         ...populatedUser,
-        designation: populatedUser?.designation || membership?.role || "",
+        designation:
+          populatedUser?.designation ||
+          resolveMemberRoleName(membership?.role, membershipRoleNameMap) ||
+          "",
       });
 
       if (!member) return;
@@ -1769,7 +1751,15 @@ const getCompanyMembers = async (req, res, next) => {
       const filteredMemberGrantedIds = memberGrantedIds
         .map((id) => String(id || "").trim())
         .filter((id) => id && workspaceEnabledIds.includes(id));
-      const effectiveMemberGrantedIds = filteredMemberGrantedIds;
+      // Founders (isPrimary) never get explicit per-member grants — their
+      // real access is "everything this workspace has enabled" (HostPanel's
+      // sidebar bypasses the grant check for them). Without this, their
+      // normally-empty grantedModules would synthesize an empty "saved
+      // access" entry below, which the frontend then shows instead of
+      // falling back to the founder preset — i.e. every toggle looks off
+      // even though the founder actually has full workspace access.
+      const effectiveMemberGrantedIds =
+        membership?.isPrimary === true ? workspaceEnabledIds : filteredMemberGrantedIds;
       const grantedModules = buildModuleAccessTreeStateFromIds({
         workspaceModules: workspaceDoc?.modules || [],
         enabledModuleIds: effectiveMemberGrantedIds,
@@ -1804,6 +1794,7 @@ const getCompanyMembers = async (req, res, next) => {
             enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
               ? workspace.enabledModuleIds
               : [],
+            selectedPlan: "basic",
           });
         }
       });
@@ -1930,13 +1921,10 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
           .filter(Boolean);
       }
     const hasWorkspaceDoc = Boolean(workspaceDocRaw?._id);
-    const ensuredVisitor = ensureVisitorHierarchyInModules(workspaceDocRaw?.modules || []);
-    const ensuredOrganization = ensureOrganizationHierarchyInModules(
-      ensuredVisitor.modules || [],
-    );
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(workspaceDocRaw?.modules || []);
     const workspaceDoc = {
       ...workspaceDocRaw,
-      modules: ensuredOrganization.modules,
+      modules: ensuredCanonical.modules,
     };
     const workspaceEnabledIds = hasWorkspaceDoc
       ? expandLinkedModuleIds(
@@ -1965,8 +1953,10 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
       : flattenGrantedModulesFromTreeState(clampedModuleAccess);
     const hasVisitorModuleEnabled =
       !hasWorkspaceDoc ||
-      workspaceEnabledIds.includes("visitor-management") ||
-      workspaceEnabledIds.includes("administration-visitor-management");
+      workspaceEnabledIds.includes(VISITOR_PERMISSION_MAP.module) ||
+      workspaceEnabledIds.includes("visitors-management") ||
+      VISITOR_PERMISSION_MAP.tabs.some((key) => workspaceEnabledIds.includes(key)) ||
+      VISITOR_PERMISSION_MAP.actions.some((key) => workspaceEnabledIds.includes(key));
     const hasOrganizationModuleEnabled =
       !hasWorkspaceDoc ||
       workspaceEnabledIds.includes(ORGANIZATION_PERMISSION_MAP.module) ||
@@ -2117,13 +2107,10 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
     if (!currentWorkspaceRaw?._id) {
       return res.status(404).json({ message: "Workspace not found" });
     }
-    const ensuredVisitor = ensureVisitorHierarchyInModules(currentWorkspaceRaw?.modules || []);
-    const ensuredOrganization = ensureOrganizationHierarchyInModules(
-      ensuredVisitor.modules || [],
-    );
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(currentWorkspaceRaw?.modules || []);
     const currentWorkspace = {
       ...currentWorkspaceRaw,
-      modules: ensuredOrganization.modules,
+      modules: ensuredCanonical.modules,
     };
 
     const sanitizedRequested = sanitizeEnabledModuleIds(
@@ -2289,13 +2276,9 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
     const memberOps = [];
 
     for (const workspace of workspaces) {
-      const mergedDept = mergeDepartmentAccessModules(workspace?.modules || []);
-      const mergedVisitor = ensureVisitorHierarchyInModules(mergedDept.modules || []);
-      const mergedOrganization = ensureOrganizationHierarchyInModules(
-        mergedVisitor.modules || [],
-      );
-      const modules = mergedOrganization.modules;
-      const changed = mergedDept.changed || mergedVisitor.changed || mergedOrganization.changed;
+      const merged = mergeCanonicalModulesIntoWorkspace(workspace?.modules || []);
+      const modules = merged.modules;
+      const changed = merged.changed;
       const rawWorkspaceEnabled = Array.isArray(workspace?.enabledModuleIds)
         ? workspace.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean)
         : [];
@@ -2435,4 +2418,5 @@ module.exports = {
   syncWorkspaceDepartmentModules,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
+  resolveHostPanelFrontendUrl,
 };

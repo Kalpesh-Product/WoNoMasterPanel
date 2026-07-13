@@ -143,6 +143,8 @@ import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOvervie
 import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
 import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
 import NomadListingsOverview from "../pages/Dashboard/FrontendDashboard/NomadListingsOverview";
+import CompaniesRequestOverview from "../pages/Dashboard/FrontendDashboard/CompaniesRequestOverview";
+import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/CompaniesRequestNomadListing";
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
@@ -188,9 +190,11 @@ import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
+import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
-import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
+import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
+// import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
 
@@ -439,6 +443,14 @@ export const routes = createBrowserRouter([
                         element: <Companies />,
                       },
                       {
+                        path: "requests/:companyId",
+                        element: <CompaniesRequestOverview />,
+                      },
+                      {
+                        path: "requests/:companyId/nomad-listing",
+                        element: <CompaniesRequestNomadListing />,
+                      },
+                      {
                         path: "add-company",
                         element: <AddCompany />, // ✅ NEW intermediate page
                       },
@@ -590,14 +602,22 @@ export const routes = createBrowserRouter([
                         element: <ModuleAccess />,
                       },
                       {
+                        path: ":companyId/nomad-listing",
+                        element: <HostCompanyNomadListingOverview />,
+                      },
+                      {
                         path: ":companyId/website-credit-requests",
                         element: <WebsiteCreditRequests />,
                       },
                     ],
                   },
+                  // {
+                  //   path: "customer-support",
+                  //   element: <CustomerSupport />,
+                  // },
                   {
-                    path: "customer-support",
-                    element: <CustomerSupport />,
+                    path: "support-tickets",
+                    element: <HostSupportTickets />,
                   },
                   {
                     path: "chat",

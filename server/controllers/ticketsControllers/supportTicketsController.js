@@ -425,6 +425,7 @@ const updateSupportTicketStatus = async (req, res, next) => {
       "Open",
       "Accepted",
       "In Progress",
+      "Pending",
       "Closed",
       "Rejected",
     ];

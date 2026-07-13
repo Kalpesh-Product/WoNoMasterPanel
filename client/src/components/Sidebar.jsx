@@ -18,6 +18,7 @@ import {
   LuChartLine,
   LuPlane,
   LuShieldCheck,
+  LuTicket,
 } from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
 
@@ -89,11 +90,17 @@ const Sidebar = ({ onCloseDrawer }) => {
           icon: LuShieldCheck,
           route: "/dashboard/module-access-logs",
         },
+        // {
+        //   id: 8,
+        //   title: "Customer Support",
+        //   icon: LuHeadset,
+        //   route: "/dashboard/customer-support",
+        // },
         {
           id: 8,
-          title: "Customer Support",
-          icon: LuHeadset,
-          route: "/dashboard/customer-support",
+          title: "Support Tickets",
+          icon: LuTicket,
+          route: "/dashboard/support-tickets",
         },
         {
           id: 9,
