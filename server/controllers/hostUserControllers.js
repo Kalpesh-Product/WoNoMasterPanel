@@ -538,9 +538,16 @@ const sanitizeEnabledModuleIds = (enabledIds = [], workspaceModules = []) => {
     .filter((id) => id && allowed.has(id));
 };
 
-const LINKED_MODULE_ID_GROUPS = [
-  ["visitor-management", "visitors-management"],
-];
+// Previously linked ["visitor-management", "visitors-management"] so
+// toggling either kept both in sync (they're the same underlying
+// /visitors/visitor-management page). Removed: "visitors-management" is now
+// deliberately Custom-only (Administration Department), while
+// "visitor-management" (Key Apps) stays on at every plan — linking them
+// meant enabling the always-on Key Apps entry silently re-enabled the
+// Administration Department tab on every read/save, undoing that
+// restriction. Empty for now; add groups back here only for ids that should
+// genuinely always move together.
+const LINKED_MODULE_ID_GROUPS = [];
 
 // Hand-synced with HostPanel's server/config/workspaceModuleCatalog.ts
 // (visitors_manage_* ids), server/config/visitorPermissionMap.ts (module +
