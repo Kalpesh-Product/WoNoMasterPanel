@@ -624,16 +624,15 @@ const getTemplate = async (req, res) => {
       return res.status(200).json([]);
     }
 
-    // Backward compatibility: old templates can still render from live doc.
-    // Dynamic templates must be published before appearing on hosted domain.
-    if (hasDynamicTemplateFields(template)) {
-      return res.status(404).json({
-        message:
-          "No published website version found for this company. Please publish from Website Builder.",
-      });
+    // HostPanel publishes directly to the live template document without
+    // creating a WebsiteTemplateVersion snapshot.
+    if (template.isPublished === true) {
+      return res.json(template);
     }
 
-    return res.json(template);
+    return res.status(404).json({
+      message: "Website exists but has not been published.",
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
