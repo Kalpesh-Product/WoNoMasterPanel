@@ -1532,7 +1532,7 @@ const getCompanyMembers = async (req, res, next) => {
           : companyId,
       })
         .select(
-          "name email phone designation companyId isActive workspaceAccess createdAt updatedAt",
+          "name email phone designation companyId isActive isDeleted deletedAt workspaceAccess createdAt updatedAt",
         )
         .lean(),
       Workspace.find({
@@ -1572,12 +1572,15 @@ const getCompanyMembers = async (req, res, next) => {
       .map((workspace) => workspace?._id)
       .filter(Boolean);
 
+    // Deliberately not filtering by isActive here — a deactivated/deleted
+    // member should still surface in this list (with the Deleted/Inactive
+    // status badge), not vanish from the table entirely. The {workspace,
+    // user} unique index means this can't return duplicate rows per member.
     const memberships = workspaceIds.length
       ? await WorkspaceMember.find({
           workspace: { $in: workspaceIds },
-          isActive: true,
         })
-          .populate("user", "name email phone designation companyId isActive createdAt updatedAt")
+          .populate("user", "name email phone designation companyId isActive isDeleted deletedAt createdAt updatedAt")
           .lean()
       : [];
 
@@ -1650,6 +1653,13 @@ const getCompanyMembers = async (req, res, next) => {
             : typeof existing?.isActive === "boolean"
               ? existing.isActive
               : true,
+        isDeleted:
+          typeof member?.isDeleted === "boolean"
+            ? member.isDeleted
+            : typeof existing?.isDeleted === "boolean"
+              ? existing.isDeleted
+              : false,
+        deletedAt: member?.deletedAt ?? existing?.deletedAt ?? null,
         workspaceAccess: normalizeMemberWorkspaceAccess(
           {
             ...existing,
@@ -1819,6 +1829,96 @@ const getCompanyMembers = async (req, res, next) => {
         company: fallbackCompany || null,
         members: normalizedMembers,
         workspaces: Array.from(workspaceMap.values()),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateWorkspaceAccountStatus = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { isDeleted } = req.body || {};
+
+    if (!workspaceId || !mongoose.Types.ObjectId.isValid(workspaceId)) {
+      return res.status(400).json({ message: "A valid workspaceId is required" });
+    }
+
+    if (typeof isDeleted !== "boolean") {
+      return res.status(400).json({ message: "isDeleted must be true or false" });
+    }
+
+    // Scoped strictly to this one real workspace _id — deliberately not
+    // re-deriving "company" via the companyId prefix-regex used elsewhere
+    // in this file. That prefix is shared across multiple unrelated
+    // dev/test workspaces here (they all descend from one reused base id
+    // with different "-dev-xxxxx" suffixes), so a company-wide bulk WRITE
+    // via regex could silently touch other companies' accounts. Matching
+    // on the exact workspace _id keeps the blast radius to exactly the
+    // members shown in this page's Employee List.
+    const memberships = await WorkspaceMember.find({ workspace: workspaceId })
+      .select("user")
+      .lean();
+    const memberIds = memberships.map((membership) => membership.user).filter(Boolean);
+
+    if (!memberIds.length) {
+      return res.status(404).json({ message: "No employees found for this workspace" });
+    }
+
+    const now = new Date();
+    const userUpdate = isDeleted
+      ? { isDeleted: true, deletedAt: now, refreshToken: "" }
+      : { isDeleted: false, deletedAt: null };
+
+    await HostUser.updateMany({ _id: { $in: memberIds } }, userUpdate);
+    await WorkspaceMember.updateMany({ workspace: workspaceId }, { isActive: !isDeleted });
+
+    return res.status(200).json({
+      message: isDeleted
+        ? `Deleted ${memberIds.length} host user account(s) for this workspace.`
+        : `Reactivated ${memberIds.length} host user account(s) for this workspace.`,
+      data: { affectedCount: memberIds.length },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateHostUserAccountStatus = async (req, res, next) => {
+  try {
+    const { memberId } = req.params;
+    const { isDeleted } = req.body || {};
+
+    if (!memberId) {
+      return res.status(400).json({ message: "memberId is required" });
+    }
+
+    if (typeof isDeleted !== "boolean") {
+      return res.status(400).json({ message: "isDeleted must be true or false" });
+    }
+
+    const member = await HostUser.findById(memberId);
+
+    if (!member) {
+      return res.status(404).json({ message: "Host user not found" });
+    }
+
+    member.isDeleted = isDeleted;
+    member.deletedAt = isDeleted ? new Date() : null;
+
+    if (isDeleted) {
+      member.refreshToken = "";
+    }
+
+    await member.save();
+
+    return res.status(200).json({
+      message: isDeleted ? "Host user account deleted." : "Host user account reactivated.",
+      data: {
+        _id: member._id,
+        isDeleted: member.isDeleted,
+        deletedAt: member.deletedAt,
       },
     });
   } catch (error) {
@@ -2413,6 +2513,8 @@ module.exports = {
   getInviteStatuses,
   getCompanyMembers,
   sendInviteEmail,
+  updateHostUserAccountStatus,
+  updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
   updateWorkspaceEnabledModules,
   syncWorkspaceDepartmentModules,

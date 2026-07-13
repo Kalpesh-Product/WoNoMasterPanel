@@ -36,6 +36,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import DescriptionIcon from "@mui/icons-material/Description";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import AgTable from "../../../components/AgTable";
+import ThreeDotMenu from "../../../components/ThreeDotMenu";
 
 // This screen no longer keeps its own hand-built module tree. The rendered
 // tree (`activeModuleSections`, below) comes straight from each workspace's
@@ -1311,6 +1312,54 @@ const ModuleAccess = () => {
     },
   });
 
+  const bulkAccountStatusMutation = useMutation({
+    mutationFn: async ({ isDeleted }) => {
+      const response = await axios.patch(
+        `/api/host-user/workspace/${encodeURIComponent(selectedWorkspace?.workspaceId)}/bulk-account-status`,
+        { isDeleted },
+      );
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["host-company-members", resolvedCompanyId],
+      });
+      toast.success(data?.message || "Workspace account status updated.");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Unable to update workspace account status.");
+    },
+  });
+
+  const handleBulkAccountStatus = (isDeleted) => {
+    const workspaceLabel = selectedWorkspace?.workspaceName || "this workspace";
+    const confirmMessage = isDeleted
+      ? `Delete ALL employee accounts in ${workspaceLabel}? Every employee will be logged out and marked deleted.`
+      : `Reactivate ALL employee accounts in ${workspaceLabel}?`;
+    if (window.confirm(confirmMessage)) {
+      bulkAccountStatusMutation.mutate({ isDeleted });
+    }
+  };
+
+  const toggleAccountStatusMutation = useMutation({
+    mutationFn: async ({ memberId, isDeleted }) => {
+      const response = await axios.patch(
+        `/api/host-user/${memberId}/account-status`,
+        { isDeleted },
+      );
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({
+        queryKey: ["host-company-members", resolvedCompanyId],
+      });
+      toast.success(data?.message || "Account status updated.");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Unable to update account status.");
+    },
+  });
+
   const saveWorkspaceMutation = useMutation({
     mutationFn: async () => {
       const enabledIds = Array.from(
@@ -1437,11 +1486,13 @@ const ModuleAccess = () => {
         cellRenderer: (params) => {
           const member = params.data;
           if (!member) return null;
+          const label = member.isDeleted ? "Deleted" : member.isActive ? "Active" : "Inactive";
+          const color = member.isDeleted ? "error" : member.isActive ? "success" : "default";
           return (
             <Chip
-              label={member.isActive ? "Active" : "Inactive"}
+              label={label}
               size="small"
-              color={member.isActive ? "success" : "default"}
+              color={color}
               variant="outlined"
               sx={{ height: "20px", fontSize: "10px" }}
             />
@@ -1453,12 +1504,12 @@ const ModuleAccess = () => {
         field: "action",
         pinned: "right",
         lockPinned: true,
-        width: 100,
+        width: 120,
         cellRenderer: (params) => {
           const member = params.data;
           if (!member) return null;
           return (
-            <div>
+            <div className="flex items-center gap-1">
               <IconButton
                 onClick={(event) => {
                   event.stopPropagation();
@@ -1468,12 +1519,34 @@ const ModuleAccess = () => {
               >
                 <VisibilityIcon fontSize="small" />
               </IconButton>
+              <ThreeDotMenu
+                rowId={member._id}
+                menuItems={[
+                  member.isDeleted
+                    ? {
+                        label: "Reactivate",
+                        onClick: () =>
+                          toggleAccountStatusMutation.mutate({
+                            memberId: member._id,
+                            isDeleted: false,
+                          }),
+                      }
+                    : {
+                        label: "Delete Account",
+                        onClick: () =>
+                          toggleAccountStatusMutation.mutate({
+                            memberId: member._id,
+                            isDeleted: true,
+                          }),
+                      },
+                ]}
+              />
             </div>
           );
         }
       },
     ],
-    [hasRealWorkspaces]
+    [hasRealWorkspaces, toggleAccountStatusMutation]
   );
 
   return (
@@ -1555,6 +1628,24 @@ const ModuleAccess = () => {
               sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
             >
               Configure Workspace Modules
+            </Button>
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={() => handleBulkAccountStatus(false)}
+              disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
+              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+            >
+              Reactivate All Employees
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => handleBulkAccountStatus(true)}
+              disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
+              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+            >
+              Delete All Employees
             </Button>
 
             {/* <TextField
