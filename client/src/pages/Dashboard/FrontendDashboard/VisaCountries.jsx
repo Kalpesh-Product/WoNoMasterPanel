@@ -6,6 +6,7 @@ import AgTable from "../../../components/AgTable";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import MuiModal from "../../../components/MuiModal";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const REQUIREMENT_OPTIONS = [
   "e-visa",
@@ -33,7 +34,7 @@ const VisaCountries = () => {
     queryKey: ["visaCountriesList"],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        "http://localhost:3000/api/visa-rules/destinations/countries",
+        `${NOMADS_API_BASE_URL}/visa-rules/destinations/countries`,
       );
       return response?.data?.countries || [];
     },
@@ -53,7 +54,7 @@ const VisaCountries = () => {
     queryKey: ["visaRulesByPassport", selectedPassport],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        `http://localhost:3000/api/visa-rules/passport/${encodeURIComponent(selectedPassport)}`,
+        `${NOMADS_API_BASE_URL}/visa-rules/passport/${encodeURIComponent(selectedPassport)}`,
       );
       return response?.data?.data || [];
     },
@@ -63,7 +64,7 @@ const VisaCountries = () => {
   const { mutate: patchVisaRule, isPending: isSaving } = useMutation({
     mutationFn: async ({ passport, destination, durationDays, requirement }) =>
       axiosPrivate.patch(
-        `http://localhost:3000/api/visa-rules/passport/${encodeURIComponent(passport)}`,
+        `${NOMADS_API_BASE_URL}/visa-rules/passport/${encodeURIComponent(passport)}`,
         {
           destination,
           durationDays: Number(durationDays),

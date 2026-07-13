@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { queryClient } from "../../../main";
 import StatusChip from "../../../components/StatusChip";
 import MuiModal from "../../../components/MuiModal";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const CONTINENT_OPTIONS = [
   "Asia",
@@ -82,7 +83,7 @@ export default function NomadListingsOverview({
     enabled: !!companyId && (!shouldResolveSource || !isSourceResolving),
     queryFn: async () => {
       const res = await axios.get(
-        `https://wononomadsbe.vercel.app/api/company/get-listings/${companyId}`,
+        `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
       );
 
       return res.data || [];

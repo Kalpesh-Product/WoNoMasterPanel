@@ -14,6 +14,7 @@ import {
 } from "@mui/material";
 import { toast } from "sonner";
 import PrimaryButton from "../../../components/PrimaryButton";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 // ---------- UI helpers ----------
 const ReadOnlyField = ({ label, value }) => (
@@ -78,7 +79,7 @@ const sortByMostRecentlyUpdated = (a, b) => {
 async function fetchPocAxios(companyId, signal) {
   try {
     const res = await axios.get(
-      `https://wononomadsbe.vercel.app/api/poc/poc?companyId=${companyId}`,
+      `${NOMADS_API_BASE_URL}/poc/poc?companyId=${companyId}`,
       { signal },
     );
     return normalizePocList(res.data).sort(sortByMostRecentlyUpdated);
@@ -151,8 +152,7 @@ const PocDetails = () => {
   const { mutate: updatePoc, isPending: isUpdating } = useMutation({
     mutationFn: async (payload) => {
       const res = await axios.put(
-        `https://wononomadsbe.vercel.app/api/poc/poc/${endpointCompanyId}`,
-        // `http://localhost:3000/api/poc/poc/${endpointCompanyId}`,
+        `${NOMADS_API_BASE_URL}/poc/poc/${endpointCompanyId}`,
         payload,
       );
       return res.data;

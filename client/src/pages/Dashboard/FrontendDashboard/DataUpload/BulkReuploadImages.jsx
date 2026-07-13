@@ -10,9 +10,9 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
-const API_BASE = "https://wononomadsbe.vercel.app/api";
-// const API_BASE = "http://localhost:3000/api";
+const API_BASE = NOMADS_API_BASE_URL;
 const MAX_FILES = 10;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const UPLOAD_FILTERS_STORAGE_KEY = "dataUploadFilters";

@@ -6,12 +6,12 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 // const KIND_OPTIONS = ["companies", "poc", "reviews"];
 const KIND_OPTIONS = ["news"];
 const TYPE_MAP = {
-  // api: "http://localhost:3000/api/news/bulk-insert",
-  api: "https://wononomadsbe.vercel.app/api/news/bulk-insert",
+  api: `${NOMADS_API_BASE_URL}/news/bulk-insert`,
   formKey: "news-file",
 };
 
