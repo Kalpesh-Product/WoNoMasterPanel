@@ -12,7 +12,7 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import SecondaryButton from "../../../components/SecondaryButton";
-import { NOMADS_BACKEND_URL } from "../../../constants/api";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const defaultValues = {
   serialNumber: "",
@@ -48,8 +48,6 @@ const stripGeneratedFields = (payload, { omitStatus = false } = {}) => {
   return omitStatus ? rest : { ...rest, isActive };
 };
 
-const RESTAURANT_API_BASE_URL = NOMADS_BACKEND_URL;
-
 const stripSectionIds = (sections = []) =>
   sections.map((section) => {
     const { id, _id, ...rest } = section;
@@ -83,9 +81,7 @@ const EditBlogNews = () => {
     queryKey: [type, "detail", stateItem?._id],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        isRestaurant
-          ? `${RESTAURANT_API_BASE_URL}/api/restaurants/${stateItem._id}`
-          : `/api/${isPlace ? "places" : "events"}/${stateItem._id}`,
+        `${NOMADS_API_BASE_URL}/${isEvent ? "events" : isPlace ? "places" : "restaurants"}/${stateItem._id}`,
       );
       return response.data?.data || response.data;
     },
@@ -136,15 +132,17 @@ const EditBlogNews = () => {
       const resourceType =
         type === "blog"
           ? "blogs"
+          : type === "event"
+            ? "events"
           : type === "place"
             ? "places"
             : type === "restaurant"
               ? "restaurants"
               : "news";
       const baseUrl =
-        isRestaurant
-          ? `${RESTAURANT_API_BASE_URL}/api/restaurants`
-          : `/api/${isEvent ? "events" : resourceType}`;
+        isEvent || isPlace || isRestaurant
+          ? `${NOMADS_API_BASE_URL}/${resourceType}`
+          : `/api/${resourceType}`;
       const url = `${baseUrl}${isEdit ? `/${item._id}` : ""}`;
       const method = isEdit ? "PATCH" : "POST";
 
