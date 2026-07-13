@@ -105,7 +105,7 @@ app.use(
   "/api/employee-agreements",
   verifyJwt,
   auditLogger,
-  employeeAgreementRoutes
+  employeeAgreementRoutes,
 );
 app.use("/api/notifications", verifyJwt, notificationRoutes);
 // app.use("/api/editor", websiteRoutes);

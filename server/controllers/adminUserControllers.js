@@ -364,12 +364,17 @@ const uploadCompanyLogo = async (req, res) => {
       message: response.data?.message || "Image uploaded successfully",
     });
   } catch (err) {
-    console.error("[uploadSingleImage] error:", err.message);
+    console.error(
+      "[uploadSingleImage] error:",
+      err.response?.data || err.message,
+    );
     const message =
       err.response?.data?.message ||
       err.response?.data?.error ||
       "Image upload failed";
-    return res.status(500).json({ success: false, message });
+    return res
+      .status(err.response?.status || 500)
+      .json({ success: false, message });
   }
 };
 
