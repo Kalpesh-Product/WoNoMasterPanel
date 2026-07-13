@@ -738,7 +738,7 @@ const uploadLogo = async (req, res, next) => {
         .json({ message: "Please provide a valid logo string (URL)" });
     }
 
-    const updatedCompany = await HostCompany.findOneAndUpdate(
+    let updatedCompany = await HostCompany.findOneAndUpdate(
       { companyId },
       {
         $set: {
@@ -750,6 +750,21 @@ const uploadLogo = async (req, res, next) => {
       },
       { new: true },
     );
+
+    if (!updatedCompany) {
+      updatedCompany = await HostLeadCompany.findOneAndUpdate(
+        { companyId },
+        {
+          $set: {
+            logo: {
+              url: logo.url,
+              id: logo.id,
+            },
+          },
+        },
+        { new: true },
+      );
+    }
 
     if (!updatedCompany) {
       return res.status(404).json({ message: "Company not found" });
