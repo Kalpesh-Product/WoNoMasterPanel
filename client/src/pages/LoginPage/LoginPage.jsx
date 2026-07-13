@@ -89,7 +89,7 @@ const LoginPage = () => {
 
   const filteredModules = defaultModules.map((module) => {
     const filteredSubmenus = module.submenus?.filter((submenu) =>
-      userDepartments?.includes(submenu.codeName)
+      userDepartments?.includes(submenu.codeName),
     );
 
     return {
@@ -99,7 +99,7 @@ const LoginPage = () => {
   });
 
   const hasAnySubmenus = filteredModules.some(
-    (module) => module.submenus.length > 0
+    (module) => module.submenus.length > 0,
   );
 
   // If there are matches, use first matched route. Else fallback to Finance Dashboard
@@ -126,7 +126,7 @@ const LoginPage = () => {
         { email, password },
         {
           withCredentials: true,
-        }
+        },
       );
       setAuth((prevState) => {
         return {
@@ -367,7 +367,7 @@ const LoginPage = () => {
                       <span
                         onClick={() =>
                           (window.location.href =
-                            "https://hosts.wono.co/signup")
+                            "https://host.wono.co/signup")
                         }
                         className="underline hover:text-primary cursor-pointer"
                       >
