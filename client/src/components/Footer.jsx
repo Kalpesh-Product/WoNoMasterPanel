@@ -10,15 +10,15 @@ const HostFooter = () => {
     {
       links: [
         { name: "About", link: "/" },
-        { name: "Career", link: "https://hosts.wono.co/career" },
-        { name: "FAQs", link: "https://hosts.wono.co/faq" },
+        { name: "Career", link: "https://host.wono.co/career" },
+        { name: "FAQs", link: "https://host.wono.co/faq" },
       ],
     },
     {
       links: [
-       { name: "Privacy", link: "https://hosts.wono.co/privacy" },
-        { name: "T&C", link: "https://hosts.wono.co/terms-and-conditions" },
-        { name: "Contact", link: "https://hosts.wono.co/contact" },
+        { name: "Privacy", link: "https://host.wono.co/privacy" },
+        { name: "T&C", link: "https://host.wono.co/terms-and-conditions" },
+        { name: "Contact", link: "https://host.wono.co/contact" },
       ],
     },
   ];
