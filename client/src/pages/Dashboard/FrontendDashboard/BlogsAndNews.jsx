@@ -415,7 +415,7 @@ const BlogsAndNews = () => {
           ? await axios.patch(
               itemType === "restaurant"
                 ? `${RESTAURANT_API_BASE_URL}/api/restaurants/${id}/status`
-                : `/api/${itemType === "event" ? "events" : "places"}/${id}/status`,
+                : `${NOMADS_API_BASE_URL}/${itemType === "event" ? "events" : "places"}/${id}/status`,
               {
                 isActive: newStatus,
               },
