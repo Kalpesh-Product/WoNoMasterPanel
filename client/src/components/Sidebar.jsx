@@ -102,18 +102,18 @@ const Sidebar = ({ onCloseDrawer }) => {
           icon: LuTicket,
           route: "/dashboard/support-tickets",
         },
-        {
-          id: 9,
-          title: "Requested Services",
-          icon: LuBoxes,
-          route: "/dashboard/requested-services",
-        },
-        {
-          id: 10,
-          title: "Inactive Websites",
-          icon: LuGlobe,
-          route: "/dashboard/inactive-websites",
-        },
+        // {
+        //   id: 9,
+        //   title: "Requested Services",
+        //   icon: LuBoxes,
+        //   route: "/dashboard/requested-services",
+        // },
+        // {
+        //   id: 10,
+        //   title: "Inactive Websites",
+        //   icon: LuGlobe,
+        //   route: "/dashboard/inactive-websites",
+        // },
         {
           id: 11,
           title: "Data Upload",
