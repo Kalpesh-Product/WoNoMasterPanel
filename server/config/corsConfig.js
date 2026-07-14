@@ -13,6 +13,7 @@ const allowedOrigins = [
   "http://localhost:4173",
   "https://wononomadsbe.vercel.app",
   process.env.CORS_FRONTEND_URL,
+  "https://wonohostbe.vercel.app/"
 ];
 
 // regex rules for subdomains
