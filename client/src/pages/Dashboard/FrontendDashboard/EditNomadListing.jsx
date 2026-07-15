@@ -46,6 +46,9 @@ const companyTypes = [
   "Hostel",
 ];
 
+const normalizeCompanyType = (value) =>
+  String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
 // ✅ Default review structure
 const defaultReview = {
   name: "",
@@ -127,6 +130,32 @@ const EditNomadListing = () => {
     },
   });
 
+  const { data: existingListings = [] } = useQuery({
+    queryKey: ["nomad-listing-types", companyId],
+    enabled: !!companyId,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const response = await axios.get(
+          `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
+        );
+        return Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        if (error?.response?.status === 404) return [];
+        throw error;
+      }
+    },
+  });
+
+  const originalType = normalizeCompanyType(
+    fetchedListing?.companyType || navState.website?.companyType || companyType,
+  );
+  const addedTypes = new Set(
+    existingListings
+      .map((listing) => normalizeCompanyType(listing.companyType))
+      .filter(Boolean),
+  );
+
   // 2) Prefer fetchedListing (richer) over navState.website, normalize fields
   useEffect(() => {
     // prefer the fully-fetched record when available
@@ -204,6 +233,14 @@ const EditNomadListing = () => {
   });
 
   const onSubmit = (values, e) => {
+    const normalizedSelectedType = normalizeCompanyType(values.companyType);
+    if (
+      normalizedSelectedType !== originalType &&
+      addedTypes.has(normalizedSelectedType)
+    ) {
+      toast.error("This Nomad listing type has already been added.");
+      return;
+    }
     const formEl = e?.target || formRef.current;
     const fd = new FormData(formEl);
 
@@ -287,6 +324,16 @@ const EditNomadListing = () => {
   return (
     <div className="p-4">
       <PageFrame>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5 mb-4">
+          <div>
+            <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+              Edit Product
+            </h2>
+            <p className="text-xs font-pmedium text-slate-500 mt-1">
+              Update the details of your Wono Nomads listing.
+            </p>
+          </div>
+        </div>
         <form
           ref={formRef}
           encType="multipart/form-data"
@@ -329,14 +376,28 @@ const EditNomadListing = () => {
                     {type}
                   </MenuItem>
                 ))} */}
-                {companyTypes.map((type) => (
-                  <MenuItem
-                    key={type}
-                    value={type.toLowerCase().replace(/\s+/g, "")}
-                  >
-                    {type}
-                  </MenuItem>
-                ))}
+                {companyTypes.map((type) => {
+                  const normalizedType = normalizeCompanyType(type);
+                  const alreadyAdded =
+                    normalizedType !== originalType &&
+                    addedTypes.has(normalizedType);
+                  return (
+                    <MenuItem
+                      key={type}
+                      value={type.toLowerCase().replace(/\s+/g, "")}
+                      disabled={alreadyAdded}
+                    >
+                      <span className="flex w-full items-center justify-between gap-4 font-pmedium">
+                        <span>{type}</span>
+                        {alreadyAdded && (
+                          <span className="text-[10px] font-pmedium uppercase tracking-wide text-emerald-600">
+                            Already added
+                          </span>
+                        )}
+                      </span>
+                    </MenuItem>
+                  );
+                })}
               </TextField>
             )}
           />

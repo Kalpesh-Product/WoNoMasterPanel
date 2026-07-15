@@ -7,6 +7,8 @@ const FormData = require("form-data");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
+const Workspace = require("../models/hostCompany/Workspace");
+const WebsiteTemplate = require("../models/website/WebsiteTemplate");
 
 const updateProfile = async (req, res) => {
   try {
@@ -378,30 +380,218 @@ const uploadCompanyLogo = async (req, res) => {
   }
 };
 
+// ---- Website leads / reviews helpers (mirrors HostPanel's controllers) ----
+
+const sanitizeValue = (value) => String(value || "").trim();
+const isSyntheticCompanyId = (value) => sanitizeValue(value).includes("-dev-");
+
+const resolveCompanyIdFromWorkspace = async (workspaceId) => {
+  const normalizedWorkspaceId = sanitizeValue(workspaceId);
+  if (!normalizedWorkspaceId) return "";
+
+  const template = await WebsiteTemplate.findOne({
+    workspaceId: normalizedWorkspaceId,
+  })
+    .select("companyId")
+    .lean()
+    .exec();
+  const templateCompanyId = sanitizeValue(template?.companyId);
+  if (templateCompanyId && !isSyntheticCompanyId(templateCompanyId)) {
+    return templateCompanyId;
+  }
+
+  const workspace = await Workspace.findById(normalizedWorkspaceId)
+    .select("company companyId")
+    .lean()
+    .exec();
+  if (workspace?.company) {
+    const linkedCompany = await HostCompany.findById(workspace.company)
+      .select("companyId")
+      .lean()
+      .exec();
+    const linkedCompanyId = sanitizeValue(linkedCompany?.companyId);
+    if (linkedCompanyId) return linkedCompanyId;
+  }
+
+  return sanitizeValue(workspace?.companyId);
+};
+
+const resolveTemplateFromRequest = async (req) => {
+  const workspaceId = sanitizeValue(req.query?.workspaceId || req.body?.workspaceId);
+  const companyId = sanitizeValue(req.query?.companyId || req.body?.companyId);
+  const companyName = sanitizeValue(req.query?.companyName || req.body?.companyName);
+  const searchKey = sanitizeValue(req.query?.searchKey || req.body?.searchKey);
+  const filters = [];
+
+  if (workspaceId) filters.push({ workspaceId });
+  if (companyId) filters.push({ companyId });
+  if (searchKey) filters.push({ searchKey: searchKey.toLowerCase() });
+  if (companyName) {
+    filters.push({
+      companyName: {
+        $regex: `^${companyName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        $options: "i",
+      },
+    });
+  }
+
+  if (!filters.length) return null;
+  return WebsiteTemplate.findOne({ $or: filters })
+    .select("companyId workspaceId searchKey companyName")
+    .lean()
+    .exec();
+};
+
+const resolveCanonicalCompanyId = async (req) => {
+  const requestedCompanyId = sanitizeValue(
+    req.query?.companyId || req.body?.companyId,
+  );
+  const requestedWorkspaceId = sanitizeValue(
+    req.query?.workspaceId || req.body?.workspaceId,
+  );
+  const template = await resolveTemplateFromRequest(req);
+  const candidates = [
+    sanitizeValue(template?.companyId),
+    template?.workspaceId
+      ? await resolveCompanyIdFromWorkspace(template.workspaceId)
+      : "",
+    requestedWorkspaceId
+      ? await resolveCompanyIdFromWorkspace(requestedWorkspaceId)
+      : "",
+    requestedCompanyId,
+  ].filter(Boolean);
+
+  const stableCandidate = candidates.find(
+    (value) => !isSyntheticCompanyId(value),
+  );
+  return stableCandidate || candidates[0] || "";
+};
+
+const parseReviewList = (response) => {
+  const reviews =
+    response?.data?.reviews ??
+    response?.data?.data?.reviews ??
+    response?.data?.data ??
+    response?.data;
+  return Array.isArray(reviews) ? reviews : [];
+};
+
+const parseListingList = (response) => {
+  const listings =
+    response?.data?.listings ?? response?.data?.data ?? response?.data;
+  return Array.isArray(listings) ? listings : [];
+};
+
+const getReviewCompanyRecordId = (review) =>
+  sanitizeValue(review?.company?._id || review?.company);
+
+const isWebsiteReviewRecord = (review) => {
+  const source = sanitizeValue(review?.source).toLowerCase();
+  const reviewSource = sanitizeValue(review?.reviewSource).toLowerCase();
+
+  if (reviewSource.includes("nomad")) return false;
+  if (reviewSource === "website reviews") return true;
+
+  return ["website", "website form", "website preview", "website reviews"].includes(
+    source,
+  );
+};
+
+const getWebsiteLeads = async (req, res, next) => {
+  try {
+    const companyId = await resolveCanonicalCompanyId(req);
+
+    if (!companyId) {
+      return res.status(400).json({
+        message: "Company ID is required (or provide a valid workspaceId)",
+      });
+    }
+
+    const leads = await axios.get(`${NOMADS_BASE}/company/leads`, {
+      params: { companyId },
+    });
+    return res.status(200).json(Array.isArray(leads?.data) ? leads.data : []);
+  } catch (error) {
+    return res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to fetch leads from Nomads",
+    });
+  }
+};
+
+const updateWebsiteLead = async (req, res, next) => {
+  try {
+    const { status = "", comment = "", leadId } = req.body;
+
+    if (!leadId || (!sanitizeValue(status) && !sanitizeValue(comment))) {
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
+    }
+
+    try {
+      const leads = await axios.patch(
+        `${NOMADS_BASE}/company/update-lead`,
+        req.body,
+      );
+
+      if (leads.status !== 200)
+        return res.status(200).json({ message: "No leads found" });
+    } catch (error) {
+      return res.status(error.response?.status || 500).json({
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to update lead",
+      });
+    }
+
+    return res
+      .status(200)
+      .json({ message: `Lead ${comment ? "comment" : "status"} updated` });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const updateReviewStatus = async (req, res, next) => {
   try {
     const { reviewId } = req.params;
-    const { status } = req.body;
-    let data = { status, userType: "MASTER" };
+    const { status, isEnabled } = req.body || {};
+    const hasStatusUpdate = typeof status === "string";
+    const hasVisibilityUpdate = typeof isEnabled === "boolean";
+    const data = {
+      ...(hasStatusUpdate ? { status } : {}),
+      ...(hasVisibilityUpdate ? { isEnabled } : {}),
+      userType: "MASTER",
+      userId: req.userData._id,
+      date: new Date(),
+    };
 
     if (!reviewId) {
       return res.status(400).json({ message: "Review id is required" });
     }
 
-    const allowedStatuses = ["approved", "rejected"];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ message: "Invalid review status" });
+    if (!hasStatusUpdate && !hasVisibilityUpdate) {
+      return res.status(400).json({
+        message: "Review status or isEnabled value is required",
+      });
     }
 
-    if (status === "approved") {
-      data = { ...data, userId: req.userData._id, date: new Date() };
-    } else {
-      data = { ...data, userId: req.userData._id, date: new Date() };
+    const allowedStatuses = ["approved", "rejected"];
+    if (hasStatusUpdate && !allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid review status" });
     }
 
     let response = {};
     try {
-      response = await axios.patch(`${NOMADS_BASE}/review/${reviewId}`, data);
+      response = await axios.patch(
+        `${NOMADS_BASE}/review/website-review/${reviewId}`,
+        data,
+      );
 
       if (![200, 204].includes(response.status)) {
         return res
@@ -418,7 +608,9 @@ const updateReviewStatus = async (req, res, next) => {
     }
 
     return res.status(200).json({
-      message: `Review ${status} successfully`,
+      message: hasVisibilityUpdate
+        ? `Review ${isEnabled ? "enabled" : "disabled"} successfully`
+        : `Review ${status} successfully`,
       review: response.data.review,
     });
   } catch (error) {
@@ -428,16 +620,35 @@ const updateReviewStatus = async (req, res, next) => {
 
 const getReviewsByCompany = async (req, res, next) => {
   try {
-    const { companyId, companyType = "", status = "pending" } = req.query;
+    const {
+      companyType = "",
+      status,
+      reviewScope = "",
+    } = req.query;
+    const normalizedReviewScope = sanitizeValue(reviewScope).toLowerCase();
+    const companyId = await resolveCanonicalCompanyId(req);
+
+    if (!companyId) {
+      return res.status(400).json({ message: "Company Id is required" });
+    }
+    // Preserve the original default (pending) for the legacy nomads reviews
+    // page; scoped requests (website/nomads) fetch every status like the
+    // host panel does.
+    const effectiveStatus =
+      typeof status === "string"
+        ? sanitizeValue(status)
+        : normalizedReviewScope
+          ? ""
+          : "pending";
 
     let response;
-    let enrichedReviews;
+    let enrichedReviews = [];
     try {
       response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
           companyId,
           companyType,
-          status,
+          ...(effectiveStatus ? { status: effectiveStatus } : {}),
         },
       });
 
@@ -445,7 +656,7 @@ const getReviewsByCompany = async (req, res, next) => {
         return res.status(400).json({ message: `Failed to fetch reviews` });
       }
 
-      const reviews = response.data.data;
+      const reviews = parseReviewList(response);
 
       const adminIds = new Set();
       const hostIds = new Set();
@@ -505,13 +716,50 @@ const getReviewsByCompany = async (req, res, next) => {
       return res.status(err.response?.status || 500).json({
         message:
           err.response?.data?.message ||
+          err.response?.data?.error ||
           err.message ||
-          "Failed to fetch reviews",
+          "Failed to fetch reviews from Nomads",
       });
     }
 
+    if (!normalizedReviewScope) {
+      return res.status(200).json({
+        reviews: enrichedReviews,
+      });
+    }
+
+    if (normalizedReviewScope === "website") {
+      enrichedReviews = enrichedReviews.filter(isWebsiteReviewRecord);
+    } else if (normalizedReviewScope === "nomads") {
+      enrichedReviews = enrichedReviews.filter(
+        (review) => !isWebsiteReviewRecord(review),
+      );
+
+      try {
+        const listingsResponse = await axios.get(
+          `${NOMADS_BASE}/company/get-listings/${encodeURIComponent(companyId)}`,
+        );
+        const listingTypeById = new Map(
+          parseListingList(listingsResponse)
+            .map((listing) => [
+              sanitizeValue(listing?._id),
+              sanitizeValue(listing?.companyType),
+            ])
+            .filter(([listingId]) => Boolean(listingId)),
+        );
+
+        enrichedReviews = enrichedReviews.map((review) => ({
+          ...review,
+          companyType:
+            listingTypeById.get(getReviewCompanyRecordId(review)) ||
+            sanitizeValue(review?.companyType),
+        }));
+      } catch {
+        // Reviews still load if the Nomads listing lookup is unavailable.
+      }
+    }
+
     return res.status(200).json({
-      // reviews: response.data.data,
       reviews: enrichedReviews,
     });
   } catch (error) {
@@ -567,4 +815,6 @@ module.exports = {
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,
+  getWebsiteLeads,
+  updateWebsiteLead,
 };

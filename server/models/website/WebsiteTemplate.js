@@ -11,19 +11,6 @@ const templateSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isPublished: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
-    publishedVersion: {
-      type: Number,
-      default: 0,
-    },
-    publishedAt: {
-      type: Date,
-      default: null,
-    },
     //hero
     companyLogo: {
       id: { type: String },
@@ -34,99 +21,20 @@ const templateSchema = new mongoose.Schema(
       type: String,
       // required: true
     },
+    workspaceId: {
+      type: String,
+      default: null,
+      index: true,
+    },
     title: { type: String },
     subTitle: { type: String },
     CTAButtonText: { type: String },
-    verticalType: { type: String },
-    heroVariant: { type: String },
-    themeVariant: { type: String },
-    enabledSections: [{ type: String }],
-    sectionOverrides: { type: mongoose.Schema.Types.Mixed, default: {} },
-    styleConfig: { type: mongoose.Schema.Types.Mixed, default: {} },
     heroImages: [
       {
         id: { type: String },
         url: { type: String },
       },
     ],
-    pageNavItems: [
-      {
-        name: { type: String },
-        slug: { type: String },
-        enabled: { type: Boolean, default: true },
-        pageHeading: { type: String },
-        pageIntro: { type: String },
-        metaTitle: { type: String },
-        metaDescription: { type: String },
-      },
-    ],
-    productDropdownPages: [
-      {
-        name: { type: String },
-        slug: { type: String },
-        enabled: { type: Boolean, default: true },
-        heroHeading: { type: String },
-        heroSubHeading: { type: String },
-        heroMode: { type: String },
-        heroImage: {
-          id: { type: String },
-          url: { type: String },
-        },
-        heroImages: [
-          {
-            id: { type: String },
-            url: { type: String },
-          },
-        ],
-        heroButtonText: { type: String },
-        homeCardHeading: { type: String },
-        homeCardSubText: { type: String },
-        homeCardImage: {
-          id: { type: String },
-          url: { type: String },
-        },
-        leadEnabled: { type: Boolean, default: true },
-        leadFormLabel: { type: String },
-      },
-    ],
-    aboutPageIntro: { type: String },
-    aboutPageOverview: { type: String },
-    aboutPageStory: { type: String },
-    aboutPageMission: { type: String },
-    aboutPageVision: { type: String },
-    aboutPageValues: { type: String },
-    aboutPageTeamHeading: { type: String },
-    aboutPageImages: [
-      {
-        id: { type: String },
-        url: { type: String },
-      },
-    ],
-    aboutPageImageCards: [
-      {
-        title: { type: String },
-        description: { type: String },
-        image: {
-          id: { type: String },
-          url: { type: String },
-        },
-      },
-    ],
-    galleryPageHeading: { type: String },
-    testimonialsPageHeading: { type: String },
-    testimonialsPageIntro: { type: String },
-    testimonialsHomePreviewCount: { type: Number, default: 3 },
-    testimonialsEnableWriteReview: { type: Boolean, default: true },
-    testimonialsSuccessMessage: { type: String },
-    contactPageHeading: { type: String },
-    contactPageIntro: { type: String },
-    contactEnableInquiryForm: { type: Boolean, default: true },
-    contactInquirySuccessMessage: { type: String },
-    contactBusinessHours: { type: String },
-    contactPersonName: { type: String },
-    contactPersonRole: { type: String },
-    contactPersonEmail: { type: String },
-    contactPersonPhone: { type: String },
     //about
     about: [{ type: String }],
     //products
@@ -175,6 +83,373 @@ const templateSchema = new mongoose.Schema(
     //footer
     registeredCompanyName: { type: String },
     copyrightText: { type: String },
+    socials: {
+      instagram: {
+        enabled: { type: Boolean, default: false },
+        link: { type: String, default: "", trim: true },
+      },
+      facebook: {
+        enabled: { type: Boolean, default: false },
+        link: { type: String, default: "", trim: true },
+      },
+      twitter: {
+        enabled: { type: Boolean, default: false },
+        link: { type: String, default: "", trim: true },
+      },
+      linkedin: {
+        enabled: { type: Boolean, default: false },
+        link: { type: String, default: "", trim: true },
+      },
+      whatsapp: {
+        enabled: { type: Boolean, default: false },
+        link: { type: String, default: "", trim: true },
+      },
+    },
+    vertical: {
+      type: String,
+      enum: [
+        "co-working",
+        "co-living",
+        "workation",
+        "hostel",
+        "meeting-rooms",
+        "cafe",
+      ],
+    },
+    verticalType: {
+      type: String,
+    },
+    themeId: { type: String, default: "co-working-default" },
+    heroVariant: { type: String, default: "text-image" },
+    themeVariant: { type: String, default: "default" },
+    activeSections: {
+      type: [String],
+      default: [
+        "hero",
+        "about",
+        "products",
+        "gallery",
+        "testimonials",
+        "contact",
+        "footer",
+      ],
+    },
+    enabledSections: {
+      type: [String],
+      default: [],
+    },
+    sectionOverrides: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    styleConfig: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    pageNavItems: {
+      type: [
+        {
+          name: { type: String, default: "" },
+          slug: { type: String, default: "" },
+          enabled: { type: Boolean, default: true },
+          pageHeading: { type: String, default: "" },
+          pageIntro: { type: String, default: "" },
+          metaTitle: { type: String, default: "" },
+          metaDescription: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+    productDropdownPages: {
+      type: [
+        {
+          name: { type: String, default: "" },
+          slug: { type: String, default: "" },
+          enabled: { type: Boolean, default: true },
+          heroHeading: { type: String, default: "" },
+          heroSubHeading: { type: String, default: "" },
+          heroMode: { type: String, default: "single" },
+          heroImage: {
+            id: { type: String },
+            url: { type: String },
+          },
+          heroImages: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+          heroButtonText: { type: String, default: "" },
+          homeCardHeading: { type: String, default: "" },
+          homeCardSubText: { type: String, default: "" },
+          homeCardImage: {
+            id: { type: String },
+            url: { type: String },
+          },
+          leadEnabled: { type: Boolean, default: true },
+          leadFormLabel: { type: String, default: "" },
+          faqs: {
+            type: [
+              {
+                question: { type: String, default: "" },
+                answer: { type: String, default: "" },
+              },
+            ],
+            default: [],
+          },
+          inclusions: {
+            type: [
+              {
+                key: { type: String, default: "" },
+                enabled: { type: Boolean, default: true },
+              },
+            ],
+            default: [],
+          },
+        },
+      ],
+      default: [],
+    },
+    aboutPageIntro: { type: String, default: "" },
+    aboutPageOverview: { type: String, default: "" },
+    aboutPageStory: { type: String, default: "" },
+    aboutPageMission: { type: String, default: "" },
+    aboutPageVision: { type: String, default: "" },
+    aboutPageValues: { type: String, default: "" },
+    aboutPageTeamHeading: { type: String, default: "" },
+    aboutPageImages: [
+      {
+        id: { type: String },
+        url: { type: String },
+      },
+    ],
+    aboutPageImageCards: {
+      type: [
+        {
+          title: { type: String, default: "" },
+          description: { type: String, default: "" },
+          image: {
+            id: { type: String },
+            url: { type: String },
+          },
+        },
+      ],
+      default: [],
+    },
+    galleryPageHeading: { type: String, default: "" },
+    testimonialsPageHeading: { type: String, default: "" },
+    testimonialsPageIntro: { type: String, default: "" },
+    testimonialsHomePreviewCount: { type: Number, default: 3 },
+    testimonialsEnableWriteReview: { type: Boolean, default: true },
+    testimonialsSuccessMessage: { type: String, default: "" },
+    contactPageHeading: { type: String, default: "" },
+    contactPageIntro: { type: String, default: "" },
+    contactEnableInquiryForm: { type: Boolean, default: true },
+    contactInquirySuccessMessage: { type: String, default: "" },
+    contactBusinessHours: { type: String, default: "" },
+    contactPersonName: { type: String, default: "" },
+    contactPersonRole: { type: String, default: "" },
+    contactPersonEmail: { type: String, default: "" },
+    contactPersonPhone: { type: String, default: "" },
+    rooms: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          images: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+          price: { type: String },
+        },
+      ],
+      default: [],
+    },
+    meetingRooms: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          images: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+          price: { type: String },
+        },
+      ],
+      default: [],
+    },
+    coLivingRooms: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          images: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+          price: { type: String },
+        },
+      ],
+      default: [],
+    },
+    packages: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          price: { type: String },
+          duration: { type: String },
+          images: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+        },
+      ],
+      default: [],
+    },
+    dorms: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          capacity: { type: Number },
+          images: [
+            {
+              id: { type: String },
+              url: { type: String },
+            },
+          ],
+          price: { type: String },
+        },
+      ],
+      default: [],
+    },
+    menuItems: {
+      type: [
+        {
+          category: { type: String },
+          name: { type: String },
+          description: { type: String },
+          price: { type: String },
+          image: {
+            id: { type: String },
+            url: { type: String },
+          },
+        },
+      ],
+      default: [],
+    },
+    amenities: {
+      type: [
+        {
+          title: { type: String },
+          description: { type: String },
+          icon: { type: String },
+        },
+      ],
+      default: [],
+    },
+    pricing: {
+      type: [
+        {
+          title: { type: String },
+          price: { type: String },
+          duration: { type: String },
+          features: [{ type: String }],
+        },
+      ],
+      default: [],
+    },
+    logoCarousel: {
+      enabled: { type: Boolean, default: false },
+      title: { type: String, default: "" },
+      logos: [
+        {
+          id: { type: String },
+          url: { type: String },
+        },
+      ],
+    },
+    // Partner page
+    partnerPageHeading: { type: String, default: "" },
+    partnerPageContent: { type: String, default: "" },
+    partnerFormTitle: { type: String, default: "" },
+    // Careers page
+    careersPageHeading: { type: String, default: "" },
+    careersPageIntro: { type: String, default: "" },
+    careersHeroImage: {
+      id: { type: String },
+      url: { type: String },
+    },
+    careersHeroButtonText: { type: String, default: "" },
+    careersClosingHeading: { type: String, default: "" },
+    careersClosingText: { type: String, default: "" },
+    careersApplyButtonText: { type: String, default: "" },
+    careersApplyButtonLink: { type: String, default: "" },
+    careersFormFields: { type: String, default: "[]" },
+    // Founders section (about page)
+    founders: {
+      type: [
+        {
+          name: { type: String, default: "" },
+          role: { type: String, default: "" },
+          bio: { type: String, default: "" },
+          highlights: [{ type: String }],
+          image: {
+            id: { type: String },
+            url: { type: String },
+          },
+        },
+      ],
+      default: [],
+    },
+    isDraft: { type: Boolean, default: false },
+    faqs: {
+      type: [
+        {
+          question: { type: String, default: "" },
+          answer: { type: String, default: "" },
+        },
+      ],
+      default: [],
+    },
+    inclusions: {
+      type: [
+        {
+          key: { type: String, default: "" },
+          enabled: { type: Boolean, default: true },
+        },
+      ],
+      default: [],
+    },
+    draftData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    draftUpdatedAt: { type: Date, default: null },
+    isPublished: { type: Boolean, default: false },
+    deployedUrl: { type: String, default: null },
+    deployedAt: { type: Date, default: null },
+    // Frozen copy of the template served to the live hosted website. Drafts keep
+    // mutating the top-level fields for local preview; the hosted site only sees
+    // this snapshot, refreshed on publish/submit.
+    publishedData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    publishedAt: { type: Date, default: null },
+    // Master-panel publish flow versions each publish into
+    // WebsiteTemplateVersion snapshots; this mirrors the latest version number.
+    publishedVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

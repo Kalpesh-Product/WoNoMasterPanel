@@ -151,6 +151,7 @@ const HostCompanies = () => {
                             dispatch(setSelectedCompany(params.data));
                             sessionStorage.setItem("companyId", params.data.companyId);
                             sessionStorage.setItem("companyName", params.data.companyName);
+                            sessionStorage.setItem("workspaceId", params.data.workspaceId || "");
                             const companySlug = toCompanySlug(params.data.companyName);
 
                             navigate(

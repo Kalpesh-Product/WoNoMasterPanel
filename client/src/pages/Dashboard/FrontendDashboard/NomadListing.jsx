@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import {
   TextField,
@@ -13,11 +13,12 @@ import {
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import SecondaryButton from "../../../components/SecondaryButton";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
 import { useLocation } from "react-router-dom";
+import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 // Dummy inclusions
 const inclusionOptions = [
@@ -44,6 +45,9 @@ const companyTypes = [
   "Hostel",
 ];
 
+const normalizeCompanyType = (value) =>
+  String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
 // ✅ Default description structure
 const defaultReview = {
   name: "",
@@ -58,6 +62,32 @@ const NomadListing = () => {
     navState.companyId || sessionStorage.getItem("companyId") || "";
   const axios = useAxiosPrivate();
   const formRef = useRef(null);
+
+  const { data: existingListings = [] } = useQuery({
+    queryKey: ["nomad-listing-types", companyId],
+    enabled: !!companyId,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const response = await axios.get(
+          `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
+        );
+        return Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        if (error?.response?.status === 404) return [];
+        throw error;
+      }
+    },
+  });
+  const addedTypes = useMemo(
+    () =>
+      new Set(
+        existingListings
+          .map((listing) => normalizeCompanyType(listing.companyType))
+          .filter(Boolean),
+      ),
+    [existingListings],
+  );
 
   const {
     control,
@@ -126,6 +156,10 @@ const NomadListing = () => {
   //   const formEl = e?.target || formRef.current;
   //   const fd = new FormData(formEl);
   const onSubmit = (values) => {
+    if (addedTypes.has(normalizeCompanyType(values.companyType))) {
+      toast.error("This Nomad listing type has already been added.");
+      return;
+    }
     const formEl = formRef.current;
     const fd = new FormData(formEl);
 
@@ -176,6 +210,16 @@ const NomadListing = () => {
   return (
     <div className="p-4">
       <PageFrame>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5 mb-4">
+          <div>
+            <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+              Add Product
+            </h2>
+            <p className="text-xs font-pmedium text-slate-500 mt-1">
+              Create a new listing for your co-working or co-living space on Wono Nomads.
+            </p>
+          </div>
+        </div>
         <form
           ref={formRef}
           encType="multipart/form-data"
@@ -211,11 +255,25 @@ const NomadListing = () => {
                 label="Company Type"
                 className="col-span-2 md:col-span-1"
               >
-                {companyTypes.map((type) => (
-                  <MenuItem key={type} value={type.toLowerCase()}>
-                    {type}
-                  </MenuItem>
-                ))}
+                {companyTypes.map((type) => {
+                  const alreadyAdded = addedTypes.has(normalizeCompanyType(type));
+                  return (
+                    <MenuItem
+                      key={type}
+                      value={type.toLowerCase()}
+                      disabled={alreadyAdded}
+                    >
+                      <span className="flex w-full items-center justify-between gap-4 font-pmedium">
+                        <span>{type}</span>
+                        {alreadyAdded && (
+                          <span className="text-[10px] font-pmedium uppercase tracking-wide text-emerald-600">
+                            Already added
+                          </span>
+                        )}
+                      </span>
+                    </MenuItem>
+                  );
+                })}
               </TextField>
             )}
           />
