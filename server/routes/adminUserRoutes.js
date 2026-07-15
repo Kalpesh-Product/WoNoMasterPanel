@@ -9,6 +9,8 @@ const {
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,
+  getWebsiteLeads,
+  updateWebsiteLead,
 } = require("../controllers/adminUserControllers");
 const upload = require("../config/multerConfig");
 
@@ -32,6 +34,10 @@ router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
 //Review Routes
 router.patch("/review/:reviewId", updateReviewStatus);
 router.get("/reviews", getReviewsByCompany);
+
+//Website Lead Routes (company website builder)
+router.get("/website-leads", getWebsiteLeads);
+router.patch("/website-leads/update", updateWebsiteLead);
 
 //
 router.patch("/registration/:companyId", updateRegistrationStatus);

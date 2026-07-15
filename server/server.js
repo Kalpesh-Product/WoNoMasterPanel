@@ -51,6 +51,8 @@ const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
+const recruitmentRoutes = require("./routes/recruitmentRoutes");
+const subscriptionRoutes = require("./routes/subscriptionRoutes");
 
 const {
   getTemplate,
@@ -81,11 +83,14 @@ app.get("/", (req, res) => {
   }
 });
 
+
+
 app.use("/api/hosts", hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
+app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
+app.use("/api/recruitment", recruitmentRoutes); // public careers jobs
 app.use("/api/admin", verifyJwt, auditLogger, adminUserRoutes);
 app.use("/api/host-user", hostUserRoutes);
-app.get("/api/editor/get-website/:companyName", getTemplate); //not protected in order to be accessed by website template site (eg:biznest.wono.co)
 
 app.use("/api/auth", authRoutes);
 app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
@@ -128,6 +133,7 @@ app.use("/api/finance", verifyJwt, auditLogger, financeRoutes);
 app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
 app.use("/api/website-credits", websiteCreditsRoutes);
+app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 
 app.all("*", (req, res) => {
   if (req.accepts("html")) {

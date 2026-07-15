@@ -54,10 +54,17 @@ const BreadCrumbComponent = () => {
     const fullPath = isDirectAppPath ? `/${path}` : `/dashboard/${path}`;
 
     // Capitalize for display
+    const isNomadProductFormSegment =
+      index > 0 &&
+      ["nomad-listing", "nomad-listings"].includes(pathSegments[index - 1]);
     const displayText = isEditCompanyIdSegment
       ? companyNameFromState
       : isCompanyDetailsIdSegment
       ? resolvedCompanyName
+      : isNomadProductFormSegment
+      ? segment === "add"
+        ? "Add Product"
+        : "Edit Product"
       : decodeURIComponent(segment)
           .replace(/-/g, " ")
           .replace(/\b\w/g, (char) => char.toUpperCase())
@@ -79,6 +86,28 @@ const BreadCrumbComponent = () => {
       </Link>
     );
   });
+
+  const nomadListingsIndex = pathSegments.findIndex((segment) =>
+    ["nomad-listing", "nomad-listings"].includes(segment),
+  );
+  if (nomadListingsIndex >= 0) {
+    const wonoNomadsPath = `/dashboard/${pathSegments
+      .slice(0, nomadListingsIndex)
+      .join("/")}/wono-nomads`;
+    breadcrumbs.splice(
+      nomadListingsIndex,
+      0,
+      <Link
+        key="wono-nomads"
+        underline="hover"
+        color="inherit"
+        onClick={() => navigate(wonoNomadsPath)}
+        style={{ cursor: "pointer" }}
+      >
+        Wono Nomads
+      </Link>,
+    );
+  }
 
   // Append query parameters dynamically to the breadcrumb
   queryParamEntries.forEach(([key, value], index) => {

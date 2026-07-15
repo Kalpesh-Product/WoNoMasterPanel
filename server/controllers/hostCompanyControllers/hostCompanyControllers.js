@@ -450,13 +450,46 @@ const activateProduct = async (req, res, next) => {
 
 const getCompanies = async (req, res, next) => {
   try {
-    const companies = await HostCompany.find();
+    const companies = await HostCompany.find().lean();
 
     if (!companies || !companies.length) {
       return res.status(200).json([]);
     }
 
-    return res.status(200).json(companies);
+    const workspaces = await Workspace.find({ isActive: true })
+      .select("_id company companyId businessName selectedPlan")
+      .lean();
+    const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
+      .select("searchKey companyId companyName isActive isPublished")
+      .lean();
+
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const enrichedCompanies = companies.map((company) => {
+      const companyId = String(company?.companyId || "").trim();
+      const companyName = normalize(company?.companyName);
+      const workspace = workspaces.find(
+        (item) =>
+          String(item?.company || "") === String(company?._id || "") ||
+          String(item?.companyId || "").trim() === companyId ||
+          normalize(item?.businessName) === companyName,
+      );
+      const template = templates.find(
+        (item) =>
+          (companyId && String(item?.companyId || "").trim() === companyId) ||
+          normalize(item?.companyName) === companyName,
+      );
+
+      return {
+        ...company,
+        workspaceId: workspace?._id ? String(workspace._id) : "",
+        workspaceCompanyId: String(workspace?.companyId || "").trim(),
+        selectedPlan: workspace?.selectedPlan || company?.selectedPlan || "",
+        isWebsiteTemplate: Boolean(template),
+        websiteTemplate: template || null,
+      };
+    });
+
+    return res.status(200).json(enrichedCompanies);
   } catch (error) {
     next(error);
   }
@@ -477,14 +510,14 @@ const getHostLeadCompanies = async (req, res, next) => {
     // true, otherwise the host gets told they're upgraded while still
     // seeing their old plan (exactly today's duplicate-lead-record bug).
     const allWorkspaces = await Workspace.find({ isActive: true })
-      .select("companyId businessName selectedPlan")
+      .select("_id companyId businessName selectedPlan")
+      .lean();
+    const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
+      .select("searchKey companyId companyName isActive isPublished")
       .lean();
 
     const companiesWithPlanStatus = companies.map((company) => {
       const requestedPlan = String(company?.requestedPlan || "").trim().toLowerCase();
-      if (!requestedPlan) {
-        return { ...company, workspacePlanApplied: false };
-      }
       const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
       const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
       const matchedWorkspace = allWorkspaces.find(
@@ -492,10 +525,25 @@ const getHostLeadCompanies = async (req, res, next) => {
           (companyIdRegex && companyIdRegex.test(String(ws?.companyId || ""))) ||
           (companyNameRegex && companyNameRegex.test(String(ws?.businessName || ""))),
       );
+      const matchedTemplate = templates.find(
+        (template) =>
+          (companyIdRegex &&
+            companyIdRegex.test(String(template?.companyId || ""))) ||
+          (companyNameRegex &&
+            companyNameRegex.test(String(template?.companyName || ""))),
+      );
       const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "").trim().toLowerCase();
       return {
         ...company,
-        workspacePlanApplied: Boolean(matchedWorkspace) && workspaceSelectedPlan === requestedPlan,
+        workspaceId: matchedWorkspace?._id ? String(matchedWorkspace._id) : "",
+        workspaceCompanyId: String(matchedWorkspace?.companyId || "").trim(),
+        selectedPlan: matchedWorkspace?.selectedPlan || company?.selectedPlan || company?.plan || "",
+        workspacePlanApplied:
+          Boolean(requestedPlan) &&
+          Boolean(matchedWorkspace) &&
+          workspaceSelectedPlan === requestedPlan,
+        isWebsiteTemplate: Boolean(matchedTemplate),
+        websiteTemplate: matchedTemplate || null,
       };
     });
 

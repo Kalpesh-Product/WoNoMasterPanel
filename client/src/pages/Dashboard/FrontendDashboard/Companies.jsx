@@ -149,6 +149,7 @@ const Companies = () => {
                 // for backward navigating
                 sessionStorage.setItem("companyId", params.data.companyId);
                 sessionStorage.setItem("companyName", params.data.companyName);
+                sessionStorage.setItem("workspaceId", params.data.workspaceId || "");
 
                 navigate(
                   `/dashboard/companies/${slugify(params.data.companyName)}`,
@@ -263,6 +264,7 @@ const Companies = () => {
                     "companyName",
                     params.data.companyName,
                   );
+                  sessionStorage.setItem("workspaceId", params.data.workspaceId || "");
                   navigate(
                     `/dashboard/companies/edit-company/${params.data.companyId}`,
                     {

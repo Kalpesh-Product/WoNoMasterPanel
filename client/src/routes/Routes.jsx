@@ -133,12 +133,11 @@ import AccessPages from "../pages/Access/AccessPages";
 import ModulePermissions from "../pages/Access/ModulePermissions";
 import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/CreateWebsite";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
-import Websites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/Websites";
-import WebsitesLayout from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsitesLayout";
-import InActiveWebsites from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/InActiveWebsites";
-import EditWebsiteTemp from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsiteTemp";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
 import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
+import WebsiteBuilderReviews from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderReviews";
+import WebsiteBuilderHome from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderHome";
+import WebsiteBuilderCareers from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderCareers";
 import CompanyOverview from "../pages/Dashboard/FrontendDashboard/CompanyOverview";
 import NomadListing from "../pages/Dashboard/FrontendDashboard/NomadListing";
 import PocDetails from "../pages/Dashboard/FrontendDashboard/PocDetails";
@@ -191,6 +190,8 @@ import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRanki
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
+import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/WonoNomadsHome";
+import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadReviews";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
@@ -202,6 +203,17 @@ export const routes = createBrowserRouter([
   {
     path: "/",
     element: <LoginPage />,
+  },
+
+  // Live preview window opened by the website builder's Preview button —
+  // renders the draft stored in localStorage, same as the host panel.
+  {
+    path: "/website-preview",
+    element: <PageDemo />,
+  },
+  {
+    path: "/website-preview/*",
+    element: <PageDemo />,
   },
 
   {
@@ -463,6 +475,14 @@ export const routes = createBrowserRouter([
                         element: <CompanyOverview />, // ✅ NEW intermediate page
                       },
                       {
+                        path: ":companyId/wono-nomads",
+                        element: <FrontendLayout />,
+                        children: [
+                          { index: true, element: <WonoNomadsHome /> },
+                          { path: "nomad-reviews", element: <NomadReviews /> },
+                        ],
+                      },
+                      {
                         path: ":companyId/nomad-listings",
                         element: <NomadListingsOverview />, // ✅ intermediate page
                       },
@@ -479,35 +499,28 @@ export const routes = createBrowserRouter([
                         path: ":companyId/website-builder", // ✅ move FrontendLayout here
                         element: <FrontendLayout />,
                         children: [
-                          { index: true, element: <FrontendDashboard /> },
+                          { index: true, element: <WebsiteBuilderHome /> },
                           { path: "select-theme", element: <ThemeGrid /> },
                           { path: "view-theme", element: <ViewTheme /> },
                           {
                             path: "leads",
                             element: <CompanyLeads />,
                           },
+                          {
+                            path: "reviews",
+                            element: <WebsiteBuilderReviews />,
+                          },
+                          { path: "careers", element: <WebsiteBuilderCareers /> },
                           { path: "live-demo", element: <PageDemo /> },
                           {
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
                           { path: "edit-website", element: <EditWebsite /> },
-                          // {
-                          //   path: "websites",
-                          //   element: <WebsitesLayout />,
-                          //   children: [
-                          //     { path: "active", element: <Websites /> },
-                          //     {
-                          //       path: "inactive",
-                          //       element: <InActiveWebsites />,
-                          //     },
-                          //     { path: ":website", element: <EditWebsite /> },
-                          //     {
-                          //       path: "inactive/:website",
-                          //       element: <EditWebsiteTemp />,
-                          //     },
-                          //   ],
-                          // },
+                          {
+                            path: "edit-website/:website",
+                            element: <EditWebsite />,
+                          },
                           {
                             path: "edit-theme/:templateName/:pageName",
                             element: <EditTemplate />,
@@ -602,8 +615,39 @@ export const routes = createBrowserRouter([
                         element: <ModuleAccess />,
                       },
                       {
+                        path: ":companyId/wono-nomads",
+                        element: <FrontendLayout />,
+                        children: [
+                          { index: true, element: <WonoNomadsHome /> },
+                          { path: "nomad-reviews", element: <NomadReviews /> },
+                        ],
+                      },
+                      {
                         path: ":companyId/nomad-listing",
                         element: <HostCompanyNomadListingOverview />,
+                      },
+                      {
+                        path: ":companyId/website-builder",
+                        element: <FrontendLayout />,
+                        children: [
+                          { index: true, element: <WebsiteBuilderHome /> },
+                          { path: "select-theme", element: <ThemeGrid /> },
+                          { path: "view-theme", element: <ViewTheme /> },
+                          { path: "leads", element: <CompanyLeads /> },
+                          { path: "reviews", element: <WebsiteBuilderReviews /> },
+                          { path: "careers", element: <WebsiteBuilderCareers /> },
+                          { path: "live-demo", element: <PageDemo /> },
+                          { path: "create-website", element: <CreateWebsite /> },
+                          { path: "edit-website", element: <EditWebsite /> },
+                          {
+                            path: "edit-website/:website",
+                            element: <EditWebsite />,
+                          },
+                          {
+                            path: "edit-theme/:templateName/:pageName",
+                            element: <EditTemplate />,
+                          },
+                        ],
                       },
                       {
                         path: ":companyId/website-credit-requests",
