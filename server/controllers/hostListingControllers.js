@@ -126,6 +126,31 @@ const createCompanyListing = async (req, res) => {
       throw err;
     }
 
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "add-company-listing",
+      companyName: company.companyName,
+      companyId: company.companyId,
+      changes: [
+        {
+          field: "listing",
+          type: "item",
+          change: "added",
+          to: `${listingData.companyName || listingData.companyTitle} (${companyType})`,
+        },
+        ...(listingData.images.length
+          ? [
+              {
+                field: "images",
+                type: "image",
+                change: "added",
+                to: `${listingData.images.length} image(s)`,
+              },
+            ]
+          : []),
+      ],
+    };
+
     return res
       .status(201)
       .json({ message: "Listing added successfully", data: listingData });
@@ -493,6 +518,40 @@ const editCompanyListing = async (req, res) => {
         message: err.response?.data.message || err.message,
       });
     }
+
+    // The listing itself lives in the Nomads service, so log the fields this
+    // edit submitted (new values) plus any images added.
+    const editedFields = Object.entries(allowedFields)
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => ({
+        field: key,
+        type: "text",
+        change: "edited",
+        to:
+          typeof value === "object"
+            ? JSON.stringify(value).slice(0, 300)
+            : String(value).slice(0, 300),
+      }));
+    const newImageCount = updateData.images.length - existingImages.length;
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "edit-company-listing",
+      companyName: company.companyName,
+      companyId: company.companyId,
+      changes: [
+        ...editedFields,
+        ...(newImageCount > 0
+          ? [
+              {
+                field: "images",
+                type: "image",
+                change: "added",
+                to: `${newImageCount} image(s)`,
+              },
+            ]
+          : []),
+      ],
+    };
 
     return res.status(200).json({
       message: "Listing updated successfully",

@@ -405,7 +405,7 @@ const EditWebsiteTemp = () => {
                     <TextField
                       {...field}
                       size="small"
-                      label="CTA Button Text"
+                      label="Call To Action Button Text"
                       fullWidth
                     />
                   )}

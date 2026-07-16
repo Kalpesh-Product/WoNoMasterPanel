@@ -6,6 +6,31 @@ const logSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    module: {
+      type: String,
+    },
+    page: {
+      type: String,
+    },
+    changes: {
+      type: [Object],
+      default: undefined,
+    },
+    creditsUsed: {
+      type: Number,
+    },
+    creditsRemaining: {
+      type: Number,
+    },
+    publishState: {
+      type: String, // "draft" | "published"
+    },
+    companyName: {
+      type: String,
+    },
+    companyId: {
+      type: String,
+    },
     performedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AdminUser",

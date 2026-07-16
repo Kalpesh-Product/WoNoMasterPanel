@@ -44,6 +44,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const agreementRoutes = require("./routes/agreementRoutes");
 const logRoutes = require("./routes/logRoutes");
 const auditLogger = require("./middlewares/auditLogger");
+const verifyJwtOptional = require("./middlewares/verifyJwtOptional");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
@@ -85,10 +86,12 @@ app.get("/", (req, res) => {
 
 
 
-app.use("/api/hosts", hostCompanyRoutes);
+// Shared with other apps: auth is optional, actions are logged only when a
+// master panel token is present.
+app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
-app.use("/api/recruitment", recruitmentRoutes); // public careers jobs
+app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs
 app.use("/api/admin", verifyJwt, auditLogger, adminUserRoutes);
 app.use("/api/host-user", hostUserRoutes);
 
@@ -114,7 +117,7 @@ app.use(
 );
 app.use("/api/notifications", verifyJwt, notificationRoutes);
 // app.use("/api/editor", websiteRoutes);
-app.use("/api/editor", verifyJwt, websiteTemplateRoutes);
+app.use("/api/editor", verifyJwt, auditLogger, websiteTemplateRoutes);
 app.use("/api/users", verifyJwt, auditLogger, userRoutes);
 app.use("/api/agreement", verifyJwt, auditLogger, agreementRoutes);
 app.use("/api/roles", verifyJwt, auditLogger, roleRoutes);

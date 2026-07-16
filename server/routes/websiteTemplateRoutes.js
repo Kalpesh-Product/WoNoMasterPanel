@@ -2,6 +2,9 @@ const router = require("express").Router();
 const upload = require("../config/multerConfig");
 const { uploadImages } = upload;
 const { checkAndDeductCredit } = require("../middlewares/creditCheck");
+const { setLogModule } = require("../middlewares/logContext");
+
+router.use(setLogModule("Website Builder"));
 
 const {
   createTemplate,

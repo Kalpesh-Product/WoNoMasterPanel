@@ -220,6 +220,13 @@ const CompanyReviews = () => {
         `/api/admin/review/${reviewId}`,
         {
           status,
+          // companyId/companyName ride along for the audit log
+          ...(selectedCompany?.companyId
+            ? { companyId: selectedCompany.companyId }
+            : {}),
+          ...(selectedCompany?.companyName
+            ? { companyName: selectedCompany.companyName }
+            : {}),
         },
       );
       return response?.data;

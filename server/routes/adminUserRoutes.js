@@ -13,6 +13,7 @@ const {
   updateWebsiteLead,
 } = require("../controllers/adminUserControllers");
 const upload = require("../config/multerConfig");
+const { setLogModule } = require("../middlewares/logContext");
 
 const router = require("express").Router();
 
@@ -32,12 +33,16 @@ router.patch(
 router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
 
 //Review Routes
-router.patch("/review/:reviewId", updateReviewStatus);
+router.patch("/review/:reviewId", setLogModule("Reviews"), updateReviewStatus);
 router.get("/reviews", getReviewsByCompany);
 
 //Website Lead Routes (company website builder)
 router.get("/website-leads", getWebsiteLeads);
-router.patch("/website-leads/update", updateWebsiteLead);
+router.patch(
+  "/website-leads/update",
+  setLogModule("Website Leads"),
+  updateWebsiteLead,
+);
 
 //
 router.patch("/registration/:companyId", updateRegistrationStatus);

@@ -117,7 +117,13 @@ export default function WebsiteBuilderReviews({
 
   const updateMutation = useMutation({
     mutationFn: async ({ reviewId, updates }) => {
-      const res = await axiosPrivate.patch(`/api/admin/review/${reviewId}`, updates);
+      // companyId/companyName/reviewScope ride along for the audit log
+      const res = await axiosPrivate.patch(`/api/admin/review/${reviewId}`, {
+        ...updates,
+        reviewScope,
+        ...(companyId ? { companyId } : {}),
+        ...(companyName ? { companyName } : {}),
+      });
       return res.data;
     },
     onSuccess: (_data, { updates }) => {

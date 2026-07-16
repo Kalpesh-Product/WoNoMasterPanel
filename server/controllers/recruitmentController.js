@@ -9,6 +9,22 @@ const { uploadFileToS3 } = require("../config/s3config");
 
 const clean = (value) => String(value ?? "").trim();
 
+// Company attribution for audit logs (jobs only carry a workspaceId).
+const getWorkspaceCompanyInfo = async (workspaceId) => {
+  try {
+    const Workspace = require("../models/hostCompany/Workspace");
+    const workspace = await Workspace.findById(workspaceId)
+      .select("businessName companyId")
+      .lean();
+    return {
+      companyName: workspace?.businessName || undefined,
+      companyId: workspace?.companyId || String(workspaceId || ""),
+    };
+  } catch {
+    return { companyId: String(workspaceId || "") };
+  }
+};
+
 const buildJobPayload = (body = {}) => ({
   jobCode: clean(body.jobCode).toUpperCase(),
   title: clean(body.title || body.designation),
@@ -67,6 +83,21 @@ const createRecruitmentJobOpening = async (req, res, next) => {
     }
     payload.jobCode = payload.jobCode || generateJobCode(payload.title, payload.department);
     const job = await RecruitmentJobOpening.create({ workspaceId, ...payload });
+
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "create-job-opening",
+      ...(await getWorkspaceCompanyInfo(workspaceId)),
+      changes: [
+        {
+          field: "jobOpening",
+          type: "item",
+          change: "added",
+          to: `${job.jobCode} - ${job.title} (${job.department})`,
+        },
+      ],
+    };
+
     return res.status(201).json({ success: true, data: job });
   } catch (error) {
     if (error?.code === 11000) {
@@ -88,6 +119,13 @@ const updateRecruitmentJobOpening = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Role and department are required" });
     }
     payload.jobCode = payload.jobCode || currentJobCode;
+    const existingJob = await RecruitmentJobOpening.findOne({
+      workspaceId,
+      jobCode: currentJobCode,
+    }).lean();
+    if (!existingJob) {
+      return res.status(404).json({ success: false, message: "Job opening not found" });
+    }
     const job = await RecruitmentJobOpening.findOneAndUpdate(
       { workspaceId, jobCode: currentJobCode },
       payload,
@@ -96,6 +134,23 @@ const updateRecruitmentJobOpening = async (req, res, next) => {
     if (!job) {
       return res.status(404).json({ success: false, message: "Job opening not found" });
     }
+
+    const changes = Object.keys(payload)
+      .filter((key) => String(existingJob[key] ?? "") !== String(payload[key] ?? ""))
+      .map((key) => ({
+        field: key,
+        type: "text",
+        change: "edited",
+        from: String(existingJob[key] ?? "").slice(0, 300),
+        to: String(payload[key] ?? "").slice(0, 300),
+      }));
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "update-job-opening",
+      ...(await getWorkspaceCompanyInfo(workspaceId)),
+      changes,
+    };
+
     return res.status(200).json({ success: true, data: job });
   } catch (error) {
     if (error?.code === 11000) {

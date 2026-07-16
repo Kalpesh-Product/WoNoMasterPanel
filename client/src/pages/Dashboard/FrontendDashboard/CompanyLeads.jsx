@@ -81,7 +81,12 @@ export default function CompanyLeads() {
 
   const updateLeadMutation = useMutation({
     mutationFn: async (payload) => {
-      const res = await axiosPrivate.patch("/api/admin/website-leads/update", payload);
+      // companyId/companyName ride along for the audit log
+      const res = await axiosPrivate.patch("/api/admin/website-leads/update", {
+        ...payload,
+        ...(companyId ? { companyId } : {}),
+        ...(companyName ? { companyName } : {}),
+      });
       return res.data;
     },
     onSuccess: (data) => {

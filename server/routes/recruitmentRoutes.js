@@ -9,7 +9,11 @@ const {
 const upload = require("../config/multerConfig");
 const verifyJwt = require("../middlewares/verifyJwt");
 
+const { setLogModule } = require("../middlewares/logContext");
+
 const router = express.Router();
+
+router.use(setLogModule("Careers"));
 
 router.get("/jobs/public", getPublicRecruitmentJobOpenings);
 router.post(
