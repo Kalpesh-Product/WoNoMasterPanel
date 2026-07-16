@@ -122,8 +122,8 @@ const MainLayout = () => {
   // }, []);
 
   return (
-    <div className="w-full flex flex-col justify-between h-screen overflow-y-auto">
-      <header className="flex w-full shadow-md items-center px-4">
+    <div className="flex h-screen w-full flex-col overflow-hidden">
+      <header className="flex w-full shrink-0 items-center px-4 shadow-md">
         {isMobile && (
           <IconButton onClick={() => setMobileOpen(true)} edge="start">
             <MenuIcon />
@@ -137,7 +137,7 @@ const MainLayout = () => {
         />
       </header>
 
-      <div className="flex w-full flex-grow">
+      <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         {isMobile ? (
           <Drawer
             anchor="left"
@@ -147,7 +147,7 @@ const MainLayout = () => {
               style: { width: 250 },
             }}
           >
-            <div className="py-2">
+            <div className="h-full py-2">
               <Sidebar
                 drawerOpen={mobileOpen}
                 onCloseDrawer={() => setMobileOpen(false)}
@@ -155,19 +155,19 @@ const MainLayout = () => {
             </div>
           </Drawer>
         ) : (
-          <aside className="bg-white">
+          <aside className="h-full shrink-0 overflow-hidden bg-white">
             <Sidebar />
           </aside>
         )}
 
-        <div className="w-full">
-          <main className="w-full bg-[#F7F8FA] p-3 flex flex-col gap-2">
-            <div className="p-4 rounded-t-md bg-white">
+        <div className="h-full min-w-0 flex-1 overflow-hidden">
+          <main className="flex h-full min-h-0 w-full flex-col gap-2 bg-[#F7F8FA] p-3">
+            <div className="shrink-0 rounded-t-md bg-white p-4">
               <BreadCrumbComponent />
             </div>
             <div
               id="scrollable-content"
-              className="flex-1 min-h-0 overflow-y-auto"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
             >
               <ScrollToTop />
               {permissionChecked ? <Outlet /> : null}

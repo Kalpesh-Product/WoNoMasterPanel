@@ -207,7 +207,7 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   return (
     <div
-      className={`${isSidebarOpen ? "w-64" : "w-16"} h-[90vh] bg-[#f1f5f9] flex flex-col border-r border-gray-200 shadow-sm overflow-hidden transition-all duration-100`}
+      className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-gray-200 bg-[#f1f5f9] shadow-sm transition-all duration-100`}
     >
       <div className="px-4 py-3 flex justify-center">
         <span className="text-[10px] font-bold tracking-wider text-gray-600 bg-gray-200 px-3 py-1 rounded-full uppercase">
