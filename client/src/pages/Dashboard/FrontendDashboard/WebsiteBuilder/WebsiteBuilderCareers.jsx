@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Country, State } from "country-state-city";
 import PageFrame from "../../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
@@ -23,6 +24,25 @@ const formatEmploymentType = (value) =>
   String(value || "full_time")
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const SELECTED_STATUSES = ["selected", "hired", "offer"];
+const SCREENING_STATUSES = ["new", "applied", "screening", "interview", "shortlist"];
+
+const candidateStatusGroup = (status) => {
+  const value = String(status || "").toLowerCase();
+  if (value.includes("onboard")) return "onboarded";
+  if (SELECTED_STATUSES.some((keyword) => value.includes(keyword))) return "selected";
+  if (value.includes("reject")) return "rejected";
+  if (SCREENING_STATUSES.some((keyword) => value.includes(keyword))) return "screening";
+  return "screening";
+};
+
+const candidateStatusClass = (status) => {
+  const group = candidateStatusGroup(status);
+  if (group === "selected" || group === "onboarded") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (group === "rejected") return "border-rose-200 bg-rose-50 text-rose-600";
+  return "border-amber-200 bg-amber-50 text-amber-600";
+};
 
 const EMPTY_JOB_FORM = {
   jobCode: "",
@@ -92,6 +112,97 @@ const JobDetailModal = ({ job, onClose }) => {
               <p className="mt-3 whitespace-pre-line text-[12px] leading-6 text-slate-700">{value}</p>
             </section>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Fallback for candidates fetched before the server started resolving labels.
+const parseRawCustomFields = (value) => {
+  try {
+    const raw = typeof value === "string" ? JSON.parse(value || "{}") : value;
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    return Object.entries(raw)
+      .filter(([, answer]) => String(answer ?? "").trim() !== "")
+      .map(([id, answer]) => ({ id, label: id, value: String(answer) }));
+  } catch {
+    return [];
+  }
+};
+
+// The website form stores country/state as ISO codes; resolve display names.
+const resolveCountryName = (countryCode) => {
+  if (!countryCode) return "";
+  return Country.getCountryByCode(countryCode)?.name || countryCode;
+};
+
+const resolveStateName = (stateCode, countryCode) => {
+  if (!stateCode) return "";
+  if (!countryCode) return stateCode;
+  return State.getStateByCodeAndCountry(stateCode, countryCode)?.name || stateCode;
+};
+
+const CandidateDetailModal = ({ candidate, onClose }) => {
+  if (!candidate) return null;
+  const customAnswers =
+    Array.isArray(candidate.customFieldAnswers) && candidate.customFieldAnswers.length
+      ? candidate.customFieldAnswers
+      : parseRawCustomFields(candidate.customFields);
+  // Mirror the fields collected on the website's application form.
+  const details = [
+    ["Candidate Code", candidate.candidateCode || "--"],
+    ["Applied On", candidate.appliedAt ? new Date(candidate.appliedAt).toLocaleDateString() : "--"],
+    ["Position Applied", candidate.positionApplied || "--"],
+    ["Job Code", candidate.jobCode || "--"],
+    ["Email", candidate.email || "--"],
+    ["Mobile Number", candidate.phone || "--"],
+    ["Date of Birth", candidate.dateOfBirth ? new Date(candidate.dateOfBirth).toLocaleDateString() : "--"],
+    ["Country", resolveCountryName(candidate.country) || "--"],
+    ["State", resolveStateName(candidate.state, candidate.country) || "--"],
+    ["City", candidate.city || "--"],
+    ["Pipeline Status", candidate.status || "New"],
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between border-b border-slate-100 bg-blue-50/30 p-5 sm:p-6">
+          <div>
+            <p className="text-[10px] font-pmedium uppercase tracking-widest text-blue-600">Job Application</p>
+            <h3 className="mt-1 text-lg font-pmedium text-slate-900">{candidate.fullName || "Unknown candidate"}</h3>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 hover:text-slate-700">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="max-h-[70vh] space-y-5 overflow-y-auto p-5 sm:p-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {details.map(([label, value]) => (
+              <div key={label} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+                <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">{label}</p>
+                <p className="mt-1 break-words text-[12px] font-pmedium text-slate-800">{value}</p>
+              </div>
+            ))}
+          </div>
+          {customAnswers.length > 0 && (
+            <section>
+              <h4 className="border-b border-slate-100 pb-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Application Form Responses</h4>
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {customAnswers.map((answer) => (
+                  <div key={answer.id} className={`rounded-2xl border border-slate-100 bg-slate-50/60 p-4 ${String(answer.value).length > 80 ? "sm:col-span-2" : ""}`}>
+                    <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">{answer.label}</p>
+                    <p className="mt-1 whitespace-pre-line break-words text-[12px] font-pmedium text-slate-800">{answer.value}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+          {candidate.resume?.url && (
+            <a href={candidate.resume.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-[12px] font-pmedium text-blue-700 transition-all hover:bg-blue-100">
+              <FileText size={16} /> View Resume{candidate.resume.name ? ` — ${candidate.resume.name}` : ""}
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -183,6 +294,7 @@ export default function WebsiteBuilderCareers() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingJob, setViewingJob] = useState(null);
+  const [viewingCandidate, setViewingCandidate] = useState(null);
   const [isJobModalOpen, setIsJobModalOpen] = useState(false);
   const [editingJobCode, setEditingJobCode] = useState("");
   const [jobForm, setJobForm] = useState({ ...EMPTY_JOB_FORM });
@@ -192,6 +304,15 @@ export default function WebsiteBuilderCareers() {
     enabled: Boolean(workspaceId),
     queryFn: async () => {
       const response = await axios.get("/api/recruitment/jobs", { params: { workspaceId } });
+      return Array.isArray(response?.data?.data) ? response.data.data : [];
+    },
+  });
+
+  const { data: candidates = [], isError: isCandidatesError } = useQuery({
+    queryKey: ["website-careers-candidates", workspaceId],
+    enabled: Boolean(workspaceId),
+    queryFn: async () => {
+      const response = await axios.get("/api/recruitment/candidates", { params: { workspaceId } });
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
   });
@@ -312,8 +433,22 @@ export default function WebsiteBuilderCareers() {
       });
   }, [jobs, searchQuery, statusFilter]);
 
+  const displayedCandidates = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return [...candidates]
+      .sort((a, b) => new Date(b.appliedAt || b.createdAt || 0).getTime() - new Date(a.appliedAt || a.createdAt || 0).getTime())
+      .filter((candidate) => {
+        const matchesStatus = statusFilter === "all" || candidateStatusGroup(candidate.status) === statusFilter;
+        const matchesQuery = !query || [candidate.fullName, candidate.email, candidate.phone, candidate.positionApplied, candidate.candidateCode, candidate.jobCode]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(query));
+        return matchesStatus && matchesQuery;
+      });
+  }, [candidates, searchQuery, statusFilter]);
+
   const totalVacancies = jobs.reduce((sum, job) => sum + Number(job.vacancyTotal || 0), 0);
   const filledVacancies = jobs.reduce((sum, job) => sum + Number(job.vacancyFilled || 0), 0);
+  const candidateGroupCount = (group) => candidates.filter((candidate) => candidateStatusGroup(candidate.status) === group).length;
   const statCards = activeTab === "jobs"
     ? [
         { key: "total", label: "Total Jobs", value: jobs.length, icon: Briefcase, className: "", iconClass: "bg-blue-50 text-blue-600" },
@@ -322,10 +457,10 @@ export default function WebsiteBuilderCareers() {
         { key: "filled", label: "Filled", value: filledVacancies, icon: UserCheck, className: "border-l-4 border-l-blue-500", iconClass: "bg-blue-50 text-blue-600" },
       ]
     : [
-        { key: "applications", label: "Total Candidates", value: 0, icon: Users, className: "", iconClass: "bg-blue-50 text-blue-600" },
-        { key: "selected", label: "Selected", value: 0, icon: UserCheck, className: "border-l-4 border-l-green-500", iconClass: "bg-green-50 text-green-600" },
-        { key: "onboarded", label: "Onboarded", value: 0, icon: CheckCircle2, className: "border-l-4 border-l-teal-500", iconClass: "bg-teal-50 text-teal-600" },
-        { key: "screening", label: "In Screening", value: 0, icon: Clock, className: "border-l-4 border-l-amber-500", iconClass: "bg-amber-50 text-amber-500" },
+        { key: "applications", label: "Total Candidates", value: candidates.length, icon: Users, className: "", iconClass: "bg-blue-50 text-blue-600" },
+        { key: "selected", label: "Selected", value: candidateGroupCount("selected"), icon: UserCheck, className: "border-l-4 border-l-green-500", iconClass: "bg-green-50 text-green-600" },
+        { key: "onboarded", label: "Onboarded", value: candidateGroupCount("onboarded"), icon: CheckCircle2, className: "border-l-4 border-l-teal-500", iconClass: "bg-teal-50 text-teal-600" },
+        { key: "screening", label: "In Screening", value: candidateGroupCount("screening"), icon: Clock, className: "border-l-4 border-l-amber-500", iconClass: "bg-amber-50 text-amber-500" },
       ];
 
   if (isPending && workspaceId) {
@@ -387,7 +522,32 @@ export default function WebsiteBuilderCareers() {
             </div>
 
             {activeTab === "applications" ? (
-              <div className="overflow-x-auto flex-1"><table className="w-full border-collapse"><thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4 text-left">Candidate Info</th><th className="px-5 py-4 text-left">Position Applied</th><th className="px-5 py-4">Source</th><th className="px-5 py-4">Pipeline Status</th><th className="px-5 py-4">Actions</th></tr></thead><tbody><tr><td colSpan={5} className="px-8 py-16 text-center text-slate-400"><div className="flex flex-col items-center gap-3"><FileText size={28} className="text-slate-300" /><p className="text-sm font-semibold">No applications found for this workspace yet.</p></div></td></tr></tbody></table></div>
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full min-w-[880px] border-collapse">
+                  <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4 text-left">Candidate Info</th><th className="px-5 py-4 text-left">Position Applied</th><th className="px-5 py-4 text-center">Source</th><th className="px-5 py-4 text-center">Applied On</th><th className="px-5 py-4 text-center">Pipeline Status</th><th className="px-5 py-4 text-center">Actions</th></tr></thead>
+                  <tbody className="divide-y divide-slate-100/60">
+                    {displayedCandidates.length === 0 ? (
+                      <tr><td colSpan={6} className="px-8 py-16 text-center text-slate-400"><div className="flex flex-col items-center gap-3"><FileText size={28} className="text-slate-300" /><p className="text-sm font-semibold">{isCandidatesError ? "Failed to load applications." : "No applications found for this workspace yet."}</p></div></td></tr>
+                    ) : displayedCandidates.map((candidate) => (
+                      <tr key={candidate._id || candidate.candidateCode} className="transition-colors hover:bg-slate-50/50">
+                        <td className="px-5 py-4"><p className="text-[12px] font-semibold text-slate-800">{candidate.fullName || "--"}</p><p className="mt-0.5 text-[10px] text-slate-400">{candidate.email || "--"}{candidate.phone ? ` | ${candidate.phone}` : ""}</p><p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-400">{candidate.candidateCode || "--"}</p></td>
+                        <td className="px-5 py-4"><p className="text-[11px] font-semibold text-slate-700">{candidate.positionApplied || "--"}</p><p className="mt-0.5 text-[9px] uppercase tracking-wider text-slate-400">{candidate.jobCode || "General"}</p></td>
+                        <td className="px-5 py-4 text-center"><span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider text-slate-600">{candidate.sourceType || "--"}</span></td>
+                        <td className="px-5 py-4 text-center"><p className="text-[11px] font-pmedium text-slate-600">{candidate.appliedAt ? new Date(candidate.appliedAt).toLocaleDateString() : "--"}</p></td>
+                        <td className="px-5 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${candidateStatusClass(candidate.status)}`}>{candidate.status || "New"}</span></td>
+                        <td className="px-5 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button type="button" onClick={() => setViewingCandidate(candidate)} title="View application" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Eye size={15} strokeWidth={2.5} /></button>
+                            {candidate.resume?.url && (
+                              <a href={candidate.resume.url} target="_blank" rel="noreferrer" title="Open resume" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><FileText size={15} strokeWidth={2.5} /></a>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="overflow-x-auto flex-1">
                 <table className="w-full min-w-[980px] border-collapse">
@@ -438,6 +598,7 @@ export default function WebsiteBuilderCareers() {
         </div>
       </PageFrame>
       <JobDetailModal job={viewingJob} onClose={() => setViewingJob(null)} />
+      <CandidateDetailModal candidate={viewingCandidate} onClose={() => setViewingCandidate(null)} />
       <JobOpeningModal
         open={isJobModalOpen}
         mode={editingJobCode ? "edit" : "create"}

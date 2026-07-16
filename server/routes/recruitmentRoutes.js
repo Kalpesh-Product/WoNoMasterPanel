@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getRecruitmentJobOpenings,
   getPublicRecruitmentJobOpenings,
+  getRecruitmentCandidates,
   createRecruitmentJobOpening,
   updateRecruitmentJobOpening,
   applyRecruitmentJob,
@@ -22,6 +23,7 @@ router.post(
   applyRecruitmentJob,
 );
 router.get("/jobs", verifyJwt, getRecruitmentJobOpenings);
+router.get("/candidates", verifyJwt, getRecruitmentCandidates);
 router.post("/jobs", verifyJwt, createRecruitmentJobOpening);
 router.patch("/jobs/:jobCode", verifyJwt, updateRecruitmentJobOpening);
 
