@@ -19,6 +19,10 @@ const { VERTICAL_CONFIG } = require("../../config/verticalConfig");
 const { THEME_TOKENS } = require("../../config/themeTokens");
 const WorkspaceSubscription = require("../../models/website/WebsiteCredits");
 const WebsiteTemplateVersion = require("../../models/website/WebsiteTemplateVersion");
+const {
+  diffWebsiteTemplate,
+  pagesFromChanges,
+} = require("../../utils/websiteChangeTracker");
 
 const VALID_VERTICALS = new Set([
   "co-working",
@@ -343,7 +347,7 @@ const deductWorkspaceCreditOnSuccess = async ({ workspaceId, companyId } = {}) =
   if (normalizedWorkspaceId) lookupClauses.push({ workspaceId: normalizedWorkspaceId });
   if (normalizedCompanyId) lookupClauses.push({ companyId: normalizedCompanyId });
 
-  await WorkspaceSubscription.findOneAndUpdate(
+  return await WorkspaceSubscription.findOneAndUpdate(
     { $or: lookupClauses },
     {
       $setOnInsert: {
@@ -361,6 +365,16 @@ const deductWorkspaceCreditOnSuccess = async ({ workspaceId, companyId } = {}) =
       setDefaultsOnInsert: true,
     },
   ).exec();
+};
+
+// Credits still available on a subscription doc (monthly limit + purchased
+// add-ons minus used).
+const creditsRemainingOf = (subscription) => {
+  if (!subscription) return undefined;
+  const limit =
+    Number(subscription.creditsLimit || 0) +
+    Number(subscription.addOnCreditsPurchased || 0);
+  return Math.max(0, limit - Number(subscription.creditsUsed || 0));
 };
 
 const NOMADS_BASE_URL = "https://wononomadsbe.vercel.app";
@@ -534,6 +548,9 @@ const saveTemplateDraft = async (req, res) => {
     let template = await WebsiteTemplate.findOne(
       buildStrictTemplateLookupByCompanyAndVertical(searchKey, vertical),
     );
+
+    // Snapshot for the audit log (empty when this draft creates the template).
+    const beforeSnapshot = template ? template.toObject() : {};
 
     if (!template) {
       template = new WebsiteTemplate({
@@ -1195,6 +1212,17 @@ const saveTemplateDraft = async (req, res) => {
     template.menuItems = sanitizeMenuItemsForPersistence(template.menuItems);
     await template.save();
 
+    const changes = diffWebsiteTemplate(beforeSnapshot, template.toObject());
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "save-website-draft",
+      page: pagesFromChanges(changes) || "No changes",
+      changes,
+      publishState: "draft",
+      companyName: template.companyName,
+      companyId: template.companyId || template.workspaceId,
+    };
+
     return res.status(200).json({
       message: "Website draft saved successfully",
       template: serializeWebsiteTemplateForClient(template),
@@ -1319,7 +1347,7 @@ const createTemplate = async (req, res, next) => {
       const fieldLimits = [
         ["Title", req.body.title, TEXT_LIMITS.title],
         ["Subtitle", req.body.subTitle, TEXT_LIMITS.subTitle],
-        ["CTA button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
+        ["Call To Action button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
         ["Product title", req.body.productTitle, TEXT_LIMITS.productTitle],
         ["Gallery title", req.body.galleryTitle, TEXT_LIMITS.galleryTitle],
         [
@@ -2175,6 +2203,16 @@ const createTemplate = async (req, res, next) => {
     // Credits are only deducted on edit (PATCH /edit-website), which goes through
     // the checkAndDeductCredit middleware and deductWorkspaceCreditOnSuccess in editTemplate.
 
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "create-website",
+      page: "All Pages",
+      publishState: "published",
+      creditsUsed: 0,
+      companyName: savedTemplate.companyName,
+      companyId: savedTemplate.companyId || savedTemplate.workspaceId,
+    };
+
     return res
       .status(201)
       .json({ message: "Template created", template: serializeWebsiteTemplateForClient(savedTemplate) });
@@ -2355,6 +2393,16 @@ const activateTemplate = async (req, res) => {
       return res.status(400).json({ message: "Failed to activate website" });
     }
 
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "activate-website",
+      companyName: template.companyName,
+      companyId: template.companyId || template.workspaceId,
+      changes: [
+        { field: "isActive", type: "status", change: "activated", to: searchKey },
+      ],
+    };
+
     return res.status(200).json({ message: "Website activated successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -2465,7 +2513,7 @@ const editTemplate = async (req, res, next) => {
       const fieldLimits = [
         ["Title", req.body.title, TEXT_LIMITS.title],
         ["Subtitle", req.body.subTitle, TEXT_LIMITS.subTitle],
-        ["CTA button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
+        ["Call To Action button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
         ["Product title", req.body.productTitle, TEXT_LIMITS.productTitle],
         ["Gallery title", req.body.galleryTitle, TEXT_LIMITS.galleryTitle],
         [
@@ -2559,6 +2607,10 @@ const editTemplate = async (req, res, next) => {
       session.endSession();
       return res.status(404).json({ message: "Template not found" });
     }
+
+    // Snapshot for the audit log: diffed against the saved result so the log
+    // records exactly which page/section/field was edited.
+    const beforeSnapshot = template.toObject();
 
     const uploadImages = async (files = [], folder, limit = Infinity) => {
       if (files.length > limit) {
@@ -3059,7 +3111,13 @@ const editTemplate = async (req, res, next) => {
           : baseLen + newCounter++;
 
       const existingCount = existing?.images?.length || 0;
-      const newFiles = filesByField[`productImages_${fieldIdx}`] || [];
+      // The builder appends files by the product's position in the submitted
+      // products array, so look that up first; fall back to the legacy
+      // DB-index-based fieldname for older clients.
+      const newFiles =
+        filesByField[`productImages_${i}`] ||
+        filesByField[`productImages_${fieldIdx}`] ||
+        [];
       const total = existingCount + newFiles.length;
       if (total > 10) {
         throw new Error(
@@ -3232,10 +3290,23 @@ const editTemplate = async (req, res, next) => {
     await session.commitTransaction();
     session.endSession();
 
-    await deductWorkspaceCreditOnSuccess({
+    const updatedSubscription = await deductWorkspaceCreditOnSuccess({
       workspaceId: req.body?.workspaceId || template?.workspaceId,
       companyId: req.body?.companyId || template?.companyId,
     });
+
+    const changes = diffWebsiteTemplate(beforeSnapshot, template.toObject());
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "edit-website",
+      page: pagesFromChanges(changes) || "No changes",
+      changes,
+      creditsUsed: 1, // every edit submit consumes one credit
+      creditsRemaining: creditsRemainingOf(updatedSubscription),
+      publishState: "published", // submit pushes the site live
+      companyName: template.companyName,
+      companyId: template.companyId || template.workspaceId,
+    };
 
     res
       .status(200)
@@ -3300,6 +3371,12 @@ const publishWebsite = async (req, res, next) => {
     const deployedUrl = `https://${template.searchKey}.wono.co/`;
     const deployedAt = new Date();
 
+    // Previous live snapshot, so the log can show only what this publish
+    // changed on the site (instead of dumping the whole template).
+    const previousPublished = template.publishedData
+      ? JSON.parse(JSON.stringify(template.publishedData))
+      : null;
+
     template.isPublished = true;
     template.deployedAt = deployedAt;
     template.deployedUrl = deployedUrl;
@@ -3314,6 +3391,30 @@ const publishWebsite = async (req, res, next) => {
     subscription.publishedProjectId = websiteId;
     subscription.publishedProjectUrl = deployedUrl;
     await subscription.save();
+
+    const publishChanges = previousPublished
+      ? diffWebsiteTemplate(previousPublished, template.publishedData)
+      : [];
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "publish-website",
+      page: publishChanges.length
+        ? pagesFromChanges(publishChanges)
+        : "All Pages",
+      publishState: "published",
+      creditsRemaining: creditsRemainingOf(subscription),
+      companyName: template.companyName,
+      companyId: template.companyId || template.workspaceId,
+      changes: [
+        {
+          field: "isPublished",
+          type: "status",
+          change: previousPublished ? "re-published" : "first publish",
+          to: deployedUrl,
+        },
+        ...publishChanges,
+      ],
+    };
 
     return res.status(200).json({
       success: true,
@@ -3487,6 +3588,16 @@ const deleteTemplate = async (req, res) => {
     if (!template) {
       return res.status(400).json({ message: "Failed to delete website" });
     }
+
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "delete-website",
+      companyName: template.companyName,
+      companyId: template.companyId || template.workspaceId,
+      changes: [
+        { field: "isDeleted", type: "status", change: "deleted", to: searchKey },
+      ],
+    };
 
     return res.status(200).json({ message: "Website deleted successfully" });
   } catch (error) {

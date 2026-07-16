@@ -549,6 +549,19 @@ const updateWebsiteLead = async (req, res, next) => {
       });
     }
 
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "update-website-lead",
+      changes: [
+        ...(sanitizeValue(status)
+          ? [{ field: "status", type: "status", change: "edited", to: status }]
+          : []),
+        ...(sanitizeValue(comment)
+          ? [{ field: "comment", type: "text", change: "edited", to: comment }]
+          : []),
+      ],
+    };
+
     return res
       .status(200)
       .json({ message: `Lead ${comment ? "comment" : "status"} updated` });
@@ -606,6 +619,32 @@ const updateReviewStatus = async (req, res, next) => {
           "Failed to update review",
       });
     }
+
+    const reviewScope = String(req.body?.reviewScope || "").toLowerCase();
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "update-review-status",
+      ...(reviewScope === "nomads"
+        ? { module: "Nomad Reviews" }
+        : reviewScope === "website"
+          ? { module: "Website Reviews" }
+          : {}),
+      changes: [
+        ...(hasStatusUpdate
+          ? [{ field: "status", type: "status", change: "edited", to: status }]
+          : []),
+        ...(hasVisibilityUpdate
+          ? [
+              {
+                field: "isEnabled",
+                type: "status",
+                change: "edited",
+                to: isEnabled ? "enabled" : "disabled",
+              },
+            ]
+          : []),
+      ],
+    };
 
     return res.status(200).json({
       message: hasVisibilityUpdate

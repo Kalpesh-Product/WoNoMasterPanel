@@ -7,7 +7,7 @@ import Select from '@mui/joy/Select';
 import Option from '@mui/joy/Option';
 import Textarea from '@mui/joy/Textarea';
 import { toast } from "sonner"; // ✅ since you’re already using sonner for notifications
-import axios from "axios";
+import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import PrimaryButton from "../../../components/PrimaryButton";
 import { City, Country, State } from "country-state-city";
 
@@ -18,6 +18,7 @@ const parseCommaSeparatedList = (value = "") =>
     .filter(Boolean);
 
 const AddCompany = () => {
+  const axios = useAxiosPrivate();
   const { control, handleSubmit, reset, setValue, watch } = useForm({
     defaultValues: {
       // name: "",
@@ -54,10 +55,7 @@ const AddCompany = () => {
 
   const { mutate: register, isLoading: isRegisterLoading } = useMutation({
     mutationFn: async (fd) => {
-      const response = await axios.post(
-        "http://localhost:5007/api/hosts/onboard-company",
-        fd,
-      );
+      const response = await axios.post("/api/hosts/onboard-company", fd);
       return response.data;
     },
     onSuccess: () => {

@@ -2,8 +2,28 @@ const mongoose = require("mongoose");
 const RecruitmentJobOpening = require(
   "../models/recruitment/RecruitmentJobOpening",
 );
+const RecruitmentCandidate = require(
+  "../models/recruitment/RecruitmentCandidate",
+);
+const { uploadFileToS3 } = require("../config/s3config");
 
 const clean = (value) => String(value ?? "").trim();
+
+// Company attribution for audit logs (jobs only carry a workspaceId).
+const getWorkspaceCompanyInfo = async (workspaceId) => {
+  try {
+    const Workspace = require("../models/hostCompany/Workspace");
+    const workspace = await Workspace.findById(workspaceId)
+      .select("businessName companyId")
+      .lean();
+    return {
+      companyName: workspace?.businessName || undefined,
+      companyId: workspace?.companyId || String(workspaceId || ""),
+    };
+  } catch {
+    return { companyId: String(workspaceId || "") };
+  }
+};
 
 const buildJobPayload = (body = {}) => ({
   jobCode: clean(body.jobCode).toUpperCase(),
@@ -63,6 +83,21 @@ const createRecruitmentJobOpening = async (req, res, next) => {
     }
     payload.jobCode = payload.jobCode || generateJobCode(payload.title, payload.department);
     const job = await RecruitmentJobOpening.create({ workspaceId, ...payload });
+
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "create-job-opening",
+      ...(await getWorkspaceCompanyInfo(workspaceId)),
+      changes: [
+        {
+          field: "jobOpening",
+          type: "item",
+          change: "added",
+          to: `${job.jobCode} - ${job.title} (${job.department})`,
+        },
+      ],
+    };
+
     return res.status(201).json({ success: true, data: job });
   } catch (error) {
     if (error?.code === 11000) {
@@ -84,6 +119,13 @@ const updateRecruitmentJobOpening = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Role and department are required" });
     }
     payload.jobCode = payload.jobCode || currentJobCode;
+    const existingJob = await RecruitmentJobOpening.findOne({
+      workspaceId,
+      jobCode: currentJobCode,
+    }).lean();
+    if (!existingJob) {
+      return res.status(404).json({ success: false, message: "Job opening not found" });
+    }
     const job = await RecruitmentJobOpening.findOneAndUpdate(
       { workspaceId, jobCode: currentJobCode },
       payload,
@@ -92,6 +134,23 @@ const updateRecruitmentJobOpening = async (req, res, next) => {
     if (!job) {
       return res.status(404).json({ success: false, message: "Job opening not found" });
     }
+
+    const changes = Object.keys(payload)
+      .filter((key) => String(existingJob[key] ?? "") !== String(payload[key] ?? ""))
+      .map((key) => ({
+        field: key,
+        type: "text",
+        change: "edited",
+        from: String(existingJob[key] ?? "").slice(0, 300),
+        to: String(payload[key] ?? "").slice(0, 300),
+      }));
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "update-job-opening",
+      ...(await getWorkspaceCompanyInfo(workspaceId)),
+      changes,
+    };
+
     return res.status(200).json({ success: true, data: job });
   } catch (error) {
     if (error?.code === 11000) {
@@ -129,9 +188,132 @@ const getPublicRecruitmentJobOpenings = async (req, res, next) => {
   }
 };
 
+const applyRecruitmentJob = async (req, res, next) => {
+  try {
+    const {
+      workspaceId,
+      jobCode,
+      jobTitle,
+      fullName,
+      email,
+      phone,
+      dateOfBirth,
+      country,
+      state,
+      city,
+      experience,
+      linkedinProfileUrl,
+      currentSalary,
+      expectedSalary,
+      joinAvailability,
+      relocateToGoa,
+      personality,
+      skills,
+      whyConsiderYou,
+      bootstrapStartup,
+      personalMessage,
+      message,
+      customFields,
+    } = req.body || {};
+
+    if (!workspaceId || !fullName || !email) {
+      return res.status(400).json({
+        success: false,
+        message: "workspaceId, fullName, and email are required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid workspaceId",
+      });
+    }
+
+    const nameParts = String(fullName).trim().split(/\s+/);
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ");
+
+    const candidateCount = await RecruitmentCandidate.countDocuments({
+      workspaceId,
+    });
+
+    const candidateCode = `RC-${String(candidateCount + 1).padStart(4, "0")}`;
+
+    let resume;
+
+    if (req.file?.buffer?.length) {
+      const fileName = String(req.file.originalname || "resume").replace(
+        /\s+/g,
+        "-",
+      );
+
+      const uploadResult = await uploadFileToS3(
+        `hr/recruitment/public-applications/${candidateCode}-${Date.now()}-${fileName}`,
+        req.file,
+      );
+
+      resume = {
+        name: req.file.originalname || "Resume",
+        url: uploadResult.url,
+        publicId: uploadResult.id,
+        mimeType: req.file.mimetype || "",
+        uploadedAt: new Date(),
+      };
+    }
+
+    const candidate = await RecruitmentCandidate.create({
+      workspaceId,
+      candidateCode,
+      firstName,
+      lastName,
+      fullName: String(fullName).trim(),
+      email: String(email).trim().toLowerCase(),
+      phone: String(phone || "").trim(),
+      jobCode: String(jobCode || "").trim().toUpperCase(),
+      positionApplied: String(jobTitle || "").trim() || "General Application",
+      sourceType: "Website",
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+      country: String(country || "").trim(),
+      state: String(state || "").trim(),
+      city: String(city || "").trim(),
+      currentAddress: [country, state, city].filter(Boolean).join(", "),
+      experience: String(experience || "").trim(),
+      sourceReference: String(linkedinProfileUrl || "").trim(),
+      expectedSalary: String(expectedSalary || currentSalary || "").trim(),
+      availability: String(joinAvailability || "").trim() || "Full-time",
+      employmentHistory: String(whyConsiderYou || "").trim(),
+      skills: String(skills || "").trim(),
+      certifications: String(bootstrapStartup || "").trim(),
+      coverLetter: String(personality || "").trim(),
+      notes: [message, personalMessage, relocateToGoa]
+        .filter(Boolean)
+        .join("\n\n"),
+      customFields:
+        typeof customFields === "string"
+          ? customFields
+          : JSON.stringify(customFields || {}),
+      status: "New",
+      appliedAt: new Date(),
+      resume,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Application submitted successfully.",
+      data: {
+        candidateCode: candidate.candidateCode,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getRecruitmentJobOpenings,
   getPublicRecruitmentJobOpenings,
   createRecruitmentJobOpening,
   updateRecruitmentJobOpening,
+  applyRecruitmentJob,
 };

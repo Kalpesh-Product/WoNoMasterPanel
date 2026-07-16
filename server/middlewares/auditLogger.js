@@ -34,6 +34,10 @@ const auditLogger = (req, res, next) => {
 
     res.on("finish", async () => {
       try {
+        // Routes with optional auth (eg: /api/hosts) only log actions that can
+        // be attributed to a logged-in master panel user.
+        if (!req.userData) return;
+
         const status = res.statusCode;
         const success = status < 400;
         const { method, ip } = req;
@@ -41,9 +45,8 @@ const auditLogger = (req, res, next) => {
         const { firstName, lastName, _id } = req.userData;
         const fullName = `${firstName} ${lastName}`;
 
-        const { performedBy } = req.logContext || {
-          performedBy: _id,
-        };
+        const logContext = req.logContext || {};
+        const performedBy = logContext.performedBy || _id;
 
         const parseJSONFields = (obj) => {
           for (const key in obj) {
@@ -65,6 +68,14 @@ const auditLogger = (req, res, next) => {
           return obj;
         };
 
+        // Website builder bodies can carry very long strings (drafts, embedded
+        // data URLs); cap values so log documents stay small.
+        const MAX_PAYLOAD_VALUE_LENGTH = 1000;
+        const capValue = (value) =>
+          typeof value === "string" && value.length > MAX_PAYLOAD_VALUE_LENGTH
+            ? `${value.slice(0, MAX_PAYLOAD_VALUE_LENGTH)}… [truncated]`
+            : value;
+
         const flattenObject = (obj, prefix = "", result = {}) => {
           for (const key in obj) {
             const value = obj[key];
@@ -77,7 +88,7 @@ const auditLogger = (req, res, next) => {
             ) {
               flattenObject(value, prefixedKey, result);
             } else {
-              result[prefixedKey] = value;
+              result[prefixedKey] = capValue(value);
             }
           }
           return result;
@@ -115,16 +126,64 @@ const auditLogger = (req, res, next) => {
 
         const updatedPayload = flattenObject(combinedPayload);
 
+        // When the controller supplied a proper change list, store only the
+        // changes plus identifying fields instead of the full request body.
+        const hasChanges =
+          Array.isArray(logContext.changes) && logContext.changes.length > 0;
+        const IDENTIFYING_KEYS = [
+          "companyId",
+          "companyName",
+          "workspaceId",
+          "searchKey",
+          "vertical",
+          "jobCode",
+          "reviewId",
+          "leadId",
+        ];
+        const minimalPayload = Object.fromEntries(
+          Object.entries(updatedPayload).filter(([key]) =>
+            IDENTIFYING_KEYS.includes(key),
+          ),
+        );
+
+        // Company attribution: controller-provided first, request fields as
+        // fallback so every log can say which company it belongs to.
+        const companyName =
+          logContext.companyName ||
+          combinedPayload.companyName ||
+          undefined;
+        const companyId =
+          logContext.companyId ||
+          combinedPayload.companyId ||
+          combinedPayload.workspaceId ||
+          undefined;
+
         const logData = {
           performedBy,
           fullName,
           ipAddress: ip,
-          action: lastSegment,
+          action: logContext.action || lastSegment,
           method,
           statusCode: status,
           success,
-          payload: updatedPayload,
+          payload: hasChanges ? minimalPayload : updatedPayload,
           responseTime: Date.now() - startTime,
+          // Controller-provided detail (website builder page/section diffs,
+          // credits used, draft vs published, module name, etc.)
+          ...(logContext.module ? { module: logContext.module } : {}),
+          ...(logContext.page ? { page: logContext.page } : {}),
+          ...(hasChanges ? { changes: logContext.changes } : {}),
+          ...(logContext.creditsUsed !== undefined
+            ? { creditsUsed: logContext.creditsUsed }
+            : {}),
+          ...(logContext.creditsRemaining !== undefined
+            ? { creditsRemaining: logContext.creditsRemaining }
+            : {}),
+          ...(logContext.publishState
+            ? { publishState: logContext.publishState }
+            : {}),
+          ...(companyName ? { companyName } : {}),
+          ...(companyId ? { companyId: String(companyId) } : {}),
         };
 
         emitter.emit("storeLog", logData);

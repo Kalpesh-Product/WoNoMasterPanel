@@ -231,6 +231,46 @@ export default function WebsiteBuilderCareers() {
     },
   });
 
+  // The update endpoint requires the full job payload (title/department are
+  // validated), so send the job's current values with only the flag flipped.
+  const togglePostedMutation = useMutation({
+    mutationFn: async (job) => {
+      return axios.patch(
+        `/api/recruitment/jobs/${encodeURIComponent(job.jobCode)}`,
+        {
+          workspaceId,
+          jobCode: job.jobCode || "",
+          title: job.title || job.designation || "",
+          designation: job.designation || job.title || "",
+          department: job.department || "",
+          employmentType: job.employmentType || "full_time",
+          isPaid: job.isPaid !== false,
+          internshipDurationMonths: job.internshipDurationMonths || 0,
+          vacancyTotal: Number(job.vacancyTotal || 1),
+          location: job.location || "",
+          workMode: job.workMode || "on_site",
+          isActive: job.isActive !== false,
+          isPostedOnWebsite: job.isPostedOnWebsite === false,
+          aboutTheJob: job.aboutTheJob || job.description || "",
+          keyResponsibilities: job.keyResponsibilities || "",
+          requirements: job.requirements || "",
+          softSkills: job.softSkills || "",
+        },
+      );
+    },
+    onSuccess: (_, job) => {
+      toast.success(
+        job.isPostedOnWebsite === false
+          ? "Job is now posted on the website."
+          : "Job removed from the website.",
+      );
+      queryClient.invalidateQueries({ queryKey: ["website-careers", workspaceId] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update website status.");
+    },
+  });
+
   const openCreateJobModal = () => {
     setEditingJobCode("");
     setJobForm({ ...EMPTY_JOB_FORM });
@@ -361,11 +401,30 @@ export default function WebsiteBuilderCareers() {
                           <td className="px-5 py-4"><p className="text-[11px] font-semibold text-slate-700">{job.department || "--"}</p><p className="mt-0.5 text-[9px] text-slate-400">{job.isPaid === false ? "Unpaid internship" : "Paid role"}</p></td>
                           <td className="px-5 py-4 text-center"><p className="text-xl font-bold text-blue-600">{remaining}</p><p className="text-[9px] uppercase tracking-wider text-slate-400">Open Slots</p><p className="text-[8px] uppercase tracking-wider text-slate-500">Filled {job.vacancyFilled || 0} / {job.vacancyTotal || 0}</p></td>
                           <td className="px-5 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${job.isActive === false ? "border-slate-200 bg-slate-100 text-slate-500" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}><CheckCircle2 size={12} />{job.isActive === false ? "Inactive" : "Active"}</span></td>
-                          <td className="px-5 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${job.isPostedOnWebsite === false ? "border-slate-200 bg-slate-100 text-slate-500" : "border-blue-200 bg-blue-50 text-blue-700"}`}><Globe size={12} />{job.isPostedOnWebsite === false ? "Not Posted" : "Posted"}</span></td>
+                          <td className="px-5 py-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => togglePostedMutation.mutate(job)}
+                              disabled={togglePostedMutation.isPending}
+                              title={job.isPostedOnWebsite === false ? "Click to post on website" : "Click to remove from website"}
+                              className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:opacity-50 ${job.isPostedOnWebsite === false ? "border-slate-200 bg-slate-100 text-slate-500 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700" : "border-blue-200 bg-blue-50 text-blue-700 hover:border-slate-200 hover:bg-slate-100 hover:text-slate-500"}`}
+                            >
+                              <Globe size={12} />{job.isPostedOnWebsite === false ? "Not Posted" : "Posted"}
+                            </button>
+                          </td>
                           <td className="px-5 py-4 text-center">
                             <div className="flex items-center justify-center gap-1.5">
                               <button type="button" onClick={() => setViewingJob(job)} title="View job opening" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Eye size={15} strokeWidth={2.5} /></button>
                               <button type="button" onClick={() => openEditJobModal(job)} title="Edit job opening" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Pencil size={15} strokeWidth={2.5} /></button>
+                              <button
+                                type="button"
+                                onClick={() => togglePostedMutation.mutate(job)}
+                                disabled={togglePostedMutation.isPending}
+                                title={job.isPostedOnWebsite === false ? "Post on website" : "Remove from website"}
+                                className={`rounded-lg p-1.5 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${job.isPostedOnWebsite === false ? "bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700" : "bg-blue-100 text-blue-700 hover:bg-slate-100 hover:text-slate-600"}`}
+                              >
+                                <Globe size={15} strokeWidth={2.5} />
+                              </button>
                             </div>
                           </td>
                         </tr>
