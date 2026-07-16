@@ -3059,7 +3059,13 @@ const editTemplate = async (req, res, next) => {
           : baseLen + newCounter++;
 
       const existingCount = existing?.images?.length || 0;
-      const newFiles = filesByField[`productImages_${fieldIdx}`] || [];
+      // The builder appends files by the product's position in the submitted
+      // products array, so look that up first; fall back to the legacy
+      // DB-index-based fieldname for older clients.
+      const newFiles =
+        filesByField[`productImages_${i}`] ||
+        filesByField[`productImages_${fieldIdx}`] ||
+        [];
       const total = existingCount + newFiles.length;
       if (total > 10) {
         throw new Error(
