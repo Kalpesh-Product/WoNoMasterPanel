@@ -786,6 +786,43 @@ const CreateWebsite = () => {
   const companyId = selectedCompany?.companyId || hostCompanyIdentity?.companyId || sessionCompanyId || "";
   const prefillCompanyId = selectedCompany?.companyId || hostCompanyIdentity?.companyId || sessionCompanyId || "";
   const prefillCompanyName = selectedCompany?.companyName || sessionCompanyName || workspaceBusinessName || hostCompanyIdentity?.companyName || "";
+  const editorSessionIdRef = useRef(
+    globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`
+  );
+  const [editingLockPending, setEditingLockPending] = useState(false);
+  const [editingConflict, setEditingConflict] = useState(null);
+  const editingLockKey = String(
+    editWebsiteSearchKey || toSearchKey(prefillCompanyName)
+  ).trim();
+  useEffect(() => {
+    if (!editingLockKey) return;
+    let active = true;
+    const payload = {
+      lockKey: editingLockKey,
+      editorSessionId: editorSessionIdRef.current,
+      editorName: "Master Panel user"
+    };
+    const acquire = async (initial = false) => {
+      if (initial) setEditingLockPending(true);
+      try {
+        await axios.post("/api/editor/editing-lock/acquire", payload);
+        if (active) setEditingConflict(null);
+      } catch (error) {
+        if (active && error?.response?.status === 423) {
+          setEditingConflict(error.response.data);
+        }
+      } finally {
+        if (active && initial) setEditingLockPending(false);
+      }
+    };
+    acquire(true);
+    const heartbeat = window.setInterval(() => acquire(false), 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(heartbeat);
+      void axios.post("/api/editor/editing-lock/release", payload).catch(() => void 0);
+    };
+  }, [axios, editingLockKey]);
   const [creditsRemaining, setCreditsRemaining] = useState(5);
   const selectedVertical = "co-working";
   const activeSections = [
@@ -1319,6 +1356,7 @@ const CreateWebsite = () => {
     }
     const formEl = e?.target || formRef.current;
     const fd = new FormData(formEl);
+    fd.set("editorSessionId", editorSessionIdRef.current);
     const appendFileIfPresent = (fieldName, value) => {
       if (value instanceof File) {
         fd.append(fieldName, value);
@@ -2101,6 +2139,22 @@ const CreateWebsite = () => {
   );
   if (isCheckingExistingWebsite) {
     return <WebsiteBuilderEditorSkeleton />;
+  }
+  if (editingLockPending) {
+    return <WebsiteBuilderEditorSkeleton />;
+  }
+  if (editingConflict) {
+    const source = editingConflict?.lock?.source === "host-panel" ? "HostPanel" : "Master Panel";
+    return <PageFrame>
+      <div className="m-4 rounded-lg border border-amber-300 bg-amber-50 p-5 text-amber-950">
+        <h2 className="text-title font-pmedium">Website editing is in progress</h2>
+        <p className="mt-2 text-sm">
+          {editingConflict?.lock?.editorName || "Someone"} is currently editing this website from {source}.
+          This editor is locked to prevent either person from overwriting the other&apos;s changes.
+        </p>
+        <p className="mt-2 text-xs text-amber-800">The lock clears automatically if that editor disconnects.</p>
+      </div>
+    </PageFrame>;
   }
   return <div className="pb-2 min-w-0 overflow-x-hidden">
       <div className="p-4 flex flex-col gap-4 min-w-0">

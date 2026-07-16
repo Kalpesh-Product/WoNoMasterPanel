@@ -23,6 +23,7 @@ const {
   diffWebsiteTemplate,
   pagesFromChanges,
 } = require("../../utils/websiteChangeTracker");
+const { assertWebsiteEditLock } = require("./websiteEditLockControllers");
 
 const VALID_VERTICALS = new Set([
   "co-working",
@@ -2410,9 +2411,6 @@ const activateTemplate = async (req, res) => {
 };
 
 const editTemplate = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     let {
       products,
@@ -2596,15 +2594,15 @@ const editTemplate = async (req, res, next) => {
 
     validateTextFields();
 
+    await assertWebsiteEditLock(searchKey, req.body?.editorSessionId);
+
     const template = await WebsiteTemplate.findOne(
       buildTemplateLookupByCompanyAndVertical(
         searchKey,
         normalizedVertical || req.body?.vertical || req.body?.verticalType,
       ),
-    ).session(session);
+    );
     if (!template) {
-      await session.abortTransaction();
-      session.endSession();
       return res.status(404).json({ message: "Template not found" });
     }
 
@@ -3286,9 +3284,11 @@ const editTemplate = async (req, res, next) => {
     // Validate before saving to catch schema validation errors
     await template.validate();
 
-    await template.save({ session });
-    await session.commitTransaction();
-    session.endSession();
+    // This handler only writes one MongoDB document, so the save is already
+    // atomic. Keeping a transaction open while processing images and calling
+    // S3 creates a large WriteConflict window when HostPanel and Master Panel
+    // edit the same website.
+    await template.save();
 
     const updatedSubscription = await deductWorkspaceCreditOnSuccess({
       workspaceId: req.body?.workspaceId || template?.workspaceId,
@@ -3320,14 +3320,10 @@ const editTemplate = async (req, res, next) => {
 
     console.error("Edit Template Error:", err);
 
-    // Safely abort transaction if it's still active
-    if (session.inTransaction()) {
-      await session.abortTransaction();
-    }
-    session.endSession();
-
-    // Return the original error, not the transaction abort error
-    res.status(400).json({ message: originalError });
+    res.status(err?.status || 400).json({
+      code: err?.code,
+      message: originalError,
+    });
   }
 };
 
