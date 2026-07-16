@@ -71,6 +71,77 @@ const getRecruitmentJobOpenings = async (req, res, next) => {
   }
 };
 
+// Custom question definitions configured in the website builder careers form.
+const parseCareersFormFields = (value) => {
+  try {
+    const raw = typeof value === "string" ? JSON.parse(value || "[]") : value;
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .map((field, index) => ({
+        id: String(field?.id || `field_${index}`),
+        label: String(field?.label || "").trim(),
+      }))
+      .filter((field) => field.id);
+  } catch {
+    return [];
+  }
+};
+
+const parseCandidateCustomFields = (value) => {
+  try {
+    const raw = typeof value === "string" ? JSON.parse(value || "{}") : value;
+    return raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  } catch {
+    return {};
+  }
+};
+
+const getRecruitmentCandidates = async (req, res, next) => {
+  try {
+    const workspaceId = clean(req.query.workspaceId);
+    if (!mongoose.Types.ObjectId.isValid(workspaceId)) {
+      return res.status(400).json({ success: false, message: "A valid workspaceId is required" });
+    }
+    const candidates = await RecruitmentCandidate.find({ workspaceId })
+      .sort({ appliedAt: -1 })
+      .lean();
+
+    // Answers are stored keyed by field id; resolve labels from the website's
+    // careers form so the panel shows the actual questions.
+    const WebsiteTemplate = require("../models/website/WebsiteTemplate");
+    const template = await WebsiteTemplate.findOne({
+      workspaceId: String(workspaceId),
+      isDeleted: { $ne: true },
+    })
+      .sort({ updatedAt: -1 })
+      .select("careersFormFields")
+      .lean();
+    const formFields = parseCareersFormFields(template?.careersFormFields);
+    const knownFieldIds = new Set(formFields.map((field) => field.id));
+
+    const data = candidates.map((candidate) => {
+      const answers = parseCandidateCustomFields(candidate.customFields);
+      const customFieldAnswers = formFields
+        .filter((field) => String(answers[field.id] ?? "").trim() !== "")
+        .map((field) => ({
+          id: field.id,
+          label: field.label || field.id,
+          value: String(answers[field.id]),
+        }));
+      Object.entries(answers).forEach(([id, value]) => {
+        if (!knownFieldIds.has(id) && String(value ?? "").trim() !== "") {
+          customFieldAnswers.push({ id, label: id, value: String(value) });
+        }
+      });
+      return { ...candidate, customFieldAnswers };
+    });
+
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const createRecruitmentJobOpening = async (req, res, next) => {
   try {
     const workspaceId = clean(req.body.workspaceId);
@@ -313,6 +384,7 @@ const applyRecruitmentJob = async (req, res, next) => {
 module.exports = {
   getRecruitmentJobOpenings,
   getPublicRecruitmentJobOpenings,
+  getRecruitmentCandidates,
   createRecruitmentJobOpening,
   updateRecruitmentJobOpening,
   applyRecruitmentJob,

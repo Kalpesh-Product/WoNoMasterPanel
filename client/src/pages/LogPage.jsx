@@ -39,12 +39,24 @@ const LogPage = () => {
       field: "action",
       flex: 1,
       cellRenderer: (params) => (
-        <div role="button" onClick={() => handleViewlog(params.data.payload)}>
+        <div role="button" onClick={() => handleViewlog(params.data)}>
           <span className="underline text-blue-600 cursor-pointer">
             {params.value}
           </span>
         </div>
       ),
+    },
+    {
+      headerName: "Module",
+      field: "module",
+      flex: 1,
+      valueFormatter: (params) => params.value || "-",
+    },
+    {
+      headerName: "Company",
+      field: "companyName",
+      flex: 1,
+      valueFormatter: (params) => params.value || "-",
     },
     {
       headerName: "User",
@@ -249,30 +261,135 @@ const LogPage = () => {
         onClose={() => setOpenModal(false)}
         title="View Log"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
-          {selectedLog &&
-            Object.entries(selectedLog).map(([key, value], index) => {
-              console.log("keys", key, "->", skipKeys.includes(key));
-              if (skipKeys.includes(key)) {
-                console.log("inside", key, "->", skipKeys.includes(key));
-                return null;
-              }
-              const formattedKey = formatKey(key);
-              const formattedValue = formatValue(key, value);
+        {selectedLog && (
+          <div className="flex flex-col gap-5">
+            {/* Summary */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {[
+                ["Action", selectedLog.action],
+                ["Module", selectedLog.module],
+                ["Company", selectedLog.companyName],
+                ["Company ID", selectedLog.companyId],
+                ["User", selectedLog.user || selectedLog.fullName],
+                ["Page", selectedLog.page],
+                [
+                  "Publish State",
+                  selectedLog.publishState
+                    ? selectedLog.publishState.toUpperCase()
+                    : null,
+                ],
+                [
+                  "Credits Used",
+                  selectedLog.creditsUsed !== undefined
+                    ? String(selectedLog.creditsUsed)
+                    : null,
+                ],
+                [
+                  "Credits Remaining",
+                  selectedLog.creditsRemaining !== undefined
+                    ? String(selectedLog.creditsRemaining)
+                    : null,
+                ],
+                [
+                  "Status",
+                  selectedLog.success === undefined
+                    ? null
+                    : selectedLog.success
+                      ? "Success"
+                      : "Failed",
+                ],
+                [
+                  "Date",
+                  selectedLog.createdAt
+                    ? `${humanDate(selectedLog.createdAt)} ${humanTime(selectedLog.createdAt)}`
+                    : null,
+                ],
+              ]
+                .filter(([, value]) => value !== null && value !== undefined && value !== "")
+                .map(([title, value]) => (
+                  <DetalisFormatted key={title} title={title} detail={value} />
+                ))}
+            </div>
 
-              // Skip rendering completely if key OR value is null
+            {/* Changes done in this action */}
+            {Array.isArray(selectedLog.changes) &&
+              selectedLog.changes.length > 0 && (
+                <div>
+                  <h4 className="mb-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-700">
+                    Changes ({selectedLog.changes.length})
+                  </h4>
+                  <div className="flex max-h-72 flex-col divide-y divide-slate-100 overflow-y-auto">
+                    {selectedLog.changes.map((change, index) => (
+                      <div key={index} className="py-2.5 text-sm">
+                        {(change.page || change.section) && (
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600">
+                            {[change.page, change.section]
+                              .filter(Boolean)
+                              .join(" / ")}
+                          </p>
+                        )}
+                        <p className="mt-0.5 text-slate-800">
+                          <span className="font-semibold">
+                            {change.field || "-"}
+                          </span>
+                          <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+                            {change.change || change.type || "changed"}
+                          </span>
+                        </p>
+                        {(change.from !== undefined ||
+                          change.to !== undefined) && (
+                          <p className="mt-1 break-words text-xs">
+                            {change.from !== undefined && (
+                              <span className="text-red-500 line-through">
+                                {String(change.from)}
+                              </span>
+                            )}
+                            {change.from !== undefined &&
+                              change.to !== undefined && (
+                                <span className="mx-1.5 text-slate-400">→</span>
+                              )}
+                            {change.to !== undefined && (
+                              <span className="font-medium text-emerald-600">
+                                {String(change.to)}
+                              </span>
+                            )}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              if (!formattedKey || formattedValue === null) return null;
-
-              return (
-                <DetalisFormatted
-                  key={index}
-                  title={formattedKey}
-                  detail={formattedValue}
-                />
-              );
-            })}
-        </div>
+            {/* Submitted data (full payload for legacy logs, identifiers for change-tracked ones) */}
+            {selectedLog.payload &&
+              Object.keys(selectedLog.payload).length > 0 && (
+                <div>
+                  <h4 className="mb-2 border-b border-slate-200 pb-2 text-sm font-semibold text-slate-700">
+                    Submitted Data
+                  </h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {Object.entries(selectedLog.payload).map(
+                      ([key, value], index) => {
+                        if (skipKeys.includes(key)) return null;
+                        const formattedKey = formatKey(key);
+                        const formattedValue = formatValue(key, value);
+                        if (!formattedKey || formattedValue === null)
+                          return null;
+                        return (
+                          <DetalisFormatted
+                            key={index}
+                            title={formattedKey}
+                            detail={formattedValue}
+                          />
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              )}
+          </div>
+        )}
       </MuiModal>
     </div>
   );
