@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useParams } from "react-router-dom";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import NomadListingsOverview from "./NomadListingsOverview";
+import NomadListingsOverview, {
+  NomadListingsSkeleton,
+} from "./NomadListingsOverview";
+import PageFrame from "../../../components/Pages/PageFrame";
 
 export default function HostCompanyNomadListingOverview() {
   const axios = useAxiosPrivate();
@@ -21,7 +24,13 @@ export default function HostCompanyNomadListingOverview() {
   });
 
   if (isPending) {
-    return <div className="p-6 text-gray-500">Loading...</div>;
+    return (
+      <div className="p-2 lg:p-2.5 min-h-full">
+        <PageFrame>
+          <NomadListingsSkeleton />
+        </PageFrame>
+      </div>
+    );
   }
 
   // Explicitly linked via the Companies-side "Transfer" action, OR the host's

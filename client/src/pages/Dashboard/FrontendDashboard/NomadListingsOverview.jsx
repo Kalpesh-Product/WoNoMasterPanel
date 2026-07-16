@@ -94,7 +94,7 @@ export default function NomadListingsOverview({
   // own correct id via HostCompanyNomadListingOverview).
   const shouldResolveSource = !companyIdOverride;
 
-  const { data: sourceMeta, isPending: isSourceResolving } = useQuery({
+  const { data: sourceMeta, isPending: isSourcePending } = useQuery({
     queryKey: ["nomad-source", nativeCompanyId],
     enabled: shouldResolveSource && !!nativeCompanyId,
     queryFn: async () => {
@@ -105,20 +105,32 @@ export default function NomadListingsOverview({
     },
   });
 
+  // A disabled query stays "pending" forever, so only treat the source
+  // lookup as loading when it actually runs (Companies flow, no override).
+  const isSourceResolving = shouldResolveSource && isSourcePending;
+
   const companyId = shouldResolveSource
     ? sourceMeta?.effectiveNomadsCompanyId || nativeCompanyId
     : nativeCompanyId;
 
-  // ✅ Fetch listings of a company
+  // ✅ Fetch listings of a company — fires immediately with the native id
+  // (in parallel with the nomad-source resolution above) instead of waiting
+  // for it. In the common case the resolved id is the same, so the data is
+  // already there; if it differs, the key change triggers one refetch.
   const { data: listings = [], isPending } = useQuery({
     queryKey: ["nomad-listings", companyId],
-    enabled: !!companyId && (!shouldResolveSource || !isSourceResolving),
+    enabled: !!companyId,
+    retry: false,
     queryFn: async () => {
-      const res = await axios.get(
-        `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
-      );
-
-      return res.data || [];
+      try {
+        const res = await axios.get(
+          `${NOMADS_API_BASE_URL}/company/get-listings/${companyId}`,
+        );
+        return res.data || [];
+      } catch (error) {
+        if (error?.response?.status === 404) return [];
+        throw error;
+      }
     },
   });
 
@@ -298,26 +310,17 @@ export default function NomadListingsOverview({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
-            <ListingStat label="Total Listings" value={listingItems.length} icon={Layers} />
-            <ListingStat label="Active" value={activeListings} icon={CheckCircle2} tone="emerald" />
-            <ListingStat label="Inactive" value={inactiveListings} icon={XCircle} tone="rose" />
-            <ListingStat label="Product Types" value={productTypes} icon={Tags} tone="blue" />
-          </div>
-
           {isPending || isSourceResolving ? (
-            <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm overflow-hidden animate-pulse">
-              <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between gap-3">
-                <div className="h-8 w-56 rounded-xl bg-slate-200" />
-                <div className="h-9 w-72 rounded-xl bg-slate-200" />
-              </div>
-              <div className="p-4 space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div key={index} className="h-10 rounded-xl bg-slate-100" />
-                ))}
-              </div>
-            </div>
+            <NomadListingsSkeleton />
           ) : (
+            <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+              <ListingStat label="Total Listings" value={listingItems.length} icon={Layers} />
+              <ListingStat label="Active" value={activeListings} icon={CheckCircle2} tone="emerald" />
+              <ListingStat label="Inactive" value={inactiveListings} icon={XCircle} tone="rose" />
+              <ListingStat label="Product Types" value={productTypes} icon={Tags} tone="blue" />
+            </div>
+
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
               <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 bg-slate-50/50">
                 <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
@@ -433,6 +436,7 @@ export default function NomadListingsOverview({
                 </table>
               </div>
             </div>
+            </>
           )}
         </div>
       </PageFrame>
@@ -520,6 +524,36 @@ export default function NomadListingsOverview({
     </div>
   );
 }
+
+export const NomadListingsSkeleton = () => (
+  <div className="flex flex-col gap-4 animate-pulse">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <div
+          key={index}
+          className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="h-2.5 w-20 rounded bg-slate-200 mb-2.5" />
+            <div className="h-4 w-10 rounded bg-slate-200" />
+          </div>
+          <div className="h-9 w-9 rounded-2xl bg-slate-100 shrink-0" />
+        </div>
+      ))}
+    </div>
+    <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between gap-3">
+        <div className="h-8 w-56 rounded-xl bg-slate-200" />
+        <div className="h-9 w-72 rounded-xl bg-slate-200" />
+      </div>
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="h-10 rounded-xl bg-slate-100" />
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const STAT_TONES = {
   slate: {
