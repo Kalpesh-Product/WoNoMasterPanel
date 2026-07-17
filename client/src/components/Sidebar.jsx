@@ -103,6 +103,18 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/logs-layout",
         },
         {
+          id: 20,
+          title: "Host Panel Logs",
+          icon: LuFileText,
+          route: "/dashboard/host-panel-logs",
+        },
+        {
+          id: 21,
+          title: "Website Credits",
+          icon: LuTicket,
+          route: "/dashboard/website-credits",
+        },
+        {
           id: 14,
           title: "Reviews",
           icon: LuMessageSquareText,
