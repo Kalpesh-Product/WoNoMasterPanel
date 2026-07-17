@@ -61,9 +61,7 @@ export default function HostCompanyNomadListingOverview() {
         hideTransfer
         companyIdOverride={effectiveCompanyId}
         companyNameOverride={linkMeta?.companyName}
-        showTransferToCompanyButton={
-          !isAlreadyInCompanies && !!linkMeta?.companiesListingRequestedAt
-        }
+        showTransferToCompanyButton={!isAlreadyInCompanies}
         transferToCompanyData={{
           companyId: linkMeta?.ownCompanyId,
           companyName: linkMeta?.companyName,

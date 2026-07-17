@@ -1405,9 +1405,12 @@ const getCompaniesListingRequests = async (req, res, next) => {
   }
 };
 
-// Staff review a request and create the matching Companies-page entry,
-// linking it back to the Host Company so the Nomad Listing tab can find the
-// data that already exists in Nomads under the Host Company's own ID.
+// Staff create the matching Companies-page entry for a Host Company, linking
+// it back so the Nomad Listing tab can find the data that already exists in
+// Nomads under the Host Company's own ID. Callable either from the Requests
+// queue (a host asked to be listed) or directly from a Host Company's own
+// Nomad Listing tab (staff-initiated, no prior request needed) — both are
+// the same underlying action, just reached from different pages.
 const approveCompaniesListingRequest = async (req, res, next) => {
   try {
     const { hostCompanyId } = req.params;
@@ -1418,10 +1421,6 @@ const approveCompaniesListingRequest = async (req, res, next) => {
 
     if (!hostLeadCompany) {
       return res.status(404).json({ message: "Host company not found" });
-    }
-
-    if (!hostLeadCompany.companiesListingRequestedAt) {
-      return res.status(400).json({ message: "No pending request for this company" });
     }
 
     const existingLink = await HostCompany.findOne({ linkedHostCompanyId: hostCompanyId });
