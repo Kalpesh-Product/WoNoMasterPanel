@@ -72,36 +72,6 @@ const Sidebar = ({ onCloseDrawer }) => {
           icon: LuUsers,
           route: "/dashboard/value-adds-leads",
         },
-        {
-          id: 5,
-          title: "Signup Leads",
-          icon: LuUserPlus,
-          route: "/dashboard/signup-leads",
-        },
-        {
-          id: 6,
-          title: "Host Companies",
-          icon: LuBuilding2,
-          route: "/dashboard/host-companies",
-        },
-        {
-          id: 7,
-          title: "Module Access Logs",
-          icon: LuShieldCheck,
-          route: "/dashboard/module-access-logs",
-        },
-        // {
-        //   id: 8,
-        //   title: "Customer Support",
-        //   icon: LuHeadset,
-        //   route: "/dashboard/customer-support",
-        // },
-        {
-          id: 8,
-          title: "Support Tickets",
-          icon: LuTicket,
-          route: "/dashboard/support-tickets",
-        },
         // {
         //   id: 9,
         //   title: "Requested Services",
@@ -133,18 +103,6 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/logs-layout",
         },
         {
-          id: 20,
-          title: "Host Panel Logs",
-          icon: LuFileText,
-          route: "/dashboard/host-panel-logs",
-        },
-        {
-          id: 21,
-          title: "Website Credits",
-          icon: LuTicket,
-          route: "/dashboard/website-credits",
-        },
-        {
           id: 14,
           title: "Reviews",
           icon: LuMessageSquareText,
@@ -168,6 +126,62 @@ const Sidebar = ({ onCloseDrawer }) => {
           icon: LuPlane,
           route: "/dashboard/visa-countries",
         },
+      ],
+    },
+    {
+      id: 2,
+      icon: LuLayoutDashboard,
+      title: "Host Panel",
+      route: "/dashboard",
+      submenus: [
+        {
+          id: 2,
+          title: "Companies",
+          icon: LuBuilding2,
+          route: "/dashboard/companies",
+        },
+        {
+          id: 8,
+          title: "Support Tickets",
+          icon: LuTicket,
+          route: "/dashboard/support-tickets",
+        },
+        {
+          id: 5,
+          title: "Signup Leads",
+          icon: LuUserPlus,
+          route: "/dashboard/signup-leads",
+        },
+        {
+          id: 21,
+          title: "Website Credits",
+          icon: LuTicket,
+          route: "/dashboard/website-credits",
+        },
+        {
+          id: 6,
+          title: "Host Companies",
+          icon: LuBuilding2,
+          route: "/dashboard/host-companies",
+        },
+        {
+          id: 7,
+          title: "Module Access Logs",
+          icon: LuShieldCheck,
+          route: "/dashboard/module-access-logs",
+        },
+        {
+          id: 20,
+          title: "Host Panel Logs",
+          icon: LuFileText,
+          route: "/dashboard/host-panel-logs",
+        },
+        // {
+        //   id: 8,
+        //   title: "Customer Support",
+        //   icon: LuHeadset,
+        //   route: "/dashboard/customer-support",
+        // },
       ],
     },
   ];
