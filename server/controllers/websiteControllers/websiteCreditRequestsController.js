@@ -1,5 +1,6 @@
 const WebsiteCreditRequest = require("../../models/website/WebsiteCreditRequest");
 const WebsiteCredits = require("../../models/website/WebsiteCredits");
+const WebsiteCreditLedger = require("../../models/website/WebsiteCreditLedger");
 const HostLeadCompany = require("../../models/hostCompany/hostLeadCompany");
 const HostCompany = require("../../models/hostCompany/hostCompany");
 const Workspace = require("../../models/hostCompany/Workspace");
@@ -921,6 +922,23 @@ const addWebsiteCredits = async (req, res, next) => {
         });
       }
 
+      // Fire-and-forget: record the grant in the credits ledger.
+      WebsiteCreditLedger.create({
+        type: "added",
+        credits: creditsToAdd,
+        sourcePanel: "master_panel",
+        companyId: companyId || String(creditsDoc?.companyId || ""),
+        companyName: lockDoc.companyName || creditsDoc?.companyName || "",
+        workspaceId: workspaceId || String(creditsDoc?.workspaceId || ""),
+        workspaceName: lockDoc.workspaceName || creditsDoc?.workspaceName || "",
+        performedById: approvalMeta.userId,
+        performedByName: approvalMeta.name,
+        performedByEmail: approvalMeta.email,
+        description: "Credits added via approved credit request",
+      }).catch((error) =>
+        console.error("Failed to record credit grant:", error?.message),
+      );
+
       const updatedDoc = await WebsiteCreditRequest.findByIdAndUpdate(
         requestId,
         {
@@ -1000,6 +1018,230 @@ const resetMonthlyWebsiteCredits = async (req, res, next) => {
   }
 };
 
+// All host companies' credit balances for the master panel Website Credits
+// page. Company/workspace names are stored on the rows; fill any blanks from
+// the host company / workspace collections.
+const getWebsiteCreditsSummary = async (req, res, next) => {
+  try {
+    if (!ensureMasterRole(req.roles, req.userData)) {
+      return res.status(403).json({ message: "Master access required" });
+    }
+
+    const docs = await WebsiteCredits.find().sort({ updatedAt: -1 });
+    const rows = docs.map((doc) => doc.toObject({ virtuals: true }));
+
+    const companyIds = [
+      ...new Set(
+        rows
+          .map((row) => normalizeCompanyId(row.companyId))
+          .filter(Boolean),
+      ),
+    ];
+    // Some legacy rows store the HostCompany ObjectId in companyId.
+    const companyObjectIds = companyIds.filter((id) =>
+      /^[a-f0-9]{24}$/i.test(id),
+    );
+    const workspaceIds = [
+      ...new Set(
+        rows
+          .map((row) => String(row.workspaceId || "").trim())
+          .filter((id) => /^[a-f0-9]{24}$/i.test(id)),
+      ),
+    ];
+
+    const [hostCompanies, leadCompanies, hostCompaniesById, workspaces] =
+      await Promise.all([
+        companyIds.length
+          ? HostCompany.find({ companyId: { $in: companyIds } })
+              .select("companyId companyName")
+              .lean()
+          : Promise.resolve([]),
+        companyIds.length
+          ? HostLeadCompany.find({ companyId: { $in: companyIds } })
+              .select("companyId companyName")
+              .lean()
+          : Promise.resolve([]),
+        companyObjectIds.length
+          ? HostCompany.find({ _id: { $in: companyObjectIds } })
+              .select("_id companyName")
+              .lean()
+          : Promise.resolve([]),
+        workspaceIds.length
+          ? Workspace.find({ _id: { $in: workspaceIds } })
+              .select("_id workspaceName businessName")
+              .lean()
+          : Promise.resolve([]),
+      ]);
+
+    const companyNameMap = new Map();
+    hostCompanies.forEach((company) => {
+      companyNameMap.set(String(company.companyId || "").trim(), company.companyName || "");
+    });
+    leadCompanies.forEach((company) => {
+      const key = String(company.companyId || "").trim();
+      if (!companyNameMap.get(key)) {
+        companyNameMap.set(key, company.companyName || "");
+      }
+    });
+    hostCompaniesById.forEach((company) => {
+      const key = String(company._id || "").trim();
+      if (!companyNameMap.get(key)) {
+        companyNameMap.set(key, company.companyName || "");
+      }
+    });
+
+    const workspaceNameMap = new Map();
+    const workspaceBusinessNameMap = new Map();
+    workspaces.forEach((workspace) => {
+      const key = String(workspace._id || "").trim();
+      workspaceNameMap.set(key, workspace.workspaceName || "");
+      workspaceBusinessNameMap.set(key, workspace.businessName || "");
+    });
+
+    const enriched = rows.map((row) => {
+      const workspaceKey = String(row.workspaceId || "").trim();
+      return {
+        ...row,
+        companyName:
+          row.companyName ||
+          companyNameMap.get(normalizeCompanyId(row.companyId)) ||
+          workspaceBusinessNameMap.get(workspaceKey) ||
+          "",
+        workspaceName:
+          row.workspaceName || workspaceNameMap.get(workspaceKey) || "",
+      };
+    });
+
+    return res.status(200).json(enriched);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Direct credit grant from the Website Credits page (no request involved).
+const addWebsiteCreditsToCompany = async (req, res, next) => {
+  try {
+    if (!ensureMasterRole(req.roles, req.userData)) {
+      return res.status(403).json({ message: "Master access required" });
+    }
+
+    const { companyId, workspaceId, credits, note } = req.body || {};
+    const numericCredits = Number(credits);
+
+    if (!Number.isFinite(numericCredits) || numericCredits <= 0) {
+      return res.status(400).json({ message: "credits must be a positive number" });
+    }
+    if (!String(companyId || "").trim() && !String(workspaceId || "").trim()) {
+      return res.status(400).json({ message: "companyId or workspaceId is required" });
+    }
+
+    const lookupClauses = [];
+    if (String(workspaceId || "").trim()) {
+      lookupClauses.push({ workspaceId: String(workspaceId).trim() });
+    }
+    if (String(companyId || "").trim()) {
+      lookupClauses.push({ companyId: normalizeCompanyId(companyId) });
+    }
+
+    const existingDoc = await WebsiteCredits.findOne({ $or: lookupClauses });
+    if (!existingDoc) {
+      return res
+        .status(404)
+        .json({ message: "No credits record found for this company/workspace" });
+    }
+
+    // Top-ups are capped by the plan limit: remaining after adding can never
+    // exceed the monthly limit (professional 8, basic 5). E.g. 6 of 8 used
+    // means at most 6 can be added; all used means the full 8.
+    const existingRow = existingDoc.toObject({ virtuals: true });
+    const monthlyLimit = Number(existingRow.monthlyCreditsLimit || 0);
+    const remaining = Number(existingRow.creditsRemaining || 0);
+    const maxAddable = Math.max(0, monthlyLimit - remaining);
+
+    if (maxAddable <= 0) {
+      return res.status(400).json({
+        message: `Credits are already at the plan limit of ${monthlyLimit}`,
+      });
+    }
+    if (numericCredits > maxAddable) {
+      return res.status(400).json({
+        message: `Only ${maxAddable} credit${maxAddable === 1 ? "" : "s"} can be added (plan limit is ${monthlyLimit})`,
+      });
+    }
+
+    const creditsDoc = await WebsiteCredits.findByIdAndUpdate(
+      existingDoc._id,
+      {
+        $set: { updatedAtSource: "master-panel" },
+        $inc: { addOnCreditsPurchased: numericCredits },
+      },
+      { new: true },
+    );
+
+    const creditsRow = creditsDoc.toObject({ virtuals: true });
+
+    // Fire-and-forget: record the grant in the credits ledger.
+    WebsiteCreditLedger.create({
+      type: "added",
+      credits: numericCredits,
+      sourcePanel: "master_panel",
+      companyId: String(creditsRow.companyId || ""),
+      companyName: creditsRow.companyName || "",
+      workspaceId: String(creditsRow.workspaceId || ""),
+      workspaceName: creditsRow.workspaceName || "",
+      performedById: String(req.user || ""),
+      performedByName: String(
+        `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
+      ).trim(),
+      performedByEmail: String(req.userData?.email || "").trim().toLowerCase(),
+      description: String(note || "").trim() || "Credits added from master panel",
+      remainingAfter: creditsRow.creditsRemaining,
+    }).catch((error) =>
+      console.error("Failed to record credit grant:", error?.message),
+    );
+
+    return res.status(200).json({
+      message: "Credits added successfully",
+      websiteCredits: creditsRow,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Usage/grant history for one credits row (or everything when unfiltered).
+const getWebsiteCreditLedger = async (req, res, next) => {
+  try {
+    if (!ensureMasterRole(req.roles, req.userData)) {
+      return res.status(403).json({ message: "Master access required" });
+    }
+
+    const { companyId, workspaceId } = req.query || {};
+
+    const clauses = [];
+    if (String(workspaceId || "").trim()) {
+      clauses.push({ workspaceId: String(workspaceId).trim() });
+    }
+    if (String(companyId || "").trim()) {
+      clauses.push({
+        companyId: {
+          $in: [String(companyId).trim(), normalizeCompanyId(companyId)],
+        },
+      });
+    }
+
+    const filter = clauses.length ? { $or: clauses } : {};
+    const entries = await WebsiteCreditLedger.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(2000)
+      .lean();
+
+    return res.status(200).json(entries);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createWebsiteCreditRequest,
   getWebsiteCreditRequests,
@@ -1009,4 +1251,7 @@ module.exports = {
   updateWebsiteCreditPaymentStatus,
   addWebsiteCredits,
   resetMonthlyWebsiteCredits,
+  getWebsiteCreditsSummary,
+  addWebsiteCreditsToCompany,
+  getWebsiteCreditLedger,
 };

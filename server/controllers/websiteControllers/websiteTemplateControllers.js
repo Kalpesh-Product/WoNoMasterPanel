@@ -18,6 +18,7 @@ const axios = require("axios");
 const { VERTICAL_CONFIG } = require("../../config/verticalConfig");
 const { THEME_TOKENS } = require("../../config/themeTokens");
 const WorkspaceSubscription = require("../../models/website/WebsiteCredits");
+const WebsiteCreditLedger = require("../../models/website/WebsiteCreditLedger");
 const WebsiteTemplateVersion = require("../../models/website/WebsiteTemplateVersion");
 const {
   diffWebsiteTemplate,
@@ -3294,6 +3295,30 @@ const editTemplate = async (req, res, next) => {
       workspaceId: req.body?.workspaceId || template?.workspaceId,
       companyId: req.body?.companyId || template?.companyId,
     });
+
+    // Fire-and-forget: record who consumed the credit for the credits ledger.
+    WebsiteCreditLedger.create({
+      type: "used",
+      credits: 1,
+      sourcePanel: "master_panel",
+      companyId: String(
+        template?.companyId || req.body?.companyId || updatedSubscription?.companyId || "",
+      ),
+      companyName: template?.companyName || updatedSubscription?.companyName || "",
+      workspaceId: String(
+        req.body?.workspaceId || template?.workspaceId || updatedSubscription?.workspaceId || "",
+      ),
+      workspaceName: updatedSubscription?.workspaceName || "",
+      performedById: String(req.user || ""),
+      performedByName: String(
+        `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
+      ).trim(),
+      performedByEmail: String(req.userData?.email || "").trim().toLowerCase(),
+      description: "Website edit published",
+      remainingAfter: creditsRemainingOf(updatedSubscription),
+    }).catch((error) =>
+      console.error("Failed to record credit usage:", error?.message),
+    );
 
     const changes = diffWebsiteTemplate(beforeSnapshot, template.toObject());
     req.logContext = {

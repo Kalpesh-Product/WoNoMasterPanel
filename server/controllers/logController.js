@@ -1,5 +1,6 @@
 const Log = require("../models/Log");
 const ModuleAccessLog = require("../models/ModuleAccessLog");
+const HostActivityLog = require("../models/HostActivityLog");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const Workspace = require("../models/hostCompany/Workspace");
 const modelMap = require("../config/modelMap");
@@ -157,4 +158,31 @@ const getModuleAccessLogs = async (req, res, next) => {
   }
 };
 
-module.exports = { getLogs, getModuleAccessLogs };
+const getHostActivityLogs = async (req, res, next) => {
+  try {
+    const { companyId, workspaceId, startDate, endDate } = req.query;
+
+    const filter = {};
+    if (companyId) filter.companyId = String(companyId).trim();
+    if (workspaceId) filter.workspaceId = String(workspaceId).trim();
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
+
+    // Host panel volume grows fast; cap the response so the table stays usable.
+    const limit = Math.min(Number(req.query.limit) || 5000, 20000);
+
+    const logs = await HostActivityLog.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    return res.status(200).json(logs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getLogs, getModuleAccessLogs, getHostActivityLogs };
