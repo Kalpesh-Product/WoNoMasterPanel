@@ -103,12 +103,6 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/logs-layout",
         },
         {
-          id: 21,
-          title: "Website Credits",
-          icon: LuTicket,
-          route: "/dashboard/website-credits",
-        },
-        {
           id: 14,
           title: "Reviews",
           icon: LuMessageSquareText,
@@ -147,6 +141,12 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/companies",
         },
         {
+          id: 8,
+          title: "Support Tickets",
+          icon: LuTicket,
+          route: "/dashboard/support-tickets",
+        },
+        {
           id: 5,
           title: "Signup Leads",
           icon: LuUserPlus,
@@ -182,12 +182,6 @@ const Sidebar = ({ onCloseDrawer }) => {
         //   icon: LuHeadset,
         //   route: "/dashboard/customer-support",
         // },
-        {
-          id: 8,
-          title: "Support Tickets",
-          icon: LuTicket,
-          route: "/dashboard/support-tickets",
-        },
       ],
     },
   ];
