@@ -3,8 +3,16 @@ const upload = require("../config/multerConfig");
 const { uploadImages } = upload;
 const { checkAndDeductCredit } = require("../middlewares/creditCheck");
 const { setLogModule } = require("../middlewares/logContext");
+const {
+  acquireWebsiteEditLock,
+  getWebsiteEditLock,
+  releaseWebsiteEditLock,
+} = require("../controllers/websiteControllers/websiteEditLockControllers");
 
 router.use(setLogModule("Website Builder"));
+router.post("/editing-lock/acquire", acquireWebsiteEditLock);
+router.get("/editing-lock", getWebsiteEditLock);
+router.post("/editing-lock/release", releaseWebsiteEditLock);
 
 const {
   createTemplate,
