@@ -9,8 +9,14 @@ const {
   updateWebsiteCreditPaymentStatus,
   addWebsiteCredits,
   resetMonthlyWebsiteCredits,
+  getWebsiteCreditsSummary,
+  addWebsiteCreditsToCompany,
+  getWebsiteCreditLedger,
 } = require("../controllers/websiteControllers/websiteCreditRequestsController");
 
+router.get("/summary", verifyJwt, getWebsiteCreditsSummary);
+router.post("/add", verifyJwt, addWebsiteCreditsToCompany);
+router.get("/ledger", verifyJwt, getWebsiteCreditLedger);
 router.post("/requests", verifyJwt, createWebsiteCreditRequest);
 router.get("/requests", verifyJwt, getWebsiteCreditRequests);
 router.patch("/requests/:requestId/approve", verifyJwt, approveWebsiteCreditRequest);
