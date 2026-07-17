@@ -153,6 +153,12 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/signup-leads",
         },
         {
+          id: 21,
+          title: "Website Credits",
+          icon: LuTicket,
+          route: "/dashboard/website-credits",
+        },
+        {
           id: 6,
           title: "Host Companies",
           icon: LuBuilding2,
