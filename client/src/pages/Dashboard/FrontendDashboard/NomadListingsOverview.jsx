@@ -420,9 +420,15 @@ export default function NomadListingsOverview({
                               </button>
                               <button
                                 type="button"
-                                disabled={isToggle}
+                                disabled={isToggle || (showTransferToCompanyButton && !item.isActive)}
                                 onClick={() => toggleStatus({ businessId: item.businessId, status: !item.isActive })}
-                                title={item.isActive ? "Mark as inactive" : "Mark as active"}
+                                title={
+                                  showTransferToCompanyButton && !item.isActive
+                                    ? "Transfer to Company before activating this listing"
+                                    : item.isActive
+                                      ? "Mark as inactive"
+                                      : "Mark as active"
+                                }
                                 className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${item.isActive ? "bg-rose-50 text-rose-600 hover:bg-rose-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
                               >
                                 {item.isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
