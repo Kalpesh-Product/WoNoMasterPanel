@@ -1,16 +1,22 @@
 const mongoose = require("mongoose");
 const Workspace = require("../models/hostCompany/Workspace");
 
+// Monthly website-edit credits per plan. "basic" replaces the legacy
+// "static-free" label (same 5 credits); custom is 12 for now and can be
+// adjusted here later.
 const MONTHLY_BASE_CREDITS = 5;
 const PROFESSIONAL_MONTHLY_CREDITS = 8;
+const CUSTOM_MONTHLY_CREDITS = 12;
 
-// Monthly website-edit credits are plan-based and tracked on the
-// website_credits doc itself: professional workspaces get 8, everything else
-// (static-free/basic/custom/unknown) gets the base 5.
+const PLAN_CREDITS = {
+  basic: MONTHLY_BASE_CREDITS,
+  "static-free": MONTHLY_BASE_CREDITS, // legacy rows not yet migrated to "basic"
+  professional: PROFESSIONAL_MONTHLY_CREDITS,
+  custom: CUSTOM_MONTHLY_CREDITS,
+};
+
 const creditsForPlan = (plan) =>
-  String(plan || "").trim() === "professional"
-    ? PROFESSIONAL_MONTHLY_CREDITS
-    : MONTHLY_BASE_CREDITS;
+  PLAN_CREDITS[String(plan || "").trim()] ?? MONTHLY_BASE_CREDITS;
 
 // Maps the workspace's selectedPlan onto the website_credits plan field.
 const resolveWorkspacePlan = async ({ workspaceId, companyId } = {}) => {
@@ -28,18 +34,19 @@ const resolveWorkspacePlan = async ({ workspaceId, companyId } = {}) => {
     if (normalizedCompanyId) {
       clauses.push({ companyId: normalizedCompanyId });
     }
-    if (!clauses.length) return "static-free";
+    if (!clauses.length) return "basic";
 
     const workspace = await Workspace.findOne({ $or: clauses })
       .select("selectedPlan")
       .lean()
       .exec();
 
-    return workspace?.selectedPlan === "professional"
-      ? "professional"
-      : "static-free";
+    const selectedPlan = String(workspace?.selectedPlan || "").trim();
+    return ["basic", "professional", "custom"].includes(selectedPlan)
+      ? selectedPlan
+      : "basic";
   } catch {
-    return "static-free";
+    return "basic";
   }
 };
 
@@ -70,6 +77,7 @@ const syncSubscriptionPlan = async (subscription) => {
 module.exports = {
   MONTHLY_BASE_CREDITS,
   PROFESSIONAL_MONTHLY_CREDITS,
+  CUSTOM_MONTHLY_CREDITS,
   creditsForPlan,
   resolveWorkspacePlan,
   syncSubscriptionPlan,

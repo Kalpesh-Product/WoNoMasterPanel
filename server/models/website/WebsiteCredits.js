@@ -77,15 +77,18 @@ const websiteCreditsSchema = new mongoose.Schema(
 
 websiteCreditsSchema.index({ companyId: 1, workspaceId: 1 }, { unique: true });
 
-// Monthly limit is plan-based: professional gets 8, everything else the base
-// 5. creditsLimit is kept in sync by syncSubscriptionPlan and used as a
-// fallback for legacy rows that predate the plan field. Mirrors the host
-// panel's WorkspaceSubscription virtuals so both panels report identical
-// credit math for the shared website_credits collection.
+// Monthly limit is plan-based: professional 8, custom 12, basic (and the
+// legacy "static-free" label) the base 5. creditsLimit is kept in sync by
+// syncSubscriptionPlan and used as a fallback for legacy rows that predate
+// the plan field. Mirrors the host panel's WorkspaceSubscription virtuals so
+// both panels report identical credit math for the shared website_credits
+// collection.
 const MONTHLY_BASE_CREDITS = 5;
 const PROFESSIONAL_MONTHLY_CREDITS = 8;
+const CUSTOM_MONTHLY_CREDITS = 12;
 const getMonthlyLimit = (doc) => {
   if (doc.plan === "professional") return PROFESSIONAL_MONTHLY_CREDITS;
+  if (doc.plan === "custom") return CUSTOM_MONTHLY_CREDITS;
   return Number(doc.creditsLimit || 0) > 0
     ? Number(doc.creditsLimit)
     : MONTHLY_BASE_CREDITS;

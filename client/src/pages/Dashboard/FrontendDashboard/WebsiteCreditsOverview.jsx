@@ -176,7 +176,7 @@ const WebsiteCreditsOverview = () => {
           srNo: index + 1,
           companyName: item.companyName || "-",
           workspaceName: item.workspaceName || "-",
-          plan: item.plan || "static-free",
+          plan: item.plan === "static-free" ? "basic" : item.plan || "basic",
           totalLimit: Number(item.effectiveCreditsLimit ?? 0),
           used: isCurrentMonth ? Number(item.creditsUsed ?? 0) : bucket.used,
           remaining: isCurrentMonth ? remaining : "-",

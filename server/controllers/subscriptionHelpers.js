@@ -64,7 +64,7 @@ const renewMonthlyCreditsIfNeeded = async (subscription) => {
   if (!subscription) return subscription;
 
   // Plan (and its plan-based creditsLimit) is synced from the workspace's
-  // selectedPlan — professional: 8, otherwise 5.
+  // selectedPlan — professional: 8, custom: 12, basic: 5.
   subscription = await syncSubscriptionPlan(subscription);
 
   const now = new Date();

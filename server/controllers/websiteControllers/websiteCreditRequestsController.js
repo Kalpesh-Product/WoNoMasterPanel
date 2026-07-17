@@ -1102,6 +1102,9 @@ const getWebsiteCreditsSummary = async (req, res, next) => {
       const workspaceKey = String(row.workspaceId || "").trim();
       return {
         ...row,
+        // Legacy rows still carry the old "static-free" label until their
+        // next plan sync; it is the same plan as "basic".
+        plan: row.plan === "static-free" ? "basic" : row.plan || "basic",
         companyName:
           row.companyName ||
           companyNameMap.get(normalizeCompanyId(row.companyId)) ||
