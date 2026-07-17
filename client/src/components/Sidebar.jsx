@@ -103,12 +103,6 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/logs-layout",
         },
         {
-          id: 20,
-          title: "Host Panel Logs",
-          icon: LuFileText,
-          route: "/dashboard/host-panel-logs",
-        },
-        {
           id: 21,
           title: "Website Credits",
           icon: LuTicket,
@@ -169,6 +163,12 @@ const Sidebar = ({ onCloseDrawer }) => {
           title: "Module Access Logs",
           icon: LuShieldCheck,
           route: "/dashboard/module-access-logs",
+        },
+        {
+          id: 20,
+          title: "Host Panel Logs",
+          icon: LuFileText,
+          route: "/dashboard/host-panel-logs",
         },
         // {
         //   id: 8,
