@@ -200,6 +200,68 @@ const buildUpgradeSuccessEmail = ({ name, companyName, selectedPlan, loginUrl })
   `,
 });
 
+const buildBookingPaymentEmail = ({
+  customerName,
+  companyName,
+  productType,
+  startDate,
+  endDate,
+  noOfPeople,
+  paymentLinkUrl,
+}) => {
+  return {
+    subject: `Complete your ${productType || "booking"} payment`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
+        <h2 style="color: #2563eb;">Complete Your Booking Payment</h2>
+
+        <p>Hello ${customerName},</p>
+
+        <p>
+          Thank you for choosing WONO. Your booking details have been confirmed.
+          Please complete the payment using the link below.
+        </p>
+
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Company:</strong> ${companyName || "N/A"}</p>
+          <p><strong>Booking type:</strong> ${productType || "N/A"}</p>
+          <p><strong>Number of people:</strong> ${noOfPeople || "N/A"}</p>
+          <p><strong>Start date:</strong> ${startDate || "N/A"}</p>
+          <p><strong>End date:</strong> ${endDate || "N/A"}</p>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a
+            href="${paymentLinkUrl}"
+            target="_blank"
+            style="
+              background-color: #2563eb;
+              color: #ffffff;
+              padding: 12px 24px;
+              text-decoration: none;
+              border-radius: 6px;
+              display: inline-block;
+              font-weight: 600;
+            "
+          >
+            Pay Now
+          </a>
+        </div>
+
+        <p>
+          If the button does not work, copy and paste this URL into your browser:
+        </p>
+
+        <p>
+          <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
+        </p>
+
+        <p>Regards,<br />WONO Team</p>
+      </div>
+    `,
+  };
+};
+
 const DEFAULT_WORKSPACE_ID = "default-workspace";
 
 const normalizeWorkspaceName = (workspaceName = "") => {
@@ -2515,6 +2577,49 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
   }
 };
 
+const sendBookingPaymentLinkEmail = async (req, res, next) => {
+  try {
+    const {
+      customerName,
+      customerEmail,
+      companyName,
+      productType,
+      startDate,
+      endDate,
+      noOfPeople,
+      paymentLinkUrl,
+    } = req.body || {};
+
+    if (!customerName || !customerEmail || !paymentLinkUrl) {
+      return res.status(400).json({
+        message:
+          "customerName, customerEmail and paymentLinkUrl are required",
+      });
+    }
+
+    const paymentEmail = buildBookingPaymentEmail({
+      customerName,
+      companyName,
+      productType,
+      startDate,
+      endDate,
+      noOfPeople,
+      paymentLinkUrl,
+    });
+
+    await sendMail({
+      to: customerEmail,
+      ...paymentEmail,
+    });
+
+    return res.status(200).json({
+      message: "Payment link email sent successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   bulkInsertPoc,
   getInviteStatuses,
@@ -2527,5 +2632,6 @@ module.exports = {
   syncWorkspaceDepartmentModules,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
+  sendBookingPaymentLinkEmail,
   resolveHostPanelFrontendUrl,
 };

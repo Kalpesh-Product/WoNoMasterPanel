@@ -1,11 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
+import { Button } from "@mui/material";
+import { toast } from "sonner";
 
 const AllEnquiryTable = () => {
   const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
+  const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
+  const [escalatingLeadId, setEscalatingLeadId] = useState(null);
 
   const {
     data = [],
@@ -15,7 +20,75 @@ const AllEnquiryTable = () => {
     queryKey: ["leadCompany"],
     queryFn: async () => {
       const response = await axios.get(`${NOMADS_API_BASE_URL}/company/all-leads`);
-      return response?.data;
+      return Array.isArray(response?.data) ? response.data : [];
+    },
+  });
+
+  const escalateLeadMutation = useMutation({
+    mutationFn: async (lead) => {
+      const response = await axios.patch("/api/admin/website-leads/escalate", {
+        leadId: lead?._id,
+        companyId: lead?.companyId,
+        companyName: lead?.companyName,
+        workspaceId: lead?.workspaceId,
+      });
+      return response.data;
+    },
+    onSuccess: (responseData, lead) => {
+      setEscalatingLeadId(null);
+      queryClient.setQueryData(["leadCompany"], (current = []) =>
+        current.map((item) =>
+          item?._id === lead?._id
+            ? { ...item, ...(responseData?.lead || {}), isEscalated: true }
+            : item,
+        ),
+      );
+      toast.success(responseData?.message || "Lead escalated to HostPanel successfully");
+    },
+    onError: (error) => {
+      setEscalatingLeadId(null);
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to escalate lead to HostPanel",
+      );
+    },
+  });
+
+  const sendPaymentLinkMutation = useMutation({
+    mutationFn: async (lead) => {
+      const response = await axios.post(
+        "/api/host-user/send-booking-payment-link",
+        {
+          customerName: lead?.fullName,
+          customerEmail: lead?.email,
+          companyName: lead?.companyName,
+          productType: lead?.productType || lead?.verticalType,
+          startDate: lead?.startDate,
+          endDate: lead?.endDate,
+          noOfPeople: lead?.noOfPeople,
+
+          // Temporary URL. Replace this with Stripe URL later.
+          paymentLinkUrl: "https://example.com",
+        },
+      );
+
+      return response.data;
+    },
+
+    onSuccess: (data) => {
+      setSendingPaymentLeadId(null);
+      toast.success(
+        data?.message || "Payment link email sent successfully",
+      );
+    },
+
+    onError: (error) => {
+      setSendingPaymentLeadId(null);
+
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to send payment link",
+      );
     },
   });
 
@@ -34,6 +107,99 @@ const AllEnquiryTable = () => {
     { field: "productType", headerName: "Product Type" },
     // { field: "submittedAt", headerName: "Submitted At" },
     { field: "createdAt", headerName: "Submitted At" },
+    {
+      field: "isEscalated",
+      headerName: "HostPanel",
+      pinned: "right",
+      minWidth: 210,
+      cellRenderer: (params) => {
+        const lead = params.data;
+        const isEscalated = lead?.isEscalated === true;
+        const isEscalating = escalatingLeadId === lead?._id;
+
+        return (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Button
+              variant="contained"
+              disabled={isEscalated || escalateLeadMutation.isPending}
+              aria-label={
+                isEscalated
+                  ? `${lead?.fullName || "Lead"} is escalated to HostPanel`
+                  : `Escalate ${lead?.fullName || "lead"} to HostPanel`
+              }
+              sx={{
+                backgroundColor: isEscalated ? "#dcfce7" : "#2563eb",
+                color: isEscalated ? "#15803d" : "#ffffff",
+                textTransform: "none",
+                borderRadius: "9999px",
+                whiteSpace: "nowrap",
+                "&.Mui-disabled": {
+                  backgroundColor: isEscalated ? "#dcfce7" : "#dbeafe",
+                  color: isEscalated ? "#15803d" : "#2563eb",
+                },
+              }}
+              onClick={() => {
+                setEscalatingLeadId(lead?._id);
+                escalateLeadMutation.mutate(lead);
+              }}
+            >
+              {isEscalated
+                ? "Escalated"
+                : isEscalating
+                  ? "Escalating..."
+                  : "Escalate to HostPanel"}
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
+      field: "sendPayment",
+      headerName: "Payment",
+      pinned: "right",
+      minWidth: 180,
+      cellRenderer: (params) => {
+        const lead = params.data;
+        const isSending = sendingPaymentLeadId === lead?._id;
+        const isEmailMissing = !lead?.email;
+
+        return (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+            }}
+          >
+            <Button
+              variant="contained"
+              disabled={isSending || isEmailMissing}
+              sx={{
+                backgroundColor: "#2563eb",
+                color: "#ffffff",
+                textTransform: "none",
+                borderRadius: "9999px",
+                whiteSpace: "nowrap",
+              }}
+              onClick={() => {
+                setSendingPaymentLeadId(lead?._id);
+                sendPaymentLinkMutation.mutate(lead);
+              }}
+            >
+              {isSending ? "Sending..." : "Send Payment Link"}
+            </Button>
+          </div>
+        );
+      },
+    },
   ];
 
   return (

@@ -497,9 +497,19 @@ const isWebsiteReviewRecord = (review) => {
   );
 };
 
+const isWebsiteLeadRecord = (lead) =>
+  sanitizeValue(lead?.source).toLowerCase() === "website";
+
+const isNomadsLeadRecord = (lead) =>
+  sanitizeValue(lead?.source).toLowerCase() === "nomad";
+
 const getWebsiteLeads = async (req, res, next) => {
   try {
     const companyId = await resolveCanonicalCompanyId(req);
+    const leadScope =
+      sanitizeValue(req.query?.leadScope).toLowerCase() === "nomads"
+        ? "nomads"
+        : "website";
 
     if (!companyId) {
       return res.status(400).json({
@@ -510,7 +520,12 @@ const getWebsiteLeads = async (req, res, next) => {
     const leads = await axios.get(`${NOMADS_BASE}/company/leads`, {
       params: { companyId },
     });
-    return res.status(200).json(Array.isArray(leads?.data) ? leads.data : []);
+    const companyLeads = Array.isArray(leads?.data) ? leads.data : [];
+    const scopedLeads = companyLeads.filter(
+      leadScope === "nomads" ? isNomadsLeadRecord : isWebsiteLeadRecord,
+    );
+
+    return res.status(200).json(scopedLeads);
   } catch (error) {
     return res.status(error.response?.status || 500).json({
       message:
@@ -518,6 +533,122 @@ const getWebsiteLeads = async (req, res, next) => {
         error.response?.data?.error ||
         error.message ||
         "Failed to fetch leads from Nomads",
+    });
+  }
+};
+
+const escapeRegex = (value) =>
+  String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const resolveLeadEscalationWorkspace = async ({ workspaceId, companyId, companyName }) => {
+  const requestedWorkspaceId = sanitizeValue(workspaceId);
+  if (requestedWorkspaceId && mongoose.Types.ObjectId.isValid(requestedWorkspaceId)) {
+    const requestedWorkspace = await Workspace.findOne({
+      _id: requestedWorkspaceId,
+      isActive: { $ne: false },
+    })
+      .select("_id companyId businessName")
+      .lean();
+    if (requestedWorkspace) return requestedWorkspace;
+  }
+
+  const normalizedCompanyId = sanitizeValue(companyId);
+  const normalizedCompanyName = sanitizeValue(companyName);
+  const companyNameRegex = normalizedCompanyName
+    ? new RegExp(`^${escapeRegex(normalizedCompanyName)}$`, "i")
+    : null;
+  const hostLeadFilters = [];
+  if (normalizedCompanyId) {
+    hostLeadFilters.push(
+      { linkedNomadsCompanyId: normalizedCompanyId },
+      { companyId: normalizedCompanyId },
+    );
+  }
+  if (companyNameRegex) hostLeadFilters.push({ companyName: companyNameRegex });
+
+  const hostLeadCompany = hostLeadFilters.length
+    ? await HostLeadCompany.findOne({ $or: hostLeadFilters }).lean()
+    : null;
+  const candidateCompanyIds = Array.from(
+    new Set(
+      [hostLeadCompany?.companyId, normalizedCompanyId]
+        .map(sanitizeValue)
+        .filter(Boolean),
+    ),
+  );
+
+  const hostCompanyFilters = candidateCompanyIds.map((value) => ({ companyId: value }));
+  if (companyNameRegex) hostCompanyFilters.push({ companyName: companyNameRegex });
+  const hostCompany = hostCompanyFilters.length
+    ? await HostCompany.findOne({ $or: hostCompanyFilters }).select("_id companyId").lean()
+    : null;
+
+  const workspaceFilters = candidateCompanyIds.map((value) => ({ companyId: value }));
+  if (hostCompany?._id) workspaceFilters.push({ company: hostCompany._id });
+  if (companyNameRegex) workspaceFilters.push({ businessName: companyNameRegex });
+
+  if (!workspaceFilters.length) return null;
+  return Workspace.findOne({
+    isActive: { $ne: false },
+    $or: workspaceFilters,
+  })
+    .select("_id companyId businessName")
+    .lean();
+};
+
+const escalateWebsiteLeadToHostPanel = async (req, res, next) => {
+  try {
+    const { leadId, companyId, companyName, workspaceId } = req.body || {};
+    const normalizedLeadId = sanitizeValue(leadId);
+
+    if (!mongoose.Types.ObjectId.isValid(normalizedLeadId)) {
+      return res.status(400).json({ message: "A valid leadId is required" });
+    }
+
+    const workspace = await resolveLeadEscalationWorkspace({
+      workspaceId,
+      companyId,
+      companyName,
+    });
+
+    if (!workspace?._id) {
+      return res.status(409).json({
+        message: "No active HostPanel workspace is linked to this lead's company",
+      });
+    }
+
+    const response = await axios.patch(`${NOMADS_BASE}/company/escalate-lead`, {
+      leadId: normalizedLeadId,
+      workspaceId: String(workspace._id),
+      hostCompanyId: sanitizeValue(workspace.companyId),
+      escalatedBy: sanitizeValue(req.userData?._id || req.user?._id),
+    });
+
+    req.logContext = {
+      ...(req.logContext || {}),
+      action: "escalate-lead-to-host-panel",
+      changes: [
+        { field: "isEscalated", type: "boolean", change: "edited", to: true },
+        {
+          field: "escalatedWorkspaceId",
+          type: "text",
+          change: "edited",
+          to: String(workspace._id),
+        },
+      ],
+    };
+
+    return res.status(200).json({
+      message: response?.data?.message || "Lead escalated to HostPanel successfully",
+      lead: response?.data?.lead,
+    });
+  } catch (error) {
+    return res.status(error.response?.status || 500).json({
+      message:
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to escalate lead to HostPanel",
     });
   }
 };
@@ -855,5 +986,6 @@ module.exports = {
   updateRegistrationStatus,
   getReviewsByCompany,
   getWebsiteLeads,
+  escalateWebsiteLeadToHostPanel,
   updateWebsiteLead,
 };

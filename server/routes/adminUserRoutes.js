@@ -10,6 +10,7 @@ const {
   updateRegistrationStatus,
   getReviewsByCompany,
   getWebsiteLeads,
+  escalateWebsiteLeadToHostPanel,
   updateWebsiteLead,
 } = require("../controllers/adminUserControllers");
 const upload = require("../config/multerConfig");
@@ -38,6 +39,11 @@ router.get("/reviews", getReviewsByCompany);
 
 //Website Lead Routes (company website builder)
 router.get("/website-leads", getWebsiteLeads);
+router.patch(
+  "/website-leads/escalate",
+  setLogModule("All Enquiry"),
+  escalateWebsiteLeadToHostPanel,
+);
 router.patch(
   "/website-leads/update",
   setLogModule("Website Leads"),
