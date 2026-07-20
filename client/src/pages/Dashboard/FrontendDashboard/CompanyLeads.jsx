@@ -11,16 +11,14 @@ import {
   Target,
   Users,
   X,
-  XCircle,
 } from "lucide-react";
-import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import PageFrame from "../../../components/Pages/PageFrame";
-import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
+import { statusPillClass } from "../../../lib/status-pill";
 
-const WEBSITE_STATUSES = ["Pending", "Contacted", "Closed", "Rejected"];
+const MASTER_STATUSES = ["Pending", "Contacted", "Closed"];
 
 function formatDateLabel(value) {
   if (!value) return "--";
@@ -53,7 +51,6 @@ export default function CompanyLeads({
 }) {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
-  const queryClient = useQueryClient();
   const isNomadsScope = leadScope === "nomads";
   const resolvedPageTitle = pageTitle || (isNomadsScope ? "Nomads Leads" : "Website Leads");
   const resolvedPageDescription = pageDescription || (isNomadsScope
@@ -71,9 +68,7 @@ export default function CompanyLeads({
     sessionStorage.getItem("companyId") ||
     ""
   ).trim();
-  const workspaceId = isNomadsScope
-    ? ""
-    : (selectedCompany?.workspaceId || "").trim();
+  const workspaceId = (selectedCompany?.workspaceId || "").trim();
   const companyName = (
     selectedCompany?.companyName || sessionStorage.getItem("companyName") || ""
   ).trim();
@@ -94,29 +89,6 @@ export default function CompanyLeads({
       return Array.isArray(response?.data) ? response.data : [];
     },
   });
-
-  const updateLeadMutation = useMutation({
-    mutationFn: async (payload) => {
-      // companyId/companyName ride along for the audit log
-      const res = await axiosPrivate.patch("/api/admin/website-leads/update", {
-        ...payload,
-        ...(companyId ? { companyId } : {}),
-        ...(companyName ? { companyName } : {}),
-      });
-      return res.data;
-    },
-    onSuccess: (data) => {
-      toast.success(data.message || "Lead updated");
-      queryClient.invalidateQueries({ queryKey: [queryKeyPrefix] });
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Update failed");
-    },
-  });
-
-  const handleStatusChange = (leadId, newStatus) => {
-    updateLeadMutation.mutate({ leadId, status: newStatus });
-  };
 
   const leadStats = useMemo(() => {
     const total = leads.length;
@@ -229,7 +201,7 @@ export default function CompanyLeads({
                   <button onClick={() => setStageFilter("All")}
                     className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${stageFilter === "All" ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"}`}
                   >All</button>
-                  {WEBSITE_STATUSES.map((status) => {
+                  {MASTER_STATUSES.map((status) => {
                     return (
                       <button key={status} onClick={() => setStageFilter(status)}
                         className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${stageFilter === status ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"}`}
@@ -263,7 +235,8 @@ export default function CompanyLeads({
                       <th className="px-5 py-4">Contact</th>
                       <th className="px-5 py-4">Source</th>
                       <th className="px-5 py-4">Product</th>
-                      <th className="px-5 py-4">Status</th>
+                      <th className="px-5 py-4">Master Status</th>
+                      <th className="px-5 py-4">Host Panel User Status</th>
                       <th className="px-5 py-4">Received Date</th>
                       <th className="px-5 py-4 text-center">Action</th>
                     </tr>
@@ -296,15 +269,14 @@ export default function CompanyLeads({
                             })()}
                           </td>
                           <td className="px-5 py-4">
-                            <select
-                              value={lead.status || "Pending"}
-                              onChange={(e) => handleStatusChange(lead._id, e.target.value)}
-                              className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${statusToneClass(lead.status || "Pending")}`}
-                            >
-                              {WEBSITE_STATUSES.map((s) => (
-                                <option key={s} value={s}>{s}</option>
-                              ))}
-                            </select>
+                            <span className={statusPillClass(lead.status || "Pending")}>
+                              {lead.status || "Pending"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={statusPillClass(lead.hostPanelStatus || "Pending")}>
+                              {lead.hostPanelStatus || "Pending"}
+                            </span>
                           </td>
                           <td className="px-5 py-4">
                             <p className="text-[12px] font-pmedium text-slate-700">{formatDateLabel(lead.recievedDate || lead.createdAt)}</p>
@@ -341,7 +313,8 @@ export default function CompanyLeads({
                     <div className="min-w-0">
                       <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800 truncate">{selectedLead.fullName}</h2>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={statusPillClass(selectedLead.status || "Pending")}>{selectedLead.status || "Pending"}</span>
+                        <span className={statusPillClass(selectedLead.status || "Pending")}>Master: {selectedLead.status || "Pending"}</span>
+                        <span className={statusPillClass(selectedLead.hostPanelStatus || "Pending")}>Host: {selectedLead.hostPanelStatus || "Pending"}</span>
                         {(() => {
                           const pt = (selectedLead.productType || "").trim();
                           const v = (selectedLead.vertical || "").trim();
@@ -466,12 +439,9 @@ export default function CompanyLeads({
 
                 {/* Footer */}
                 <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2.5">
-                  <button type="button" onClick={() => { handleStatusChange(selectedLead._id, "Rejected"); setSelectedLeadId(null); }}
-                    className="flex-1 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl font-pmedium text-[12px] hover:bg-red-50 transition-colors shadow-sm flex items-center justify-center gap-1.5"
-                  ><XCircle size={14} /> Reject Lead</button>
-                  <button type="button" onClick={() => { handleStatusChange(selectedLead._id, "Closed"); setSelectedLeadId(null); }}
-                    className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all flex items-center justify-center gap-1.5"
-                  ><CheckCircle2 size={14} /> Close Lead</button>
+                  <button type="button" onClick={() => setSelectedLeadId(null)}
+                    className="w-full py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all"
+                  >Close</button>
                 </div>
               </div>
             </div>
