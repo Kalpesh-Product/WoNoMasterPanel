@@ -178,7 +178,7 @@ const EditNomadListing = () => {
         ? src.reviews.map((r) => ({
           name: r.name || "",
           review: r.review || r.description || r.testimony || "",
-          rating: Number(r.rating ?? 5),
+          rating: Number(r.starCount ?? r.rating ?? 5),
         }))
         : []
       : [];
@@ -273,9 +273,11 @@ const EditNomadListing = () => {
 
     // ✅ reviews: rating → starCount
     const mappedReviews = (values.reviews || []).map((r) => ({
-      name: r.name,
-      review: r.review,
-      starCount: Number(r.rating ?? 0),
+      ...r,
+      name: r.name || "",
+      review: r.review || r.description || r.testimony || "",
+      description: r.description || r.review || r.testimony || "",
+      starCount: Number(r.starCount ?? r.rating ?? 5),
     }));
     fd.set("reviews", JSON.stringify(mappedReviews));
 

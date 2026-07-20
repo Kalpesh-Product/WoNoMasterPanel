@@ -35,8 +35,7 @@ const CompanyReviews = () => {
     isPending,
     isError,
   } = useQuery({
-    queryKey: ["companyReviews", selectedCompany?.companyId],
-    // enabled: !!selectedCompany?.companyId,
+    queryKey: ["companyReviews", "all-nomad-listings"],
 
     queryFn: async () => {
       const extractReviews = (response) => {
@@ -50,6 +49,7 @@ const CompanyReviews = () => {
       };
 
       const response = await axiosPrivate.get("/api/admin/reviews", {
+        params: { reviewScope: "nomads", allCompanies: true },
         headers: { "Cache-Control": "no-cache" },
       });
 
@@ -233,7 +233,7 @@ const CompanyReviews = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["companyReviews", selectedCompany?.companyId],
+        queryKey: ["companyReviews"],
       });
     },
   });
