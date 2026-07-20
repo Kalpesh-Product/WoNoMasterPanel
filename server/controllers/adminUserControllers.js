@@ -506,24 +506,35 @@ const isNomadsLeadRecord = (lead) =>
 const getWebsiteLeads = async (req, res, next) => {
   try {
     const companyId = await resolveCanonicalCompanyId(req);
+    const workspace = await resolveLeadEscalationWorkspace({
+      workspaceId: req.query?.workspaceId,
+      companyId: req.query?.companyId || companyId,
+      companyName: req.query?.companyName,
+    });
+    const workspaceId = sanitizeValue(workspace?._id || req.query?.workspaceId);
     const leadScope =
       sanitizeValue(req.query?.leadScope).toLowerCase() === "nomads"
         ? "nomads"
         : "website";
 
-    if (!companyId) {
+    if (!companyId || !workspaceId) {
       return res.status(400).json({
-        message: "Company ID is required (or provide a valid workspaceId)",
+        message: "A linked company and HostPanel workspace are required",
       });
     }
 
     const leads = await axios.get(`${NOMADS_BASE}/company/leads`, {
-      params: { companyId },
+      params: { companyId, workspaceId, isEscalated: true },
     });
     const companyLeads = Array.isArray(leads?.data) ? leads.data : [];
-    const scopedLeads = companyLeads.filter(
-      leadScope === "nomads" ? isNomadsLeadRecord : isWebsiteLeadRecord,
-    );
+    const scopedLeads = companyLeads.filter((lead) => {
+      const belongsToWorkspace =
+        lead?.isEscalated === true &&
+        sanitizeValue(lead?.escalatedWorkspaceId) === workspaceId;
+      const belongsToScope =
+        leadScope === "nomads" ? isNomadsLeadRecord(lead) : isWebsiteLeadRecord(lead);
+      return belongsToWorkspace && belongsToScope;
+    });
 
     return res.status(200).json(scopedLeads);
   } catch (error) {
@@ -655,19 +666,27 @@ const escalateWebsiteLeadToHostPanel = async (req, res, next) => {
 
 const updateWebsiteLead = async (req, res, next) => {
   try {
-    const { status = "", comment = "", leadId } = req.body;
+    const { status = "", comment, leadId } = req.body;
+    const normalizedStatus = sanitizeValue(status);
 
-    if (!leadId || (!sanitizeValue(status) && !sanitizeValue(comment))) {
+    if (!leadId || (!normalizedStatus && typeof comment !== "string")) {
       return res.status(400).json({
         message: "Missing required fields",
       });
     }
 
+    if (normalizedStatus && !["Pending", "Contacted", "Closed"].includes(normalizedStatus)) {
+      return res.status(400).json({ message: "Invalid Master Panel lead status" });
+    }
+
+    let updatedLead = null;
     try {
       const leads = await axios.patch(
         `${NOMADS_BASE}/company/update-lead`,
-        req.body,
+        { leadId, ...(normalizedStatus ? { status: normalizedStatus } : {}), ...(typeof comment === "string" ? { comment } : {}) },
       );
+
+      updatedLead = leads?.data?.lead || null;
 
       if (leads.status !== 200)
         return res.status(200).json({ message: "No leads found" });
@@ -695,7 +714,7 @@ const updateWebsiteLead = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: `Lead ${comment ? "comment" : "status"} updated` });
+      .json({ message: `Lead ${comment ? "comment" : "status"} updated`, lead: updatedLead });
   } catch (error) {
     next(error);
   }
@@ -796,9 +815,12 @@ const getReviewsByCompany = async (req, res, next) => {
       reviewScope = "",
     } = req.query;
     const normalizedReviewScope = sanitizeValue(reviewScope).toLowerCase();
+    const includeAllCompanies =
+      normalizedReviewScope === "nomads" &&
+      String(req.query?.allCompanies || "").toLowerCase() === "true";
     const companyId = await resolveCanonicalCompanyId(req);
 
-    if (!companyId) {
+    if (!companyId && !includeAllCompanies) {
       return res.status(400).json({ message: "Company Id is required" });
     }
     // Preserve the original default (pending) for the legacy nomads reviews
@@ -816,8 +838,9 @@ const getReviewsByCompany = async (req, res, next) => {
     try {
       response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
-          companyId,
+          ...(companyId ? { companyId } : {}),
           companyType,
+          ...(normalizedReviewScope === "nomads" ? { source: "nomad" } : {}),
           ...(effectiveStatus ? { status: effectiveStatus } : {}),
         },
       });
@@ -905,27 +928,29 @@ const getReviewsByCompany = async (req, res, next) => {
         (review) => !isWebsiteReviewRecord(review),
       );
 
-      try {
-        const listingsResponse = await axios.get(
-          `${NOMADS_BASE}/company/get-listings/${encodeURIComponent(companyId)}`,
-        );
-        const listingTypeById = new Map(
-          parseListingList(listingsResponse)
-            .map((listing) => [
-              sanitizeValue(listing?._id),
-              sanitizeValue(listing?.companyType),
-            ])
-            .filter(([listingId]) => Boolean(listingId)),
-        );
+      if (companyId) {
+        try {
+          const listingsResponse = await axios.get(
+            `${NOMADS_BASE}/company/get-listings/${encodeURIComponent(companyId)}`,
+          );
+          const listingTypeById = new Map(
+            parseListingList(listingsResponse)
+              .map((listing) => [
+                sanitizeValue(listing?._id),
+                sanitizeValue(listing?.companyType),
+              ])
+              .filter(([listingId]) => Boolean(listingId)),
+          );
 
-        enrichedReviews = enrichedReviews.map((review) => ({
-          ...review,
-          companyType:
-            listingTypeById.get(getReviewCompanyRecordId(review)) ||
-            sanitizeValue(review?.companyType),
-        }));
-      } catch {
-        // Reviews still load if the Nomads listing lookup is unavailable.
+          enrichedReviews = enrichedReviews.map((review) => ({
+            ...review,
+            companyType:
+              listingTypeById.get(getReviewCompanyRecordId(review)) ||
+              sanitizeValue(review?.companyType),
+          }));
+        } catch {
+          // Reviews still load if the Nomads listing lookup is unavailable.
+        }
       }
     }
 
