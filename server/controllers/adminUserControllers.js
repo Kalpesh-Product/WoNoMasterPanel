@@ -497,9 +497,19 @@ const isWebsiteReviewRecord = (review) => {
   );
 };
 
+const isWebsiteLeadRecord = (lead) =>
+  sanitizeValue(lead?.source).toLowerCase() === "website";
+
+const isNomadsLeadRecord = (lead) =>
+  sanitizeValue(lead?.source).toLowerCase() === "nomad";
+
 const getWebsiteLeads = async (req, res, next) => {
   try {
     const companyId = await resolveCanonicalCompanyId(req);
+    const leadScope =
+      sanitizeValue(req.query?.leadScope).toLowerCase() === "nomads"
+        ? "nomads"
+        : "website";
 
     if (!companyId) {
       return res.status(400).json({
@@ -510,7 +520,12 @@ const getWebsiteLeads = async (req, res, next) => {
     const leads = await axios.get(`${NOMADS_BASE}/company/leads`, {
       params: { companyId },
     });
-    return res.status(200).json(Array.isArray(leads?.data) ? leads.data : []);
+    const companyLeads = Array.isArray(leads?.data) ? leads.data : [];
+    const scopedLeads = companyLeads.filter(
+      leadScope === "nomads" ? isNomadsLeadRecord : isWebsiteLeadRecord,
+    );
+
+    return res.status(200).json(scopedLeads);
   } catch (error) {
     return res.status(error.response?.status || 500).json({
       message:

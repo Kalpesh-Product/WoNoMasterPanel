@@ -1,4 +1,4 @@
-import { MdOutlineRateReview } from "react-icons/md";
+import { MdOutlineContactPhone, MdOutlineRateReview } from "react-icons/md";
 import { RiHotelLine } from "react-icons/ri";
 import { useLocation, useParams } from "react-router-dom";
 import Card from "../../../../components/Card";
@@ -30,6 +30,11 @@ const WonoNomadsHome = () => {
               icon={<MdOutlineRateReview />}
               title="Nomad Reviews"
               route="nomad-reviews"
+            />
+            <Card
+              icon={<MdOutlineContactPhone />}
+              title="Nomads Leads"
+              route="nomads-leads"
             />
           </div>
         </div>

@@ -194,6 +194,7 @@ import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompan
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
 import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/WonoNomadsHome";
 import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadReviews";
+import NomadsLeads from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadsLeads";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
@@ -490,6 +491,7 @@ export const routes = createBrowserRouter([
                         children: [
                           { index: true, element: <WonoNomadsHome /> },
                           { path: "nomad-reviews", element: <NomadReviews /> },
+                          { path: "nomads-leads", element: <NomadsLeads /> },
                         ],
                       },
                       {
@@ -630,6 +632,7 @@ export const routes = createBrowserRouter([
                         children: [
                           { index: true, element: <WonoNomadsHome /> },
                           { path: "nomad-reviews", element: <NomadReviews /> },
+                          { path: "nomads-leads", element: <NomadsLeads /> },
                         ],
                       },
                       {

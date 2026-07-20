@@ -44,34 +44,50 @@ function getLeadTimestamp(lead) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
-export default function CompanyLeads() {
+export default function CompanyLeads({
+  leadScope = "website",
+  pageTitle,
+  pageDescription,
+  queryKeyPrefix = "leadCompany",
+  companyIdOverride = "",
+}) {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
+  const isNomadsScope = leadScope === "nomads";
+  const resolvedPageTitle = pageTitle || (isNomadsScope ? "Nomads Leads" : "Website Leads");
+  const resolvedPageDescription = pageDescription || (isNomadsScope
+    ? "Enquiries received from the company's listings on Wono Nomads."
+    : "Website enquiries received from the company's published site.");
+  const totalLabel = isNomadsScope ? "Total Nomads Leads" : "Total Website Leads";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [selectedLeadId, setSelectedLeadId] = useState(null);
 
   const companyId = (
+    companyIdOverride ||
     selectedCompany?.companyId ||
     sessionStorage.getItem("companyId") ||
     ""
   ).trim();
-  const workspaceId = (selectedCompany?.workspaceId || "").trim();
+  const workspaceId = isNomadsScope
+    ? ""
+    : (selectedCompany?.workspaceId || "").trim();
   const companyName = (
     selectedCompany?.companyName || sessionStorage.getItem("companyName") || ""
   ).trim();
 
   const { data: leads = [], isPending, isError } = useQuery({
-    queryKey: ["leadCompany", companyId, workspaceId],
+    queryKey: [queryKeyPrefix, companyId, workspaceId, leadScope],
     enabled: !!(companyId || workspaceId),
     queryFn: async () => {
       const response = await axiosPrivate.get("/api/admin/website-leads", {
         params: {
           ...(companyId ? { companyId } : {}),
           ...(workspaceId ? { workspaceId } : {}),
-          ...(companyName ? { companyName } : {}),
+          ...(!isNomadsScope && companyName ? { companyName } : {}),
+          leadScope,
         },
         headers: { "Cache-Control": "no-cache" },
       });
@@ -91,7 +107,7 @@ export default function CompanyLeads() {
     },
     onSuccess: (data) => {
       toast.success(data.message || "Lead updated");
-      queryClient.invalidateQueries({ queryKey: ["leadCompany"] });
+      queryClient.invalidateQueries({ queryKey: [queryKeyPrefix] });
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Update failed");
@@ -108,12 +124,12 @@ export default function CompanyLeads() {
     const contacted = leads.filter((l) => l.status === "Contacted").length;
     const closed = leads.filter((l) => l.status === "Closed").length;
     return [
-      { label: "Total Website Leads", value: total, icon: Target },
+      { label: totalLabel, value: total, icon: Target },
       { label: "Pending", value: pending, icon: Sparkles },
       { label: "Contacted", value: contacted, icon: BadgeCheck },
       { label: "Closed", value: closed, icon: CheckCircle2 },
     ];
-  }, [leads]);
+  }, [leads, totalLabel]);
 
   const visibleLeads = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -164,10 +180,10 @@ export default function CompanyLeads() {
           <div className="mb-1 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
             <div>
               <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
-                Website Leads
+                {resolvedPageTitle}
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
-                Website enquiries received from the company's published site.
+                {resolvedPageDescription}
               </p>
             </div>
           </div>
@@ -176,7 +192,7 @@ export default function CompanyLeads() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Website Leads</p>
+                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">{totalLabel}</p>
                 <p className="text-[15px] font-pmedium text-slate-900">{leadStats[0]?.value ?? 0}</p>
               </div>
               <div className="p-2 rounded-2xl bg-slate-50 text-slate-600 shrink-0"><Target size={16} /></div>
@@ -236,7 +252,7 @@ export default function CompanyLeads() {
             {visibleLeads.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
                 <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400"><Target size={28} /></div>
-                <p className="text-slate-400 font-semibold">No matching website leads found.</p>
+                <p className="text-slate-400 font-semibold">No matching {isNomadsScope ? "Nomads" : "website"} leads found.</p>
               </div>
             ) : (
               <div className="overflow-x-auto flex-1">
@@ -270,7 +286,7 @@ export default function CompanyLeads() {
                               <p className="flex items-center gap-1.5"><Mail size={11} className="text-slate-400" /> {lead.email || "Not shared"}</p>
                             </div>
                           </td>
-                          <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{lead.source || "Website"}</span></td>
+                          <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{lead.source || (isNomadsScope ? "Nomad" : "Website")}</span></td>
                           <td className="px-5 py-4">
                             {(() => {
                               const pt = (lead.productType || "").trim();
@@ -367,7 +383,7 @@ export default function CompanyLeads() {
                             if (s.includes("preview")) return "Website Preview";
                             if (s.includes("hosted") || s.includes("live") || s.includes("wono")) return "Hosted Website";
                             if (s.includes("direct")) return "Direct";
-                            return selectedLead.source || "Website";
+                            return selectedLead.source || (isNomadsScope ? "Nomad" : "Website");
                           })()}
                         </p>
                       </div>
