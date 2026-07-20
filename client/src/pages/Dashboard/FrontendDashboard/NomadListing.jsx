@@ -51,7 +51,7 @@ const normalizeCompanyType = (value) =>
 // ✅ Default description structure
 const defaultReview = {
   name: "",
-  description: "",
+  review: "",
   starCount: 5,
 };
 
@@ -186,8 +186,13 @@ const NomadListing = () => {
         : [];
     fd.set("inclusions", inclusionsArr.join(", "));
 
-    // ✅ reviews unchanged
-    fd.set("reviews", JSON.stringify(values.reviews || []));
+    const mappedReviews = (values.reviews || []).map((r) => ({
+      ...r,
+      review: r.review || r.description || "",
+      description: r.description || r.review || "",
+      starCount: Number(r.starCount ?? r.rating ?? 5),
+    }));
+    fd.set("reviews", JSON.stringify(mappedReviews));
 
     for (const key of Array.from(fd.keys())) {
       if (/^reviews\.\d+\./.test(key)) fd.delete(key);
@@ -564,7 +569,7 @@ const NomadListing = () => {
 
                 {/* Review text */}
                 <Controller
-                  name={`reviews.${index}.description`}
+                  name={`reviews.${index}.review`}
                   control={control}
                   render={({ field }) => (
                     <TextField
@@ -575,9 +580,9 @@ const NomadListing = () => {
                       multiline
                       minRows={3}
                       helperText={
-                        errors?.reviews?.[index]?.description?.message
+                        errors?.reviews?.[index]?.review?.message
                       }
-                      error={!!errors?.reviews?.[index]?.description}
+                      error={!!errors?.reviews?.[index]?.review}
                       sx={{ mt: 2 }} // ✅ adds spacing above this input
                     />
                   )}

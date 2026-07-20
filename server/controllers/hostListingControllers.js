@@ -2,6 +2,30 @@ const { default: axios } = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const { uploadFileToS3, deleteFileFromS3ByUrl } = require("../config/s3config");
 
+const normalizeReviews = (reviews) => {
+  if (!Array.isArray(reviews)) return reviews;
+
+  return reviews.map((review) => {
+    const reviewText =
+      review?.review ?? review?.description ?? review?.testimony ?? "";
+
+    return {
+      ...review,
+      review: reviewText,
+      description: review?.description ?? reviewText,
+      starCount: Number(review?.starCount ?? review?.rating ?? 5),
+    };
+  });
+};
+
+const parseReviews = (reviews) => {
+  if (typeof reviews === "string") {
+    return normalizeReviews(JSON.parse(reviews));
+  }
+
+  return normalizeReviews(reviews);
+};
+
 const createCompanyListing = async (req, res) => {
   try {
     const {
@@ -21,17 +45,13 @@ const createCompanyListing = async (req, res) => {
       reviews,
     } = req.body;
 
-    let parsedReviews;
-
     const company = await HostCompany.findOne({ companyId: companyId.trim() });
 
     if (!company) {
       return res.status(400).json({ message: "Company not found" });
     }
 
-    if (typeof reviews === "string") {
-      parsedReviews = JSON.parse(reviews);
-    }
+    const parsedReviews = parseReviews(reviews);
 
     const listingData = {
       companyName: productName,
@@ -386,8 +406,7 @@ const editCompanyListing = async (req, res) => {
       return res.status(404).json({ message: "Missing required fields" });
     }
 
-    const parsedReviews =
-      typeof reviews === "string" ? JSON.parse(reviews) : reviews;
+    const parsedReviews = parseReviews(reviews);
 
     // FIX: Search by both businessId and companyId
     const company = await HostCompany.findOne({
