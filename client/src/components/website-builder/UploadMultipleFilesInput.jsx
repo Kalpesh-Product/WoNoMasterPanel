@@ -3,6 +3,10 @@ import { TextField, IconButton, Avatar, Box } from "@mui/material";
 import { LuImageUp } from "react-icons/lu";
 import { MdDelete } from "react-icons/md";
 import MuiModal from "../MuiModal";
+
+const MAX_IMAGE_SIZE_MB = 1;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+
 const UploadMultipleFilesInput = ({
   value = [],
   onChange,
@@ -12,7 +16,8 @@ const UploadMultipleFilesInput = ({
   previewType = "auto",
   name,
   id,
-  maxFiles = 5
+  maxFiles = 5,
+  enabledToggle = false
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
@@ -65,10 +70,17 @@ const UploadMultipleFilesInput = ({
   const handleFileChange = (event) => {
     const chosen = Array.from(event.target.files || []);
     if (!chosen.length) return;
-    const filtered = chosen.filter((file) => allowedExtensions.includes(getExtension(file.name)));
-    const rejected = chosen.length - filtered.length;
-    if (rejected > 0) {
+    const allowedType = chosen.filter((file) => allowedExtensions.includes(getExtension(file.name)));
+    const rejectedType = chosen.length - allowedType.length;
+    if (rejectedType > 0) {
       alert(`Only ${allowedExtensions.join(", ")} files are allowed.`);
+    }
+    const filtered = allowedType.filter(
+      (file) => !isImage(getExtension(file.name)) || file.size <= MAX_IMAGE_SIZE_BYTES
+    );
+    const rejectedSize = allowedType.length - filtered.length;
+    if (rejectedSize > 0) {
+      alert(`Image size must not exceed ${MAX_IMAGE_SIZE_MB}MB.`);
     }
     const merged = dedupe([...value || [], ...filtered]);
     if (merged.length > maxFiles) {
@@ -83,6 +95,13 @@ const UploadMultipleFilesInput = ({
   const handleRemoveAt = (index) => {
     const copy = [...value || []];
     copy.splice(index, 1);
+    onChange?.(copy);
+  };
+  const handleToggleEnabledAt = (index) => {
+    const copy = [...value || []];
+    const item = copy[index];
+    if (!item || item instanceof File) return;
+    copy[index] = { ...item, enabled: item.enabled === false };
     onChange?.(copy);
   };
   const handleClear = () => {
@@ -168,7 +187,20 @@ const UploadMultipleFilesInput = ({
                   </div>}
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between gap-2">
+                {enabledToggle && !(preview.file instanceof File) ? <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs font-medium text-slate-500">
+                    <span>{preview.file?.enabled !== false ? "Enabled" : "Disabled"}</span>
+                    <span
+    role="switch"
+    aria-checked={preview.file?.enabled !== false}
+    onClick={() => handleToggleEnabledAt(index)}
+    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${preview.file?.enabled !== false ? "bg-accent" : "bg-slate-300"}`}
+  >
+                      <span
+    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${preview.file?.enabled !== false ? "translate-x-4" : "translate-x-0.5"}`}
+  />
+                    </span>
+                  </label> : <span />}
                 <IconButton
     color="error"
     size="small"

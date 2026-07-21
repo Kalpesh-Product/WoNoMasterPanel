@@ -1,6 +1,7 @@
 import { Controller, useFieldArray } from "react-hook-form";
 import { TextField } from "@mui/material";
 import UploadFileInput from "../../../../components/website-builder/UploadFileInput";
+import EnabledSwitch from "../../../../components/ui/EnabledSwitch";
 const MenuSection = ({ control, register }) => {
   const { fields, append, remove } = useFieldArray({
     control,
@@ -12,15 +13,18 @@ const MenuSection = ({ control, register }) => {
       </div>
       <div className="grid grid-cols sm:grid-cols-1 md:grid-cols-1 gap-4 p-4">
         {fields.map((field, index) => <div key={field.id} className="rounded-xl border border-borderGray p-4 mb-3">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-3">
               <span className="font-pmedium">Menu Item #{index + 1}</span>
-              <button
+              <div className="flex items-center gap-3">
+                <EnabledSwitch name={`menuItems.${index}.enabled`} control={control} />
+                <button
     type="button"
     onClick={() => remove(index)}
     className="text-red-500 hover:text-red-700 text-xs font-semibold transition-all"
   >
-                Remove
-              </button>
+                  Remove
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TextField
