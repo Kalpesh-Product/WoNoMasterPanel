@@ -706,6 +706,7 @@ const saveTemplateDraft = async (req, res) => {
         ? draftData.aboutPageImageCards.map((card, index) => ({
             title: String(card?.title || "").trim(),
             description: String(card?.description || "").trim(),
+            enabled: card?.enabled !== false,
             // Preserve the previously-uploaded team-member image. draftData only
             // carries text, so without this every autosave wiped the card image.
             image: template.aboutPageImageCards?.[index]?.image,
@@ -771,6 +772,7 @@ const saveTemplateDraft = async (req, res) => {
             name: String(item?.name || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
+            enabled: item?.enabled !== false,
           };
           if (existing?.image) nextItem.image = existing.image;
           return nextItem;
@@ -783,6 +785,7 @@ const saveTemplateDraft = async (req, res) => {
           title: String(item?.title || "").trim(),
           description: String(item?.description || "").trim(),
           price: String(item?.price || "").trim(),
+          enabled: item?.enabled !== false,
           images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
@@ -794,6 +797,7 @@ const saveTemplateDraft = async (req, res) => {
           title: String(item?.title || "").trim(),
           description: String(item?.description || "").trim(),
           price: String(item?.price || "").trim(),
+          enabled: item?.enabled !== false,
           images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
@@ -804,6 +808,7 @@ const saveTemplateDraft = async (req, res) => {
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
+            enabled: item?.enabled !== false,
             images: Array.isArray(existing?.images) ? existing.images : [],
             };
           })
@@ -815,6 +820,7 @@ const saveTemplateDraft = async (req, res) => {
           title: String(item?.title || "").trim(),
           description: String(item?.description || "").trim(),
           price: String(item?.price || "").trim(),
+          enabled: item?.enabled !== false,
           images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
@@ -827,6 +833,7 @@ const saveTemplateDraft = async (req, res) => {
           description: String(item?.description || "").trim(),
           price: String(item?.price || "").trim(),
           duration: String(item?.duration || "").trim(),
+          enabled: item?.enabled !== false,
           images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
@@ -839,6 +846,7 @@ const saveTemplateDraft = async (req, res) => {
           description: String(item?.description || "").trim(),
           price: String(item?.price || "").trim(),
           capacity: toNum(item?.capacity, 0),
+          enabled: item?.enabled !== false,
           images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
@@ -859,6 +867,7 @@ const saveTemplateDraft = async (req, res) => {
         .map((faq) => ({
           question: String(faq?.question || "").trim(),
           answer: String(faq?.answer || "").trim(),
+          enabled: faq?.enabled !== false,
         }))
         .filter((faq) => faq.question);
     }
@@ -1745,6 +1754,7 @@ const createTemplate = async (req, res, next) => {
       template.gallery = req.body.gallery.map((img) => ({
         url: img.url,
         id: img.id,
+        enabled: img?.enabled !== false,
       }));
     }
 
@@ -1982,6 +1992,7 @@ const createTemplate = async (req, res, next) => {
           name: p.name,
           cost: p.cost,
           description: p.description,
+          enabled: p?.enabled !== false,
           images: uploaded,
         });
       }
@@ -3151,6 +3162,7 @@ const editTemplate = async (req, res, next) => {
         existing.name = p.name ?? existing.name;
         existing.cost = p.cost ?? existing.cost;
         existing.description = p.description ?? existing.description;
+        existing.enabled = p?.enabled !== false;
         updatedProducts.push(existing);
       } else {
         updatedProducts.push({
@@ -3158,6 +3170,7 @@ const editTemplate = async (req, res, next) => {
           name: p.name,
           cost: p.cost,
           description: p.description,
+          enabled: p?.enabled !== false,
           images: uploaded,
         });
       }
