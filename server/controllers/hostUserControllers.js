@@ -2594,6 +2594,7 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
 const sendBookingPaymentLinkEmail = async (req, res, next) => {
   try {
     const {
+      leadId,
       customerName,
       customerEmail,
       companyName,
@@ -2608,15 +2609,22 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 
     const numericAmount = Number(amount);
 
-    if (!customerName || !customerEmail) {
+    if (!leadId || !customerName || !customerEmail) {
       return res.status(400).json({
-        message: "customerName and customerEmail are required",
+        message: "leadId, customerName and customerEmail are required",
       });
     }
 
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({
         message: "amount is required and must be a positive number",
+      });
+    }
+
+    const alreadyPaid = await BookingPaymentLink.exists({ leadId, status: "paid" });
+    if (alreadyPaid) {
+      return res.status(400).json({
+        message: "This lead has already paid — a new payment link cannot be created",
       });
     }
 
@@ -2638,6 +2646,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
     });
 
     await BookingPaymentLink.create({
+      leadId,
       leadEmail: customerEmail,
       leadName: customerName,
       companyName,
@@ -2676,27 +2685,28 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 };
 
 // GET /api/host-user/booking-payment-links
-// Returns the latest payment status per lead email, for the All Enquiry
-// table's Payment Status column. "Paid" wins if any link for that email was
-// ever paid, otherwise "Pending" if a link was sent but not yet paid.
+// Returns the latest payment status per lead (keyed by leadId, not email —
+// the same email can belong to multiple unrelated leads over time), for the
+// All Enquiry table's Payment Status column.
 const getBookingPaymentStatuses = async (req, res, next) => {
   try {
     const links = await BookingPaymentLink.find()
       .sort({ createdAt: -1 })
-      .select("leadEmail status amount currency paidAt createdAt")
+      .select("leadId status amount currency paidAt createdAt")
       .lean();
 
-    const statusByEmail = {};
+    // Links are sorted newest-first, so the first one seen per lead is the
+    // most recently sent link — that's the one whose status should show.
+    const statusByLeadId = {};
     for (const link of links) {
-      const email = String(link.leadEmail || "").toLowerCase();
-      if (!email) continue;
-      const existing = statusByEmail[email];
-      if (!existing || (link.status === "paid" && existing.status !== "paid")) {
-        statusByEmail[email] = link;
+      const leadId = String(link.leadId || "");
+      if (!leadId) continue;
+      if (!statusByLeadId[leadId]) {
+        statusByLeadId[leadId] = link;
       }
     }
 
-    return res.status(200).json(statusByEmail);
+    return res.status(200).json(statusByLeadId);
   } catch (error) {
     next(error);
   }

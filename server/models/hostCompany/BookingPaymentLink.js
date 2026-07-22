@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const bookingPaymentLinkSchema = new mongoose.Schema(
   {
+    leadId: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
     leadEmail: {
       type: String,
       required: true,

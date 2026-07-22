@@ -96,7 +96,7 @@ export default function AllEnquiryTable() {
     },
   });
 
-  const { data: paymentStatusByEmail = {} } = useQuery({
+  const { data: paymentStatusByLeadId = {} } = useQuery({
     queryKey: ["bookingPaymentStatuses"],
     queryFn: async () => {
       const response = await axios.get("/api/host-user/booking-payment-links");
@@ -105,10 +105,22 @@ export default function AllEnquiryTable() {
     refetchInterval: 15000,
   });
 
-  const getPaymentStatus = (lead) => {
-    const record = paymentStatusByEmail[String(lead?.email || "").toLowerCase()];
-    if (!record) return "Not Sent";
-    return record.status === "paid" ? "Paid" : "Pending";
+  const getPaymentInfo = (lead) => {
+    const record = paymentStatusByLeadId[String(lead?._id || "")];
+    if (!record) return { status: "Not Sent", label: "Not Sent", isPaid: false };
+
+    const formattedAmount = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: String(record.currency || "INR").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(record.amount || 0);
+
+    const isPaid = record.status === "paid";
+    return {
+      status: isPaid ? "Paid" : "Pending",
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      isPaid,
+    };
   };
 
   const updateLeadMutation = useMutation({
@@ -155,6 +167,7 @@ export default function AllEnquiryTable() {
   const sendPaymentLinkMutation = useMutation({
     mutationFn: async ({ lead, amount, description }) => {
       const response = await axios.post("/api/host-user/send-booking-payment-link", {
+        leadId: lead?._id,
         customerName: lead?.fullName,
         customerEmail: lead?.email,
         companyName: lead?.companyName,
@@ -301,6 +314,7 @@ export default function AllEnquiryTable() {
                       const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
                       const isEscalating = escalatingLeadId === lead._id;
                       const isSending = sendingPaymentLeadId === lead._id;
+                      const paymentInfo = getPaymentInfo(lead);
                       return (
                         <tr key={lead._id} className="transition hover:bg-slate-50/60">
                           <td className="px-3 py-4">
@@ -320,7 +334,7 @@ export default function AllEnquiryTable() {
                             </select>
                           </td>
                           <td className="px-3 py-4"><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
-                          <td className="px-3 py-4"><span className={statusPillClass(getPaymentStatus(lead))}>{getPaymentStatus(lead)}</span></td>
+                          <td className="px-3 py-4"><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
                           <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
                           <td className="px-3 py-4">
                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
@@ -329,8 +343,8 @@ export default function AllEnquiryTable() {
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                                 <Eye size={13} />
                               </button>
-                              <button type="button" disabled={isSending || !lead.email}
-                                title={!lead.email ? "Email is required" : "Send payment link"}
+                              <button type="button" disabled={isSending || !lead.email || paymentInfo.isPaid}
+                                title={paymentInfo.isPaid ? "Already paid" : !lead.email ? "Email is required" : "Send payment link"}
                                 aria-label={`Send payment link to ${lead.fullName || "lead"}`}
                                 onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); }}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
@@ -364,7 +378,7 @@ export default function AllEnquiryTable() {
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         <span className={statusPillClass(getMasterStatus(selectedLead.status))}>Master: {getMasterStatus(selectedLead.status)}</span>
                         <span className={statusPillClass(selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated")}>Host: {selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated"}</span>
-                        <span className={statusPillClass(getPaymentStatus(selectedLead))}>Payment: {getPaymentStatus(selectedLead)}</span>
+                        <span className={statusPillClass(getPaymentInfo(selectedLead).status)}>Payment: {getPaymentInfo(selectedLead).label}</span>
                       </div>
                     </div>
                   </div>
