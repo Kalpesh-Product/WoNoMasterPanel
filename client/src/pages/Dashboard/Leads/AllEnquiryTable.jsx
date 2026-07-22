@@ -14,7 +14,6 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import PageFrame from "../../../components/Pages/PageFrame";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
 
@@ -251,16 +250,7 @@ export default function AllEnquiryTable() {
   ];
 
   return (
-    <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] text-[12px]">
-      <PageFrame>
-        <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="text-title font-pmedium text-primary uppercase">All Enquiry</h2>
-            <p className="mt-1 text-xs font-pmedium text-slate-500">
-              Review website and Nomads leads, complete the Master workflow, then escalate closed leads to HostPanel.
-            </p>
-          </div>
-
+    <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {statCards.map(({ label, value, icon: Icon, cardClass, labelClass, iconClass }) => (
               <div key={label} className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${cardClass}`}>
@@ -490,7 +480,5 @@ export default function AllEnquiryTable() {
             </div>
           )}
         </div>
-      </PageFrame>
-    </div>
   );
 }

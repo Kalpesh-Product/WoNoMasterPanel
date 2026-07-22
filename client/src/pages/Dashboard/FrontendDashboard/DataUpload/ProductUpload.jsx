@@ -1,7 +1,6 @@
 import React, { useRef, useState, useMemo } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
-import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
@@ -93,7 +92,6 @@ const ProductUpload = () => {
   };
 
   return (
-    <PageFrame>
       <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
         <div>
           <h4 className="text-2xl font-semibold">Bulk Upload</h4>
@@ -166,7 +164,6 @@ const ProductUpload = () => {
           />
         </div>
       </div>
-    </PageFrame>
   );
 };
 

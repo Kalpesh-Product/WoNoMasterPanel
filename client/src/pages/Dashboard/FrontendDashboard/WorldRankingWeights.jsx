@@ -1,19 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import {
-  Box,
-  Button,
-  IconButton,
-  MenuItem,
-  Typography,
-  TextField,
-} from "@mui/material";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import MuiModal from "../../../components/MuiModal";
 import { toast } from "sonner";
-import AgTable from "../../../components/AgTable";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  X,
+  Globe,
+  BarChart3,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import {
@@ -1250,6 +1249,7 @@ const WorldRankingWeights = () => {
   const [editForm, setEditForm] = useState(null);
   const [addForm, setAddForm] = useState(() => getInitialForm());
   const [editMode, setEditMode] = useState(false);
+  const [search, setSearch] = useState("");
 
   const {
     data: rows = [],
@@ -1328,7 +1328,7 @@ const WorldRankingWeights = () => {
     onError: (error) => {
       toast.error(
         error?.response?.data?.message ||
-        "Failed to update world ranking weight",
+          "Failed to update world ranking weight",
       );
     },
   });
@@ -1342,21 +1342,25 @@ const WorldRankingWeights = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "World ranking weight added successfully");
+      toast.success(
+        data?.message || "World ranking weight added successfully",
+      );
       queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
       setIsAddOpen(false);
       setAddForm(getInitialForm());
     },
     onError: (error) => {
       toast.error(
-        error?.response?.data?.message || "Failed to add world ranking weight",
+        error?.response?.data?.message ||
+          "Failed to add world ranking weight",
       );
     },
   });
 
-  const handleOpenEdit = (row) => {
+  const handleOpenEdit = (row, startEditing = false) => {
     setEditForm(getInitialForm(row));
     setIsEditOpen(true);
+    if (startEditing) setEditMode(true);
   };
 
   const handleCloseEditModal = () => {
@@ -1548,10 +1552,8 @@ const WorldRankingWeights = () => {
     }
   }, [isEditOpen]);
 
-  // Track the last blob URL we created so we only revoke it on unmount or modal close
   useEffect(() => {
     return () => {
-      // Cleanup on unmount only — prevents premature revocation during re-renders
       (editForm?.imageUrls || []).forEach((url) => {
         if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
       });
@@ -1571,725 +1573,950 @@ const WorldRankingWeights = () => {
     [rows],
   );
 
-  const columns = useMemo(
-    () => [
-      {
-        field: "srNo",
-        headerName: "Sr No",
-        width: 90,
-        pinned: "left",
-        lockPinned: true,
-        suppressMovable: true,
-      },
-      {
-        field: "rank",
-        headerName: "Rank",
-        width: 90,
-        pinned: "left",
-        lockPinned: true,
-        suppressMovable: true,
-      },
-      {
-        field: "state",
-        headerName: "State",
-        minWidth: 170,
-        pinned: "left",
-        lockPinned: true,
-        suppressMovable: true,
-      },
-      {
-        field: "title",
-        headerName: "Title",
-        minWidth: 220,
-      },
-      {
-        field: "actions",
-        headerName: "Actions",
-        width: 110,
-        pinned: "right",
-        lockPinned: true,
-        suppressMovable: true,
-        cellRenderer: (params) => (
-          <ThreeDotMenu
-            rowId={
-              params?.data?._id || params?.data?.state || params?.data?.srNo
-            }
-            menuItems={[
-              {
-                label: "Edit",
-                onClick: () => handleOpenEdit(params.data),
-              },
-            ]}
-          />
-        ),
-      },
-      // Weight Columns
-      ...weightColumns.map((column) => ({
-        ...column,
-        valueGetter: (params) =>
-          params.data?.weight?.[column.field] ??
-          params.data?.weights?.[column.field] ??
-          params.data?.[column.field],
-        valueFormatter: (params) => fmtNumber(params.value, 2),
-      })),
-      // Interleaved Score and Label Columns
-      // ...Object.entries(STATEWISE_WEIGHT_FORMULAS).flatMap(
-      //   ([formulaKey, factors]) => {
-      //     const labelField = SCORE_TO_LABEL_MAP[formulaKey];
-      //     const labelCol = labelColumns.find((c) => c.field === labelField);
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rowData.filter(
+      (row) =>
+        !q ||
+        [row.state, row.country, row.continent, row.title, String(row.rank)]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(q)),
+    );
+  }, [rowData, search]);
 
-      //     return [
-      //       {
-      //         headerName: `${formulaKey} Score`,
-      //         field: `score_${formulaKey}`,
-      //         minWidth: 150,
-      //         valueGetter: (params) => {
-      //           const weights =
-      //             params.data?.weight ||
-      //             params.data?.weights ||
-      //             params.data ||
-      //             {};
-      //           return calculateScore(weights, factors);
-      //         },
-      //         valueFormatter: (params) => fmtNumber(params.value, 3),
-      //       },
-      //       ...(labelCol
-      //         ? [
-      //           {
-      //             ...labelCol,
-      //             valueGetter: (params) =>
-      //               params.data?.labels?.[labelCol.field] ??
-      //               params.data?.[labelCol.field],
-      //           },
-      //         ]
-      //         : []),
-      //     ];
-      //   },
-      // ),
-    ],
-    [],
-  );
+  const stats = useMemo(() => {
+    const total = rowData.length;
+    const active = rowData.filter(
+      (r) => r.isActive === true || r.isActive === "true",
+    ).length;
+    const inactive = total - active;
+    const avgRank =
+      total > 0
+        ? (
+            rowData.reduce((s, r) => s + (Number(r.rank) || 0), 0) / total
+          ).toFixed(1)
+        : "0.0";
+    return { total, active, inactive, avgRank };
+  }, [rowData]);
+
+  const inputCls =
+    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400";
+  const inputDisabledCls =
+    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed";
+  const selectCls =
+    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all";
+  const selectDisabledCls =
+    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed";
+
+  if (isPending) {
+    return (
+      <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+        <PageFrame>
+          <div className="flex flex-col gap-4">
+            <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
+              <div>
+                <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+                  World Ranking Weights
+                </h2>
+                <p className="text-xs font-pmedium text-slate-500 mt-1">
+                  Manage country and state rankings with weight configurations.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse"
+                >
+                  <div className="h-3 w-20 bg-slate-200 rounded-full mb-2" />
+                  <div className="h-5 w-10 bg-slate-200 rounded-lg" />
+                </div>
+              ))}
+            </div>
+            <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-4 animate-pulse">
+                  <div className="h-3 bg-slate-200 rounded-full w-8" />
+                  <div className="h-3 bg-slate-200 rounded-full w-16" />
+                  <div className="h-3 bg-slate-200 rounded-full w-24" />
+                  <div className="h-3 bg-slate-200 rounded-full w-32" />
+                  <div className="h-3 bg-slate-200 rounded-full w-20" />
+                  <div className="h-3 bg-slate-200 rounded-full w-16" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </PageFrame>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <>
-        <AgTable
-          data={rowData}
-          columns={columns}
-          search
-          tableTitle="World Ranking Weights"
-          buttonTitle="Add"
-          handleClick={handleOpenAddModal}
-          tableHeight={550}
-          loading={isPending}
-        />
-        {isError ? (
-          <p className="pt-3 text-sm text-red-500">
-            Could not load world ranking data. Please verify World Ranking API
-            connectivity.
-          </p>
-        ) : null}
-      </>
+    <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+      <PageFrame>
+        <div className="flex flex-col gap-4">
+          <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
+            <div>
+              <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+                World Ranking Weights
+              </h2>
+              <p className="text-xs font-pmedium text-slate-500 mt-1">
+                Manage country and state rankings with weight configurations.
+              </p>
+            </div>
+          </div>
 
-      <MuiModal
-        open={isEditOpen}
-        onClose={handleCloseEditModal}
-        title={`Edit Weights of ${editForm?.state || ""} State`}
-      >
-        <Box
-          sx={{
-            width: "100%",
-          }}
-        >
-          {editForm ? (
-            <>
-              <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
-                <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
-                  <div className="w-full flex justify-end">
-                    {editMode ? (
-                      <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                        <Button onClick={() => setEditMode(false)} disabled={isUpdating}>
-                          Cancel
-                        </Button>
-                        <Button
-                          variant="contained"
-                          onClick={handleUpdateSubmit}
-                          disabled={isUpdating || !editForm}
-                        >
-                          {isUpdating ? "Updating..." : "Update"}
-                        </Button>
-                      </Box>
-                    ) : (
-                      <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-                        <Button onClick={() => setEditMode(true)} variant="contained">
-                          Edit
-                        </Button>
-                      </Box>
-                    )}
-                  </div>
-                  {editForm?.imageUrls?.length > 0 ? (
-                    <Box sx={{ mt: 2 }}>
-                      <Typography
-                        variant="subtitle2"
-                        sx={{ mb: 1, textAlign: "center" }}
-                      >
-                        Image Preview ({editForm.imageUrls.length}/{MAX_IMAGES})
-                      </Typography>
-                      <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                        {editForm.imageUrls.map((url, index) => (
-                          <Box
-                            key={`${url}-${index}`}
-                            sx={{ textAlign: "center" }}
-                          >
-                            <Box
-                              component="img"
-                              src={url}
-                              alt={`${editForm.state || "State"} preview ${index + 1}`}
-                              sx={{
-                                width: "100%",
-                                maxWidth: 220,
-                                height: 140,
-                                objectFit: "cover",
-                                borderRadius: 1,
-                                border: "1px solid #e5e7eb",
-                              }}
-                            />
-                            {editMode ? (
-                              <IconButton
-                                color="error"
-                                onClick={() => handleImageDelete(index, "edit")}
-                                size="small"
-                                sx={{ mt: 1 }}
-                              >
-                                <DeleteOutlineIcon fontSize="small" />
-                              </IconButton>
-                            ) : null}
-                          </Box>
-                        ))}
-                      </Box>
-                    </Box>
-                  ) : (
-                    <p>No image</p>
-                  )}
-                  {editMode ? (
-                    <Box sx={{ mt: 2 }}>
-                      <Button variant="outlined" component="label">
-                        Upload Images
-                        <input
-                          hidden
-                          accept="image/*"
-                          type="file"
-                          multiple
-                          onChange={(event) => handleImageUpload(event, "edit")}
-                        />
-                      </Button>
-                    </Box>
-                  ) : null}
-                </Box>
-              </Box>
-              <Box className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1 mb-4">
-                <TextField
-                  label="Rank"
-                  type="number"
-                  disabled
-                  value={editForm.rank}
-                  onChange={(event) =>
-                    handleFormFieldChange("rank", event.target.value)
-                  }
-                  fullWidth
-                />
-                <TextField
-                  label="Continent"
-                  disabled
-                  value={editForm.continent}
-                  onChange={(event) =>
-                    handleFormFieldChange("continent", event.target.value)
-                  }
-                  fullWidth
-                />
-              </Box>
-              <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
-                <TextField
-                  label="Country"
-                  disabled
-                  value={editForm.country}
-                  onChange={(event) =>
-                    handleFormFieldChange("country", event.target.value)
-                  }
-                  fullWidth
-                />
-                <TextField
-                  label="State"
-                  disabled
-                  value={editForm.state}
-                  onChange={(event) =>
-                    handleFormFieldChange("state", event.target.value)
-                  }
-                  fullWidth
-                />
-                <TextField
-                  label="Title"
-                  value={editForm.title}
-                  disabled={!editMode}
-                  onChange={(event) =>
-                    handleFormFieldChange("title", event.target.value)
-                  }
-                  fullWidth
-                />
-                <TextField
-                  label="Status"
-                  select
-                  value={editForm.isActive}
-                  disabled={!editMode}
-                  onChange={(event) =>
-                    handleFormFieldChange("isActive", event.target.value)
-                  }
-                  fullWidth
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+            {[
+              {
+                label: "Total Entries",
+                value: stats.total,
+                icon: BarChart3,
+                accent: "border-l-slate-400",
+                textColor: "text-slate-500",
+                bgColor: "bg-slate-50",
+              },
+              {
+                label: "Active",
+                value: stats.active,
+                icon: CheckCircle2,
+                accent: "border-l-emerald-500",
+                textColor: "text-emerald-600",
+                bgColor: "bg-emerald-50",
+              },
+              {
+                label: "Inactive",
+                value: stats.inactive,
+                icon: XCircle,
+                accent: "border-l-amber-500",
+                textColor: "text-amber-600",
+                bgColor: "bg-amber-50",
+              },
+              {
+                label: "Average Rank",
+                value: stats.avgRank,
+                icon: Globe,
+                accent: "border-l-blue-500",
+                textColor: "text-blue-600",
+                bgColor: "bg-blue-50",
+              },
+            ].map((s) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={s.label}
+                  className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${s.accent}`}
                 >
-                  <MenuItem value="true">Active</MenuItem>
-                  <MenuItem value="false">Inactive</MenuItem>
-                </TextField>
-              </Box>
+                  <div>
+                    <p
+                      className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${s.textColor}`}
+                    >
+                      {s.label}
+                    </p>
+                    <p className="text-[15px] font-pmedium text-slate-900">
+                      {s.value}
+                    </p>
+                  </div>
+                  <div
+                    className={`rounded-2xl p-2 ${s.bgColor} ${s.textColor}`}
+                  >
+                    <Icon size={16} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-              <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
-                Weights
-              </Typography>
-              <Box className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-1 mb-4">
-                {weightColumns.map((column) => (
-                  <TextField
-                    key={column.field}
-                    label={column.headerName}
-                    type="number"
-                    disabled={!editMode}
-                    value={editForm.weight?.[column.field] ?? ""}
-                    onChange={(event) =>
-                      handleWeightFieldChange(
-                        column.field,
-                        event.target.value,
-                        "edit",
-                      )
-                    }
-                    fullWidth
-                    size="small"
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+            <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
                   />
-                ))}
-              </Box>
+                  <input
+                    type="text"
+                    placeholder="Search state, country, title..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                  />
+                </div>
+                <button
+                  onClick={handleOpenAddModal}
+                  className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-3xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                  <Plus size={14} /> Add Entry
+                </button>
+              </div>
+            </div>
 
-              <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
-                Calculations & Labels
-              </Typography>
-              <Box className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1 mb-4">
-                <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                  Computed Score
-                </Typography>
-                <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-                  Label
-                </Typography>
-
-                {CALCULATION_CONFIG.map((config) => {
-                  const labelCol = labelColumns.find(
-                    (c) => c.field === config.field,
-                  );
-                  const currentScore = getCalculatedScoreValue(
-                    editForm,
-                    config,
-                  );
-
-                  return (
-                    <React.Fragment key={config.formula}>
-                      <TextField
-                        label={`Score ${config.label}`}
-                        value={currentScore}
-                        InputProps={{ readOnly: true }}
-                        disabled // disable the score field
-                        fullWidth
-                        size="small"
-                        sx={{ bgcolor: "#f9fafb" }}
-                      />
-                      {labelCol ? (
-                        <TextField
-                          label={config.field}
-                          select
-                          disabled // disable the label field
-                          value={editForm.labels?.[config.field] ?? ""}
-                          onChange={(event) =>
-                            handleLabelFieldChange(
-                              config.field,
-                              event.target.value,
-                              "edit",
-                            )
-                          }
-                          fullWidth
-                          size="small"
+            {isError ? (
+              <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-400">
+                  <XCircle size={28} />
+                </div>
+                <p className="text-red-500 font-semibold font-pmedium">
+                  Could not load world ranking data.
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Please verify World Ranking API connectivity.
+                </p>
+              </div>
+            ) : filteredRows.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
+                  <Globe size={28} />
+                </div>
+                <p className="text-slate-400 font-semibold font-pmedium">
+                  No entries found.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto flex-1">
+                <table className="w-full text-left min-w-[900px]">
+                  <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                    <tr>
+                      <th className="px-5 py-4">#</th>
+                      <th className="px-5 py-4">Rank</th>
+                      <th className="px-5 py-4">State</th>
+                      <th className="px-5 py-4">Country</th>
+                      <th className="px-5 py-4">Title</th>
+                      <th className="px-5 py-4 text-center">Status</th>
+                      <th className="px-5 py-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/60">
+                    {filteredRows.map((row) => {
+                      const isActive =
+                        row.isActive === true || row.isActive === "true";
+                      return (
+                        <tr
+                          key={row._id || row.srNo}
+                          className="hover:bg-slate-50/50 transition-colors group"
                         >
-                          <MenuItem value="">
-                            <em>None</em>
-                          </MenuItem>
-                          {labelCol.options?.map((opt) => (
-                            <MenuItem key={opt} value={opt}>
-                              {opt}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      ) : (
-                        <Box />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+                          <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
+                            {row.srNo}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row.rank}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row.state}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row.country}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700 truncate max-w-[200px]">
+                            {row.title}
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <span
+                              className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
+                            >
+                              {isActive ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(row)}
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
+                                title="View"
+                              >
+                                <Eye size={15} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(row, true)}
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
+                                title="Edit"
+                              >
+                                <Edit size={15} strokeWidth={2.5} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </PageFrame>
 
-                {labelColumns
-                  .filter(
-                    (lc) =>
-                      !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
-                  )
-                  .map((column) => (
-                    <React.Fragment key={column.field}>
-                      <Box />
-                      <TextField
-                        label={column.headerName}
-                        select
+      {isEditOpen && editForm && (
+        <div
+          className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
+          onClick={handleCloseEditModal}
+        >
+          <div
+            className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-[#2563EB] text-white">
+                  <Edit size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800">
+                    Edit Weights : {editForm.state || ""}
+                  </h2>
+                  <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">
+                    {editForm.country}, {editForm.continent}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {!editMode ? (
+                  <button
+                    onClick={() => setEditMode(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm"
+                  >
+                    <Edit size={13} /> Edit
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => setEditMode(false)}
+                      disabled={isUpdating}
+                      className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleUpdateSubmit}
+                      disabled={isUpdating || !editForm}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      {isUpdating ? "Updating..." : "Update"}
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCloseEditModal}
+                  className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6 overflow-y-auto bg-white flex-1">
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Images
+                </h3>
+                {editForm.imageUrls?.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {editForm.imageUrls.map((url, index) => (
+                      <div
+                        key={`${url}-${index}`}
+                        className="relative group"
+                      >
+                        <img
+                          src={url}
+                          alt={`${editForm.state} preview ${index + 1}`}
+                          className="w-full h-28 object-cover rounded-xl border border-slate-100"
+                        />
+                        {editMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleImageDelete(index, "edit")}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                          >
+                            <X size={12} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[12px] text-slate-400 font-pmedium">
+                    No images uploaded.
+                  </p>
+                )}
+                {editMode && (
+                  <label className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 cursor-pointer transition-colors shadow-sm">
+                    Upload Images
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      multiple
+                      onChange={(e) => handleImageUpload(e, "edit")}
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Rank
+                    </label>
+                    <input
+                      type="number"
+                      disabled
+                      value={editForm.rank}
+                      onChange={(e) =>
+                        handleFormFieldChange("rank", e.target.value)
+                      }
+                      className={inputDisabledCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Continent
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editForm.continent}
+                      className={inputDisabledCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editForm.country}
+                      className={inputDisabledCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editForm.state}
+                      className={inputDisabledCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      disabled={!editMode}
+                      value={editForm.title}
+                      onChange={(e) =>
+                        handleFormFieldChange("title", e.target.value)
+                      }
+                      className={editMode ? inputCls : inputDisabledCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Status
+                    </label>
+                    <select
+                      disabled={!editMode}
+                      value={editForm.isActive}
+                      onChange={(e) =>
+                        handleFormFieldChange("isActive", e.target.value)
+                      }
+                      className={editMode ? selectCls : selectDisabledCls}
+                    >
+                      <option value="">Select</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Weights
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {weightColumns.map((column) => (
+                    <div key={column.field}>
+                      <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                        {column.headerName}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
                         disabled={!editMode}
-                        value={editForm.labels?.[column.field] ?? ""}
-                        onChange={(event) =>
-                          handleLabelFieldChange(
+                        value={editForm.weight?.[column.field] ?? ""}
+                        onChange={(e) =>
+                          handleWeightFieldChange(
                             column.field,
-                            event.target.value,
+                            e.target.value,
                             "edit",
                           )
                         }
-                        fullWidth
-                        size="small"
-                      >
-                        <MenuItem value="">
-                          <em>None</em>
-                        </MenuItem>
-                        {column.options?.map((option) => (
-                          <MenuItem key={option} value={option}>
-                            {option}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </React.Fragment>
+                        className={editMode ? inputCls : inputDisabledCls}
+                      />
+                    </div>
                   ))}
-              </Box>
-            </>
-          ) : null}
+                </div>
+              </div>
 
-          {editMode ? (
-            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <Button onClick={() => setEditMode(false)} disabled={isUpdating}>
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleUpdateSubmit}
-                disabled={isUpdating || !editForm}
-              >
-                {isUpdating ? "Updating..." : "Update"}
-              </Button>
-            </Box>
-          ) : (
-            <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <Button onClick={() => setEditMode(true)} variant="contained">
-                Edit
-              </Button>
-            </Box>
-          )}
-        </Box>
-      </MuiModal>
-
-      <MuiModal
-        open={isAddOpen}
-        onClose={handleCloseAddModal}
-        title="Add World Ranking Weight"
-      >
-        <Box sx={{ width: "100%" }}>
-          <Box className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-1 mb-4">
-            <Box className="mt-1 mb-4 flex flex-col items-center justify-center">
-              {addForm.imageUrls?.length > 0 ? (
-                <Box sx={{ mt: 2 }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ mb: 1, textAlign: "center" }}
-                  >
-                    Image Preview ({addForm.imageUrls.length}/{MAX_IMAGES})
-                  </Typography>
-                  <Box className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {addForm.imageUrls.map((url, index) => (
-                      <Box key={`${url}-${index}`} sx={{ textAlign: "center" }}>
-                        <Box
-                          component="img"
-                          src={url}
-                          alt={`${addForm.state || "State"} preview ${index + 1}`}
-                          sx={{
-                            width: "100%",
-                            maxWidth: 220,
-                            height: 140,
-                            objectFit: "cover",
-                            borderRadius: 1,
-                            border: "1px solid #e5e7eb",
-                          }}
-                        />
-                        <IconButton
-                          color="error"
-                          onClick={() => handleImageDelete(index, "add")}
-                          size="small"
-                          sx={{ mt: 1 }}
-                        >
-                          <DeleteOutlineIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Calculations & Labels
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {CALCULATION_CONFIG.map((config) => {
+                    const labelCol = labelColumns.find(
+                      (c) => c.field === config.field,
+                    );
+                    const currentScore = getCalculatedScoreValue(
+                      editForm,
+                      config,
+                    );
+                    return (
+                      <div
+                        key={config.formula}
+                        className="flex items-end gap-2"
+                      >
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                            Score {config.label}
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            disabled
+                            value={fmtNumber(currentScore, 3)}
+                            className="w-full px-3 py-2 bg-slate-100 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-500"
+                          />
+                        </div>
+                        {labelCol && (
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                              {labelCol.headerName}
+                            </label>
+                            <select
+                              disabled
+                              value={editForm.labels?.[config.field] ?? ""}
+                              onChange={(e) =>
+                                handleLabelFieldChange(
+                                  config.field,
+                                  e.target.value,
+                                  "edit",
+                                )
+                              }
+                              className={selectDisabledCls}
+                            >
+                              <option value="">None</option>
+                              {labelCol.options?.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {labelColumns
+                    .filter(
+                      (lc) =>
+                        !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
+                    )
+                    .map((column) => (
+                      <div
+                        key={column.field}
+                        className="flex items-end gap-2"
+                      >
+                        <div className="flex-1" />
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                            {column.headerName}
+                          </label>
+                          <select
+                            disabled={!editMode}
+                            value={editForm.labels?.[column.field] ?? ""}
+                            onChange={(e) =>
+                              handleLabelFieldChange(
+                                column.field,
+                                e.target.value,
+                                "edit",
+                              )
+                            }
+                            className={editMode ? selectCls : selectDisabledCls}
+                          >
+                            <option value="">None</option>
+                            {column.options?.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     ))}
-                  </Box>
-                </Box>
-              ) : null}
-              <Box sx={{ mt: 2 }}>
-                <Button variant="outlined" component="label">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddOpen && (
+        <div
+          className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
+          onClick={handleCloseAddModal}
+        >
+          <div
+            className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-[#2563EB] text-white">
+                  <Plus size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800">
+                    Add World Ranking Weight
+                  </h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseAddModal}
+                className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6 overflow-y-auto bg-white flex-1">
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Images
+                </h3>
+                {addForm.imageUrls?.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
+                    {addForm.imageUrls.map((url, index) => (
+                      <div
+                        key={`${url}-${index}`}
+                        className="relative group"
+                      >
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-28 object-cover rounded-xl border border-slate-100"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleImageDelete(index, "add")}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 cursor-pointer transition-colors shadow-sm">
                   Upload Images
                   <input
                     hidden
                     accept="image/*"
                     type="file"
                     multiple
-                    onChange={(event) => handleImageUpload(event, "add")}
+                    onChange={(e) => handleImageUpload(e, "add")}
                   />
-                </Button>
-              </Box>
-            </Box>
-          </Box>
-          <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
-            <TextField
-              label="Rank"
-              type="number"
-              value={addForm.rank}
-              onChange={(event) =>
-                setAddForm((prev) => ({ ...prev, rank: event.target.value }))
-              }
-              fullWidth
-            />
-            <TextField
-              label="Continent"
-              select
-              value={addForm.continent}
-              onChange={(event) =>
-                setAddForm((prev) => ({
-                  ...prev,
-                  continent: event.target.value,
-                  country: "",
-                  state: "",
-                }))
-              }
-              fullWidth
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {continents.map((continent) => (
-                <MenuItem key={continent} value={continent}>
-                  {continent}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Country"
-              select
-              value={addForm.country}
-              onChange={(event) =>
-                setAddForm((prev) => ({
-                  ...prev,
-                  country: event.target.value,
-                  state: "",
-                }))
-              }
-              fullWidth
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {countries.map((country) => (
-                <MenuItem key={country} value={country}>
-                  {country}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
+                </label>
+              </div>
 
-          <Box className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1 mb-4">
-            <TextField
-              label="State / City"
-              select
-              value={addForm.state}
-              onChange={(event) =>
-                setAddForm((prev) => ({ ...prev, state: event.target.value }))
-              }
-              fullWidth
-            >
-              <MenuItem value="">
-                <em>None</em>
-              </MenuItem>
-              {states.map((state) => (
-                <MenuItem key={state} value={state}>
-                  {state}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              label="Status"
-              select
-              value={addForm.isActive}
-              onChange={(event) =>
-                setAddForm((prev) => ({
-                  ...prev,
-                  isActive: event.target.value,
-                }))
-              }
-              fullWidth
-            >
-              <MenuItem value="true">Active</MenuItem>
-              <MenuItem value="false">Inactive</MenuItem>
-            </TextField>
-            <TextField
-              label="Title"
-              value={addForm.title}
-              onChange={(event) =>
-                setAddForm((prev) => ({ ...prev, title: event.target.value }))
-              }
-              fullWidth
-            />
-          </Box>
-
-          <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
-            Weights
-          </Typography>
-          <Box className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-1 mb-4">
-            {weightColumns.map((column) => (
-              <TextField
-                key={column.field}
-                label={column.headerName}
-                type="number"
-                value={addForm.weight?.[column.field] ?? ""}
-                onChange={(event) =>
-                  handleWeightFieldChange(
-                    column.field,
-                    event.target.value,
-                    "add",
-                  )
-                }
-                fullWidth
-                size="small"
-              />
-            ))}
-          </Box>
-
-          <Typography variant="h6" sx={{ mt: 4, mb: 1 }}>
-            Calculations & Labels
-          </Typography>
-          <Box className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-1 mb-4">
-            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-              Computed Score
-            </Typography>
-            <Typography variant="subtitle2" sx={{ fontWeight: "bold" }}>
-              Label
-            </Typography>
-
-            {CALCULATION_CONFIG.map((config) => {
-              const labelCol = labelColumns.find(
-                (c) => c.field === config.field,
-              );
-              const currentScore = getCalculatedScoreValue(addForm, config);
-
-              return (
-                <React.Fragment key={config.formula}>
-                  <TextField
-                    label={`Score ${config.label}`}
-                    value={currentScore}
-                    InputProps={{ readOnly: true }}
-                    disabled // disable the score field
-                    fullWidth
-                    size="small"
-                    sx={{ bgcolor: "#f9fafb" }}
-                  />
-                  {labelCol ? (
-                    <TextField
-                      label={config.field}
-                      select
-                      disabled // disable the label field
-                      value={addForm.labels?.[config.field] ?? ""}
-                      onChange={(event) =>
-                        handleLabelFieldChange(
-                          config.field,
-                          event.target.value,
-                          "add",
-                        )
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Rank
+                    </label>
+                    <input
+                      type="number"
+                      value={addForm.rank}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          rank: e.target.value,
+                        }))
                       }
-                      fullWidth
-                      size="small"
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Continent
+                    </label>
+                    <select
+                      value={addForm.continent}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          continent: e.target.value,
+                          country: "",
+                          state: "",
+                        }))
+                      }
+                      className={selectCls}
                     >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {labelCol.options?.map((opt) => (
-                        <MenuItem key={opt} value={opt}>
-                          {opt}
-                        </MenuItem>
+                      <option value="">None</option>
+                      {continents.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
                       ))}
-                    </TextField>
-                  ) : (
-                    <Box />
-                  )}
-                </React.Fragment>
-              );
-            })}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Country
+                    </label>
+                    <select
+                      value={addForm.country}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          country: e.target.value,
+                          state: "",
+                        }))
+                      }
+                      className={selectCls}
+                    >
+                      <option value="">None</option>
+                      {countries.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      State / City
+                    </label>
+                    <select
+                      value={addForm.state}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          state: e.target.value,
+                        }))
+                      }
+                      className={selectCls}
+                    >
+                      <option value="">None</option>
+                      {states.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Status
+                    </label>
+                    <select
+                      value={addForm.isActive}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          isActive: e.target.value,
+                        }))
+                      }
+                      className={selectCls}
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      value={addForm.title}
+                      onChange={(e) =>
+                        setAddForm((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              </div>
 
-            {labelColumns
-              .filter(
-                (lc) => !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
-              )
-              .map((column) => (
-                <React.Fragment key={column.field}>
-                  <Box />
-                  <TextField
-                    label={column.headerName}
-                    select
-                    value={addForm.labels?.[column.field] ?? ""}
-                    onChange={(event) =>
-                      handleLabelFieldChange(
-                        column.field,
-                        event.target.value,
-                        "add",
-                      )
-                    }
-                    fullWidth
-                    size="small"
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {column.options?.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Weights
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                  {weightColumns.map((column) => (
+                    <div key={column.field}>
+                      <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                        {column.headerName}
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={addForm.weight?.[column.field] ?? ""}
+                        onChange={(e) =>
+                          handleWeightFieldChange(
+                            column.field,
+                            e.target.value,
+                            "add",
+                          )
+                        }
+                        className={inputCls}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Calculations & Labels
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {CALCULATION_CONFIG.map((config) => {
+                    const labelCol = labelColumns.find(
+                      (c) => c.field === config.field,
+                    );
+                    const currentScore = getCalculatedScoreValue(
+                      addForm,
+                      config,
+                    );
+                    return (
+                      <div
+                        key={config.formula}
+                        className="flex items-end gap-2"
+                      >
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                            Score {config.label}
+                          </label>
+                          <input
+                            type="text"
+                            readOnly
+                            disabled
+                            value={fmtNumber(currentScore, 3)}
+                            className="w-full px-3 py-2 bg-slate-100 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-500"
+                          />
+                        </div>
+                        {labelCol && (
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                              {labelCol.headerName}
+                            </label>
+                            <select
+                              disabled
+                              value={addForm.labels?.[config.field] ?? ""}
+                              onChange={(e) =>
+                                handleLabelFieldChange(
+                                  config.field,
+                                  e.target.value,
+                                  "add",
+                                )
+                              }
+                              className={selectDisabledCls}
+                            >
+                              <option value="">None</option>
+                              {labelCol.options?.map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {labelColumns
+                    .filter(
+                      (lc) =>
+                        !Object.values(SCORE_TO_LABEL_MAP).includes(lc.field),
+                    )
+                    .map((column) => (
+                      <div
+                        key={column.field}
+                        className="flex items-end gap-2"
+                      >
+                        <div className="flex-1" />
+                        <div className="flex-1">
+                          <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+                            {column.headerName}
+                          </label>
+                          <select
+                            value={addForm.labels?.[column.field] ?? ""}
+                            onChange={(e) =>
+                              handleLabelFieldChange(
+                                column.field,
+                                e.target.value,
+                                "add",
+                              )
+                            }
+                            className={selectCls}
+                          >
+                            <option value="">None</option>
+                            {column.options?.map((opt) => (
+                              <option key={opt} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     ))}
-                  </TextField>
-                </React.Fragment>
-              ))}
-          </Box>
+                </div>
+              </div>
+            </div>
 
-          <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-            <Button onClick={handleCloseAddModal} disabled={isCreating}>
-              Cancel
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleAddSubmit}
-              disabled={isCreating}
-            >
-              {isCreating ? "Adding..." : "Add"}
-            </Button>
-          </Box>
-        </Box>
-      </MuiModal>
+            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-3 shrink-0">
+              <button
+                onClick={handleCloseAddModal}
+                disabled={isCreating}
+                className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSubmit}
+                disabled={isCreating}
+                className="px-6 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isCreating ? "Adding..." : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

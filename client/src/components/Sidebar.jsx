@@ -110,9 +110,9 @@ const Sidebar = ({ onCloseDrawer }) => {
         },
         {
           id: 15,
-          title: "Blogs and news",
+          title: "Destinations Data",
           icon: LuNewspaper,
-          route: "/dashboard/BlogsAndNews",
+          route: "/dashboard/destinations-data",
         },
         {
           id: 16,
@@ -217,7 +217,7 @@ const Sidebar = ({ onCloseDrawer }) => {
   const restrictedVisibleSubmenuTitles = [
     "Data Upload",
     "Profile",
-    "Blogs and news",
+    "Destinations Data",
     ...(canAccessCompanies ? ["Companies"] : []),
     ...(canAccessWorldRankingWeights ? ["World Ranking Weights"] : []),
   ];

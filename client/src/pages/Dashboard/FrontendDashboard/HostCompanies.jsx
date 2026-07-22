@@ -1,18 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Chip } from "@mui/material";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
-import AgTable from "../../../components/AgTable";
+import { Search, Eye, X } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
-import MuiModal from "../../../components/MuiModal";
+import { statusPillClass } from "../../../lib/status-pill";
 
 const toCompanySlug = (value = "") =>
     String(value || "")
@@ -21,6 +19,37 @@ const toCompanySlug = (value = "") =>
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/^-+|-+$/g, "") || "host-company";
 
+const formatLabel = (value) =>
+    String(value || "-")
+        .split(/[\s_-]+/)
+        .filter(Boolean)
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(" ");
+
+const formatDateTime = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+const getCurrentSubscriptionLabel = (company) => {
+    if (company?.isTrialActive) return "7 Day Trial";
+    if (String(company?.subscriptionStatus || "").trim()) {
+        return formatLabel(company.subscriptionStatus);
+    }
+    if (String(company?.plan || "").trim()) {
+        return formatLabel(company.plan);
+    }
+    return "Not Assigned";
+};
+
 const HostCompanies = () => {
     const navigate = useNavigate();
     const axiosPrivate = useAxiosPrivate();
@@ -28,6 +57,7 @@ const HostCompanies = () => {
     const { auth } = useAuth();
     const [selectedCompany, setSelectedCompanyDetail] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const handleViewHostCompany = (company) => {
         setSelectedCompanyDetail(company);
@@ -44,9 +74,7 @@ const HostCompanies = () => {
         },
         onMutate: async ({ companyId, status }) => {
             await queryClient.cancelQueries({ queryKey: ["hostCompaniesList"] });
-
             const previousCompanies = queryClient.getQueryData(["hostCompaniesList"]);
-
             queryClient.setQueryData(["hostCompaniesList"], (oldCompanies = []) =>
                 oldCompanies.map((company) =>
                     company.companyId === companyId
@@ -54,7 +82,6 @@ const HostCompanies = () => {
                         : company,
                 ),
             );
-
             return { previousCompanies };
         },
         onSuccess: (data) => {
@@ -63,15 +90,9 @@ const HostCompanies = () => {
         },
         onError: (error, _variables, context) => {
             if (context?.previousCompanies) {
-                queryClient.setQueryData(
-                    ["hostCompaniesList"],
-                    context.previousCompanies,
-                );
+                queryClient.setQueryData(["hostCompaniesList"], context.previousCompanies);
             }
-
-            toast.error(
-                error?.response?.data?.message || "Failed to update company status",
-            );
+            toast.error(error?.response?.data?.message || "Failed to update company status");
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
@@ -119,230 +140,6 @@ const HostCompanies = () => {
         },
     });
 
-    const columns = useMemo(
-        () => [
-            {
-                field: "logo",
-                headerName: "Logo",
-                width: 80,
-                cellRenderer: (params) => {
-                    const logoUrl =
-                        typeof params.value === "string" ? params.value : params.value?.url;
-
-                    return logoUrl ? (
-                        <img
-                            src={logoUrl}
-                            alt="logo"
-                            className="h-10 w-10 rounded object-contain"
-                        />
-                    ) : (
-                        "-"
-                    );
-                },
-            },
-            {
-                field: "companyName",
-                headerName: "Company Name",
-                flex: 1,
-                cellRenderer: (params) => (
-                    <span
-                        className="text-blue-600 hover:underline cursor-pointer"
-                        onClick={() => {
-                            dispatch(setSelectedCompany(params.data));
-                            sessionStorage.setItem("companyId", params.data.companyId);
-                            sessionStorage.setItem("companyName", params.data.companyName);
-                            sessionStorage.setItem("workspaceId", params.data.workspaceId || "");
-                            const companySlug = toCompanySlug(params.data.companyName);
-
-                            navigate(
-                                `/dashboard/host-companies/${companySlug}`,
-                                {
-                                    state: {
-                                        companyId: params.data.companyId,
-                                        companyName: params.data.companyName,
-                                        selectedPlan:
-                                            params.data.selectedPlan ||
-                                            params.data.plan ||
-                                            params.data.subscriptionPlan ||
-                                            "",
-                                        requestedPlan:
-                                            params.data.requestedPlan || "",
-                                    },
-                                },
-                            );
-                        }}
-                    >
-                        {params.value || "-"}
-                    </span>
-                ),
-            },
-            {
-                field: "industry",
-                headerName: "Vertical",
-                flex: 1,
-                cellRenderer: (params) => params.value || "-",
-            },
-            // {
-            //     field: "companyContinent",
-            //     headerName: "Continent",
-            //     flex: 1,
-            //     cellRenderer: (params) => params.value || "-",
-            // },
-            {
-                field: "companyCountry",
-                headerName: "Country",
-                flex: 1,
-                cellRenderer: (params) => params.value || "-",
-            },
-            {
-                field: "companyState",
-                headerName: "State",
-                flex: 1,
-                cellRenderer: (params) => params.value || "-",
-            },
-            {
-                field: "companyCity",
-                headerName: "City",
-                flex: 1,
-                cellRenderer: (params) => params.value || "-",
-            },
-            {
-                field: "isRegistered",
-                headerName: "Registration",
-                flex: 1,
-                valueGetter: (params) =>
-                    params.data.isRegistered ? "Active" : "Inactive",
-                cellRenderer: (params) => {
-                    const statusColorMap = {
-                        Active: { backgroundColor: "#90EE90", color: "#006400" },
-                        Inactive: { backgroundColor: "#FFC5C5", color: "#8B0000" },
-                    };
-
-                    const { backgroundColor, color } = statusColorMap[params.value] || {
-                        backgroundColor: "gray",
-                        color: "white",
-                    };
-
-                    return (
-                        <Chip
-                            label={params.value}
-                            style={{ backgroundColor, color }}
-                            size="small"
-                        />
-                    );
-                },
-            },
-            {
-                field: "currentSubscription",
-                headerName: "Current Active Subscription",
-                flex: 1.2,
-                cellRenderer: (params) => {
-                    const label = getCurrentSubscriptionLabel(params.data);
-                    return (
-                        <Chip
-                            label={label}
-                            size="small"
-                            sx={{
-                                backgroundColor: "rgba(37, 99, 235, 0.1)",
-                                color: "#2563EB",
-                                fontWeight: 600,
-                            }}
-                        />
-                    );
-                },
-            },
-            // {
-            //     field: "trialStatus",
-            //     headerName: "7 Day Trial",
-            //     flex: 1,
-            //     cellRenderer: (params) => {
-            //         const isTrialActive = params.data.isTrialActive === true;
-            //         const hasUsedTrial = params.data.hasUsedTrial === true;
-
-            //         let label = "Not Started";
-            //         let backgroundColor = "#F3F4F6";
-            //         let color = "#4B5563";
-
-            //         if (isTrialActive) {
-            //             label = "Active";
-            //             backgroundColor = "#DBEAFE";
-            //             color = "#1D4ED8";
-            //         } else if (hasUsedTrial) {
-            //             label = "Used";
-            //             backgroundColor = "#FEF3C7";
-            //             color = "#B45309";
-            //         }
-
-            //         return (
-            //             <Chip
-            //                 label={label}
-            //                 style={{ backgroundColor, color }}
-            //                 size="small"
-            //             />
-            //         );
-            //     },
-            // },
-            {
-                field: "actions",
-                headerName: "Actions",
-                pinned: "right",
-                lockPinned: true,
-                width: 120,
-                cellRenderer: (params) => (
-                    <div className="flex items-center gap-2">
-                        <div
-                            role="button"
-                            onClick={() => handleViewHostCompany(params.data)}
-                            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
-                        >
-                            <MdOutlineRemoveRedEye />
-                        </div>
-                        <ThreeDotMenu
-                            rowId={
-                                params?.data?.companyId ||
-                                params?.data?._id ||
-                                params?.data?.companyName
-                            }
-                            menuItems={[
-                                params?.data?.isRegistered
-                                    ? {
-                                        label: "Mark As Inactive",
-                                        onClick: () =>
-                                            toggleCompanyStatus({
-                                                companyId: params?.data?.companyId,
-                                                status: false,
-                                            }),
-                                    }
-                                    : {
-                                        label: "Mark As Active",
-                                        onClick: () =>
-                                            toggleCompanyStatus({
-                                                companyId: params?.data?.companyId,
-                                                status: true,
-                                            }),
-                                    },
-                                {
-                                    label: "Edit",
-                                    onClick: () =>
-                                        navigate(
-                                            `/dashboard/host-companies/edit/${params?.data?.companyId}`,
-                                            {
-                                                state: {
-                                                    companyId: params?.data?.companyId,
-                                                    companyName: params?.data?.companyName,
-                                                },
-                                            },
-                                        ),
-                                }
-                            ]}
-                        />
-                    </div>
-                ),
-            },
-        ],
-        [dispatch, navigate, toggleCompanyStatus],
-    );
-
     const sortedCompanies = useMemo(
         () =>
             [...companies].sort((a, b) => {
@@ -352,150 +149,323 @@ const HostCompanies = () => {
         [companies],
     );
 
-    if (isLoading) return <div className="p-6">Loading host companies...</div>;
+    const filteredCompanies = useMemo(() => {
+        if (!searchQuery.trim()) return sortedCompanies;
+        const q = searchQuery.trim().toLowerCase();
+        return sortedCompanies.filter(
+            (c) =>
+                c.companyName?.toLowerCase().includes(q) ||
+                c.industry?.toLowerCase().includes(q) ||
+                c.companyCountry?.toLowerCase().includes(q) ||
+                c.companyState?.toLowerCase().includes(q) ||
+                c.companyCity?.toLowerCase().includes(q),
+        );
+    }, [sortedCompanies, searchQuery]);
+
+    const activeCount = useMemo(() => sortedCompanies.filter((c) => c.isRegistered).length, [sortedCompanies]);
+    const inactiveCount = useMemo(() => sortedCompanies.filter((c) => !c.isRegistered).length, [sortedCompanies]);
+
+    if (isLoading) {
+        return (
+            <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+                <PageFrame>
+                    <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">Loading host companies...</div>
+                </PageFrame>
+            </div>
+        );
+    }
     if (isError) {
         return <div className="p-6 text-red-500">Failed to load companies.</div>;
     }
 
     return (
-        <div>
-            <>
-                <AgTable
-                    data={sortedCompanies}
-                    columns={columns}
-                    search
-                    tableTitle="Host Companies"
-                    tableHeight={500}
-                    filterExcludeColumns={["logo", "isRegistered"]}
-                    loading={isLoading}
-                />
-            </>
-
-            <MuiModal
-                open={isViewModalOpen}
-                onClose={() => {
-                    setIsViewModalOpen(false);
-                    setSelectedCompanyDetail(null);
-                }}
-                title="Host Company Details"
-            >
+        <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+            <PageFrame>
                 <div className="flex flex-col gap-4">
-                    <h2 className="text-subtitle font-pmedium text-gray-800">
-                        Company Details
-                    </h2>
-                    <DetailRow label="Company Name" value={selectedCompany?.companyName} />
-                    <DetailRow label="Industry" value={selectedCompany?.industry} />
-                    <DetailRow label="Country" value={selectedCompany?.companyCountry} />
-                    <DetailRow label="State" value={selectedCompany?.companyState} />
-                    <DetailRow label="City" value={selectedCompany?.companyCity} />
 
-                    <hr className="border-borderGray my-1" />
-
-                    <h2 className="text-subtitle font-pmedium text-gray-800">
-                        Account Details
-                    </h2>
-                    <div className="grid grid-cols-[120px_16px_1fr] gap-2 items-center text-content">
-                        <span className="font-pmedium text-gray-700">Plan</span>
-                        <span className="text-gray-400">:</span>
+                    <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
                         <div>
-                            <Chip
-                                label={formatLabel(selectedCompany?.plan || "not assigned")}
-                                size="small"
-                                sx={{
-                                    backgroundColor: "rgba(37, 99, 235, 0.1)",
-                                    color: "#2563EB",
-                                    fontWeight: 600,
-                                }}
-                            />
+                            <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+                                Host Companies
+                            </h2>
+                            <p className="text-xs font-pmedium text-slate-500 mt-1">
+                                Manage and view all host company registrations.
+                            </p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-[120px_16px_1fr] gap-2 items-center text-content">
-                        <span className="font-pmedium text-gray-700">Status</span>
-                        <span className="text-gray-400">:</span>
-                        <div className="flex items-center gap-2">
-                            <Chip
-                                label={formatLabel(selectedCompany?.status || "unknown")}
-                                size="small"
-                                sx={{
-                                    backgroundColor: "rgba(15, 23, 42, 0.08)",
-                                    color: "#0F172A",
-                                    fontWeight: 600,
-                                }}
-                            />
-                            <Chip
-                                label={selectedCompany?.isRegistered ? "Registered" : "Not Registered"}
-                                size="small"
-                                sx={{
-                                    backgroundColor: selectedCompany?.isRegistered ? "#DCFCE7" : "#FEE2E2",
-                                    color: selectedCompany?.isRegistered ? "#166534" : "#991B1B",
-                                    fontWeight: 600,
-                                }}
-                            />
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
+                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Companies</p>
+                                <p className="text-[15px] font-pmedium text-slate-900">{sortedCompanies.length}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Active</p>
+                                <p className="text-[15px] font-pmedium text-slate-900">{activeCount}</p>
+                            </div>
+                        </div>
+                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Inactive</p>
+                                <p className="text-[15px] font-pmedium text-slate-900">{inactiveCount}</p>
+                            </div>
                         </div>
                     </div>
-                    <DetailRow label="POC Name" value={selectedCompany?.pocName} />
-                    <DetailRow label="POC Email" value={selectedCompany?.pocEmail} />
-                    <DetailRow label="POC Phone" value={selectedCompany?.pocPhone} />
-                    {/* <DetailRow
-                        label="7 Day Trial"
-                        value={getTrialStatusLabel(selectedCompany)}
-                    /> */}
-                    <DetailRow
-                        label="Trial Start"
-                        value={formatDateTime(selectedCompany?.trialStartAt)}
-                    />
-                    <DetailRow
-                        label="Trial End"
-                        value={formatDateTime(selectedCompany?.trialEndAt)}
-                    />
-                    <DetailRow
-                        label="Subscription Status"
-                        value={formatLabel(selectedCompany?.subscriptionStatus || "-")}
-                    />
-                    <DetailRow label="Comment" value={selectedCompany?.comment} />
+
+                    <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+                        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
+                            <div className="w-full xl:max-w-md">
+                                <div className="relative w-full">
+                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                                    <input
+                                        type="text"
+                                        placeholder="Search companies..."
+                                        className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto flex-1">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                                    <tr>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">City</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Registration</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Subscription</th>
+                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredCompanies.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">No companies found.</td>
+                                        </tr>
+                                    ) : (
+                                        filteredCompanies.map((company) => {
+                                            const logoUrl = typeof company.logo === "string" ? company.logo : company.logo?.url;
+                                            return (
+                                                <tr key={company.companyId || company._id} className="hover:bg-slate-50/50 transition-colors group">
+                                                    <td className="px-5 py-4 align-top">
+                                                        {logoUrl ? (
+                                                            <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain" />
+                                                        ) : (
+                                                            <span className="text-slate-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top">
+                                                        <span
+                                                            className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
+                                                            onClick={() => {
+                                                                dispatch(setSelectedCompany(company));
+                                                                sessionStorage.setItem("companyId", company.companyId);
+                                                                sessionStorage.setItem("companyName", company.companyName);
+                                                                sessionStorage.setItem("workspaceId", company.workspaceId || "");
+                                                                const companySlug = toCompanySlug(company.companyName);
+                                                                navigate(
+                                                                    `/dashboard/host-companies/${companySlug}`,
+                                                                    {
+                                                                        state: {
+                                                                            companyId: company.companyId,
+                                                                            companyName: company.companyName,
+                                                                            selectedPlan: company.selectedPlan || company.plan || company.subscriptionPlan || "",
+                                                                            requestedPlan: company.requestedPlan || "",
+                                                                        },
+                                                                    },
+                                                                );
+                                                            }}
+                                                        >
+                                                            {company.companyName || "-"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.industry || "-"}</td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCountry || "-"}</td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyState || "-"}</td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCity || "-"}</td>
+                                                    <td className="px-5 py-4 align-top text-center">
+                                                        <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
+                                                            {company.isRegistered ? "Active" : "Inactive"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top">
+                                                        <span className={statusPillClass(getCurrentSubscriptionLabel(company))}>
+                                                            {getCurrentSubscriptionLabel(company)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top text-center whitespace-nowrap">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleViewHostCompany(company)}
+                                                                title="View details"
+                                                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                                                            >
+                                                                <Eye size={15} strokeWidth={2.5} />
+                                                            </button>
+                                                            <ThreeDotMenu
+                                                                rowId={company.companyId || company._id || company.companyName}
+                                                                menuItems={[
+                                                                    company.isRegistered
+                                                                        ? {
+                                                                            label: "Mark As Inactive",
+                                                                            onClick: () =>
+                                                                                toggleCompanyStatus({
+                                                                                    companyId: company.companyId,
+                                                                                    status: false,
+                                                                                }),
+                                                                        }
+                                                                        : {
+                                                                            label: "Mark As Active",
+                                                                            onClick: () =>
+                                                                                toggleCompanyStatus({
+                                                                                    companyId: company.companyId,
+                                                                                    status: true,
+                                                                                }),
+                                                                        },
+                                                                    {
+                                                                        label: "Edit",
+                                                                        onClick: () =>
+                                                                            navigate(
+                                                                                `/dashboard/host-companies/edit/${company.companyId}`,
+                                                                                {
+                                                                                    state: {
+                                                                                        companyId: company.companyId,
+                                                                                        companyName: company.companyName,
+                                                                                    },
+                                                                                },
+                                                                            ),
+                                                                    },
+                                                                ]}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-            </MuiModal>
+            </PageFrame>
+
+            {isViewModalOpen && selectedCompany ? (
+                <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => { setIsViewModalOpen(false); setSelectedCompanyDetail(null); }}>
+                    <div
+                        className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-white/70 max-h-[90vh]"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-sm shrink-0 bg-[#2563EB] text-white">
+                                    <Eye size={18} />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800 truncate">{selectedCompany.companyName || "Company Details"}</h2>
+                                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                        <span className={statusPillClass(selectedCompany.isRegistered ? "Active" : "Inactive")}>
+                                            {selectedCompany.isRegistered ? "Registered" : "Not Registered"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setIsViewModalOpen(false); setSelectedCompanyDetail(null); }}
+                                className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto bg-white">
+                            <div>
+                                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Company Details</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Company Name</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.companyName || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Industry</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.industry || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Country</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.companyCountry || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">State</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.companyState || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">City</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.companyCity || "-"}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Account Details</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900"><span className={statusPillClass(getCurrentSubscriptionLabel(selectedCompany))}>{formatLabel(selectedCompany?.plan || "not assigned")}</span></p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Status</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">
+                                            <span className={statusPillClass(formatLabel(selectedCompany?.status || "unknown"))}>{formatLabel(selectedCompany?.status || "unknown")}</span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Name</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.pocName || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Email</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.pocEmail || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Phone</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.pocPhone || "-"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Trial Start</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDateTime(selectedCompany?.trialStartAt)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Trial End</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDateTime(selectedCompany?.trialEndAt)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Subscription Status</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatLabel(selectedCompany?.subscriptionStatus || "-")}</p>
+                                    </div>
+                                    {selectedCompany?.comment && (
+                                        <div className="sm:col-span-2">
+                                            <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Comment</p>
+                                            <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.comment}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
         </div>
     );
-};
-
-const formatLabel = (value) =>
-    String(value || "-")
-        .split(/[\s_-]+/)
-        .filter(Boolean)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(" ");
-
-const DetailRow = ({ label, value }) => (
-    <div className="grid grid-cols-[120px_16px_1fr] gap-2 text-content">
-        <span className="font-pmedium text-gray-700">{label}</span>
-        <span className="text-gray-400">:</span>
-        <span className="text-gray-600 break-words">{value || "-"}</span>
-    </div>
-);
-
-const getTrialStatusLabel = (company) => {
-    if (company?.isTrialActive) return "Active";
-    if (company?.hasUsedTrial) return "Used";
-    return "Not Started";
-};
-
-const getCurrentSubscriptionLabel = (company) => {
-    if (company?.isTrialActive) return "7 Day Trial";
-    if (String(company?.subscriptionStatus || "").trim()) {
-        return formatLabel(company.subscriptionStatus);
-    }
-    if (String(company?.plan || "").trim()) {
-        return formatLabel(company.plan);
-    }
-    return "Not Assigned";
-};
-
-const formatDateTime = (value) => {
-    if (!value) return "-";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "-";
-    return date.toLocaleString();
 };
 
 export default HostCompanies;

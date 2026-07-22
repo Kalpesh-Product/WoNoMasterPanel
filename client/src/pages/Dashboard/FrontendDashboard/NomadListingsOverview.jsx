@@ -563,7 +563,7 @@ export const NomadListingsSkeleton = () => (
 
 const STAT_TONES = {
   slate: {
-    border: "",
+    border: "border-l-4 border-l-slate-400",
     label: "text-slate-400",
     icon: "bg-slate-50 text-slate-600",
   },

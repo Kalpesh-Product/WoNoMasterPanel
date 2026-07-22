@@ -2,13 +2,13 @@ import React, { useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import AgTable from "../../../components/AgTable";
+import { Search, Eye, ArrowLeft, Plus, MapPin, Calendar, Utensils } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
-import StatusChip from "../../../components/StatusChip";
 import { queryClient } from "../../../main";
 import { NOMADS_BACKEND_URL, NOMADS_API_BASE_URL } from "../../../constants/api";
+import { statusPillClass } from "../../../lib/status-pill";
 
 const BLOG_ENDPOINTS = [
   "/api/blogs",
@@ -22,7 +22,6 @@ const NEWS_ENDPOINTS = [
   "/api/news/get-all-news",
 ];
 
-// Keep the existing Event Count source independent from the event-management APIs.
 const EVENT_ENDPOINTS = [`${NOMADS_API_BASE_URL}/events`];
 const EVENT_API_BASE_URL = NOMADS_BACKEND_URL;
 
@@ -166,6 +165,7 @@ const BlogsAndNews = () => {
   const [currentView, setCurrentView] = React.useState("summary");
   const [detailType, setDetailType] = React.useState("blog");
   const [selectedLocation, setSelectedLocation] = React.useState(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   useEffect(() => {
     if (locationType) {
@@ -404,6 +404,17 @@ const BlogsAndNews = () => {
       }));
   }, [data]);
 
+  const filteredStats = useMemo(() => {
+    if (!searchQuery.trim()) return stats;
+    const q = searchQuery.trim().toLowerCase();
+    return stats.filter(
+      (s) =>
+        s.destination?.toLowerCase().includes(q) ||
+        s.country?.toLowerCase().includes(q) ||
+        s.continent?.toLowerCase().includes(q),
+    );
+  }, [stats, searchQuery]);
+
   const { mutate: toggleStatus, isPending: isTogglePending } = useMutation({
     mutationFn: async ({ id, currentStatus, itemType }) => {
       const newStatus = !currentStatus;
@@ -492,274 +503,50 @@ const BlogsAndNews = () => {
       setSelectedLocation(location);
       setDetailType(viewType);
       setCurrentView("detail");
+      setSearchQuery("");
       navigate(
-        `/dashboard/BlogsAndNews/${encodeURIComponent(location)}-${viewType}`,
+        `/dashboard/destinations-data/${encodeURIComponent(location)}-${viewType}`,
       );
     },
     [navigate],
   );
 
-  const summaryColumns = useMemo(
-    () => [
-      { field: "srNo", headerName: "Sr No", width: 80 },
-      { field: "continent", headerName: "Continent", flex: 1 },
-      { field: "country", headerName: "Country", flex: 1 },
-      { field: "destination", headerName: "Destination", flex: 1.5 },
-      {
-        field: "blogCount",
-        headerName: "Count Blog",
-        flex: 1,
-        cellRenderer: (params) => (
-          <button
-            className="text-blue-600 hover:underline font-medium"
-            onClick={() => handleViewDetail(params.data.destination, "blog")}
-          >
-            {params.value}
-          </button>
-        ),
-      },
-      {
-        field: "newsCount",
-        headerName: "Count News",
-        flex: 1,
-        cellRenderer: (params) => (
-          <button
-            className="text-blue-600 hover:underline font-medium"
-            onClick={() => handleViewDetail(params.data.destination, "news")}
-          >
-            {params.value}
-          </button>
-        ),
-      },
-      {
-        field: "eventCount",
-        headerName: "Event Count",
-        flex: 1,
-        cellRenderer: (params) => (
-          <button
-            className="text-blue-600 hover:underline font-medium"
-            onClick={() => handleViewDetail(params.data.destination, "event")}
-          >
-            {params.value}
-          </button>
-        ),
-      },
-      {
-        field: "placeCount",
-        headerName: "Places",
-        flex: 1,
-        cellRenderer: (params) => (
-          <button
-            className="text-blue-600 hover:underline font-medium"
-            onClick={() => handleViewDetail(params.data.destination, "place")}
-          >
-            {params.value}
-          </button>
-        ),
-      },
-      {
-        field: "restaurantCount",
-        headerName: "Restaurants",
-        flex: 1,
-        cellRenderer: (params) => (
-          <button
-            className="text-blue-600 hover:underline font-medium"
-            onClick={() =>
-              handleViewDetail(params.data.destination, "restaurant")
-            }
-          >
-            {params.value}
-          </button>
-        ),
-      },
-    ],
-    [handleViewDetail],
-  );
-
-  const detailColumns = useMemo(() => {
-    const serialNumberColumn = {
-      field: "srNo",
-      headerName: "Sr No",
-      width: 80,
-      lockPinned: true,
-      pinned: "left",
-      valueGetter: (params) => params.node.rowIndex + 1,
-    };
-
-    const statusColumn = {
-      field: "isActive",
-      headerName: "Status",
-      flex: 1,
-      minWidth: 140,
-      cellRenderer: (params) => (
-        <StatusChip status={params.value === false ? "Inactive" : "Active"} />
-      ),
-    };
-
-    const actionColumn = {
-      headerName: "Action",
-      width: 100,
-      pinned: "right",
-      lockPinned: true,
-      cellRenderer: (params) => (
-        <ThreeDotMenu
-          rowId={params.data._id}
-          menuItems={[
-            {
-              label: "Edit",
-              onClick: () =>
-                navigate(
-                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                  {
-                    state: {
-                      item: params.data,
-                      type: detailType,
-                      destinations: stats.map((s) => s.destination),
-                    },
-                  },
-                ),
-            },
-            params.data.isActive !== false
-              ? {
-                  label: "Mark As Inactive",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                }
-              : {
-                  label: "Mark As Active",
-                  onClick: () =>
-                    toggleStatus({
-                      id: params.data._id,
-                      currentStatus: params.data.isActive !== false,
-                      itemType: detailType,
-                    }),
-                },
-          ]}
-        />
-      ),
-    };
-
-    if (detailType === "place") {
-      return [
-        serialNumberColumn,
-        { field: "placeName", headerName: "Place Name", flex: 2 },
-        {
-          field: "category",
-          headerName: "Category",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "rating",
-          headerName: "Rating",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "address",
-          headerName: "Address",
-          flex: 2,
-          valueFormatter: (params) => params.value || "-",
-        },
-        statusColumn,
-        actionColumn,
-      ];
-    }
-
-    if (detailType === "restaurant") {
-      return [
-        serialNumberColumn,
-        { field: "restaurantName", headerName: "Restaurant Name", flex: 2 },
-        {
-          field: "restaurantType",
-          headerName: "Type",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "rating",
-          headerName: "Rating",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "address",
-          headerName: "Address",
-          flex: 2,
-          valueFormatter: (params) => params.value || "-",
-        },
-        statusColumn,
-        actionColumn,
-      ];
-    }
-
-    if (detailType === "event") {
-      return [
-        serialNumberColumn,
-        { field: "eventName", headerName: "Event Name", flex: 2 },
-        {
-          field: "category",
-          headerName: "Category",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "month",
-          headerName: "Month",
-          flex: 1,
-          valueFormatter: (params) => params.value || "-",
-        },
-        {
-          field: "venue",
-          headerName: "Venue",
-          flex: 1.5,
-          valueFormatter: (params) => params.value || "-",
-        },
-        statusColumn,
-        actionColumn,
-      ];
-    }
-
-    return [
-      serialNumberColumn,
-      { field: "mainTitle", headerName: "Title", flex: 2 },
-      {
-        field: "author",
-        headerName: "Author",
-        flex: 1,
-        valueFormatter: (params) => params.value || "-",
-      },
-      {
-        field: "source",
-        headerName: "Source",
-        flex: 1,
-        valueFormatter: (params) => params.value || "-",
-      },
-      statusColumn,
-      actionColumn,
-    ];
-  }, [detailType, navigate, stats, toggleStatus, selectedLocation]);
+  const handleBackToSummary = () => {
+    setCurrentView("summary");
+    setSelectedLocation("All");
+    setDetailType("blog");
+    setSearchQuery("");
+    navigate("/dashboard/destinations-data");
+  };
 
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
-    if (detailType === "event") return destinationEvents;
-    if (detailType === "place") return destinationPlaces;
-    if (detailType === "restaurant") return destinationRestaurants;
-    const source =
-      detailType === "blog"
-        ? Array.isArray(data?.allBlogs)
-          ? data.allBlogs
-          : []
-        : Array.isArray(data?.allNews)
-          ? data.allNews
-          : [];
-    return source.filter(
+    let source;
+    if (detailType === "event") source = destinationEvents;
+    else if (detailType === "place") source = destinationPlaces;
+    else if (detailType === "restaurant") source = destinationRestaurants;
+    else if (detailType === "blog")
+      source = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
+    else source = Array.isArray(data?.allNews) ? data.allNews : [];
+
+    let filtered = source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
     );
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((item) => {
+        const name =
+          item.placeName ||
+          item.restaurantName ||
+          item.eventName ||
+          item.mainTitle ||
+          "";
+        return name.toLowerCase().includes(q);
+      });
+    }
+
+    return filtered;
   }, [
     currentView,
     selectedLocation,
@@ -768,6 +555,7 @@ const BlogsAndNews = () => {
     destinationEvents,
     destinationPlaces,
     destinationRestaurants,
+    searchQuery,
   ]);
 
   const detailLabel =
@@ -781,71 +569,336 @@ const BlogsAndNews = () => {
             ? "Restaurants"
             : "Events";
 
+  const detailNameField =
+    detailType === "place"
+      ? "placeName"
+      : detailType === "restaurant"
+        ? "restaurantName"
+        : detailType === "event"
+          ? "eventName"
+          : "mainTitle";
+
+  const detailSecondaryField =
+    detailType === "place"
+      ? "category"
+      : detailType === "restaurant"
+        ? "restaurantType"
+        : detailType === "event"
+          ? "category"
+          : "author";
+
+  const detailThirdField =
+    detailType === "place"
+      ? "rating"
+      : detailType === "restaurant"
+        ? "rating"
+        : detailType === "event"
+          ? "month"
+          : "source";
+
+  const detailFourthField =
+    detailType === "place" || detailType === "restaurant"
+      ? "address"
+      : detailType === "event"
+        ? "venue"
+        : null;
+
+  const addLabel =
+    detailType === "blog"
+      ? "Blog"
+      : detailType === "news"
+        ? "News"
+        : detailType === "place"
+          ? "Place"
+          : detailType === "restaurant"
+            ? "Restaurant"
+            : "Event";
+
+  const isLoading =
+    isPending ||
+    isTogglePending ||
+    (detailType === "event" && isDestinationEventsPending) ||
+    (detailType === "place" && isDestinationPlacesPending) ||
+    (detailType === "restaurant" && isDestinationRestaurantsPending);
+
+  const hasError =
+    isError ||
+    isDestinationEventsError ||
+    isDestinationPlacesError ||
+    isDestinationRestaurantsError;
+
   return (
-    <div>
-      <>
-        {currentView === "summary" ? (
-          <AgTable
-            data={stats}
-            columns={summaryColumns}
-            search
-            tableTitle="Blogs and News"
-            tableHeight={500}
-            loading={isPending}
-          />
-        ) : (
-          <div>
-            <AgTable
-              data={filteredDetailData}
-              columns={detailColumns}
-              search
-              tableTitle={`${detailLabel} in ${selectedLocation}`}
-              tableHeight={500}
-              buttonTitle={`Add ${
-                detailType === "blog"
-                  ? "Blog"
-                  : detailType === "news"
-                    ? "News"
-                    : detailType === "place"
-                      ? "Place"
-                      : detailType === "restaurant"
-                        ? "Restaurant"
-                        : "Event"
-              }`}
-              handleClick={() =>
-                navigate(
-                  `/dashboard/BlogsAndNews/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
-                  {
-                    state: {
-                      item: null,
-                      type: detailType,
-                      destinations: stats.map((s) => s.destination),
-                      selectedLocation,
+    <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+      <PageFrame>
+        <div className="flex flex-col gap-4">
+
+          <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
+            <div>
+              <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
+                {currentView === "detail" && (
+                  <button
+                    type="button"
+                    onClick={handleBackToSummary}
+                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all mr-1"
+                  >
+                    <ArrowLeft size={15} />
+                  </button>
+                )}
+                {currentView === "summary" ? "Destinations Data" : `${detailLabel} in ${selectedLocation}`}
+              </h2>
+              <p className="text-xs font-pmedium text-slate-500 mt-1">
+                {currentView === "summary"
+                  ? "Overview of content across all destinations like blogs, news, places, restaurants, and events."
+                  : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
+              </p>
+            </div>
+            {currentView === "detail" && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
+                    {
+                      state: {
+                        item: null,
+                        type: detailType,
+                        destinations: stats.map((s) => s.destination),
+                        selectedLocation,
+                      },
                     },
-                  },
-                )
-              }
-              loading={
-                isPending ||
-                isTogglePending ||
-                (detailType === "event" && isDestinationEventsPending) ||
-                (detailType === "place" && isDestinationPlacesPending) ||
-                (detailType === "restaurant" &&
-                  isDestinationRestaurantsPending)
-              }
-            />
+                  )
+                }
+                className="bg-[#2563EB] text-white px-4 py-2.5 rounded-2xl font-pmedium text-[10px] flex items-center gap-1.5 shadow-sm hover:bg-primary/95 active:scale-95 transition-all whitespace-nowrap"
+              >
+                <Plus size={13} strokeWidth={3} /> ADD {addLabel.toUpperCase()}
+              </button>
+            )}
           </div>
-        )}
-        {isError ||
-        isDestinationEventsError ||
-        isDestinationPlacesError ||
-        isDestinationRestaurantsError ? (
-          <p className="pt-3 text-sm text-red-500">
-            Could not load all remote data. Please verify Nomads API
-            connectivity.
-          </p>
-        ) : null}
-      </>
+
+          {currentView === "summary" && (
+            isPending ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse">
+                    <div className="h-2.5 bg-slate-200 rounded-full w-24 mb-3" />
+                    <div className="h-4 bg-slate-200 rounded-full w-12" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Destinations</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.length}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Total Blogs</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.blogCount, 0)}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-amber-500">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-amber-600 uppercase tracking-widest mb-1">Total News</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.newsCount, 0)}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">Total Events</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.eventCount, 0)}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Total Places</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.placeCount, 0)}</p>
+                </div>
+              </div>
+              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Total Restaurants</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.restaurantCount, 0)}</p>
+                </div>
+              </div>
+            </div>
+            )
+          )}
+
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+            <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
+              <div className="w-full xl:max-w-md">
+                <div className="relative w-full">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input
+                    type="text"
+                    placeholder={currentView === "summary" ? "Search destinations..." : `Search ${detailLabel.toLowerCase()}...`}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto flex-1">
+              {isPending || (currentView === "detail" && isLoading) ? (
+                <div className="p-6 space-y-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 animate-pulse">
+                      <div className="h-3 bg-slate-200 rounded-full w-8" />
+                      <div className="h-3 bg-slate-200 rounded-full w-24" />
+                      <div className="h-3 bg-slate-200 rounded-full w-20" />
+                      <div className="h-3 bg-slate-200 rounded-full w-32" />
+                      <div className="h-3 bg-slate-200 rounded-full w-12 ml-auto" />
+                      <div className="h-3 bg-slate-200 rounded-full w-12" />
+                      <div className="h-3 bg-slate-200 rounded-full w-12" />
+                      <div className="h-3 bg-slate-200 rounded-full w-12" />
+                      <div className="h-3 bg-slate-200 rounded-full w-12" />
+                    </div>
+                  ))}
+                </div>
+              ) : currentView === "summary" ? (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                    <tr>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Destination</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Blogs</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">News</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Events</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Places</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Restaurants</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStats.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">No destinations found.</td>
+                      </tr>
+                    ) : (
+                      filteredStats.map((row) => (
+                        <tr key={row.destination} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.srNo}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.continent}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.country}</td>
+                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px]">{row.destination}</td>
+                          <td className="px-5 py-4 align-top text-center">
+                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "blog")}>{row.blogCount}</button>
+                          </td>
+                          <td className="px-5 py-4 align-top text-center">
+                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "news")}>{row.newsCount}</button>
+                          </td>
+                          <td className="px-5 py-4 align-top text-center">
+                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "event")}>{row.eventCount}</button>
+                          </td>
+                          <td className="px-5 py-4 align-top text-center">
+                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "place")}>{row.placeCount}</button>
+                          </td>
+                          <td className="px-5 py-4 align-top text-center">
+                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "restaurant")}>{row.restaurantCount}</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                    <tr>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Name</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Category" : detailType === "restaurant" ? "Type" : "Category"}</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Month" : "Rating"}</th>
+                      {detailFourthField && (
+                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Venue" : "Address"}</th>
+                      )}
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Status</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDetailData.length === 0 ? (
+                      <tr>
+                        <td colSpan={detailFourthField ? 7 : 6} className="text-center py-20 text-slate-400 font-pmedium">No {detailLabel.toLowerCase()} found.</td>
+                      </tr>
+                    ) : (
+                      filteredDetailData.map((item, index) => (
+                        <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{index + 1}</td>
+                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px] truncate max-w-[200px]">{item[detailNameField] || "-"}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailSecondaryField] || "-"}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailThirdField] || "-"}</td>
+                          {detailFourthField && (
+                            <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[200px]">{item[detailFourthField] || "-"}</td>
+                          )}
+                          <td className="px-5 py-4 align-top text-center">
+                            <span className={statusPillClass(item.isActive === false ? "Inactive" : "Active")}>
+                              {item.isActive === false ? "Inactive" : "Active"}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4 align-top text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <ThreeDotMenu
+                                rowId={item._id}
+                                menuItems={[
+                                  {
+                                    label: "Edit",
+                                    onClick: () =>
+                                      navigate(
+                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                                        {
+                                          state: {
+                                            item,
+                                            type: detailType,
+                                            destinations: stats.map((s) => s.destination),
+                                          },
+                                        },
+                                      ),
+                                  },
+                                  item.isActive !== false
+                                    ? {
+                                        label: "Mark As Inactive",
+                                        onClick: () =>
+                                          toggleStatus({
+                                            id: item._id,
+                                            currentStatus: item.isActive !== false,
+                                            itemType: detailType,
+                                          }),
+                                      }
+                                    : {
+                                        label: "Mark As Active",
+                                        onClick: () =>
+                                          toggleStatus({
+                                            id: item._id,
+                                            currentStatus: item.isActive !== false,
+                                            itemType: detailType,
+                                          }),
+                                      },
+                                ]}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          {hasError && (
+            <p className="pt-3 text-sm text-red-500">
+              Could not load all remote data. Please verify Nomads API connectivity.
+            </p>
+          )}
+        </div>
+      </PageFrame>
     </div>
   );
 };

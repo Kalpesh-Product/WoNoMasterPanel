@@ -1,23 +1,74 @@
 import React, { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import AgTable from "../../../components/AgTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { Chip, MenuItem, TextField } from "@mui/material";
-import MuiModal from "../../../components/MuiModal";
-import { Controller, useForm } from "react-hook-form";
-import PrimaryButton from "../../../components/PrimaryButton";
-import { toast } from "sonner";
-import { Button } from "@mui/material";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
-import DetalisFormatted from "../../../components/DetalisFormatted";
-import { MdOutlineRemoveRedEye } from "react-icons/md";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
+import { toast } from "sonner";
+import { Search, Eye, X, Mail, MessageSquare, Users, Target, CheckCircle2, Clock, Send } from "lucide-react";
+import { statusPillClass } from "../../../lib/status-pill";
+import PageFrame from "../../../components/Pages/PageFrame";
+
+const STATUSES = ["pending", "contacted", "closed", "rejected"];
+const PLANS = ["basic", "professional", "customise"];
+const INVITE_STATUSES = ["not_invited", "invite_sent", "registered", "joined"];
+
+const normalizePlanValue = (value) => {
+  const n = String(value || "basic").trim().toLowerCase();
+  if (["custom", "customize", "customised", "customized"].includes(n)) return "customise";
+  if (n === "professional") return "professional";
+  return "basic";
+};
+
+const normalizeInviteStatus = (status) => {
+  const n = String(status || "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (n === "invite_sent") return "invite_sent";
+  if (n === "registered") return "registered";
+  if (n === "joined") return "joined";
+  return "not_invited";
+};
+
+const deriveInviteStatus = (lead = {}, overrides = {}) => {
+  const explicit = normalizeInviteStatus(overrides.inviteStatus || lead.inviteStatus || lead.invitationStatus || lead.userStatus || lead.registrationStatus);
+  if (overrides.joinedAt || lead.joinedAt || lead.lastLoginAt || lead.isJoined === true) return "joined";
+  if (overrides.registeredAt || lead.registeredAt || lead.accountCreatedAt || lead.isRegistered === true) return "registered";
+  if (overrides.inviteSentAt || lead.inviteSentAt) return "invite_sent";
+  return explicit;
+};
+
+const formatDate = (value) => {
+  if (!value) return "--";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
+};
+
+const getInitials = (value) =>
+  String(value || "LD").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+
+const planTones = {
+  basic: "bg-blue-50 text-blue-700 border-blue-100",
+  professional: "bg-amber-50 text-amber-700 border-amber-100",
+  customise: "bg-pink-50 text-pink-700 border-pink-100",
+};
+
+const inviteTones = {
+  not_invited: "bg-slate-100 text-slate-600",
+  invite_sent: "bg-blue-50 text-blue-700",
+  registered: "bg-amber-50 text-amber-700",
+  joined: "bg-emerald-50 text-emerald-700",
+};
+
+const inviteLabels = {
+  not_invited: "Not Invited",
+  invite_sent: "Invite Sent",
+  registered: "Registered",
+  joined: "Joined",
+};
 
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
-  const [openModal, setOpenModal] = useState(false);
-  const [openViewModal, setOpenViewModal] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
   const [selectedLead, setSelectedLead] = useState(null);
   const [sendingInviteLeadId, setSendingInviteLeadId] = useState(null);
   const [inviteStatusOverrides, setInviteStatusOverrides] = useState({});
@@ -94,139 +145,67 @@ const SignupLeads = () => {
   } = useQuery({
     queryKey: ["signup-leads"],
     queryFn: async () => {
-      //   const response = await axios.get("/api/forms/host-users");
-      const response = await axios.get(
-        `${NOMADS_API_BASE_URL}/forms/host-users`,
-      );
+      const response = await axios.get(`${NOMADS_API_BASE_URL}/forms/host-users`);
       return Array.isArray(response?.data?.data) ? response.data.data : [];
     },
   });
 
-  const inviteStatusEmails = useMemo(
-    () =>
-      leads
-        .map((lead) => String(lead?.email || "").trim().toLowerCase())
-        .filter(Boolean),
+  const inviteEmails = useMemo(
+    () => leads.map((l) => String(l?.email || "").trim().toLowerCase()).filter(Boolean),
     [leads],
   );
 
   const { data: inviteStatuses = {} } = useQuery({
-    queryKey: ["signup-lead-invite-statuses", inviteStatusEmails],
-    enabled: inviteStatusEmails.length > 0,
+    queryKey: ["signup-lead-invite-statuses", inviteEmails],
+    enabled: inviteEmails.length > 0,
     queryFn: async () => {
       const response = await axios.get("/api/host-user/invite-statuses", {
-        params: { emails: inviteStatusEmails.join(",") },
+        params: { emails: inviteEmails.join(",") },
       });
       return response?.data?.data || {};
     },
   });
 
-  const updateLeadMutation = useMutation({
+  const updateMutation = useMutation({
     mutationFn: async ({ hostUserId, ...payload }) => {
-      const response = await axios.patch(
-        `${NOMADS_API_BASE_URL}/forms/host-users/${hostUserId}`,
-        payload,
-      );
-      return response.data;
+      const res = await axios.patch(`${NOMADS_API_BASE_URL}/forms/host-users/${hostUserId}`, payload);
+      return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["signup-leads"] });
-      queryClient.invalidateQueries({
-        queryKey: ["signup-lead-invite-statuses"],
-      });
-      setOpenModal(false);
+      queryClient.invalidateQueries({ queryKey: ["signup-lead-invite-statuses"] });
+      setSelectedLead(null);
       toast.success("Lead updated");
     },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || "Update failed");
-    },
+    onError: (err) => toast.error(err?.response?.data?.message || "Update failed"),
   });
 
-  const sendInviteMutation = useMutation({
+  const inviteMutation = useMutation({
     mutationFn: async (lead) => {
-      const response = await axios.post("/api/host-user/send-invite", {
-        leadId: lead?._id,
-        email: lead?.email,
-        name: lead?.name,
-        mobile: lead?.mobile,
-        companyName: lead?.companyName,
-        verticalType: lead?.verticalType,
-        country: lead?.country,
-        state: lead?.state,
-        city: lead?.city,
-        source: lead?.source,
-        fullName: lead?.name,
-        selectedPlan: lead?.goals,
-        status: lead?.status,
-        goals: lead?.goals,
-        comment: lead?.comment,
+      const res = await axios.post("/api/host-user/send-invite", {
+        leadId: lead?._id, email: lead?.email, name: lead?.name, mobile: lead?.mobile,
+        companyName: lead?.companyName, verticalType: lead?.verticalType,
+        country: lead?.country, state: lead?.state, city: lead?.city, source: lead?.source,
+        fullName: lead?.name, selectedPlan: lead?.goals, status: lead?.status,
+        goals: lead?.goals, comment: lead?.comment,
       });
-
       if (lead?._id) {
-        // Keep this best-effort only. That endpoint validates that at least one of
-        // status/comment/goals is present, so we include the current status.
         try {
-          await axios.patch(
-            `${NOMADS_API_BASE_URL}/forms/host-users/${lead._id}`,
-            {
-              status: String(lead?.status || "closed").toLowerCase(),
-              inviteStatus: "invite_sent",
-              inviteSentAt: new Date().toISOString(),
-            },
-          );
-        } catch (error) {
-          console.warn(
-            "Lead invite metadata update failed, but invite email was sent:",
-            error?.response?.data || error?.message,
-          );
-        }
+          await axios.patch(`${NOMADS_API_BASE_URL}/forms/host-users/${lead._id}`, {
+            status: String(lead?.status || "closed").toLowerCase(),
+            inviteStatus: "invite_sent", inviteSentAt: new Date().toISOString(),
+          });
+        } catch (e) { /* best-effort */ }
       }
-
-      return response.data;
+      return res.data;
     },
     onSuccess: (data, lead) => {
-      setSendingInviteLeadId(null);
+      setSendingInviteId(null);
       const emailKey = String(lead?.email || "").trim().toLowerCase();
       const inviteSentAt = new Date().toISOString();
-      setInviteStatusOverrides((prev) => ({
-        ...prev,
-        [emailKey]: {
-          ...(prev[emailKey] || {}),
-          inviteStatus: "invite_sent",
-          inviteSentAt,
-        },
-      }));
-
-      queryClient.setQueriesData(
-        { queryKey: ["signup-lead-invite-statuses"] },
-        (current = {}) => ({
-          ...current,
-          [emailKey]: {
-            ...(current[emailKey] || {}),
-            inviteStatus: "invite_sent",
-            inviteSentAt,
-          },
-        }),
-      );
-
-      queryClient.setQueryData(["signup-leads"], (current = []) =>
-        Array.isArray(current)
-          ? current.map((row) =>
-            row?._id === lead?._id
-              ? {
-                ...row,
-                inviteStatus: "invite_sent",
-                inviteSentAt,
-              }
-              : row,
-          )
-          : current,
-      );
-
+      setInviteOverrides((prev) => ({ ...prev, [emailKey]: { ...prev[emailKey], inviteStatus: "invite_sent", inviteSentAt } }));
       queryClient.invalidateQueries({ queryKey: ["signup-leads"] });
-      queryClient.invalidateQueries({
-        queryKey: ["signup-lead-invite-statuses"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["signup-lead-invite-statuses"] });
       toast.success(data?.message || "Invite email sent");
     },
     onError: (error) => {
@@ -682,121 +661,90 @@ const SignupLeads = () => {
               {isSendingThisRow ? "Sending..." : "Invite user"}
             </Button>
           </div>
-        );
-      },
-    },
-    {
-      field: "actions",
-      headerName: "Actions",
-      pinned: "right",
-      minWidth: 120,
-      cellRenderer: (params) => (
-        <div className="flex items-center gap-2">
-          <div
-            role="button"
-            onClick={() => handleOpenViewModal(params.data)}
-            className="p-2 rounded-full hover:bg-borderGray cursor-pointer"
-          >
-            <MdOutlineRemoveRedEye />
-          </div>
-          <ThreeDotMenu
-            rowId={params.data._id}
-            menuItems={[
-              {
-                label: "Comment",
-                onClick: () => handleOpenModal(params.data),
-              },
-            ]}
-          />
-        </div>
-      ),
-    },
-  ];
-
-  return (
-    <>
-      <div className="rounded-md">
-        <AgTable
-          data={leads}
-          columns={columns}
-          search
-          tableHeight={500}
-          loading={isPending}
-          error={isError}
-          tableTitle="Signup Leads"
-        />
+        </PageFrame>
       </div>
 
-      <MuiModal
-        open={openModal}
-        onClose={() => setOpenModal(false)}
-        title="Update Comment"
-      >
-        <form
-          onSubmit={handleSubmit(onSubmitComment)}
-          className="flex flex-col gap-4"
-        >
-          <Controller
-            name="comment"
-            control={control}
-            rules={{ required: "Comment cannot be empty" }}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Comment"
-                multiline
-                rows={4}
-                fullWidth
-              />
-            )}
-          />
-          <PrimaryButton
-            title="Update Comment"
-            type="submit"
-            isLoading={updateLeadMutation.isPending}
-          />
-        </form>
-      </MuiModal>
+      {/* View Detail Modal */}
+      {viewLead && (
+        <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setViewLead(null)}>
+          <div className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-[#2563EB] text-white">{getInitials(viewLead.name)}</div>
+                <div className="min-w-0">
+                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800 truncate">{viewLead.name}</h2>
+                  <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">{viewLead.email}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setViewLead(null)} className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"><X size={16} /></button>
+            </div>
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto bg-white">
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 flex items-center gap-2"><Mail size={14} /> Contact Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Phone</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.mobile || "Not shared"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Email</p><p className="text-[12px] font-pmedium text-slate-900 break-all">{viewLead.email || "Not shared"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Company</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.companyName || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Role</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.role || "--"}</p></div>
+                </div>
+              </div>
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 flex items-center gap-2"><Target size={14} /> Details</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan</p><p className="text-[12px] font-pmedium text-slate-900 uppercase">{normalizePlanValue(viewLead.goals)}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Status</p><p className="text-[12px] font-pmedium text-slate-900 capitalize">{viewLead.status || "pending"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Vertical</p><p className="text-[12px] font-pmedium text-slate-900">{Array.isArray(viewLead.verticalType) ? viewLead.verticalType.join(", ") : viewLead.verticalType || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Country</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.country || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">State</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.state || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">City</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.city || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Source</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.source || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Form</p><p className="text-[12px] font-pmedium text-slate-900">{viewLead.formName || "--"}</p></div>
+                  <div><p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Created</p><p className="text-[12px] font-pmedium text-slate-900">{formatDate(viewLead.createdAt)}</p></div>
+                </div>
+              </div>
+              {viewLead.comment && (
+                <div>
+                  <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 flex items-center gap-2"><MessageSquare size={14} /> Comment</h3>
+                  <div className="bg-slate-50/60 p-4 rounded-2xl border border-slate-100"><p className="text-[12px] font-pmedium leading-5 text-slate-700 whitespace-pre-wrap">{viewLead.comment}</p></div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0">
+              <button type="button" onClick={() => setViewLead(null)} className="w-full py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <MuiModal
-        open={openViewModal}
-        onClose={() => setOpenViewModal(false)}
-        title="Signup Lead Details"
-      >
-        <div className="flex flex-col gap-3">
-          <DetalisFormatted title="Name" detail={selectedLead?.name} />
-          <DetalisFormatted title="Email" detail={selectedLead?.email} />
-          <DetalisFormatted title="Mobile" detail={selectedLead?.mobile} />
-          <DetalisFormatted title="Role" detail={selectedLead?.role} />
-          <DetalisFormatted title="Company" detail={selectedLead?.companyName} />
-          <DetalisFormatted
-            title="Plan"
-            detail={normalizePlanValue(selectedLead?.goals)}
-            upperCase
-          />
-          <DetalisFormatted
-            title="Vertical"
-            detail={
-              Array.isArray(selectedLead?.verticalType)
-                ? selectedLead.verticalType.join(", ")
-                : selectedLead?.verticalType
-            }
-          />
-          <DetalisFormatted title="Country" detail={selectedLead?.country} />
-          <DetalisFormatted title="State" detail={selectedLead?.state} />
-          <DetalisFormatted title="City" detail={selectedLead?.city} />
-          <DetalisFormatted title="Source" detail={selectedLead?.source} />
-          <DetalisFormatted title="Form" detail={selectedLead?.formName} />
-          <DetalisFormatted title="Status" detail={selectedLead?.status} />
-          <DetalisFormatted title="Comment" detail={selectedLead?.comment} />
-          <DetalisFormatted
-            title="Created At"
-            detail={
-              selectedLead?.createdAt
-                ? new Date(selectedLead.createdAt).toLocaleString()
-                : "-"
-            }
-          />
+      {/* Comment Modal */}
+      {selectedLead && (
+        <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setSelectedLead(null)}>
+          <div className="bg-white rounded-[2rem] max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-amber-500 text-white"><MessageSquare size={16} /></div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-pmedium tracking-tight text-slate-800">Update Comment</h2>
+                  <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">{selectedLead.name}</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setSelectedLead(null)} className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"><X size={16} /></button>
+            </div>
+            <div className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">Comment</label>
+                <textarea value={commentText} onChange={(e) => setCommentText(e.target.value)} rows={4} placeholder="Enter your comment..."
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all resize-none" />
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2.5">
+              <button type="button" onClick={() => setSelectedLead(null)} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm">Cancel</button>
+              <button type="button" onClick={handleComment} disabled={updateMutation.isPending || !commentText.trim()}
+                className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {updateMutation.isPending ? "Saving..." : "Save Comment"}
+              </button>
+            </div>
+          </div>
         </div>
       </MuiModal>
 

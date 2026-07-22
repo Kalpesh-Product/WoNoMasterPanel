@@ -1,59 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import dayjs from "dayjs";
-import { FormGroup, FormControlLabel, Checkbox } from "@mui/material";
-import MuiModal from "../../../../components/MuiModal";
 
 const FrontendPayment = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const modalRef = useRef(null);
 
   const closeDrawer = () => {
     setIsDrawerOpen(false);
     setSelectedEvent(null);
   };
 
-  // Updated dummy data for April 2025
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (isDrawerOpen && modalRef.current && !modalRef.current.contains(e.target)) {
+        closeDrawer();
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isDrawerOpen]);
+
   const dummyData = [
-    {
-      title: "Salary Disbursement",
-      date: "2025-04-03",
-      amount: "4000",
-      status: "paid",
-    },
-    {
-      title: "Freelancer Payment",
-      date: "2025-04-05",
-      amount: "1200",
-      status: "unpaid",
-    },
-    {
-      title: "Team Bonus",
-      date: "2025-04-10",
-      amount: "900",
-      status: "paid",
-    },
-    {
-      title: "Medical Reimbursement",
-      date: "2025-04-21",
-      amount: "300",
-      status: "paid",
-    },
-    {
-      title: "Travel Allowance",
-      date: "2025-04-20",
-      amount: "600",
-      status: "unpaid",
-    },
+    { title: "Salary Disbursement", date: "2025-04-03", amount: "4000", status: "paid" },
+    { title: "Freelancer Payment", date: "2025-04-05", amount: "1200", status: "unpaid" },
+    { title: "Team Bonus", date: "2025-04-10", amount: "900", status: "paid" },
+    { title: "Medical Reimbursement", date: "2025-04-21", amount: "300", status: "paid" },
+    { title: "Travel Allowance", date: "2025-04-20", amount: "600", status: "unpaid" },
   ];
 
-  // Payment status colors
   const statusColorMap = {
-    paid: "#28a745", // green
-    unpaid: "#dc3545", // red
+    paid: "#28a745",
+    unpaid: "#dc3545",
   };
 
   const [statusFilters, setStatusFilters] = useState(["paid", "unpaid"]);
@@ -81,53 +63,31 @@ const FrontendPayment = () => {
   return (
     <div className="flex flex-col p-4 bg-white">
       <div className="flex gap-4">
-        {/* Filters Section */}
         <div className="flex flex-col gap-4 w-[25%]">
           <div className="border-2 border-gray-300 rounded-md">
             <div className="w-full flex justify-start border-b-default border-borderGray p-2">
-              <span className="text-content font-bold uppercase">
-                Payment Status
-              </span>
+              <span className="text-content font-bold uppercase">Payment Status</span>
             </div>
-            <div className="flex justify-start text-content px-2">
-              <FormGroup column>
-                {["paid", "unpaid"].map((status) => (
-                  <FormControlLabel
-                    key={status}
-                    control={
-                      <Checkbox
-                        sx={{
-                          fontSize: "0.75rem",
-                          transform: "scale(0.8)",
-                          color: statusColorMap[status],
-                          "&.Mui-checked": { color: statusColorMap[status] },
-                        }}
-                        checked={statusFilters.includes(status)}
-                        onChange={(e) => {
-                          const selectedStatus = e.target.value;
-                          setStatusFilters((prev) =>
-                            e.target.checked
-                              ? [...prev, selectedStatus]
-                              : prev.filter((s) => s !== selectedStatus)
-                          );
-                        }}
-                        value={status}
-                      />
-                    }
-                    label={
-                      <span
-                        style={{
-                          fontSize: "0.875rem",
-                          fontWeight: "bold",
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {status}
-                      </span>
-                    }
+            <div className="flex justify-start text-content px-2 flex-col gap-1 py-2">
+              {["paid", "unpaid"].map((status) => (
+                <label key={status} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={statusFilters.includes(status)}
+                    onChange={(e) => {
+                      const selectedStatus = e.target.value;
+                      setStatusFilters((prev) =>
+                        e.target.checked
+                          ? [...prev, selectedStatus]
+                          : prev.filter((s) => s !== selectedStatus)
+                      );
+                    }}
+                    value={status}
+                    className="w-4 h-4 rounded border-gray-300"
                   />
-                ))}
-              </FormGroup>
+                  <span className="text-xs font-pmedium capitalize">{status}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -135,7 +95,6 @@ const FrontendPayment = () => {
             <div className="mb-2 text-content font-bold uppercase border-b-default border-borderGray p-2">
               <span>Today's Payments</span>
             </div>
-
             <div className="px-2 max-h-[33.5vh] overflow-y-auto">
               {filteredEvents.filter((e) =>
                 dayjs(e.start).isSame(dayjs(), "day")
@@ -149,13 +108,9 @@ const FrontendPayment = () => {
                         style={{ backgroundColor: event.backgroundColor }}
                       ></div>
                       <div className="flex flex-col">
-                        <span className="text-content font-medium">
-                          {event.title}
-                        </span>
+                        <span className="text-content font-medium">{event.title}</span>
                         <span className="text-small text-gray-500">
-                          {event.start
-                            ? dayjs(event.start).format("h:mm A")
-                            : "All Day"}
+                          {event.start ? dayjs(event.start).format("h:mm A") : "All Day"}
                         </span>
                       </div>
                     </div>
@@ -170,7 +125,6 @@ const FrontendPayment = () => {
           </div>
         </div>
 
-        {/* Calendar Section */}
         <div className="w-full h-full overflow-y-auto">
           <FullCalendar
             headerToolbar={{
@@ -189,54 +143,45 @@ const FrontendPayment = () => {
         </div>
       </div>
 
-      {/* Modal Section */}
-      <MuiModal
-        open={isDrawerOpen}
-        onClose={closeDrawer}
-        title="Payment Details"
-        headerBackground={
-          selectedEvent
-            ? statusColorMap[selectedEvent.extendedProps.status]
-            : ""
-        }
-      >
-        {selectedEvent && (
-          <div>
-            <div className="flex flex-col gap-2">
-              <span className="text-content flex items-center">
-                <span className="w-[30%]">Title</span>
-                <span>:</span>
-                <span className="text-content font-pmedium w-full justify-start pl-4">
-                  {selectedEvent.title}
-                </span>
-              </span>
-              <span className="text-content flex items-center">
-                <span className="w-[30%]">Date</span>
-                <span>:</span>
-                <span className="text-content font-pmedium w-full justify-start pl-4">
-                  {dayjs(selectedEvent.start).format("YYYY-MM-DD")}
-                </span>
-              </span>
-              <span className="text-content flex items-center">
-                <span className="w-[30%]">Status</span>
-                <span>:</span>
-                <span className="text-content font-pmedium w-full justify-start pl-4 capitalize">
-                  {selectedEvent.extendedProps.status}
-                </span>
-              </span>
-              <span className="text-content flex items-center">
-                <span className="w-[30%]">Amount</span>
-                <span>:</span>
-                <span className="text-content font-pmedium w-full justify-start pl-4">
-                  {Number(selectedEvent.extendedProps.amount).toLocaleString(
-                    "en-IN"
-                  )}
-                &nbsp;INR</span>
-              </span>
+      {isDrawerOpen && selectedEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div
+            ref={modalRef}
+            className="bg-white rounded-[2rem] shadow-xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-pmedium text-slate-900">Payment Details</h3>
+              <button onClick={closeDrawer} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center">
+                  <span className="w-[30%] text-xs font-pmedium text-slate-500">Title</span>
+                  <span className="text-xs font-pmedium text-slate-900">{selectedEvent.title}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-[30%] text-xs font-pmedium text-slate-500">Date</span>
+                  <span className="text-xs font-pmedium text-slate-900">{dayjs(selectedEvent.start).format("YYYY-MM-DD")}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-[30%] text-xs font-pmedium text-slate-500">Status</span>
+                  <span className={`text-xs font-pmedium capitalize ${
+                    selectedEvent.extendedProps.status === "paid" ? "text-emerald-600" : "text-red-600"
+                  }`}>{selectedEvent.extendedProps.status}</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-[30%] text-xs font-pmedium text-slate-500">Amount</span>
+                  <span className="text-xs font-pmedium text-slate-900">
+                    {Number(selectedEvent.extendedProps.amount).toLocaleString("en-IN")} INR
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
-      </MuiModal>
+        </div>
+      )}
     </div>
   );
 };
