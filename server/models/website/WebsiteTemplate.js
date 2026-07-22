@@ -45,6 +45,7 @@ const templateSchema = new mongoose.Schema(
         name: { type: String },
         cost: { type: String },
         description: { type: String },
+        enabled: { type: Boolean, default: true },
         images: [
           {
             id: { type: String },
@@ -58,6 +59,7 @@ const templateSchema = new mongoose.Schema(
       {
         id: { type: String },
         url: { type: String },
+        enabled: { type: Boolean, default: true },
       },
     ],
     //   //testimonials
@@ -166,6 +168,9 @@ const templateSchema = new mongoose.Schema(
           name: { type: String, default: "" },
           slug: { type: String, default: "" },
           enabled: { type: Boolean, default: true },
+          heroEnabled: { type: Boolean, default: true },
+          inclusionsEnabled: { type: Boolean, default: true },
+          faqEnabled: { type: Boolean, default: true },
           heroHeading: { type: String, default: "" },
           heroSubHeading: { type: String, default: "" },
           heroMode: { type: String, default: "single" },
@@ -228,6 +233,7 @@ const templateSchema = new mongoose.Schema(
         {
           title: { type: String, default: "" },
           description: { type: String, default: "" },
+          enabled: { type: Boolean, default: true },
           image: {
             id: { type: String },
             url: { type: String },
@@ -256,6 +262,7 @@ const templateSchema = new mongoose.Schema(
         {
           title: { type: String },
           description: { type: String },
+          enabled: { type: Boolean, default: true },
           images: [
             {
               id: { type: String },
@@ -272,6 +279,7 @@ const templateSchema = new mongoose.Schema(
         {
           title: { type: String },
           description: { type: String },
+          enabled: { type: Boolean, default: true },
           images: [
             {
               id: { type: String },
@@ -288,6 +296,7 @@ const templateSchema = new mongoose.Schema(
         {
           title: { type: String },
           description: { type: String },
+          enabled: { type: Boolean, default: true },
           images: [
             {
               id: { type: String },
@@ -306,6 +315,7 @@ const templateSchema = new mongoose.Schema(
           description: { type: String },
           price: { type: String },
           duration: { type: String },
+          enabled: { type: Boolean, default: true },
           images: [
             {
               id: { type: String },
@@ -322,6 +332,7 @@ const templateSchema = new mongoose.Schema(
           title: { type: String },
           description: { type: String },
           capacity: { type: Number },
+          enabled: { type: Boolean, default: true },
           images: [
             {
               id: { type: String },
@@ -340,6 +351,7 @@ const templateSchema = new mongoose.Schema(
           name: { type: String },
           description: { type: String },
           price: { type: String },
+          enabled: { type: Boolean, default: true },
           image: {
             id: { type: String },
             url: { type: String },
@@ -418,6 +430,7 @@ const templateSchema = new mongoose.Schema(
         {
           question: { type: String, default: "" },
           answer: { type: String, default: "" },
+          enabled: { type: Boolean, default: true },
         },
       ],
       default: [],

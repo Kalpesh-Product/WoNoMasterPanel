@@ -1,9 +1,15 @@
+require('dotenv').config();
+
+const dns = require('dns');
+if (process.env.FORCE_GOOGLE_DNS === 'true') {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+  console.log('[dns-fix] Applied Google DNS servers for local dev');
+}
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 const path = require("path");
 const mongoose = require("mongoose");
-require("dotenv").config();
 const cookieParser = require("cookie-parser");
 const { corsConfig } = require("./config/corsConfig");
 const connectDb = require("./config/db");
