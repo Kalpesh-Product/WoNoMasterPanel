@@ -278,6 +278,77 @@ const buildBookingPaymentEmail = ({
   };
 };
 
+// Sent when a payment link is first created for a Signup Leads plan
+// (Professional/Custom) — no booking dates or headcount involved here, this
+// person is subscribing to the HostPanel SaaS platform, not booking a space.
+const buildPlanSubscriptionPaymentEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  paymentLinkUrl,
+  amount,
+  currency,
+}) => {
+  const formattedAmount =
+    amount === undefined || amount === null
+      ? null
+      : new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: String(currency || "USD").toUpperCase(),
+          maximumFractionDigits: 2,
+        }).format(amount);
+
+  return {
+    subject: `Complete your payment for the WONO ${planLabel || "plan"}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
+        <h2 style="color: #2563eb;">Complete Your Payment</h2>
+
+        <p>Hello ${customerName},</p>
+
+        <p>
+          Thank you for choosing WONO's HostPanel. Please complete the payment below to
+          activate your ${planLabel || "plan"} subscription${companyName ? ` for ${companyName}` : ""}.
+        </p>
+
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Company:</strong> ${companyName || "N/A"}</p>
+          <p><strong>Plan:</strong> ${planLabel || "N/A"}</p>
+          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a
+            href="${paymentLinkUrl}"
+            target="_blank"
+            style="
+              background-color: #2563eb;
+              color: #ffffff;
+              padding: 12px 24px;
+              text-decoration: none;
+              border-radius: 6px;
+              display: inline-block;
+              font-weight: 600;
+            "
+          >
+            Pay Now
+          </a>
+        </div>
+
+        <p>
+          If the button does not work, copy and paste this URL into your browser:
+        </p>
+
+        <p>
+          <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
+        </p>
+
+        <p>Regards,<br />WONO Team</p>
+      </div>
+    `,
+  };
+};
+
 const buildBookingConfirmationEmail = ({
   customerName,
   companyName,
@@ -2748,17 +2819,26 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       stripePaymentLinkUrl: paymentLink.url,
     });
 
-    const paymentEmail = buildBookingPaymentEmail({
-      customerName,
-      companyName,
-      productType,
-      startDate,
-      endDate,
-      noOfPeople,
-      paymentLinkUrl: paymentLink.url,
-      amount: numericAmount,
-      currency: resolvedCurrency,
-    });
+    const paymentEmail = resolvedPaymentType === "plan_subscription"
+      ? buildPlanSubscriptionPaymentEmail({
+          customerName,
+          companyName,
+          planLabel: productType,
+          paymentLinkUrl: paymentLink.url,
+          amount: numericAmount,
+          currency: resolvedCurrency,
+        })
+      : buildBookingPaymentEmail({
+          customerName,
+          companyName,
+          productType,
+          startDate,
+          endDate,
+          noOfPeople,
+          paymentLinkUrl: paymentLink.url,
+          amount: numericAmount,
+          currency: resolvedCurrency,
+        });
 
     await sendMail({
       to: customerEmail,
