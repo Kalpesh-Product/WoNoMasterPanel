@@ -1459,7 +1459,54 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    const companyId = leadId?.trim() || `lead-${randomUUID()}`;
+    const normalizedEmailForLookup = String(email || "").trim().toLowerCase();
+    const normalizedCompanyNameForLookup = String(companyName || "").trim();
+    const normalizedCityForLookup = String(city || "").trim();
+    const normalizedStateForLookup = String(state || "").trim();
+    const normalizedCountryForLookup = String(country || "").trim();
+    // A CRM lead can get re-submitted/duplicated upstream (each with its own
+    // _id) — sometimes under the same POC email (a repeat invite), sometimes
+    // under a different one (the same business resubmitted with a different
+    // contact). Keying purely on leadId would create a second HostLeadCompany
+    // row in either case, so reuse the existing row instead of minting a new
+    // companyId: first try matching by POC email, then fall back to an exact
+    // company name + city/state/country match (all four together, to avoid
+    // merging unrelated companies that just happen to share a common name).
+    const existingLeadCompany = normalizedEmailForLookup
+      ? await HostLeadCompany.findOne({
+          pocEmail: normalizedEmailForLookup,
+        }).lean()
+      : null;
+    const existingLeadCompanyByLocation =
+      !existingLeadCompany &&
+      normalizedCompanyNameForLookup &&
+      normalizedCityForLookup &&
+      normalizedStateForLookup &&
+      normalizedCountryForLookup
+        ? await HostLeadCompany.findOne({
+            companyName: {
+              $regex: `^${escapeRegex(normalizedCompanyNameForLookup)}$`,
+              $options: "i",
+            },
+            companyCity: {
+              $regex: `^${escapeRegex(normalizedCityForLookup)}$`,
+              $options: "i",
+            },
+            companyState: {
+              $regex: `^${escapeRegex(normalizedStateForLookup)}$`,
+              $options: "i",
+            },
+            companyCountry: {
+              $regex: `^${escapeRegex(normalizedCountryForLookup)}$`,
+              $options: "i",
+            },
+          }).lean()
+        : null;
+    const companyId =
+      existingLeadCompany?.companyId ||
+      existingLeadCompanyByLocation?.companyId ||
+      leadId?.trim() ||
+      `lead-${randomUUID()}`;
     const normalizedVerticals = normalizeVerticalType(verticalType);
     const normalizedPlan = String(selectedPlan || goals || "basic")
       .trim()

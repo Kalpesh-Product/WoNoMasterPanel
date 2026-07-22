@@ -20,14 +20,22 @@ const acquireWebsiteEditLock = async (req, res, next) => {
     }
     const now = new Date();
     const expiresAt = new Date(now.getTime() + LEASE_MS);
+    const editorUserId = String(req.user || "").trim();
+    // A page refresh generates a brand-new editorSessionId (it's an in-memory
+    // ref), so matching on session id alone locks the same logged-in editor
+    // out of their own lock for up to LEASE_MS after every refresh. Also
+    // allow reclaiming when it's genuinely the same user, so only a
+    // *different* editor is ever blocked.
+    const reclaimClauses = [{ expiresAt: { $lte: now } }, { editorSessionId }];
+    if (editorUserId) reclaimClauses.push({ editorUserId });
     let lock;
     try {
       lock = await WebsiteEditLock.findOneAndUpdate(
-        { lockKey, $or: [{ expiresAt: { $lte: now } }, { editorSessionId }] },
+        { lockKey, $or: reclaimClauses },
         {
           $set: {
             editorSessionId,
-            editorUserId: String(req.user || ""),
+            editorUserId,
             editorName: String(req.body?.editorName || "Master Panel user").trim().slice(0, 100),
             source: SOURCE,
             expiresAt,

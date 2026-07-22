@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
-import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
@@ -71,7 +70,6 @@ const ProductImageUpload = () => {
   };
 
   return (
-    <PageFrame>
       <div className="p-6 max-w-2xl mx-auto">
         <h4 className="text-2xl font-semibold mb-4">
           Bulk Upload Company Images
@@ -204,7 +202,6 @@ const ProductImageUpload = () => {
         </form>
         {/* )} */}
       </div>
-    </PageFrame>
   );
 };
 

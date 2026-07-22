@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState, useRef } from "react";
 import WidgetSection from "../../../../components/WidgetSection";
 import {
   TextField,
@@ -14,7 +14,6 @@ import PrimaryButton from "../../../../components/PrimaryButton";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import MuiModal from "../../../../components/MuiModal";
 import { Controller, useForm } from "react-hook-form";
 import DataCard from "../../../../components/DataCard";
 import AllocatedBudget from "../../../../components/Tables/AllocatedBudget";
@@ -29,9 +28,11 @@ import usePageDepartment from "../../../../hooks/usePageDepartment";
 const FrontendBudget = () => {
   const axios = useAxiosPrivate();
   const [isReady, setIsReady] = useState(false);
-  const budget = usePageDepartment()
+  const budget = usePageDepartment();
 
   const [openModal, setOpenModal] = useState(false);
+  const modalRef = useRef(null);
+
   const { data: hrFinance = [], isPending: isHrLoading } = useQuery({
     queryKey: ["frontendBudget"],
     queryFn: async () => {
@@ -56,9 +57,19 @@ const FrontendBudget = () => {
   useEffect(() => {
     if (!isHrLoading) {
       const timer = setTimeout(() => setIsReady(true), 1000);
-      return () => clearTimeout(timer); // Cleanup on unmount
+      return () => clearTimeout(timer);
     }
   }, [isHrLoading]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openModal && modalRef.current && !modalRef.current.contains(e.target)) {
+        setOpenModal(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [openModal]);
 
   const expenseRawSeries = useMemo(() => {
     return [
@@ -79,7 +90,6 @@ const FrontendBudget = () => {
     chart: {
       type: "bar",
       toolbar: { show: false },
-
       stacked: true,
       fontFamily: "Poppins-Regular, Arial, sans-serif",
     },
@@ -101,16 +111,13 @@ const FrontendBudget = () => {
         const formatted = inrFormat(val.toFixed(0));
         return formatted;
       },
-
       style: {
         fontSize: "12px",
         colors: ["#000"],
       },
       offsetY: -22,
     },
-
     yaxis: {
-      // max: 3000000,
       title: { text: "Amount In Lakhs (INR)" },
       labels: {
         formatter: (val) => `${Math.round(val / 100000)}`,
@@ -123,26 +130,17 @@ const FrontendBudget = () => {
       show: true,
       position: "top",
     },
-
     tooltip: {
       enabled: false,
       custom: function ({ series, seriesIndex, dataPointIndex }) {
         const rawData = expenseRawSeries[seriesIndex]?.data[dataPointIndex];
-        // return `<div style="padding: 8px; font-family: Poppins, sans-serif;">
-        //       HR Expense: INR ${rawData.toLocaleString("en-IN")}
-        //     </div>`;
         return `
             <div style="padding: 8px; font-size: 13px; font-family: Poppins, sans-serif">
-        
               <div style="display: flex; align-items: center; justify-content: space-between; background-color: #d7fff4; color: #00936c; padding: 6px 8px; border-radius: 4px; margin-bottom: 4px;">
                 <div><strong>HR Expense:</strong></div>
                 <div style="width: 10px;"></div>
-             <div style="text-align: left;">INR ${Math.round(
-               rawData
-             ).toLocaleString("en-IN")}</div>
-
+                <div style="text-align: left;">INR ${Math.round(rawData).toLocaleString("en-IN")}</div>
               </div>
-     
             </div>
           `;
       },
@@ -168,15 +166,14 @@ const FrontendBudget = () => {
     reset();
   };
 
-  // Transform data into the required format
   const groupedData = Array.isArray(hrFinance)
     ? hrFinance?.reduce((acc, item) => {
-        const month = dayjs(item.dueDate).format("MMM-YYYY"); // Extracting month and year
+        const month = dayjs(item.dueDate).format("MMM-YYYY");
 
         if (!acc[month]) {
           acc[month] = {
             month,
-            latestDueDate: item.dueDate, // Store latest due date for sorting
+            latestDueDate: item.dueDate,
             projectedAmount: 0,
             amount: 0,
             tableData: {
@@ -184,12 +181,8 @@ const FrontendBudget = () => {
               columns: [
                 { field: "expanseName", headerName: "Expense Name", flex: 1 },
                 { field: "expanseType", headerName: "Expense Type", flex: 1 },
-                {
-                  field: "projectedAmount",
-                  headerName: "Projected (INR)",
-                  flex: 1,
-                },
-                { field: "actualAmount", headerName: "Actual (INR)", flex: 1 }, // ✅ add this
+                { field: "projectedAmount", headerName: "Projected (INR)", flex: 1 },
+                { field: "actualAmount", headerName: "Actual (INR)", flex: 1 },
                 { field: "dueDate", headerName: "Due Date", flex: 1 },
                 { field: "status", headerName: "Status", flex: 1 },
               ],
@@ -197,16 +190,16 @@ const FrontendBudget = () => {
           };
         }
 
-        acc[month].projectedAmount += item?.projectedAmount; // Summing the total projected amount per month
-        acc[month].amount += item?.actualAmount; // Summing the total amount per month
+        acc[month].projectedAmount += item?.projectedAmount;
+        acc[month].amount += item?.actualAmount;
         acc[month].tableData.rows.push({
           id: item._id,
           expanseName: item?.expanseName,
-          invoiceAttached : item?.invoiceAttached,
+          invoiceAttached: item?.invoiceAttached,
           department: item?.department,
           expanseType: item?.expanseType,
           projectedAmount: Number(item?.projectedAmount).toFixed(2),
-          actualAmount: inrFormat(item?.actualAmount || 0), // ✅ Add this
+          actualAmount: inrFormat(item?.actualAmount || 0),
           dueDate: dayjs(item.dueDate).format("DD-MM-YYYY"),
           status: item.status,
         });
@@ -215,7 +208,6 @@ const FrontendBudget = () => {
       }, {})
     : [];
 
-  // Convert grouped data to array and sort by latest month (descending order)
   const financialData = Object.values(groupedData)
     .map((data, index) => {
       const transoformedRows = data.tableData.rows.map((row, index) => ({
@@ -232,7 +224,7 @@ const FrontendBudget = () => {
 
       return {
         ...data,
-        projectedAmount: data.projectedAmount.toLocaleString("en-IN"), // Ensuring two decimal places for total amount
+        projectedAmount: data.projectedAmount.toLocaleString("en-IN"),
         amount: Number(data?.amount || 0).toLocaleString("en-IN"),
         expanseType: data?.expanseType,
         tableData: {
@@ -242,9 +234,8 @@ const FrontendBudget = () => {
         },
       };
     })
-    .sort((a, b) => dayjs(b.latestDueDate).diff(dayjs(a.latestDueDate))); // Sort descending
+    .sort((a, b) => dayjs(b.latestDueDate).diff(dayjs(a.latestDueDate)));
 
-  // ---------------------------------------------------------------------//
   if (!isReady) {
     return <Skeleton height="100vh" width="100%" />;
   } else {
@@ -254,7 +245,6 @@ const FrontendBudget = () => {
           <Suspense
             fallback={
               <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {/* Simulating chart skeleton */}
                 <Skeleton variant="text" width={200} height={30} />
                 <Skeleton variant="rectangular" width="100%" height={300} />
               </Box>
@@ -264,9 +254,7 @@ const FrontendBudget = () => {
               data={expenseRawSeries}
               options={expenseOptions}
               title={"BIZ Nest TECH DEPARTMENT EXPENSE"}
-              titleAmount={`INR ${Math.round(totalUtilised).toLocaleString(
-                "en-IN"
-              )}`}
+              titleAmount={`INR ${Math.round(totalUtilised).toLocaleString("en-IN")}`}
             />
           </Suspense>
         </div>
@@ -290,103 +278,102 @@ const FrontendBudget = () => {
           <Skeleton height={600} width={"100%"} />
         )}
 
-        <MuiModal
-          title="Request Budget"
-          open={openModal}
-          onClose={() => setOpenModal(false)}
-        >
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Expense Name */}
-            <Controller
-              name="expanseName"
-              control={control}
-              rules={{ required: "Expense name is required" }}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Expense Name"
-                  fullWidth
-                  size="small"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                />
-              )}
-            />
-
-            {/* Expense Type */}
-            <Controller
-              name="expanseType"
-              control={control}
-              rules={{ required: "Expense type is required" }}
-              render={({ field, fieldState }) => (
-                <FormControl fullWidth error={!!fieldState.error}>
-                  <Select {...field} size="small" displayEmpty>
-                    <MenuItem value="" disabled>
-                      Select Expense Type
-                    </MenuItem>
-                    <MenuItem value="Internal">Internal</MenuItem>
-                    <MenuItem value="External">External</MenuItem>
-                  </Select>
-                </FormControl>
-              )}
-            />
-
-            {/* Amount */}
-            <Controller
-              name="amount"
-              control={control}
-              rules={{
-                required: "Amount is required",
-                pattern: {
-                  value: /^[0-9]+(\.[0-9]{1,2})?$/,
-                  message: "Enter a valid amount",
-                },
-              }}
-              render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Amount"
-                  fullWidth
-                  size="small"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                />
-              )}
-            />
-
-            {/* Due Date */}
-            <Controller
-              name="dueDate"
-              control={control}
-              rules={{ required: "Due date is required" }}
-              render={({ field, fieldState }) => (
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    {...field}
-                    label="Due Date"
-                    format="DD-MM-YYYY"
-                    value={field.value ? dayjs(field.value) : null}
-                    onChange={(date) =>
-                      field.onChange(date ? date.toISOString() : null)
-                    }
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        size: "small",
-                        error: !!fieldState.error,
-                        helperText: fieldState.error?.message,
+        {openModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+            <div
+              ref={modalRef}
+              className="bg-white rounded-[2rem] shadow-xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col"
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h3 className="text-sm font-pmedium text-slate-900">Request Budget</h3>
+                <button onClick={() => setOpenModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 overflow-y-auto flex-1">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <Controller
+                    name="expanseName"
+                    control={control}
+                    rules={{ required: "Expense name is required" }}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        label="Expense Name"
+                        fullWidth
+                        size="small"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="expanseType"
+                    control={control}
+                    rules={{ required: "Expense type is required" }}
+                    render={({ field, fieldState }) => (
+                      <FormControl fullWidth error={!!fieldState.error}>
+                        <Select {...field} size="small" displayEmpty>
+                          <MenuItem value="" disabled>Select Expense Type</MenuItem>
+                          <MenuItem value="Internal">Internal</MenuItem>
+                          <MenuItem value="External">External</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                  <Controller
+                    name="amount"
+                    control={control}
+                    rules={{
+                      required: "Amount is required",
+                      pattern: {
+                        value: /^[0-9]+(\.[0-9]{1,2})?$/,
+                        message: "Enter a valid amount",
                       },
                     }}
+                    render={({ field, fieldState }) => (
+                      <TextField
+                        {...field}
+                        label="Amount"
+                        fullWidth
+                        size="small"
+                        error={!!fieldState.error}
+                        helperText={fieldState.error?.message}
+                      />
+                    )}
                   />
-                </LocalizationProvider>
-              )}
-            />
-            <div className="flex justify-center items-center">
-              {/* Submit Button */}
-              <PrimaryButton type={"submit"} title={"Submit"} />
+                  <Controller
+                    name="dueDate"
+                    control={control}
+                    rules={{ required: "Due date is required" }}
+                    render={({ field, fieldState }) => (
+                      <LocalizationProvider dateAdapter={AdapterDayjs}>
+                        <DatePicker
+                          {...field}
+                          label="Due Date"
+                          format="DD-MM-YYYY"
+                          value={field.value ? dayjs(field.value) : null}
+                          onChange={(date) => field.onChange(date ? date.toISOString() : null)}
+                          slotProps={{
+                            textField: {
+                              fullWidth: true,
+                              size: "small",
+                              error: !!fieldState.error,
+                              helperText: fieldState.error?.message,
+                            },
+                          }}
+                        />
+                      </LocalizationProvider>
+                    )}
+                  />
+                  <div className="flex justify-center items-center">
+                    <PrimaryButton type={"submit"} title={"Submit"} />
+                  </div>
+                </form>
+              </div>
             </div>
-          </form>
-        </MuiModal>
+          </div>
+        )}
       </div>
     );
   }
