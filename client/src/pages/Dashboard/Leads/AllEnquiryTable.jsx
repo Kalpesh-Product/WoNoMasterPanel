@@ -96,6 +96,21 @@ export default function AllEnquiryTable() {
     },
   });
 
+  const { data: paymentStatusByEmail = {} } = useQuery({
+    queryKey: ["bookingPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axios.get("/api/host-user/booking-payment-links");
+      return response?.data || {};
+    },
+    refetchInterval: 15000,
+  });
+
+  const getPaymentStatus = (lead) => {
+    const record = paymentStatusByEmail[String(lead?.email || "").toLowerCase()];
+    if (!record) return "Not Sent";
+    return record.status === "paid" ? "Paid" : "Pending";
+  };
+
   const updateLeadMutation = useMutation({
     mutationFn: async ({ leadId, status }) => {
       const response = await axios.patch("/api/admin/website-leads/update", { leadId, status });
@@ -158,6 +173,7 @@ export default function AllEnquiryTable() {
       setPaymentLinkLead(null);
       setPaymentAmount("");
       setPaymentDescription("");
+      queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
       toast.success(response?.message || "Payment link email sent");
     },
     onError: (error) => {
@@ -267,13 +283,14 @@ export default function AllEnquiryTable() {
                 <table className="w-full table-fixed text-left">
                   <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-500">
                     <tr>
-                      <th className="w-[15%] px-3 py-4">Lead</th>
-                      <th className="w-[14%] px-3 py-4">Company</th>
-                      <th className="w-[8%] px-3 py-4">Source</th>
-                      <th className="w-[11%] px-3 py-4">Product</th>
-                      <th className="w-[12%] px-3 py-4">Master Status</th>
-                      <th className="w-[14%] px-3 py-4">Host Status</th>
-                      <th className="w-[10%] px-3 py-4">Submitted</th>
+                      <th className="w-[14%] px-3 py-4">Lead</th>
+                      <th className="w-[12%] px-3 py-4">Company</th>
+                      <th className="w-[7%] px-3 py-4">Source</th>
+                      <th className="w-[10%] px-3 py-4">Product</th>
+                      <th className="w-[11%] px-3 py-4">Master Status</th>
+                      <th className="w-[12%] px-3 py-4">Host Status</th>
+                      <th className="w-[9%] px-3 py-4">Payment Status</th>
+                      <th className="w-[9%] px-3 py-4">Submitted</th>
                       <th className="w-[16%] px-3 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -303,6 +320,7 @@ export default function AllEnquiryTable() {
                             </select>
                           </td>
                           <td className="px-3 py-4"><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
+                          <td className="px-3 py-4"><span className={statusPillClass(getPaymentStatus(lead))}>{getPaymentStatus(lead)}</span></td>
                           <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
                           <td className="px-3 py-4">
                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
@@ -346,6 +364,7 @@ export default function AllEnquiryTable() {
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         <span className={statusPillClass(getMasterStatus(selectedLead.status))}>Master: {getMasterStatus(selectedLead.status)}</span>
                         <span className={statusPillClass(selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated")}>Host: {selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated"}</span>
+                        <span className={statusPillClass(getPaymentStatus(selectedLead))}>Payment: {getPaymentStatus(selectedLead)}</span>
                       </div>
                     </div>
                   </div>

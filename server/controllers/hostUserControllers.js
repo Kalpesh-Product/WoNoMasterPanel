@@ -5,6 +5,7 @@ const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
+const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -2636,6 +2637,18 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       ],
     });
 
+    await BookingPaymentLink.create({
+      leadEmail: customerEmail,
+      leadName: customerName,
+      companyName,
+      productType,
+      description,
+      amount: numericAmount,
+      currency: resolvedCurrency,
+      stripePaymentLinkId: paymentLink.id,
+      stripePaymentLinkUrl: paymentLink.url,
+    });
+
     const paymentEmail = buildBookingPaymentEmail({
       customerName,
       companyName,
@@ -2662,6 +2675,70 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
   }
 };
 
+// GET /api/host-user/booking-payment-links
+// Returns the latest payment status per lead email, for the All Enquiry
+// table's Payment Status column. "Paid" wins if any link for that email was
+// ever paid, otherwise "Pending" if a link was sent but not yet paid.
+const getBookingPaymentStatuses = async (req, res, next) => {
+  try {
+    const links = await BookingPaymentLink.find()
+      .sort({ createdAt: -1 })
+      .select("leadEmail status amount currency paidAt createdAt")
+      .lean();
+
+    const statusByEmail = {};
+    for (const link of links) {
+      const email = String(link.leadEmail || "").toLowerCase();
+      if (!email) continue;
+      const existing = statusByEmail[email];
+      if (!existing || (link.status === "paid" && existing.status !== "paid")) {
+        statusByEmail[email] = link;
+      }
+    }
+
+    return res.status(200).json(statusByEmail);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/host-user/stripe-webhook
+// Stripe calls this directly whenever a payment link is paid. Must receive the
+// raw (unparsed) request body — see the express.raw() wiring in server.js —
+// so the signature below can be verified.
+const handleStripeWebhook = async (req, res) => {
+  const signature = req.headers["stripe-signature"];
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (error) {
+    console.error("Stripe webhook signature verification failed:", error.message);
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+
+    if (session.payment_link) {
+      try {
+        await BookingPaymentLink.findOneAndUpdate(
+          { stripePaymentLinkId: session.payment_link },
+          { status: "paid", paidAt: new Date(), stripeCheckoutSessionId: session.id },
+        );
+      } catch (error) {
+        console.error("Failed to mark BookingPaymentLink as paid:", error);
+      }
+    }
+  }
+
+  res.json({ received: true });
+};
+
 module.exports = {
   bulkInsertPoc,
   getInviteStatuses,
@@ -2675,5 +2752,7 @@ module.exports = {
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
   sendBookingPaymentLinkEmail,
+  getBookingPaymentStatuses,
+  handleStripeWebhook,
   resolveHostPanelFrontendUrl,
 };
