@@ -1,6 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import PageFrame from "../../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
@@ -91,10 +90,6 @@ const PlacesUpload = () => {
 
   return (
     <div className="p-0">
-      <PageFrame>
-        <h2 className="font-pmedium text-title text-primary uppercase">
-          Places Data Upload
-        </h2>
         <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
           <div>
             <h4 className="text-2xl font-semibold">Bulk Upload</h4>
@@ -146,7 +141,6 @@ const PlacesUpload = () => {
             />
           </div>
         </div>
-      </PageFrame>
     </div>
   );
 };

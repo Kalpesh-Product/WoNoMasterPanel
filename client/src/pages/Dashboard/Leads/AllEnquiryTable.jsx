@@ -14,9 +14,10 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import PageFrame from "../../../components/Pages/PageFrame";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
+
+const COMMON_CURRENCIES = ["USD", "INR", "AED", "SGD", "GBP", "EUR", "AUD", "CAD"];
 
 const MASTER_STATUSES = ["Pending", "Contacted", "Closed"];
 const getMasterStatus = (value) => MASTER_STATUSES.includes(value) ? value : "Pending";
@@ -84,6 +85,10 @@ export default function AllEnquiryTable() {
   const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
   const [escalatingLeadId, setEscalatingLeadId] = useState(null);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [paymentLinkLead, setPaymentLinkLead] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDescription, setPaymentDescription] = useState("");
+  const [paymentCurrency, setPaymentCurrency] = useState("USD");
 
   const { data: leads = [], isPending, isError } = useQuery({
     queryKey: ["leadCompany"],
@@ -92,6 +97,33 @@ export default function AllEnquiryTable() {
       return Array.isArray(response?.data) ? response.data : [];
     },
   });
+
+  const { data: paymentStatusByLeadId = {} } = useQuery({
+    queryKey: ["bookingPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axios.get("/api/host-user/booking-payment-links");
+      return response?.data || {};
+    },
+    refetchInterval: 15000,
+  });
+
+  const getPaymentInfo = (lead) => {
+    const record = paymentStatusByLeadId[String(lead?._id || "")];
+    if (!record) return { status: "Not Sent", label: "Not Sent", isPaid: false };
+
+    const formattedAmount = new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: String(record.currency || "INR").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(record.amount || 0);
+
+    const isPaid = record.status === "paid";
+    return {
+      status: isPaid ? "Paid" : "Pending",
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      isPaid,
+    };
+  };
 
   const updateLeadMutation = useMutation({
     mutationFn: async ({ leadId, status }) => {
@@ -135,8 +167,9 @@ export default function AllEnquiryTable() {
   });
 
   const sendPaymentLinkMutation = useMutation({
-    mutationFn: async (lead) => {
+    mutationFn: async ({ lead, amount, description, currency }) => {
       const response = await axios.post("/api/host-user/send-booking-payment-link", {
+        leadId: lead?._id,
         customerName: lead?.fullName,
         customerEmail: lead?.email,
         companyName: lead?.companyName,
@@ -144,12 +177,20 @@ export default function AllEnquiryTable() {
         startDate: lead?.startDate,
         endDate: lead?.endDate,
         noOfPeople: lead?.noOfPeople,
-        paymentLinkUrl: "https://example.com",
+        amount,
+        currency: String(currency || "USD").toLowerCase(),
+        description,
+        paymentType: "booking",
       });
       return response.data;
     },
     onSuccess: (response) => {
       setSendingPaymentLeadId(null);
+      setPaymentLinkLead(null);
+      setPaymentAmount("");
+      setPaymentDescription("");
+      setPaymentCurrency("USD");
+      queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
       toast.success(response?.message || "Payment link email sent");
     },
     onError: (error) => {
@@ -157,6 +198,17 @@ export default function AllEnquiryTable() {
       toast.error(error?.response?.data?.message || "Failed to send payment link");
     },
   });
+
+  const handleSubmitPaymentLink = (event) => {
+    event.preventDefault();
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount greater than 0");
+      return;
+    }
+    setSendingPaymentLeadId(paymentLinkLead._id);
+    sendPaymentLinkMutation.mutate({ lead: paymentLinkLead, amount, description: paymentDescription, currency: paymentCurrency });
+  };
 
   const stats = useMemo(() => ({
     total: leads.length,
@@ -198,16 +250,7 @@ export default function AllEnquiryTable() {
   ];
 
   return (
-    <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] text-[12px]">
-      <PageFrame>
-        <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="text-title font-pmedium text-primary uppercase">All Enquiry</h2>
-            <p className="mt-1 text-xs font-pmedium text-slate-500">
-              Review website and Nomads leads, complete the Master workflow, then escalate closed leads to HostPanel.
-            </p>
-          </div>
-
+    <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {statCards.map(({ label, value, icon: Icon, cardClass, labelClass, iconClass }) => (
               <div key={label} className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${cardClass}`}>
@@ -248,13 +291,14 @@ export default function AllEnquiryTable() {
                 <table className="w-full table-fixed text-left">
                   <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-500">
                     <tr>
-                      <th className="w-[15%] px-3 py-4">Lead</th>
-                      <th className="w-[14%] px-3 py-4">Company</th>
-                      <th className="w-[8%] px-3 py-4">Source</th>
-                      <th className="w-[11%] px-3 py-4">Product</th>
-                      <th className="w-[12%] px-3 py-4">Master Status</th>
-                      <th className="w-[14%] px-3 py-4">Host Status</th>
-                      <th className="w-[10%] px-3 py-4">Submitted</th>
+                      <th className="w-[14%] px-3 py-4">Lead</th>
+                      <th className="w-[12%] px-3 py-4">Company</th>
+                      <th className="w-[7%] px-3 py-4">Source</th>
+                      <th className="w-[10%] px-3 py-4">Product</th>
+                      <th className="w-[11%] px-3 py-4">Master Status</th>
+                      <th className="w-[12%] px-3 py-4">Host Status</th>
+                      <th className="w-[9%] px-3 py-4">Payment Status</th>
+                      <th className="w-[9%] px-3 py-4">Submitted</th>
                       <th className="w-[16%] px-3 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -265,6 +309,7 @@ export default function AllEnquiryTable() {
                       const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
                       const isEscalating = escalatingLeadId === lead._id;
                       const isSending = sendingPaymentLeadId === lead._id;
+                      const paymentInfo = getPaymentInfo(lead);
                       return (
                         <tr key={lead._id} className="transition hover:bg-slate-50/60">
                           <td className="px-3 py-4">
@@ -284,6 +329,7 @@ export default function AllEnquiryTable() {
                             </select>
                           </td>
                           <td className="px-3 py-4"><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
+                          <td className="px-3 py-4"><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
                           <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
                           <td className="px-3 py-4">
                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
@@ -292,10 +338,10 @@ export default function AllEnquiryTable() {
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                                 <Eye size={13} />
                               </button>
-                              <button type="button" disabled={isSending || !lead.email}
-                                title={!lead.email ? "Email is required" : "Send payment link"}
+                              <button type="button" disabled={isSending || !lead.email || paymentInfo.isPaid}
+                                title={paymentInfo.isPaid ? "Already paid" : !lead.email ? "Email is required" : "Send payment link"}
                                 aria-label={`Send payment link to ${lead.fullName || "lead"}`}
-                                onClick={() => { setSendingPaymentLeadId(lead._id); sendPaymentLinkMutation.mutate(lead); }}
+                                onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); setPaymentCurrency("USD"); }}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
                                 <CreditCard size={13} />
                               </button>
@@ -327,6 +373,7 @@ export default function AllEnquiryTable() {
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         <span className={statusPillClass(getMasterStatus(selectedLead.status))}>Master: {getMasterStatus(selectedLead.status)}</span>
                         <span className={statusPillClass(selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated")}>Host: {selectedLead.isEscalated ? (selectedLead.hostPanelStatus || "Pending") : "Not Escalated"}</span>
+                        <span className={statusPillClass(getPaymentInfo(selectedLead).status)}>Payment: {getPaymentInfo(selectedLead).label}</span>
                       </div>
                     </div>
                   </div>
@@ -378,8 +425,60 @@ export default function AllEnquiryTable() {
               </div>
             </div>
           )}
+
+          {paymentLinkLead && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm" onClick={() => setPaymentLinkLead(null)}>
+              <form onSubmit={handleSubmitPaymentLink} onClick={(event) => event.stopPropagation()}
+                className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-emerald-50/40 p-5">
+                  <div>
+                    <h3 className="text-base font-pmedium text-slate-900">Send Payment Link</h3>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      To {paymentLinkLead.fullName || "lead"} ({paymentLinkLead.email})
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setPaymentLinkLead(null)} aria-label="Close" className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition hover:text-slate-700"><X size={15} /></button>
+                </div>
+                <div className="space-y-4 p-5">
+                  <div className="grid grid-cols-[1fr_auto] gap-3">
+                    <div>
+                      <label htmlFor="payment-amount" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Amount</label>
+                      <input id="payment-amount" type="number" min="1" step="0.01" required autoFocus
+                        value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)}
+                        placeholder="e.g. 15000"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                    </div>
+                    <div>
+                      <label htmlFor="payment-currency" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Currency</label>
+                      <select id="payment-currency" value={paymentCurrency} onChange={(event) => setPaymentCurrency(event.target.value)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
+                        {[...new Set([paymentCurrency, ...COMMON_CURRENCIES])].map((code) => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label htmlFor="payment-description" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Description (optional)</label>
+                    <input id="payment-description" type="text"
+                      value={paymentDescription} onChange={(event) => setPaymentDescription(event.target.value)}
+                      placeholder="e.g. Meeting room booking payment"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                  </div>
+                </div>
+                <div className="flex gap-2 border-t border-slate-100 bg-slate-50 p-4">
+                  <button type="button" onClick={() => setPaymentLinkLead(null)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[12px] font-pmedium text-slate-600 transition hover:bg-slate-100">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={sendPaymentLinkMutation.isPending}
+                    className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-[12px] font-pmedium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+                    {sendPaymentLinkMutation.isPending ? "Generating & sending..." : "Generate & Send"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
-      </PageFrame>
-    </div>
   );
 }

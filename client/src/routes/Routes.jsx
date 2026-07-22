@@ -425,7 +425,7 @@ export const routes = createBrowserRouter([
                     element: <CompanyReviews />,
                   },
                   {
-                    path: "BlogsAndNews",
+                    path: "destinations-data",
                     children: [
                       {
                         index: true,

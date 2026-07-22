@@ -260,7 +260,7 @@ export default function WebsiteBuilderReviews({
 
           {/* STAT CARDS */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Reviews</p>
                 <p className="text-[15px] font-pmedium text-slate-900">{reviewStats[0]?.value ?? 0}</p>

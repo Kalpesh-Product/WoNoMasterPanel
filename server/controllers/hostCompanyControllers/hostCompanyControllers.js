@@ -518,20 +518,52 @@ const getHostLeadCompanies = async (req, res, next) => {
 
     const companiesWithPlanStatus = companies.map((company) => {
       const requestedPlan = String(company?.requestedPlan || "").trim().toLowerCase();
-      const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
+      const normalizedCompanyId = String(company.companyId || "").trim();
       const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
-      const matchedWorkspace = allWorkspaces.find(
-        (ws) =>
-          (companyIdRegex && companyIdRegex.test(String(ws?.companyId || ""))) ||
-          (companyNameRegex && companyNameRegex.test(String(ws?.businessName || ""))),
-      );
-      const matchedTemplate = templates.find(
-        (template) =>
-          (companyIdRegex &&
-            companyIdRegex.test(String(template?.companyId || ""))) ||
-          (companyNameRegex &&
-            companyNameRegex.test(String(template?.companyName || ""))),
-      );
+      // The "<companyId>-<suffix>" prefix convention assumes every suffixed
+      // id still belongs to *this* company's own extra workspaces. That
+      // breaks when a suffixed id was independently registered as its own,
+      // separate top-level company (seen in test data: several distinct
+      // companies' workspace/template rows share one company's id as a
+      // prefix), because the prefix regex then matches across companies and
+      // .find() just grabs whichever one happens to come first — and this
+      // company's mismatched workspaceId then flows straight into the
+      // website builder (get-websites?workspaceId=...), so a wrong match
+      // here silently opens a totally different company's website. Match on
+      // exact companyId, or exact businessName as a fallback for workspaces
+      // with no companyId — never on the prefix.
+      const matchedWorkspace =
+        (normalizedCompanyId &&
+          allWorkspaces.find(
+            (ws) => String(ws?.companyId || "").trim() === normalizedCompanyId,
+          )) ||
+        allWorkspaces.find(
+          (ws) =>
+            !String(ws?.companyId || "").trim() &&
+            companyNameRegex &&
+            companyNameRegex.test(String(ws?.businessName || "")),
+        );
+      // Unlike a workspace's companyId, a template's companyId is always set
+      // directly to its owning company's own id at creation/edit time — it's
+      // never legitimately a "<companyId>-<suffix>" variant. So the prefix
+      // regex has no legitimate case to cover here, and only ever exists to
+      // let an unrelated company's template (matched purely by a shared id
+      // prefix, e.g. reused/stale test leadIds) get shown instead of the
+      // correct "no template yet" state. Match on exact companyId, or exact
+      // companyName as a fallback for legacy rows with no companyId at all —
+      // never on the prefix.
+      const matchedTemplate =
+        (normalizedCompanyId &&
+          templates.find(
+            (template) =>
+              String(template?.companyId || "").trim() === normalizedCompanyId,
+          )) ||
+        templates.find(
+          (template) =>
+            !String(template?.companyId || "").trim() &&
+            companyNameRegex &&
+            companyNameRegex.test(String(template?.companyName || "")),
+        );
       const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "").trim().toLowerCase();
       return {
         ...company,

@@ -13,7 +13,6 @@ import { CircularProgress, MenuItem, TextField } from "@mui/material";
 import DangerButton from "../../../../components/DangerButton";
 import { MdDelete } from "react-icons/md";
 import { CiCirclePlus } from "react-icons/ci";
-import MuiModal from "../../../../components/MuiModal";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { queryClient } from "../../../../main";
 // import { useLocation } from "react-router-dom";
@@ -303,45 +302,56 @@ const EditTemplate = () => {
           style={{ flex: 1, background: "#fff", height: "75vh" }}></div>
       </div>
 
-      <MuiModal open={input} onClose={() => setInput(false)} title={"add page"}>
-        <form
-          onSubmit={handleSubmit(addPage)}
-          className="flex flex-col items-center gap-2">
-          <Controller
-            name="pageName"
-            control={control}
-            rules={{ required: "Enter a page name", maxLength: 10 }}
-            render={({ field }) => (
-              <>
-                <TextField
-                  {...field}
-                  label={"Page Name"}
-                  placeholder="Home"
-                  size="small"
-                  fullWidth
-                  error={!!errors.pageName}
-                  helperText={errors.pageName?.message}
+      {input && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] shadow-xl max-w-md w-full mx-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-pmedium text-slate-900">Add Page</h3>
+              <button onClick={() => { setInput(false); reset(); }} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1">
+              <form
+                onSubmit={handleSubmit(addPage)}
+                className="flex flex-col items-center gap-4"
+              >
+                <Controller
+                  name="pageName"
+                  control={control}
+                  rules={{ required: "Enter a page name", maxLength: 10 }}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      label="Page Name"
+                      placeholder="Home"
+                      size="small"
+                      fullWidth
+                      error={!!errors.pageName}
+                      helperText={errors.pageName?.message}
+                    />
+                  )}
                 />
-              </>
-            )}
-          />
-          <div className="flex gap-2 items-center">
-            <SecondaryButton
-              title={"Cancel"}
-              handleSubmit={() => {
-                setInput(false);
-                reset();
-              }}
-            />
-            <PrimaryButton
-              title={"Add Page"}
-              type="submit"
-              disabled={isAddPagePending}
-              isLoading={isAddPagePending}
-            />
+                <div className="flex gap-2 items-center">
+                  <SecondaryButton
+                    title={"Cancel"}
+                    handleSubmit={() => {
+                      setInput(false);
+                      reset();
+                    }}
+                  />
+                  <PrimaryButton
+                    title={"Add Page"}
+                    type="submit"
+                    disabled={isAddPagePending}
+                    isLoading={isAddPagePending}
+                  />
+                </div>
+              </form>
+            </div>
           </div>
-        </form>
-      </MuiModal>
+        </div>
+      )}
     </div>
   );
 };

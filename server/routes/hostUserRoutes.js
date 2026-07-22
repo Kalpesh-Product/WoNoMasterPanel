@@ -8,6 +8,7 @@ const {
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
   sendBookingPaymentLinkEmail,
+  getBookingPaymentStatuses,
   updateHostUserAccountStatus,
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
@@ -22,6 +23,7 @@ router.post("/send-invite", verifyJwt, sendInviteEmail);
 router.post("/send-upgrade-payment-link-email", verifyJwt, sendUpgradePaymentLinkEmail);
 router.post("/send-upgrade-success-email", verifyJwt, sendUpgradeSuccessEmail);
 router.post("/send-booking-payment-link", verifyJwt, sendBookingPaymentLinkEmail);
+router.get("/booking-payment-links", verifyJwt, getBookingPaymentStatuses);
 router.patch("/workspace/:workspaceId/bulk-account-status", verifyJwt, updateWorkspaceAccountStatus);
 router.patch("/:memberId/account-status", verifyJwt, updateHostUserAccountStatus);
 router.patch("/:memberId/workspace-access", verifyJwt, updateMemberWorkspaceAccess);
