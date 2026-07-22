@@ -84,6 +84,9 @@ export default function AllEnquiryTable() {
   const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
   const [escalatingLeadId, setEscalatingLeadId] = useState(null);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [paymentLinkLead, setPaymentLinkLead] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentDescription, setPaymentDescription] = useState("");
 
   const { data: leads = [], isPending, isError } = useQuery({
     queryKey: ["leadCompany"],
@@ -135,7 +138,7 @@ export default function AllEnquiryTable() {
   });
 
   const sendPaymentLinkMutation = useMutation({
-    mutationFn: async (lead) => {
+    mutationFn: async ({ lead, amount, description }) => {
       const response = await axios.post("/api/host-user/send-booking-payment-link", {
         customerName: lead?.fullName,
         customerEmail: lead?.email,
@@ -144,12 +147,17 @@ export default function AllEnquiryTable() {
         startDate: lead?.startDate,
         endDate: lead?.endDate,
         noOfPeople: lead?.noOfPeople,
-        paymentLinkUrl: "https://example.com",
+        amount,
+        currency: "inr",
+        description,
       });
       return response.data;
     },
     onSuccess: (response) => {
       setSendingPaymentLeadId(null);
+      setPaymentLinkLead(null);
+      setPaymentAmount("");
+      setPaymentDescription("");
       toast.success(response?.message || "Payment link email sent");
     },
     onError: (error) => {
@@ -157,6 +165,17 @@ export default function AllEnquiryTable() {
       toast.error(error?.response?.data?.message || "Failed to send payment link");
     },
   });
+
+  const handleSubmitPaymentLink = (event) => {
+    event.preventDefault();
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount greater than 0");
+      return;
+    }
+    setSendingPaymentLeadId(paymentLinkLead._id);
+    sendPaymentLinkMutation.mutate({ lead: paymentLinkLead, amount, description: paymentDescription });
+  };
 
   const stats = useMemo(() => ({
     total: leads.length,
@@ -295,7 +314,7 @@ export default function AllEnquiryTable() {
                               <button type="button" disabled={isSending || !lead.email}
                                 title={!lead.email ? "Email is required" : "Send payment link"}
                                 aria-label={`Send payment link to ${lead.fullName || "lead"}`}
-                                onClick={() => { setSendingPaymentLeadId(lead._id); sendPaymentLinkMutation.mutate(lead); }}
+                                onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); }}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
                                 <CreditCard size={13} />
                               </button>
@@ -376,6 +395,49 @@ export default function AllEnquiryTable() {
                   <button type="button" onClick={() => setSelectedLeadId(null)} className="w-full rounded-xl bg-blue-600 py-2.5 text-[12px] font-pmedium text-white transition hover:bg-blue-700">Close</button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {paymentLinkLead && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm" onClick={() => setPaymentLinkLead(null)}>
+              <form onSubmit={handleSubmitPaymentLink} onClick={(event) => event.stopPropagation()}
+                className="w-full max-w-md overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 bg-emerald-50/40 p-5">
+                  <div>
+                    <h3 className="text-base font-pmedium text-slate-900">Send Payment Link</h3>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      To {paymentLinkLead.fullName || "lead"} ({paymentLinkLead.email})
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setPaymentLinkLead(null)} aria-label="Close" className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition hover:text-slate-700"><X size={15} /></button>
+                </div>
+                <div className="space-y-4 p-5">
+                  <div>
+                    <label htmlFor="payment-amount" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Amount (INR)</label>
+                    <input id="payment-amount" type="number" min="1" step="0.01" required autoFocus
+                      value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)}
+                      placeholder="e.g. 15000"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                  </div>
+                  <div>
+                    <label htmlFor="payment-description" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Description (optional)</label>
+                    <input id="payment-description" type="text"
+                      value={paymentDescription} onChange={(event) => setPaymentDescription(event.target.value)}
+                      placeholder="e.g. Meeting room booking payment"
+                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                  </div>
+                </div>
+                <div className="flex gap-2 border-t border-slate-100 bg-slate-50 p-4">
+                  <button type="button" onClick={() => setPaymentLinkLead(null)}
+                    className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[12px] font-pmedium text-slate-600 transition hover:bg-slate-100">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={sendPaymentLinkMutation.isPending}
+                    className="flex-1 rounded-xl bg-emerald-600 py-2.5 text-[12px] font-pmedium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">
+                    {sendPaymentLinkMutation.isPending ? "Generating & sending..." : "Generate & Send"}
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </div>

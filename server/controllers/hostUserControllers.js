@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -208,7 +209,18 @@ const buildBookingPaymentEmail = ({
   endDate,
   noOfPeople,
   paymentLinkUrl,
+  amount,
+  currency,
 }) => {
+  const formattedAmount =
+    amount === undefined || amount === null
+      ? null
+      : new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: String(currency || "INR").toUpperCase(),
+          maximumFractionDigits: 2,
+        }).format(amount);
+
   return {
     subject: `Complete your ${productType || "booking"} payment`,
     html: `
@@ -228,6 +240,7 @@ const buildBookingPaymentEmail = ({
           <p><strong>Number of people:</strong> ${noOfPeople || "N/A"}</p>
           <p><strong>Start date:</strong> ${startDate || "N/A"}</p>
           <p><strong>End date:</strong> ${endDate || "N/A"}</p>
+          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
@@ -2587,15 +2600,41 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       startDate,
       endDate,
       noOfPeople,
-      paymentLinkUrl,
+      amount,
+      currency,
+      description,
     } = req.body || {};
 
-    if (!customerName || !customerEmail || !paymentLinkUrl) {
+    const numericAmount = Number(amount);
+
+    if (!customerName || !customerEmail) {
       return res.status(400).json({
-        message:
-          "customerName, customerEmail and paymentLinkUrl are required",
+        message: "customerName and customerEmail are required",
       });
     }
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({
+        message: "amount is required and must be a positive number",
+      });
+    }
+
+    const resolvedCurrency = String(currency || "inr").toLowerCase();
+
+    const paymentLink = await stripe.paymentLinks.create({
+      line_items: [
+        {
+          price_data: {
+            currency: resolvedCurrency,
+            unit_amount: Math.round(numericAmount * 100),
+            product_data: {
+              name: description || `${productType || "Booking"} payment — ${companyName || customerName}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+    });
 
     const paymentEmail = buildBookingPaymentEmail({
       customerName,
@@ -2604,7 +2643,9 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       startDate,
       endDate,
       noOfPeople,
-      paymentLinkUrl,
+      paymentLinkUrl: paymentLink.url,
+      amount: numericAmount,
+      currency: resolvedCurrency,
     });
 
     await sendMail({
@@ -2614,6 +2655,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 
     return res.status(200).json({
       message: "Payment link email sent successfully",
+      paymentLinkUrl: paymentLink.url,
     });
   } catch (error) {
     next(error);
