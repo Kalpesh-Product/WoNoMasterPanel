@@ -11,6 +11,11 @@ const STATUSES = ["pending", "contacted", "closed", "rejected"];
 const PLANS = ["basic", "professional", "customise"];
 const INVITE_STATUSES = ["not_invited", "invite_sent", "registered", "joined"];
 
+// Fixed monthly price for the Professional plan, matches AiHostPricing.jsx's
+// marketing card ($199/month). Custom plan has no fixed price — staff enters
+// it manually via the popup below.
+const PROFESSIONAL_PLAN_PRICE_USD = 199;
+
 const normalizePlanValue = (value) => {
   const n = String(value || "basic").trim().toLowerCase();
   if (["custom", "customize", "customised", "customized"].includes(n)) return "customise";
@@ -74,6 +79,10 @@ const SignupLeads = () => {
   const [commentText, setCommentText] = useState("");
   const [sendingInviteId, setSendingInviteId] = useState(null);
   const [inviteOverrides, setInviteOverrides] = useState({});
+  const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
+  const [customPaymentLead, setCustomPaymentLead] = useState(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customDescription, setCustomDescription] = useState("WONO Custom Plan — Subscription");
 
   const { data: leads = [], isPending } = useQuery({
     queryKey: ["signup-leads"],
@@ -97,6 +106,15 @@ const SignupLeads = () => {
       });
       return response?.data?.data || {};
     },
+  });
+
+  const { data: paymentStatusByLeadId = {} } = useQuery({
+    queryKey: ["bookingPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axios.get("/api/host-user/booking-payment-links");
+      return response?.data || {};
+    },
+    refetchInterval: 15000,
   });
 
   const updateMutation = useMutation({
@@ -146,6 +164,85 @@ const SignupLeads = () => {
       toast.error(err?.response?.data?.message || "Failed to send invite");
     },
   });
+
+  const getPaymentInfo = (lead) => {
+    const record = paymentStatusByLeadId[String(lead?._id || "")];
+    if (!record) return { status: "Not Sent", label: "Not Sent", isPaid: false };
+
+    const formattedAmount = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: String(record.currency || "USD").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(record.amount || 0);
+
+    const isPaid = record.status === "paid";
+    return {
+      status: isPaid ? "Paid" : "Pending",
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      isPaid,
+    };
+  };
+
+  const sendPlanPaymentLinkMutation = useMutation({
+    mutationFn: async ({ lead, amount, description }) => {
+      const response = await axios.post("/api/host-user/send-booking-payment-link", {
+        leadId: lead?._id,
+        customerName: lead?.name,
+        customerEmail: lead?.email,
+        companyName: lead?.companyName,
+        productType: `${normalizePlanValue(lead?.goals) === "professional" ? "Professional" : "Custom"} Plan`,
+        amount,
+        currency: "usd",
+        description,
+        paymentType: "plan_subscription",
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setSendingPaymentLeadId(null);
+      setCustomPaymentLead(null);
+      setCustomAmount("");
+      queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
+      toast.success(data?.message || "Payment link email sent");
+    },
+    onError: (error) => {
+      setSendingPaymentLeadId(null);
+      toast.error(error?.response?.data?.message || "Failed to send payment link");
+    },
+  });
+
+  const handleSendPlanPayment = (lead) => {
+    const plan = normalizePlanValue(lead?.goals);
+
+    if (plan === "professional") {
+      setSendingPaymentLeadId(lead._id);
+      sendPlanPaymentLinkMutation.mutate({
+        lead,
+        amount: PROFESSIONAL_PLAN_PRICE_USD,
+        description: "WONO Professional Plan — Monthly Subscription",
+      });
+      return;
+    }
+
+    // Custom plan has no fixed price — open the popup to enter one manually.
+    setCustomPaymentLead(lead);
+    setCustomAmount("");
+    setCustomDescription("WONO Custom Plan — Subscription");
+  };
+
+  const handleSubmitCustomPayment = () => {
+    const amount = Number(customAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount greater than 0");
+      return;
+    }
+    setSendingPaymentLeadId(customPaymentLead._id);
+    sendPlanPaymentLinkMutation.mutate({
+      lead: customPaymentLead,
+      amount,
+      description: customDescription,
+    });
+  };
 
   const stats = useMemo(() => {
     const total = leads.length;
@@ -270,7 +367,7 @@ const SignupLeads = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto flex-1">
-                  <table className="w-full text-left min-w-[1100px]">
+                  <table className="w-full text-left min-w-[1400px]">
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
                         <th className="px-5 py-4">Lead</th>
@@ -279,6 +376,8 @@ const SignupLeads = () => {
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4">Invite Status</th>
                         <th className="px-5 py-4">Invite</th>
+                        <th className="px-5 py-4">Payment Status</th>
+                        <th className="px-5 py-4">Payment Link</th>
                         <th className="px-5 py-4 text-center">Action</th>
                       </tr>
                     </thead>
@@ -289,6 +388,8 @@ const SignupLeads = () => {
                         const planVal = normalizePlanValue(lead.goals);
                         const canInvite = statusVal === "closed" && !["registered", "joined"].includes(inviteStatus);
                         const isSending = sendingInviteId === lead._id;
+                        const paymentInfo = getPaymentInfo(lead);
+                        const isSendingPayment = sendingPaymentLeadId === lead._id;
                         return (
                           <tr key={lead._id} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-5 py-4">
@@ -325,6 +426,28 @@ const SignupLeads = () => {
                                 <Send size={10} />
                                 {isSending ? "Sending..." : "Invite"}
                               </button>
+                            </td>
+                            <td className="px-5 py-4">
+                              {planVal === "basic" ? (
+                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">Free Plan</span>
+                              ) : (
+                                <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${paymentInfo.isPaid ? "bg-emerald-50 text-emerald-700" : paymentInfo.status === "Pending" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}>
+                                  {paymentInfo.label}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              {planVal === "basic" ? (
+                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">Free Plan</span>
+                              ) : paymentInfo.isPaid ? (
+                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-emerald-50 text-emerald-700">{paymentInfo.label}</span>
+                              ) : (
+                                <button type="button" disabled={isSendingPayment}
+                                  onClick={() => handleSendPlanPayment(lead)}
+                                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                  {isSendingPayment ? "Sending..." : planVal === "professional" ? "Send $199 Link" : "Send Payment Link"}
+                                </button>
+                              )}
                             </td>
                             <td className="px-5 py-4 text-center">
                               <div className="flex items-center justify-center gap-1.5">
@@ -430,6 +553,40 @@ const SignupLeads = () => {
               <button type="button" onClick={handleComment} disabled={updateMutation.isPending || !commentText.trim()}
                 className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 {updateMutation.isPending ? "Saving..." : "Save Comment"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Plan Payment Link Modal */}
+      {customPaymentLead && (
+        <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setCustomPaymentLead(null)}>
+          <div className="bg-white rounded-[2rem] max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70" onClick={(e) => e.stopPropagation()}>
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-base font-pmedium tracking-tight text-slate-800">Send Custom Plan Payment Link</h2>
+                <p className="text-[11px] font-pmedium text-slate-500 mt-0.5 truncate">To {customPaymentLead?.name || "this lead"} ({customPaymentLead?.email})</p>
+              </div>
+              <button type="button" onClick={() => setCustomPaymentLead(null)} className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"><X size={16} /></button>
+            </div>
+            <div className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">Amount (USD)</label>
+                <input type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} autoFocus
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all" />
+              </div>
+              <div>
+                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">Description</label>
+                <input type="text" value={customDescription} onChange={(e) => setCustomDescription(e.target.value)}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all" />
+              </div>
+            </div>
+            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2.5">
+              <button type="button" onClick={() => setCustomPaymentLead(null)} className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm">Cancel</button>
+              <button type="button" onClick={handleSubmitCustomPayment} disabled={sendPlanPaymentLinkMutation.isPending}
+                className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                {sendPlanPaymentLinkMutation.isPending ? "Sending..." : "Generate & Send"}
               </button>
             </div>
           </div>

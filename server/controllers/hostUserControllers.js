@@ -1,9 +1,11 @@
 const mongoose = require("mongoose");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
+const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -14,6 +16,8 @@ const {
   getActorFromRequest,
   resolveSourcePanel,
 } = require("../utils/moduleAccessLogs");
+const idGenerator = require("../utils/idGenerator");
+const { generateInvoicePdf } = require("../utils/generateInvoicePdf");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -208,7 +212,18 @@ const buildBookingPaymentEmail = ({
   endDate,
   noOfPeople,
   paymentLinkUrl,
+  amount,
+  currency,
 }) => {
+  const formattedAmount =
+    amount === undefined || amount === null
+      ? null
+      : new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: String(currency || "INR").toUpperCase(),
+          maximumFractionDigits: 2,
+        }).format(amount);
+
   return {
     subject: `Complete your ${productType || "booking"} payment`,
     html: `
@@ -228,6 +243,7 @@ const buildBookingPaymentEmail = ({
           <p><strong>Number of people:</strong> ${noOfPeople || "N/A"}</p>
           <p><strong>Start date:</strong> ${startDate || "N/A"}</p>
           <p><strong>End date:</strong> ${endDate || "N/A"}</p>
+          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
         </div>
 
         <div style="text-align: center; margin: 30px 0;">
@@ -255,6 +271,162 @@ const buildBookingPaymentEmail = ({
         <p>
           <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
         </p>
+
+        <p>Regards,<br />WONO Team</p>
+      </div>
+    `,
+  };
+};
+
+// Sent when a payment link is first created for a Signup Leads plan
+// (Professional/Custom) — no booking dates or headcount involved here, this
+// person is subscribing to the HostPanel SaaS platform, not booking a space.
+const buildPlanSubscriptionPaymentEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  paymentLinkUrl,
+  amount,
+  currency,
+}) => {
+  const formattedAmount =
+    amount === undefined || amount === null
+      ? null
+      : new Intl.NumberFormat("en-IN", {
+          style: "currency",
+          currency: String(currency || "USD").toUpperCase(),
+          maximumFractionDigits: 2,
+        }).format(amount);
+
+  return {
+    subject: `Complete your payment for the WONO ${planLabel || "plan"}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
+        <h2 style="color: #2563eb;">Complete Your Payment</h2>
+
+        <p>Hello ${customerName},</p>
+
+        <p>
+          Thank you for choosing WONO's HostPanel. Please complete the payment below to
+          activate your ${planLabel || "plan"} subscription${companyName ? ` for ${companyName}` : ""}.
+        </p>
+
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Company:</strong> ${companyName || "N/A"}</p>
+          <p><strong>Plan:</strong> ${planLabel || "N/A"}</p>
+          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a
+            href="${paymentLinkUrl}"
+            target="_blank"
+            style="
+              background-color: #2563eb;
+              color: #ffffff;
+              padding: 12px 24px;
+              text-decoration: none;
+              border-radius: 6px;
+              display: inline-block;
+              font-weight: 600;
+            "
+          >
+            Pay Now
+          </a>
+        </div>
+
+        <p>
+          If the button does not work, copy and paste this URL into your browser:
+        </p>
+
+        <p>
+          <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
+        </p>
+
+        <p>Regards,<br />WONO Team</p>
+      </div>
+    `,
+  };
+};
+
+const buildBookingConfirmationEmail = ({
+  customerName,
+  companyName,
+  productType,
+  amount,
+  currency,
+  invoiceNumber,
+}) => {
+  const formattedAmount = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: String(currency || "INR").toUpperCase(),
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+
+  return {
+    subject: "Your WONO booking is confirmed",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
+        <h2 style="color: #059669;">Booking Confirmed</h2>
+
+        <p>Hello ${customerName},</p>
+
+        <p>
+          Thank you — your payment has been received and your ${productType || "booking"}
+          with WONO${companyName ? ` (${companyName})` : ""} is now confirmed.
+        </p>
+
+        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Amount Paid:</strong> ${formattedAmount}</p>
+          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+        </div>
+
+        <p>Your invoice is attached to this email as a PDF for your records.</p>
+
+        <p>Regards,<br />WONO Team</p>
+      </div>
+    `,
+  };
+};
+
+// For Signup Leads plan payments (Professional/Custom) — the payer is
+// subscribing to the HostPanel SaaS platform, not booking a physical
+// coworking service, so this must not use "booking" language.
+const buildPlanSubscriptionConfirmationEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  amount,
+  currency,
+  invoiceNumber,
+}) => {
+  const formattedAmount = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: String(currency || "USD").toUpperCase(),
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+
+  return {
+    subject: `Your WONO ${planLabel || "plan"} payment is confirmed`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
+        <h2 style="color: #059669;">Payment Confirmed</h2>
+
+        <p>Hello ${customerName},</p>
+
+        <p>
+          Thank you — we've received your payment for the WONO ${planLabel || "plan"}${companyName ? ` for ${companyName}` : ""}.
+          Your HostPanel subscription is now active.
+        </p>
+
+        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 20px 0;">
+          <p><strong>Amount Paid:</strong> ${formattedAmount}</p>
+          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+        </div>
+
+        <p>Our team will be in touch shortly with your HostPanel setup and login details.</p>
+
+        <p>Your invoice is attached to this email as a PDF for your records.</p>
 
         <p>Regards,<br />WONO Team</p>
       </div>
@@ -2627,6 +2799,7 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
 const sendBookingPaymentLinkEmail = async (req, res, next) => {
   try {
     const {
+      leadId,
       customerName,
       customerEmail,
       companyName,
@@ -2634,25 +2807,85 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       startDate,
       endDate,
       noOfPeople,
-      paymentLinkUrl,
+      amount,
+      currency,
+      description,
+      paymentType,
     } = req.body || {};
 
-    if (!customerName || !customerEmail || !paymentLinkUrl) {
+    const numericAmount = Number(amount);
+    const resolvedPaymentType = paymentType === "plan_subscription" ? "plan_subscription" : "booking";
+
+    if (!leadId || !customerName || !customerEmail) {
       return res.status(400).json({
-        message:
-          "customerName, customerEmail and paymentLinkUrl are required",
+        message: "leadId, customerName and customerEmail are required",
       });
     }
 
-    const paymentEmail = buildBookingPaymentEmail({
-      customerName,
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({
+        message: "amount is required and must be a positive number",
+      });
+    }
+
+    const alreadyPaid = await BookingPaymentLink.exists({ leadId, status: "paid" });
+    if (alreadyPaid) {
+      return res.status(400).json({
+        message: "This lead has already paid — a new payment link cannot be created",
+      });
+    }
+
+    const resolvedCurrency = String(currency || "usd").toLowerCase();
+
+    const paymentLink = await stripe.paymentLinks.create({
+      line_items: [
+        {
+          price_data: {
+            currency: resolvedCurrency,
+            unit_amount: Math.round(numericAmount * 100),
+            product_data: {
+              name: description || `${productType || "Booking"} payment — ${companyName || customerName}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+    });
+
+    await BookingPaymentLink.create({
+      leadId,
+      leadEmail: customerEmail,
+      leadName: customerName,
       companyName,
       productType,
-      startDate,
-      endDate,
-      noOfPeople,
-      paymentLinkUrl,
+      description,
+      paymentType: resolvedPaymentType,
+      amount: numericAmount,
+      currency: resolvedCurrency,
+      stripePaymentLinkId: paymentLink.id,
+      stripePaymentLinkUrl: paymentLink.url,
     });
+
+    const paymentEmail = resolvedPaymentType === "plan_subscription"
+      ? buildPlanSubscriptionPaymentEmail({
+          customerName,
+          companyName,
+          planLabel: productType,
+          paymentLinkUrl: paymentLink.url,
+          amount: numericAmount,
+          currency: resolvedCurrency,
+        })
+      : buildBookingPaymentEmail({
+          customerName,
+          companyName,
+          productType,
+          startDate,
+          endDate,
+          noOfPeople,
+          paymentLinkUrl: paymentLink.url,
+          amount: numericAmount,
+          currency: resolvedCurrency,
+        });
 
     await sendMail({
       to: customerEmail,
@@ -2661,10 +2894,130 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 
     return res.status(200).json({
       message: "Payment link email sent successfully",
+      paymentLinkUrl: paymentLink.url,
     });
   } catch (error) {
     next(error);
   }
+};
+
+// GET /api/host-user/booking-payment-links
+// Returns the latest payment status per lead (keyed by leadId, not email —
+// the same email can belong to multiple unrelated leads over time), for the
+// All Enquiry table's Payment Status column.
+const getBookingPaymentStatuses = async (req, res, next) => {
+  try {
+    const links = await BookingPaymentLink.find()
+      .sort({ createdAt: -1 })
+      .select("leadId status amount currency paidAt createdAt")
+      .lean();
+
+    // Links are sorted newest-first, so the first one seen per lead is the
+    // most recently sent link — that's the one whose status should show.
+    const statusByLeadId = {};
+    for (const link of links) {
+      const leadId = String(link.leadId || "");
+      if (!leadId) continue;
+      if (!statusByLeadId[leadId]) {
+        statusByLeadId[leadId] = link;
+      }
+    }
+
+    return res.status(200).json(statusByLeadId);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/host-user/stripe-webhook
+// Stripe calls this directly whenever a payment link is paid. Must receive the
+// raw (unparsed) request body — see the express.raw() wiring in server.js —
+// so the signature below can be verified.
+const handleStripeWebhook = async (req, res) => {
+  const signature = req.headers["stripe-signature"];
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET,
+    );
+  } catch (error) {
+    console.error("Stripe webhook signature verification failed:", error.message);
+    return res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+
+    if (session.payment_link) {
+      try {
+        // The { status: { $ne: "paid" } } filter makes this an atomic
+        // "transition once" — if Stripe redelivers this same event (it
+        // retries on any non-2xx or timeout), the second call finds nothing
+        // left to update, so the confirmation email never sends twice.
+        const updated = await BookingPaymentLink.findOneAndUpdate(
+          { stripePaymentLinkId: session.payment_link, status: { $ne: "paid" } },
+          { status: "paid", paidAt: new Date(), stripeCheckoutSessionId: session.id },
+          { new: true },
+        );
+
+        if (updated) {
+          const invoiceNumber = idGenerator("INV");
+          const pdfBuffer = await generateInvoicePdf({
+            invoiceNumber,
+            paidAt: updated.paidAt.toLocaleDateString("en-IN", {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+            customerName: updated.leadName,
+            customerEmail: updated.leadEmail,
+            companyName: updated.companyName,
+            description: updated.description || updated.productType,
+            amount: updated.amount,
+            currency: updated.currency,
+            paymentReference: updated.stripePaymentLinkId,
+          });
+
+          const confirmationEmail = updated.paymentType === "plan_subscription"
+            ? buildPlanSubscriptionConfirmationEmail({
+                customerName: updated.leadName,
+                companyName: updated.companyName,
+                planLabel: updated.productType,
+                amount: updated.amount,
+                currency: updated.currency,
+                invoiceNumber,
+              })
+            : buildBookingConfirmationEmail({
+                customerName: updated.leadName,
+                companyName: updated.companyName,
+                productType: updated.productType,
+                amount: updated.amount,
+                currency: updated.currency,
+                invoiceNumber,
+              });
+
+          await sendMail({
+            to: updated.leadEmail,
+            ...confirmationEmail,
+            attachments: [
+              {
+                filename: `${invoiceNumber}.pdf`,
+                content: pdfBuffer,
+                contentType: "application/pdf",
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        console.error("Failed to finalize booking payment / send confirmation:", error);
+      }
+    }
+  }
+
+  res.json({ received: true });
 };
 
 module.exports = {
@@ -2680,5 +3033,7 @@ module.exports = {
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
   sendBookingPaymentLinkEmail,
+  getBookingPaymentStatuses,
+  handleStripeWebhook,
   resolveHostPanelFrontendUrl,
 };
