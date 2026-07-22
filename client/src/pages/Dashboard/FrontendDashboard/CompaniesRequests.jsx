@@ -6,7 +6,7 @@ import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { toast } from "sonner";
 import { queryClient } from "../../../main";
-import { Search, Eye, X } from "lucide-react";
+import { ArrowLeft, Search, Eye, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 
 const emptyForm = {
@@ -23,7 +23,7 @@ const slugify = (str) =>
     .replace(/\s+/g, "-")
     .replace(/[^\w-]+/g, "");
 
-const CompaniesRequests = () => {
+const CompaniesRequests = ({ embedded = false }) => {
   const axiosPrivate = useAxiosPrivate();
   const navigate = useNavigate();
   const [reviewTarget, setReviewTarget] = useState(null);
@@ -56,6 +56,10 @@ const CompaniesRequests = () => {
   const closeReview = () => {
     setReviewTarget(null);
     setForm(emptyForm);
+  };
+
+  const goBackToCompanies = () => {
+    navigate("/dashboard/companies", { state: { viewMode: "companies" } });
   };
 
   const { mutate: approveRequest, isPending: isApproving } = useMutation({
@@ -106,16 +110,127 @@ const CompaniesRequests = () => {
   }, [requests, searchQuery]);
 
   if (isLoading) {
+    if (embedded) {
+      return (
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+          <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">
+            Loading requests...
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
         <PageFrame>
-          <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">Loading requests...</div>
+          <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">
+            Loading requests...
+          </div>
         </PageFrame>
       </div>
     );
   }
   if (isError) {
     return <div className="p-6 text-red-500">Failed to load requests.</div>;
+  }
+
+  if (embedded) {
+    return (
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
+          <div className="w-full xl:max-w-md">
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <input
+                type="text"
+                placeholder="Search requests..."
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+              <tr>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">City</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">No requests found.</td>
+                </tr>
+              ) : (
+                filteredRequests.map((request) => {
+                  const logoUrl = typeof request.logo === "string" ? request.logo : request.logo?.url;
+                  return (
+                    <tr key={request.companyId} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-5 py-4 align-top">
+                        {logoUrl ? (
+                          <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain" />
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-4 align-top">
+                        <span
+                          className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
+                          onClick={() =>
+                            navigate(`requests/${slugify(request.companyName)}`, {
+                              state: {
+                                companyId: request.companyId,
+                                companyName: request.companyName,
+                                companyCity: request.companyCity,
+                                companyState: request.companyState,
+                                companyCountry: request.companyCountry,
+                                companyContinent: request.companyContinent,
+                              },
+                            })
+                          }
+                        >
+                          {request.companyName || "-"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyContinent || "-"}</td>
+                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyCountry || "-"}</td>
+                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyState || "-"}</td>
+                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyCity || "-"}</td>
+                      <td className="px-5 py-4 align-top text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => openReview(request)}
+                            title="Review request"
+                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
+                          >
+                            <Eye size={15} strokeWidth={2.5} />
+                          </button>
+                          <ThreeDotMenu
+                            rowId={request.companyId}
+                            menuItems={[
+                              { label: "Review", onClick: () => openReview(request) },
+                              { label: "Reject", onClick: () => rejectRequest(request.companyId) },
+                            ]}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -125,6 +240,14 @@ const CompaniesRequests = () => {
 
           <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
             <div>
+              <button
+                type="button"
+                onClick={goBackToCompanies}
+                className="mb-2 inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-wider text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-700 transition-all"
+              >
+                <ArrowLeft size={13} />
+                Back to Companies
+              </button>
               <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
                 Companies Requests
               </h2>
