@@ -9,7 +9,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendMail = async ({ to, subject, text, html }) => {
+const sendMail = async ({ to, subject, text, html, attachments }) => {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
     throw new Error(
       "Email service is not configured. Missing EMAIL_USER or EMAIL_PASS.",
@@ -22,6 +22,7 @@ const sendMail = async ({ to, subject, text, html }) => {
     subject,
     text,
     html,
+    ...(attachments ? { attachments } : {}),
   });
 };
 

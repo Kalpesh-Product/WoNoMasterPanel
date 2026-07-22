@@ -18,6 +18,8 @@ import PageFrame from "../../../components/Pages/PageFrame";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
 
+const COMMON_CURRENCIES = ["USD", "INR", "AED", "SGD", "GBP", "EUR", "AUD", "CAD"];
+
 const MASTER_STATUSES = ["Pending", "Contacted", "Closed"];
 const getMasterStatus = (value) => MASTER_STATUSES.includes(value) ? value : "Pending";
 
@@ -87,6 +89,7 @@ export default function AllEnquiryTable() {
   const [paymentLinkLead, setPaymentLinkLead] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentDescription, setPaymentDescription] = useState("");
+  const [paymentCurrency, setPaymentCurrency] = useState("USD");
 
   const { data: leads = [], isPending, isError } = useQuery({
     queryKey: ["leadCompany"],
@@ -165,7 +168,7 @@ export default function AllEnquiryTable() {
   });
 
   const sendPaymentLinkMutation = useMutation({
-    mutationFn: async ({ lead, amount, description }) => {
+    mutationFn: async ({ lead, amount, description, currency }) => {
       const response = await axios.post("/api/host-user/send-booking-payment-link", {
         leadId: lead?._id,
         customerName: lead?.fullName,
@@ -176,8 +179,9 @@ export default function AllEnquiryTable() {
         endDate: lead?.endDate,
         noOfPeople: lead?.noOfPeople,
         amount,
-        currency: "inr",
+        currency: String(currency || "USD").toLowerCase(),
         description,
+        paymentType: "booking",
       });
       return response.data;
     },
@@ -186,6 +190,7 @@ export default function AllEnquiryTable() {
       setPaymentLinkLead(null);
       setPaymentAmount("");
       setPaymentDescription("");
+      setPaymentCurrency("USD");
       queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
       toast.success(response?.message || "Payment link email sent");
     },
@@ -203,7 +208,7 @@ export default function AllEnquiryTable() {
       return;
     }
     setSendingPaymentLeadId(paymentLinkLead._id);
-    sendPaymentLinkMutation.mutate({ lead: paymentLinkLead, amount, description: paymentDescription });
+    sendPaymentLinkMutation.mutate({ lead: paymentLinkLead, amount, description: paymentDescription, currency: paymentCurrency });
   };
 
   const stats = useMemo(() => ({
@@ -346,7 +351,7 @@ export default function AllEnquiryTable() {
                               <button type="button" disabled={isSending || !lead.email || paymentInfo.isPaid}
                                 title={paymentInfo.isPaid ? "Already paid" : !lead.email ? "Email is required" : "Send payment link"}
                                 aria-label={`Send payment link to ${lead.fullName || "lead"}`}
-                                onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); }}
+                                onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); setPaymentCurrency("USD"); }}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
                                 <CreditCard size={13} />
                               </button>
@@ -445,12 +450,23 @@ export default function AllEnquiryTable() {
                   <button type="button" onClick={() => setPaymentLinkLead(null)} aria-label="Close" className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition hover:text-slate-700"><X size={15} /></button>
                 </div>
                 <div className="space-y-4 p-5">
-                  <div>
-                    <label htmlFor="payment-amount" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Amount (INR)</label>
-                    <input id="payment-amount" type="number" min="1" step="0.01" required autoFocus
-                      value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)}
-                      placeholder="e.g. 15000"
-                      className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                  <div className="grid grid-cols-[1fr_auto] gap-3">
+                    <div>
+                      <label htmlFor="payment-amount" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Amount</label>
+                      <input id="payment-amount" type="number" min="1" step="0.01" required autoFocus
+                        value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)}
+                        placeholder="e.g. 15000"
+                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20" />
+                    </div>
+                    <div>
+                      <label htmlFor="payment-currency" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Currency</label>
+                      <select id="payment-currency" value={paymentCurrency} onChange={(event) => setPaymentCurrency(event.target.value)}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-[13px] outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20">
+                        {[...new Set([paymentCurrency, ...COMMON_CURRENCIES])].map((code) => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label htmlFor="payment-description" className="mb-1.5 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Description (optional)</label>

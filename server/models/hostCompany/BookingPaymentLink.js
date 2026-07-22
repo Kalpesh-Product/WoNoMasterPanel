@@ -27,6 +27,15 @@ const bookingPaymentLinkSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // "booking" = a real coworking/meeting-room booking (All Enquiry page).
+    // "plan_subscription" = a lead paying to subscribe to the HostPanel SaaS
+    // platform (Signup Leads page) — these need different confirmation copy,
+    // since a plan subscriber isn't "booking" anything.
+    paymentType: {
+      type: String,
+      enum: ["booking", "plan_subscription"],
+      default: "booking",
+    },
     description: {
       type: String,
       trim: true,

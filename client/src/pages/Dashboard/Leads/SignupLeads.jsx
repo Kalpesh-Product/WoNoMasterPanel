@@ -21,6 +21,10 @@ const SignupLeads = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [sendingInviteLeadId, setSendingInviteLeadId] = useState(null);
   const [inviteStatusOverrides, setInviteStatusOverrides] = useState({});
+  const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
+  const [customPaymentLead, setCustomPaymentLead] = useState(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customDescription, setCustomDescription] = useState("WONO Custom Plan — Subscription");
 
   const normalizeInviteStatus = (status) => {
     const normalized = String(status || "")
@@ -230,6 +234,99 @@ const SignupLeads = () => {
       toast.error(error?.response?.data?.message || "Failed to send invite");
     },
   });
+
+  // Fixed monthly price for the Professional plan, matches AiHostPricing.jsx's
+  // marketing card ($199/month). Custom plan has no fixed price — staff enters
+  // it manually via the popup below.
+  const PROFESSIONAL_PLAN_PRICE_USD = 199;
+
+  const { data: paymentStatusByLeadId = {} } = useQuery({
+    queryKey: ["bookingPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axios.get("/api/host-user/booking-payment-links");
+      return response?.data || {};
+    },
+    refetchInterval: 15000,
+  });
+
+  const getPaymentInfo = (lead) => {
+    const record = paymentStatusByLeadId[String(lead?._id || "")];
+    if (!record) return { status: "Not Sent", label: "Not Sent", isPaid: false };
+
+    const formattedAmount = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: String(record.currency || "USD").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(record.amount || 0);
+
+    const isPaid = record.status === "paid";
+    return {
+      status: isPaid ? "Paid" : "Pending",
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      isPaid,
+    };
+  };
+
+  const sendPlanPaymentLinkMutation = useMutation({
+    mutationFn: async ({ lead, amount, description }) => {
+      const response = await axios.post("/api/host-user/send-booking-payment-link", {
+        leadId: lead?._id,
+        customerName: lead?.name,
+        customerEmail: lead?.email,
+        companyName: lead?.companyName,
+        productType: `${normalizePlanValue(lead?.goals) === "professional" ? "Professional" : "Custom"} Plan`,
+        amount,
+        currency: "usd",
+        description,
+        paymentType: "plan_subscription",
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setSendingPaymentLeadId(null);
+      setCustomPaymentLead(null);
+      setCustomAmount("");
+      queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
+      toast.success(data?.message || "Payment link email sent");
+    },
+    onError: (error) => {
+      setSendingPaymentLeadId(null);
+      toast.error(error?.response?.data?.message || "Failed to send payment link");
+    },
+  });
+
+  const handleSendPlanPayment = (lead) => {
+    const plan = normalizePlanValue(lead?.goals);
+
+    if (plan === "professional") {
+      setSendingPaymentLeadId(lead._id);
+      sendPlanPaymentLinkMutation.mutate({
+        lead,
+        amount: PROFESSIONAL_PLAN_PRICE_USD,
+        description: "WONO Professional Plan — Monthly Subscription",
+      });
+      return;
+    }
+
+    // Custom plan has no fixed price — open the popup to enter one manually.
+    setCustomPaymentLead(lead);
+    setCustomAmount("");
+    setCustomDescription("WONO Custom Plan — Subscription");
+  };
+
+  const handleSubmitCustomPayment = () => {
+    const amount = Number(customAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Enter a valid amount greater than 0");
+      return;
+    }
+    setSendingPaymentLeadId(customPaymentLead._id);
+    sendPlanPaymentLinkMutation.mutate({
+      lead: customPaymentLead,
+      amount,
+      description: customDescription,
+    });
+  };
 
   const { control, handleSubmit, reset } = useForm({
     defaultValues: { comment: "" },
@@ -465,6 +562,91 @@ const SignupLeads = () => {
       },
     },
     {
+      field: "paymentStatus",
+      headerName: "Payment Status",
+      cellRenderer: (params) => {
+        const lead = params.data;
+        const plan = normalizePlanValue(lead.goals);
+
+        if (plan === "basic") {
+          return (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Chip
+                label="Free Plan"
+                size="small"
+                sx={{ backgroundColor: "#DBEAFE", color: "#1D4ED8", fontWeight: 600, fontSize: "0.75rem" }}
+              />
+            </div>
+          );
+        }
+
+        const paymentInfo = getPaymentInfo(lead);
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Chip
+              label={paymentInfo.label}
+              size="small"
+              sx={{
+                backgroundColor: paymentInfo.isPaid ? "#D1FAE5" : paymentInfo.status === "Pending" ? "#FEF3C7" : "#F3F4F6",
+                color: paymentInfo.isPaid ? "#047857" : paymentInfo.status === "Pending" ? "#B45309" : "#4B5563",
+                fontWeight: 600,
+                fontSize: "0.75rem",
+              }}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      field: "sendPaymentLink",
+      headerName: "Send Payment Link",
+      cellRenderer: (params) => {
+        const lead = params.data;
+        const plan = normalizePlanValue(lead.goals);
+        const isSendingThisRow = sendingPaymentLeadId === lead._id;
+
+        if (plan === "basic") {
+          return (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Chip
+                label="Free Plan"
+                size="small"
+                sx={{ backgroundColor: "#DBEAFE", color: "#1D4ED8", fontWeight: 600, fontSize: "0.75rem" }}
+              />
+            </div>
+          );
+        }
+
+        const paymentInfo = getPaymentInfo(lead);
+        if (paymentInfo.isPaid) {
+          return (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Chip
+                label={paymentInfo.label}
+                size="small"
+                sx={{ backgroundColor: "#D1FAE5", color: "#047857", fontWeight: 600, fontSize: "0.75rem" }}
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <Button
+              variant="outlined"
+              size="small"
+              disabled={isSendingThisRow}
+              onClick={() => handleSendPlanPayment(lead)}
+              sx={{ textTransform: "none", borderRadius: "9999px", fontSize: "0.7rem", py: 0.3 }}
+            >
+              {isSendingThisRow ? "Sending..." : plan === "professional" ? "Send $199 Link" : "Send Payment Link"}
+            </Button>
+          </div>
+        );
+      },
+    },
+    {
       field: "Invite user",
       headerName: "Invite user",
       cellRenderer: (params) => {
@@ -614,6 +796,37 @@ const SignupLeads = () => {
                 ? new Date(selectedLead.createdAt).toLocaleString()
                 : "-"
             }
+          />
+        </div>
+      </MuiModal>
+
+      <MuiModal
+        open={!!customPaymentLead}
+        onClose={() => setCustomPaymentLead(null)}
+        title="Send Custom Plan Payment Link"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-content text-gray-500">
+            To {customPaymentLead?.name || "this lead"} ({customPaymentLead?.email})
+          </p>
+          <TextField
+            label="Amount (USD)"
+            type="number"
+            value={customAmount}
+            onChange={(e) => setCustomAmount(e.target.value)}
+            fullWidth
+            autoFocus
+          />
+          <TextField
+            label="Description"
+            value={customDescription}
+            onChange={(e) => setCustomDescription(e.target.value)}
+            fullWidth
+          />
+          <PrimaryButton
+            title="Generate & Send"
+            handleSubmit={handleSubmitCustomPayment}
+            isLoading={sendPlanPaymentLinkMutation.isPending}
           />
         </div>
       </MuiModal>
