@@ -19,6 +19,7 @@ const {
 const idGenerator = require("../utils/idGenerator");
 const { generateInvoicePdf } = require("../utils/generateInvoicePdf");
 const { generateBookingId } = require("../utils/generateBookingId");
+const { generateRegistrationId } = require("../utils/generateRegistrationId");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -2857,7 +2858,8 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       leadId,
       leadEmail: customerEmail,
       leadName: customerName,
-      bookingId: generateBookingId(companyName),
+      bookingId: resolvedPaymentType === "plan_subscription" ? undefined : generateBookingId(companyName),
+      registrationId: resolvedPaymentType === "plan_subscription" ? generateRegistrationId() : undefined,
       companyName,
       productType,
       startDate,
@@ -2980,6 +2982,7 @@ const handleStripeWebhook = async (req, res) => {
             customerName: updated.leadName,
             customerEmail: updated.leadEmail,
             bookingId: updated.bookingId,
+            registrationId: updated.registrationId,
             companyName: updated.companyName,
             productType: updated.productType,
             startDate: updated.startDate,

@@ -29,6 +29,7 @@ const generateInvoicePdf = async ({
   customerName,
   customerEmail,
   bookingId,
+  registrationId,
   companyName,
   productType,
   startDate,
@@ -113,15 +114,16 @@ const generateInvoicePdf = async ({
   y = Math.min(issuedByBottomY, billedToY) - 11;
 
   // --- Booking details (only rendered when at least one value is present) ---
-  const hasBookingDetails = bookingId || companyName || productType || startDate || endDate || noOfPeople;
+  const hasBookingDetails = bookingId || registrationId || companyName || productType || startDate || endDate || noOfPeople;
   if (hasBookingDetails) {
     divider(0, 20);
-    line("Booking Details", { size: 10, useBold: true, gap: 18 });
+    line(registrationId ? "Plan Details" : "Booking Details", { size: 10, useBold: true, gap: 18 });
     const detailRow = (label, value) => {
       line(label, { size: 9, color: gray, gap: 15, x: MARGIN });
       page.drawText(String(value), { x: MARGIN + 110, y: y + 15, size: 10, font, color: dark });
     };
     if (bookingId) detailRow("Booking ID", bookingId);
+    if (registrationId) detailRow("Registration ID", registrationId);
     if (companyName) detailRow("Workspace", companyName);
     if (productType) detailRow("Booking Type", productType);
     if (startDate) detailRow("Start Date", formatDateDisplay(startDate));

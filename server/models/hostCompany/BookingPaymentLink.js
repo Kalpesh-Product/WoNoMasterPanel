@@ -23,6 +23,10 @@ const bookingPaymentLinkSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    registrationId: {
+      type: String,
+      trim: true,
+    },
     companyName: {
       type: String,
       trim: true,
