@@ -19,6 +19,10 @@ const bookingPaymentLinkSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    bookingId: {
+      type: String,
+      trim: true,
+    },
     companyName: {
       type: String,
       trim: true,
@@ -26,6 +30,17 @@ const bookingPaymentLinkSchema = new mongoose.Schema(
     productType: {
       type: String,
       trim: true,
+    },
+    startDate: {
+      type: String,
+      trim: true,
+    },
+    endDate: {
+      type: String,
+      trim: true,
+    },
+    noOfPeople: {
+      type: Number,
     },
     // "booking" = a real coworking/meeting-room booking (All Enquiry page).
     // "plan_subscription" = a lead paying to subscribe to the HostPanel SaaS
