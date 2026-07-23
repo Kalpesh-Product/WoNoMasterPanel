@@ -11,6 +11,7 @@ import {
   Target,
   Users,
   X,
+  XCircle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
@@ -18,7 +19,9 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { statusPillClass } from "../../../lib/status-pill";
 
-const MASTER_STATUSES = ["Pending", "Contacted", "Closed"];
+const MASTER_STATUSES = ["Pending", "Contacted", "Rejected", "Closed"];
+
+const normalizeStatus = (value) => String(value || "Pending").trim().toLowerCase();
 
 function formatDateLabel(value) {
   if (!value) return "--";
@@ -92,13 +95,15 @@ export default function CompanyLeads({
 
   const leadStats = useMemo(() => {
     const total = leads.length;
-    const pending = leads.filter((l) => (l.status || "Pending") === "Pending").length;
-    const contacted = leads.filter((l) => l.status === "Contacted").length;
-    const closed = leads.filter((l) => l.status === "Closed").length;
+    const pending = leads.filter((l) => normalizeStatus(l.status) === "pending").length;
+    const contacted = leads.filter((l) => normalizeStatus(l.status) === "contacted").length;
+    const rejected = leads.filter((l) => normalizeStatus(l.status) === "rejected").length;
+    const closed = leads.filter((l) => normalizeStatus(l.status) === "closed").length;
     return [
       { label: totalLabel, value: total, icon: Target },
       { label: "Pending", value: pending, icon: Sparkles },
       { label: "Contacted", value: contacted, icon: BadgeCheck },
+      { label: "Rejected", value: rejected, icon: XCircle },
       { label: "Closed", value: closed, icon: CheckCircle2 },
     ];
   }, [leads, totalLabel]);
@@ -108,7 +113,8 @@ export default function CompanyLeads({
     return [...leads]
       .sort((a, b) => getLeadTimestamp(b) - getLeadTimestamp(a))
       .filter((lead) => {
-        const matchesStage = stageFilter === "All" || (lead.status || "Pending") === stageFilter;
+        const leadStatus = normalizeStatus(lead.status);
+        const matchesStage = stageFilter === "All" || leadStatus === stageFilter.toLowerCase();
         const matchesQuery = !query || [lead.fullName, lead.mobileNumber, lead.email, lead.source, lead.vertical, lead.productType, lead.companyName]
           .filter(Boolean).some((v) => String(v).toLowerCase().includes(query));
         return matchesStage && matchesQuery;
@@ -161,7 +167,7 @@ export default function CompanyLeads({
           </div>
 
           {/* STAT CARDS */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-1 shrink-0">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">{totalLabel}</p>
@@ -183,10 +189,17 @@ export default function CompanyLeads({
               </div>
               <div className="p-2 rounded-2xl bg-blue-50 text-blue-600 shrink-0"><BadgeCheck size={16} /></div>
             </div>
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
+              <div className="min-w-0">
+                <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Rejected</p>
+                <p className="text-[15px] font-pmedium text-slate-900">{leadStats[3]?.value ?? 0}</p>
+              </div>
+              <div className="p-2 rounded-2xl bg-rose-50 text-rose-600 shrink-0"><XCircle size={16} /></div>
+            </div>
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Closed</p>
-                <p className="text-[15px] font-pmedium text-slate-900">{leadStats[3]?.value ?? 0}</p>
+                <p className="text-[15px] font-pmedium text-slate-900">{leadStats[4]?.value ?? 0}</p>
               </div>
               <div className="p-2 rounded-2xl bg-emerald-50 text-emerald-600 shrink-0"><CheckCircle2 size={16} /></div>
             </div>

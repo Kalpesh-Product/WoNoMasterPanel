@@ -4,6 +4,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { Search, Users, Mail, Building2 } from "lucide-react";
 import dayjs from "dayjs";
+import { AllPOCContactTableSkeleton } from "../../../components/ui/Skeleton";
 
 const AllPOCContactTable = () => {
   const axios = useAxiosPrivate();
@@ -37,6 +38,10 @@ const AllPOCContactTable = () => {
     );
   }, [transformed, search]);
 
+  if (isPending) {
+    return <AllPOCContactTableSkeleton />;
+  }
+
   return (
     <div className="flex flex-col gap-4 text-slate-700 font-sans">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 shrink-0">
@@ -50,9 +55,7 @@ const AllPOCContactTable = () => {
             <div key={s.label} className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${s.accent}`}>
               <div className="min-w-0">
                 <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${s.textColor}`}>{s.label}</p>
-                <p className="text-[15px] font-pmedium text-slate-900">
-                  {isPending ? <span className="inline-block h-5 w-12 bg-slate-200 rounded-lg animate-pulse" /> : s.value}
-                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{s.value}</p>
               </div>
               <div className={`p-2 rounded-2xl ${s.bgColor} ${s.textColor} shrink-0`}><Icon size={16} /></div>
             </div>
@@ -69,18 +72,7 @@ const AllPOCContactTable = () => {
           </div>
         </div>
 
-        {isPending ? (
-          <div className="p-6 space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 animate-pulse">
-                <div className="h-9 w-9 bg-slate-200 rounded-2xl shrink-0" />
-                {Array.from({ length: 3 }).map((_, ci) => (
-                  <div key={ci} className="h-3 bg-slate-200 rounded-full" style={{ width: `${60 + ci * 24}px` }} />
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
             <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400"><Users size={28} /></div>
             <p className="text-slate-400 font-semibold font-pmedium">No POC contacts found.</p>

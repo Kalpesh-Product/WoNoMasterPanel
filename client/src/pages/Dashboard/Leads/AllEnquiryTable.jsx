@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
+import { AllEnquiryTableSkeleton } from "../../../components/ui/Skeleton";
 
 const COMMON_CURRENCIES = ["USD", "INR", "AED", "SGD", "GBP", "EUR", "AUD", "CAD"];
 
@@ -237,7 +238,7 @@ export default function AllEnquiryTable() {
   );
 
   if (isPending) {
-    return <div className="m-2 h-[560px] animate-pulse rounded-2xl border border-slate-100 bg-white" />;
+    return <AllEnquiryTableSkeleton />;
   }
 
   if (isError) return <p className="p-4 text-red-600">Unable to load enquiries.</p>;

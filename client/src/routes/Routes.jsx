@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import LoginPage from "../pages/LoginPage/LoginPage";
@@ -134,6 +134,8 @@ import ModulePermissions from "../pages/Access/ModulePermissions";
 import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/CreateWebsite";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompaniesLayout from "../pages/Dashboard/FrontendDashboard/CompaniesLayout";
+import CompaniesRequests from "../pages/Dashboard/FrontendDashboard/CompaniesRequests";
 import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
 import WebsiteBuilderReviews from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderReviews";
 import WebsiteBuilderHome from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderHome";
@@ -462,8 +464,12 @@ export const routes = createBrowserRouter([
                     path: "companies",
                     children: [
                       {
-                        index: true,
-                        element: <Companies />,
+                        element: <CompaniesLayout />,
+                        children: [
+                          { index: true, element: <Navigate to="list" replace /> },
+                          { path: "list", element: <Companies /> },
+                          { path: "requests", element: <CompaniesRequests /> },
+                        ],
                       },
                       {
                         path: "requests/:companyId",
