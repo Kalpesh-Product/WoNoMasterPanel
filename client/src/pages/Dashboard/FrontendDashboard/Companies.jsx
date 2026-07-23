@@ -1,18 +1,18 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
-import { Eye, Search, X } from "lucide-react";
+import { Eye, Pencil, Power, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import PageFrame from "../../../components/Pages/PageFrame";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
 import { setSelectedCompany } from "../../../redux/slices/companySlice";
-import CompaniesRequests from "./CompaniesRequests";
 import { statusPillClass } from "../../../lib/status-pill";
+import { CompaniesSkeleton } from "../../../components/ui/Skeleton";
+
+const PAGE_SIZE = 25;
 
 const toCompanySlug = (value = "") =>
   String(value || "")
@@ -43,20 +43,20 @@ const formatDateTime = (value) => {
 
 const Companies = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const dispatch = useDispatch();
   const { auth } = useAuth();
-  const [viewMode, setViewMode] = useState("companies");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedCompany, setSelectedCompanyDetail] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
-    const nextView = location.state?.viewMode === "requests" ? "requests" : "companies";
-    setViewMode(nextView);
-  }, [location.state]);
+    const timeout = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   const userEmail = auth?.user?.email;
   const restrictedEmails = [
@@ -87,98 +87,64 @@ const Companies = () => {
       });
       return response.data;
     },
-    onMutate: async ({ companyId, status }) => {
-      await queryClient.cancelQueries({ queryKey: ["companiesList"] });
-      const previousCompanies = queryClient.getQueryData(["companiesList"]);
-
-      queryClient.setQueryData(["companiesList"], (oldCompanies = []) =>
-        oldCompanies.map((company) =>
-          company.companyId === companyId ? { ...company, isRegistered: status } : company,
-        ),
-      );
-
-      return { previousCompanies };
-    },
     onSuccess: (data) => {
       toast.success(data?.message || "COMPANY STATUS UPDATED");
       queryClient.invalidateQueries({ queryKey: ["companiesList"] });
     },
-    onError: (error, _variables, context) => {
-      if (context?.previousCompanies) {
-        queryClient.setQueryData(["companiesList"], context.previousCompanies);
-      }
+    onError: (error) => {
       toast.error(error?.response?.data?.message || "Failed to update company status");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
     },
   });
 
   const {
-    data: companies = [],
+    data,
     isLoading,
     isError,
-  } = useQuery({
-    queryKey: ["companiesList"],
-    enabled: !shouldRedirectFromCompanies && viewMode === "companies",
-    queryFn: async () => {
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["companiesList", statusFilter, debouncedSearch],
+    enabled: !shouldRedirectFromCompanies,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       try {
-        const response = await axiosPrivate.get("/api/hosts/companies");
+        const response = await axiosPrivate.get("/api/hosts/companies", {
+          params: {
+            page: pageParam,
+            limit: PAGE_SIZE,
+            status: statusFilter,
+            search: debouncedSearch,
+          },
+        });
         return response.data;
       } catch (error) {
         throw new Error(error.response?.data?.message || "Failed to fetch companies");
       }
     },
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
   });
 
-  const { data: requests = [] } = useQuery({
-    queryKey: ["companiesListingRequestsCount"],
-    enabled: !shouldRedirectFromCompanies,
-    queryFn: async () => {
-      const response = await axiosPrivate.get("/api/hosts/companies-requests");
-      return response.data || [];
-    },
-  });
+  const companies = useMemo(() => data?.pages.flatMap((page) => page.items) ?? [], [data]);
+  const counts = data?.pages?.[0]?.counts;
+  const totalCount = counts?.total ?? 0;
+  const activeCount = counts?.active ?? 0;
+  const inactiveCount = counts?.inactive ?? 0;
 
-  const sortedCompanies = useMemo(
-    () =>
-      [...companies].sort((a, b) => {
-        if (a.isRegistered === b.isRegistered) return 0;
-        return a.isRegistered ? -1 : 1;
-      }),
-    [companies],
-  );
-
-  const visibleCompanies = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return sortedCompanies.filter((company) => {
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" ? company.isRegistered : !company.isRegistered);
-      const matchesQuery =
-        !query ||
-        [
-          company.companyName,
-          company.industry,
-          company.companyCountry,
-          company.companyState,
-          company.companyCity,
-        ]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(query));
-      return matchesStatus && matchesQuery;
-    });
-  }, [sortedCompanies, searchQuery, statusFilter]);
-
-  const activeCount = useMemo(
-    () => sortedCompanies.filter((company) => company.isRegistered).length,
-    [sortedCompanies],
-  );
-  const inactiveCount = useMemo(
-    () => sortedCompanies.filter((company) => !company.isRegistered).length,
-    [sortedCompanies],
-  );
-  const requestCount = requests.length;
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasNextPage) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, companies.length]);
 
   const openCompany = (company) => {
     dispatch(setSelectedCompany(company));
@@ -206,52 +172,8 @@ const Companies = () => {
     });
   };
 
-  if (viewMode === "requests") {
-    return (
-      <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
-        <PageFrame>
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-              <div>
-                <p className="text-xs font-pmedium uppercase tracking-[0.24em] text-gray-500">
-                  Company Registry
-                </p>
-                <h1 className="mt-2 text-4xl font-pmedium uppercase tracking-tight text-primary">
-                  Companies
-                </h1>
-                <p className="mt-3 max-w-3xl text-content text-gray-600">
-                  Review the company registry, update registration status, and open related views
-                  from the same panel.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-[1.5rem] border border-slate-100 bg-white/80 p-1.5 shadow-sm w-fit">
-              <button
-                type="button"
-                onClick={() => setViewMode("companies")}
-                className="px-4 py-2 rounded-[1.15rem] bg-white text-slate-500 hover:text-slate-700 font-pmedium text-[10px] uppercase tracking-wider transition-all"
-              >
-                Companies
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("requests")}
-                className="px-4 py-2 rounded-[1.15rem] bg-[#2563EB] text-white shadow-sm font-pmedium text-[10px] uppercase tracking-wider"
-              >
-                Requests ({requestCount})
-              </button>
-            </div>
-
-            <CompaniesRequests embedded />
-          </div>
-        </PageFrame>
-      </div>
-    );
-  }
-
   if (isLoading) {
-    return <div className="p-6 text-slate-400 font-pmedium">Loading companies...</div>;
+    return <CompaniesSkeleton />;
   }
 
   if (isError) {
@@ -259,56 +181,15 @@ const Companies = () => {
   }
 
   return (
-    <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
-      <PageFrame>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-pmedium uppercase tracking-[0.24em] text-gray-500">
-                Company Registry
-              </p>
-              <h1 className="mt-2 text-4xl font-pmedium uppercase tracking-tight text-primary">
-                Companies
-              </h1>
-              <p className="mt-3 max-w-3xl text-content text-gray-600">
-                Review the company registry, update registration status, and open related views
-                from the same panel.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 rounded-[1.5rem] border border-slate-100 bg-white/80 p-1.5 shadow-sm w-fit">
-            <button
-              type="button"
-              onClick={() => setViewMode("companies")}
-              className={`px-4 py-2 rounded-[1.15rem] font-pmedium text-[10px] uppercase tracking-wider transition-all ${
-                viewMode === "companies"
-                  ? "bg-[#2563EB] text-white shadow-sm"
-                  : "bg-white text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Companies ({sortedCompanies.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("requests")}
-              className={`px-4 py-2 rounded-[1.15rem] font-pmedium text-[10px] uppercase tracking-wider transition-all ${
-                viewMode === "requests"
-                  ? "bg-[#2563EB] text-white shadow-sm"
-                  : "bg-white text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              Requests ({requestCount})
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
                   Total Companies
                 </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{sortedCompanies.length}</p>
+                <p className="text-[15px] font-pmedium text-slate-900">{totalCount}</p>
               </div>
             </div>
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
@@ -366,7 +247,7 @@ const Companies = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => navigate("add-company")}
+                  onClick={() => navigate("/dashboard/companies/add-company")}
                   className="px-4 py-2.5 rounded-2xl bg-[#2563EB] text-white font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap"
                 >
                   Add Company
@@ -378,41 +259,41 @@ const Companies = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       Logo
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       Company Name
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       Vertical
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       Country
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       State
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
                       City
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">
                       Registration
                     </th>
-                    <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">
+                    <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleCompanies.length === 0 ? (
+                  {companies.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">
                         No companies found.
                       </td>
                     </tr>
                   ) : (
-                    visibleCompanies.map((company) => {
+                    companies.map((company) => {
                       const logoUrl =
                         typeof company.logo === "string" ? company.logo : company.logo?.url;
 
@@ -451,7 +332,7 @@ const Companies = () => {
                             </span>
                           </td>
                           <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -463,51 +344,53 @@ const Companies = () => {
                               >
                                 <Eye size={15} strokeWidth={2.5} />
                               </button>
-                              <ThreeDotMenu
-                                rowId={company.companyId || company._id || company.companyName}
-                                menuItems={[
-                                  {
-                                    label: "View Details",
-                                    onClick: () => {
-                                      setSelectedCompanyDetail(company);
-                                      setIsViewModalOpen(true);
-                                    },
-                                  },
-                                  {
-                                    label: "Edit",
-                                    onClick: () => openEditCompany(company),
-                                  },
+                              <button
+                                type="button"
+                                onClick={() => openEditCompany(company)}
+                                title="Edit company"
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                              >
+                                <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleCompanyStatus({
+                                    companyId: company.companyId,
+                                    status: !company.isRegistered,
+                                  })
+                                }
+                                title={company.isRegistered ? "Mark as Inactive" : "Mark as Active"}
+                                className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 ${
                                   company.isRegistered
-                                    ? {
-                                        label: "Mark As Inactive",
-                                        onClick: () =>
-                                          toggleCompanyStatus({
-                                            companyId: company.companyId,
-                                            status: false,
-                                          }),
-                                      }
-                                    : {
-                                        label: "Mark As Active",
-                                        onClick: () =>
-                                          toggleCompanyStatus({
-                                            companyId: company.companyId,
-                                            status: true,
-                                          }),
-                                      },
-                                ]}
-                              />
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                    : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                              >
+                                <Power size={15} strokeWidth={2.5} />
+                              </button>
                             </div>
                           </td>
                         </tr>
                       );
                     })
                   )}
+                  {hasNextPage ? (
+                    <tr ref={loadMoreRef}>
+                      <td colSpan={8} className="py-4 text-center">
+                        {isFetchingNextPage ? (
+                          <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
+                            Loading more companies...
+                          </span>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ) : null}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-      </PageFrame>
 
       {isViewModalOpen && selectedCompany ? (
         <div
@@ -639,7 +522,7 @@ const Companies = () => {
           </div>
         </div>
       ) : null}
-    </div>
+    </>
   );
 };
 

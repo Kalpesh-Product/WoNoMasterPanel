@@ -448,48 +448,101 @@ const activateProduct = async (req, res, next) => {
   }
 };
 
+const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
+  if (!companies || !companies.length) return [];
+
+  const workspaces = await Workspace.find({ isActive: true })
+    .select("_id company companyId businessName selectedPlan")
+    .lean();
+  const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
+    .select("searchKey companyId companyName isActive isPublished")
+    .lean();
+
+  const normalize = (value) => String(value || "").trim().toLowerCase();
+  return companies.map((company) => {
+    const companyId = String(company?.companyId || "").trim();
+    const companyName = normalize(company?.companyName);
+    const workspace = workspaces.find(
+      (item) =>
+        String(item?.company || "") === String(company?._id || "") ||
+        String(item?.companyId || "").trim() === companyId ||
+        normalize(item?.businessName) === companyName,
+    );
+    const template = templates.find(
+      (item) =>
+        (companyId && String(item?.companyId || "").trim() === companyId) ||
+        normalize(item?.companyName) === companyName,
+    );
+
+    return {
+      ...company,
+      workspaceId: workspace?._id ? String(workspace._id) : "",
+      workspaceCompanyId: String(workspace?.companyId || "").trim(),
+      selectedPlan: workspace?.selectedPlan || company?.selectedPlan || "",
+      isWebsiteTemplate: Boolean(template),
+      websiteTemplate: template || null,
+    };
+  });
+};
+
 const getCompanies = async (req, res, next) => {
   try {
-    const companies = await HostCompany.find().lean();
+    const { page, limit, search, status } = req.query;
 
-    if (!companies || !companies.length) {
-      return res.status(200).json([]);
+    // No `page` param: existing full-list behavior, unchanged for the other
+    // callers of this endpoint (RequestedServices, BlogsAndNews,
+    // WorldRankingWeights) that expect a plain array.
+    if (page === undefined) {
+      const companies = await HostCompany.find().lean();
+      const enrichedCompanies = await enrichCompaniesWithWorkspaceAndTemplate(companies);
+      return res.status(200).json(enrichedCompanies);
     }
 
-    const workspaces = await Workspace.find({ isActive: true })
-      .select("_id company companyId businessName selectedPlan")
-      .lean();
-    const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
-      .select("searchKey companyId companyName isActive isPublished")
-      .lean();
+    const filter = {};
+    if (status === "active") filter.isRegistered = true;
+    else if (status === "inactive") filter.isRegistered = false;
 
-    const normalize = (value) => String(value || "").trim().toLowerCase();
-    const enrichedCompanies = companies.map((company) => {
-      const companyId = String(company?.companyId || "").trim();
-      const companyName = normalize(company?.companyName);
-      const workspace = workspaces.find(
-        (item) =>
-          String(item?.company || "") === String(company?._id || "") ||
-          String(item?.companyId || "").trim() === companyId ||
-          normalize(item?.businessName) === companyName,
-      );
-      const template = templates.find(
-        (item) =>
-          (companyId && String(item?.companyId || "").trim() === companyId) ||
-          normalize(item?.companyName) === companyName,
-      );
+    const trimmedSearch = String(search || "").trim();
+    if (trimmedSearch) {
+      const searchRegex = new RegExp(escapeRegex(trimmedSearch), "i");
+      filter.$or = [
+        { companyName: searchRegex },
+        { industry: searchRegex },
+        { companyCountry: searchRegex },
+        { companyState: searchRegex },
+        { companyCity: searchRegex },
+      ];
+    }
 
-      return {
-        ...company,
-        workspaceId: workspace?._id ? String(workspace._id) : "",
-        workspaceCompanyId: String(workspace?.companyId || "").trim(),
-        selectedPlan: workspace?.selectedPlan || company?.selectedPlan || "",
-        isWebsiteTemplate: Boolean(template),
-        websiteTemplate: template || null,
-      };
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
+
+    const [companies, total, totalCount, activeCount, inactiveCount] = await Promise.all([
+      HostCompany.find(filter)
+        .sort({ isRegistered: -1, companyName: 1 })
+        .skip((pageNumber - 1) * pageSize)
+        .limit(pageSize)
+        .lean(),
+      HostCompany.countDocuments(filter),
+      HostCompany.countDocuments({}),
+      HostCompany.countDocuments({ isRegistered: true }),
+      HostCompany.countDocuments({ isRegistered: false }),
+    ]);
+
+    const enrichedCompanies = await enrichCompaniesWithWorkspaceAndTemplate(companies);
+
+    return res.status(200).json({
+      items: enrichedCompanies,
+      page: pageNumber,
+      limit: pageSize,
+      total,
+      hasMore: pageNumber * pageSize < total,
+      counts: {
+        total: totalCount,
+        active: activeCount,
+        inactive: inactiveCount,
+      },
     });
-
-    return res.status(200).json(enrichedCompanies);
   } catch (error) {
     next(error);
   }

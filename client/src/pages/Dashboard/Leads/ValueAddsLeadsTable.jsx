@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_BACKEND_URL } from "../../../constants/api";
 import { Search, Target, Clock, Users, Eye, X, Phone, Mail, MessageSquare, Calendar } from "lucide-react";
+import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
 
 const API_BASE_URL =
   import.meta.env.VITE_VALUE_ADDS_API_BASE_URL || NOMADS_BACKEND_URL;
@@ -59,6 +60,10 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
   const getEmail = (row) => row.email || "--";
   const getPhone = (row) => row.contactNumber || row.mobileNumber || "--";
 
+  if (isPending) {
+    return <ValueAddsLeadsTableSkeleton />;
+  }
+
   return (
     <div className="flex flex-col gap-4 text-slate-700 font-sans">
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 shrink-0">
@@ -77,13 +82,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
                 <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${s.textColor || "text-slate-400"}`}>
                   {s.label}
                 </p>
-                <p className="text-[15px] font-pmedium text-slate-900">
-                  {isPending ? (
-                    <span className="inline-block h-5 w-12 bg-slate-200 rounded-lg animate-pulse" />
-                  ) : (
-                    s.value
-                  )}
-                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{s.value}</p>
               </div>
               <div className={`p-2 rounded-2xl ${s.bgColor || "bg-slate-50"} ${s.textColor || "text-slate-600"} shrink-0`}>
                 <Icon size={16} />
@@ -107,18 +106,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
           </div>
         </div>
 
-        {isPending ? (
-          <div className="p-6 space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 animate-pulse">
-                <div className="h-9 w-9 bg-slate-200 rounded-2xl shrink-0" />
-                {Array.from({ length: 4 }).map((_, ci) => (
-                  <div key={ci} className="h-3 bg-slate-200 rounded-full" style={{ width: `${50 + ci * 16}px` }} />
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
             <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
               <Target size={28} />

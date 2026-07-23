@@ -405,6 +405,186 @@ export function OrganizationSkeleton() {
       <div className="h-96 rounded-[2.5rem] bg-gray-100" />
     </div>;
 }
+export function CompaniesSkeleton() {
+  return <div className="animate-pulse flex flex-col gap-4" aria-busy="true" aria-label="Loading companies">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mb-1">
+        {Array.from({ length: 3 }).map((_, index) => <div key={index} className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-24 rounded-md" />
+              <Skeleton className="h-5 w-10 rounded-md" />
+            </div>
+          </div>)}
+      </div>
+
+      <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5 xl:flex-row xl:items-center">
+          <div className="flex gap-1.5 overflow-hidden">
+            {Array.from({ length: 3 }).map((_, index) => <Skeleton key={index} className="h-8 w-16 flex-shrink-0 rounded-lg" />)}
+          </div>
+          <div className="flex w-full items-center gap-3 xl:w-auto">
+            <Skeleton className="h-10 min-w-[180px] flex-1 rounded-lg xl:w-64" />
+            <Skeleton className="h-10 w-32 flex-shrink-0 rounded-2xl" />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[900px]">
+            <div className="grid grid-cols-8 gap-4 border-b border-slate-100/60 bg-slate-50/50 px-5 py-4">
+              {Array.from({ length: 8 }).map((_, index) => <Skeleton key={index} className="h-3 rounded-md" />)}
+            </div>
+            <div className="divide-y divide-slate-100/60">
+              {Array.from({ length: 8 }).map((_, rowIndex) => <div key={rowIndex} className="grid grid-cols-8 items-center gap-4 px-5 py-4">
+                  <Skeleton className="h-10 w-10 rounded-md" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="mx-auto h-5 w-16 rounded-full" />
+                  <div className="mx-auto flex gap-1.5">
+                    <Skeleton className="h-7 w-7 rounded-lg" />
+                    <Skeleton className="h-7 w-7 rounded-lg" />
+                    <Skeleton className="h-7 w-7 rounded-lg" />
+                  </div>
+                </div>)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>;
+}
+export function AllEnquiryTableSkeleton() {
+  return <div className="animate-pulse flex flex-col gap-4" aria-busy="true" aria-label="Loading enquiries">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => <div key={index} className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-20 rounded-md" />
+              <Skeleton className="h-5 w-10 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-9 rounded-2xl bg-gray-100" />
+          </div>)}
+      </div>
+
+      <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex gap-1.5 overflow-hidden">
+            {Array.from({ length: 4 }).map((_, index) => <Skeleton key={index} className="h-8 w-16 flex-shrink-0 rounded-lg" />)}
+          </div>
+          <Skeleton className="h-10 w-full rounded-lg xl:w-[320px]" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[1000px]">
+            <div className="grid grid-cols-9 gap-4 border-b border-slate-100/60 bg-slate-50/50 px-3 py-4">
+              {Array.from({ length: 9 }).map((_, index) => <Skeleton key={index} className="h-3 rounded-md" />)}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {Array.from({ length: 8 }).map((_, rowIndex) => <div key={rowIndex} className="grid grid-cols-9 items-center gap-4 px-3 py-4">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-8 rounded-xl" />
+                    <Skeleton className="h-4 flex-1 rounded-md bg-gray-100" />
+                  </div>
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-6 rounded-full" />
+                  <Skeleton className="h-6 rounded-full" />
+                  <Skeleton className="h-6 rounded-full" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <div className="mx-auto flex gap-1.5">
+                    <Skeleton className="h-7 w-7 rounded-lg" />
+                    <Skeleton className="h-7 w-7 rounded-lg" />
+                    <Skeleton className="h-7 w-16 rounded-lg" />
+                  </div>
+                </div>)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>;
+}
+export function AllPOCContactTableSkeleton() {
+  return <div className="animate-pulse flex flex-col gap-4" aria-busy="true" aria-label="Loading POC contacts">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => <div key={index} className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-20 rounded-md" />
+              <Skeleton className="h-5 w-10 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-9 rounded-2xl bg-gray-100" />
+          </div>)}
+      </div>
+
+      <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
+          <Skeleton className="h-10 max-w-sm rounded-lg" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[700px]">
+            <div className="grid grid-cols-5 gap-4 border-b border-slate-100/60 bg-slate-50/50 px-5 py-4">
+              {Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-3 rounded-md" />)}
+            </div>
+            <div className="divide-y divide-slate-100/60">
+              {Array.from({ length: 8 }).map((_, rowIndex) => <div key={rowIndex} className="grid grid-cols-5 items-center gap-4 px-5 py-4">
+                  <div className="flex items-center gap-2.5">
+                    <Skeleton className="h-9 w-9 rounded-2xl" />
+                    <Skeleton className="h-4 flex-1 rounded-md bg-gray-100" />
+                  </div>
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                </div>)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>;
+}
+export function ValueAddsLeadsTableSkeleton() {
+  return <div className="animate-pulse flex flex-col gap-4" aria-busy="true" aria-label="Loading leads">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => <div key={index} className="flex items-center justify-between rounded-[2rem] border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="space-y-2">
+              <Skeleton className="h-3 w-20 rounded-md" />
+              <Skeleton className="h-5 w-10 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-9 rounded-2xl bg-gray-100" />
+          </div>)}
+      </div>
+
+      <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+        <div className="border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
+          <Skeleton className="h-10 w-full rounded-lg sm:max-w-xs" />
+        </div>
+
+        <div className="overflow-x-auto">
+          <div className="min-w-[800px]">
+            <div className="grid grid-cols-6 gap-4 border-b border-slate-100/60 bg-slate-50/50 px-5 py-4">
+              {Array.from({ length: 6 }).map((_, index) => <Skeleton key={index} className="h-3 rounded-md" />)}
+            </div>
+            <div className="divide-y divide-slate-100/60">
+              {Array.from({ length: 8 }).map((_, rowIndex) => <div key={rowIndex} className="grid grid-cols-6 items-center gap-4 px-5 py-4">
+                  <div className="flex items-center gap-2.5">
+                    <Skeleton className="h-9 w-9 rounded-2xl" />
+                    <Skeleton className="h-4 flex-1 rounded-md bg-gray-100" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-3 w-3/4 rounded-md bg-gray-100" />
+                    <Skeleton className="h-3 w-full rounded-md bg-gray-100" />
+                  </div>
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="h-4 rounded-md bg-gray-100" />
+                  <Skeleton className="mx-auto h-7 w-7 rounded-lg" />
+                </div>)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>;
+}
 export function HRExitManagementSkeleton() {
   return <div className="animate-pulse space-y-6 p-6">
       <div className="flex items-center gap-4">
