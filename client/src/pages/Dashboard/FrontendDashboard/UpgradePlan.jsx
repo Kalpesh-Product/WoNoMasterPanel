@@ -127,6 +127,7 @@ const UpgradePlan = () => {
           email: company?.pocEmail,
           name: company?.pocName,
           companyName: company?.companyName,
+          currentPlan: company?.plan,
           selectedPlan: company?.requestedPlan || company?.plan,
           paymentLinkUrl,
         },
@@ -209,6 +210,7 @@ const UpgradePlan = () => {
       await axiosPrivate.post("/api/host-user/send-upgrade-success-email", {
         email: company?.pocEmail,
         name: company?.pocName,
+        companyId: company?.companyId,
         companyName: company?.companyName,
         selectedPlan: company?.requestedPlan || company?.plan,
       });

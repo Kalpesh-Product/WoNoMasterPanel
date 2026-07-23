@@ -73,6 +73,11 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    previousPlan: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     paymentStatus: {
       type: Boolean,
       default: false,

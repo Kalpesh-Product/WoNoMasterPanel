@@ -755,6 +755,9 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
         .trim()
         .toLowerCase();
       if (requestedPlan) {
+        if (!company.previousPlan) {
+          company.previousPlan = company.plan || "";
+        }
         company.plan = requestedPlan;
 
         // Actually apply the upgrade to the live workspace, not just this
