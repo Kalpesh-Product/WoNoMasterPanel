@@ -23,6 +23,8 @@ const {
   referenceDateStamp,
   formatLongDate,
 } = require("../utils/emailTemplates");
+const { generateBookingId } = require("../utils/generateBookingId");
+const { generateRegistrationId } = require("../utils/generateRegistrationId");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -3329,25 +3331,23 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       ],
     });
 
-    const bookingIdPrefix = resolvedPaymentType === "plan_subscription" ? "WN-PRO" : "WN-BIZ";
-    const totalBookingPayments = await BookingPaymentLink.countDocuments({
-      paymentType: resolvedPaymentType,
-    });
-    const bookingId = `${bookingIdPrefix}-${referenceDateStamp()}-${String(
-      totalBookingPayments,
-    ).padStart(5, "0")}`;
+    const resolvedBookingId =
+      resolvedPaymentType === "plan_subscription" ? undefined : generateBookingId(companyName);
+    const resolvedRegistrationId =
+      resolvedPaymentType === "plan_subscription" ? generateRegistrationId() : undefined;
 
     await BookingPaymentLink.create({
       leadId,
       leadEmail: customerEmail,
       leadName: customerName,
+      bookingId: resolvedBookingId,
+      registrationId: resolvedRegistrationId,
       companyName,
       productType,
-      bookingId,
       location,
       startDate: startDate || null,
       endDate: endDate || null,
-      noOfPeople: noOfPeople || null,
+      noOfPeople: noOfPeople != null && noOfPeople !== "" ? Number(noOfPeople) : null,
       description,
       paymentType: resolvedPaymentType,
       amount: numericAmount,
@@ -3364,7 +3364,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
           paymentLinkUrl: paymentLink.url,
           amount: numericAmount,
           currency: resolvedCurrency,
-          requestId: bookingId,
+          requestId: resolvedRegistrationId,
         })
       : buildBookingPaymentEmail({
           customerName,
@@ -3465,7 +3465,13 @@ const handleStripeWebhook = async (req, res) => {
             }),
             customerName: updated.leadName,
             customerEmail: updated.leadEmail,
+            bookingId: updated.bookingId,
+            registrationId: updated.registrationId,
             companyName: updated.companyName,
+            productType: updated.productType,
+            startDate: updated.startDate,
+            endDate: updated.endDate,
+            noOfPeople: updated.noOfPeople,
             description: updated.description || updated.productType,
             amount: updated.amount,
             currency: updated.currency,
