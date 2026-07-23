@@ -178,6 +178,7 @@ export default function AllEnquiryTable() {
         startDate: lead?.startDate,
         endDate: lead?.endDate,
         noOfPeople: lead?.noOfPeople,
+        location: lead?.location || [lead?.state, lead?.country].filter(Boolean).join(", "),
         amount,
         currency: String(currency || "USD").toLowerCase(),
         description,

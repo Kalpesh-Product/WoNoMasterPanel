@@ -18,6 +18,13 @@ const {
 } = require("../utils/moduleAccessLogs");
 const idGenerator = require("../utils/idGenerator");
 const { generateInvoicePdf } = require("../utils/generateInvoicePdf");
+const {
+  renderNotificationEmail,
+  referenceDateStamp,
+  formatLongDate,
+} = require("../utils/emailTemplates");
+const { generateBookingId } = require("../utils/generateBookingId");
+const { generateRegistrationId } = require("../utils/generateRegistrationId");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -155,54 +162,310 @@ const getMailButton = (href, label) => `
   </a>
 `;
 
-const buildSignupInviteEmail = ({ name, companyName, inviteLink }) => ({
-  subject: "Your Wono invite",
-  html: `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-      <h2 style="margin-bottom: 16px;">You're invited to Wono</h2>
-      <p>Hello ${name},</p>
-      <p>Your signup request for ${companyName || "your company"} has been approved.</p>
-      <p>You can now proceed with the next step using the Wono platform.</p>
-      <p>${getMailButton(inviteLink, "Continue Signup")}</p>
-      <p>Regards,<br />Wono</p>
-    </div>
-  `,
+const buildSignupInviteEmail = ({ name, companyName, inviteLink, requestId }) => ({
+  subject: "You're Invited to WONO",
+  html: renderNotificationEmail({
+    heroTitle: "You're Invited to WONO",
+    heroSubtitle: "Great news! Your signup request has been approved.",
+    greetingHtml: `
+      <p style="margin:0 0 4px;">Hello ${name},</p>
+      <p class="email-text" style="margin:0;">Your signup request for <b class="email-heading">${companyName || "your company"}</b> has been reviewed and approved by the WONO team. You can now complete your signup and activate your WONO account.</p>
+    `,
+    detailsTitle: "Approval Details",
+    detailRows: [
+      ["Company / Brand", companyName || "-"],
+      ["Request Status", "Approved &#10003;"],
+      ["Request ID", requestId],
+    ],
+    ctaButton: {
+      label: "Complete Your Signup",
+      href: inviteLink,
+      caption: "Complete your account setup to get started on WONO.",
+    },
+    whatNextTitle: "What Happens Next?",
+    whatNextItems: [
+      "Complete your signup",
+      "Set up your account details",
+      "Access the WONO platform",
+      "Start using your available services and features",
+    ],
+    noteHtml:
+      "This signup invitation is intended only for you.<br/>For your security, do not share this invitation link with anyone.",
+  }),
 });
+
+const PLAN_INFO = {
+  basic: { label: "Basic", priceLabel: "Free", billingCycle: "-", amount: null },
+  professional: {
+    label: "Professional",
+    priceLabel: "$199/month",
+    billingCycle: "Monthly",
+    amount: 199,
+  },
+  customise: {
+    label: "Customise",
+    priceLabel: "Personalised",
+    billingCycle: "Custom",
+    amount: null,
+  },
+};
+
+function planInfo(plan) {
+  const key = String(plan || "").trim().toLowerCase();
+  return (
+    PLAN_INFO[key] || { label: plan || "-", priceLabel: "-", billingCycle: "-", amount: null }
+  );
+}
+
+const buildUpgradeSummaryBody = ({
+  currentPlanLabel,
+  newPlanLabel,
+  newPlanPriceLabel,
+  companyName,
+  billingCycle,
+  requestId,
+  amountDueLabel,
+  paymentLinkUrl,
+}) => `
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Upgrade Summary</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:20px 24px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:40%;text-align:center;">
+                  <p class="email-label" style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Current Plan</p>
+                  <p class="email-text" style="margin:0;font-size:16px;font-weight:600;">${currentPlanLabel}</p>
+                </td>
+                <td style="width:20%;text-align:center;color:#0BA9EF;font-size:18px;">&#8594;</td>
+                <td style="width:40%;text-align:center;">
+                  <p class="email-label" style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">New Plan</p>
+                  <p class="email-heading" style="margin:0;font-size:16px;font-weight:700;">${newPlanLabel}</p>
+                  <p class="email-subtext" style="margin:2px 0 0;font-size:12px;">${newPlanPriceLabel}</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td class="email-divider" style="padding:0;"></td></tr>
+        <tr>
+          <td style="padding:14px 24px 18px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Business</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">${companyName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Billing Cycle</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${billingCycle}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Request ID</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${requestId}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Status</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">&#9679; Payment Pending</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:18px 24px;text-align:center;">
+            <p class="email-subtext" style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Amount Due</p>
+            <p class="email-heading" style="margin:0;font-size:28px;font-weight:700;">${amountDueLabel}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;text-align:center;">
+      <a href="${paymentLinkUrl}" style="display:inline-block;background:#0BA9EF;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;padding:13px 32px;border-radius:8px;">Complete Upgrade Payment</a>
+      <p class="email-subtext" style="margin:12px 0 0;font-size:12px;">Securely complete your upgrade payment.</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">What Happens Next?</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">1</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Payment</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">2</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Verification</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">3</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Plan Active</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">4</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Confirmation Email</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:14px 18px;">
+            <p class="email-heading" style="margin:0 0 6px;font-size:13px;font-weight:600;">&#10003; Already Paid?</p>
+            <p class="email-subtext" style="margin:0;font-size:12px;line-height:1.6;">No further action is required. We'll notify you when your ${newPlanLabel} plan becomes active.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
 
 const buildUpgradePaymentEmail = ({
   name,
   companyName,
+  currentPlan,
   selectedPlan,
   paymentLinkUrl,
-}) => ({
-  subject: "Complete your Wono plan upgrade payment",
-  html: `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-      <h2 style="margin-bottom: 16px;">Upgrade payment link</h2>
-      <p>Hello ${name},</p>
-      <p>Your request to upgrade <strong>${companyName || "your company"}</strong> to the <strong>${selectedPlan}</strong> plan is ready for payment.</p>
-      <p>Please complete your payment using the link below. Access will be upgraded after our team confirms the payment.</p>
-      <p>${getMailButton(paymentLinkUrl, "Pay Now")}</p>
-      <p>If you already paid, please wait for confirmation from our team.</p>
-      <p>Regards,<br />Wono</p>
-    </div>
-  `,
-});
+  requestId,
+}) => {
+  const currentPlanData = planInfo(currentPlan);
+  const newPlanData = planInfo(selectedPlan);
+  const amountDueLabel =
+    newPlanData.amount != null ? `$${newPlanData.amount.toFixed(2)} USD` : "-";
 
-const buildUpgradeSuccessEmail = ({ name, companyName, selectedPlan, loginUrl }) => ({
-  subject: "Your Wono plan has been upgraded successfully",
-  html: `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-      <h2 style="margin-bottom: 16px;">Plan upgraded successfully</h2>
-      <p>Hello ${name},</p>
-      <p>Your plan for <strong>${companyName || "your company"}</strong> has been upgraded successfully to <strong>${selectedPlan}</strong>.</p>
-      <p>You can now log in and start using the upgraded access.</p>
-      <p>${getMailButton(loginUrl, "Login")}</p>
-      <p>If you face any issue logging in, please contact our support team.</p>
-      <p>Regards,<br />Wono</p>
-    </div>
-  `,
-});
+  return {
+    subject: "Complete Your Plan Upgrade",
+    html: renderNotificationEmail({
+      heroTitle: "Complete Your Plan Upgrade",
+      heroSubtitle: "Your upgrade request is ready for payment.",
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${name},</p>
+        <p class="email-text" style="margin:0;">Your request to upgrade <b class="email-heading">${companyName || "your company"}</b> has been approved. Review your details and complete payment below.</p>
+      `,
+      bodyHtml: buildUpgradeSummaryBody({
+        currentPlanLabel: currentPlanData.label,
+        newPlanLabel: newPlanData.label,
+        newPlanPriceLabel: newPlanData.priceLabel,
+        companyName: companyName || "-",
+        billingCycle: newPlanData.billingCycle,
+        requestId,
+        amountDueLabel,
+        paymentLinkUrl,
+      }),
+    }),
+  };
+};
+
+const buildUpgradeSummarySuccessBody = ({
+  previousPlanLabel,
+  newPlanLabel,
+  companyName,
+  effectiveDateLabel,
+  billingCycle,
+  dashboardUrl,
+}) => `
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Upgrade Summary</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:20px 24px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="width:40%;text-align:center;">
+                  <p class="email-label" style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Previous Plan</p>
+                  <p class="email-text" style="margin:0;font-size:16px;font-weight:600;">${previousPlanLabel}</p>
+                </td>
+                <td style="width:20%;text-align:center;color:#0BA9EF;font-size:18px;">&#8594;</td>
+                <td style="width:40%;text-align:center;">
+                  <p class="email-label" style="margin:0 0 4px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">New Plan</p>
+                  <p class="email-heading" style="margin:0;font-size:16px;font-weight:700;">${newPlanLabel}</p>
+                  <p style="margin:2px 0 0;font-size:12px;color:#0BA9EF;font-weight:600;">&#10003; ACTIVE</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td class="email-divider" style="padding:0;"></td></tr>
+        <tr>
+          <td style="padding:14px 24px 18px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Account</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">${companyName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Effective Date</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${effectiveDateLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Billing Cycle</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${billingCycle}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Status</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">&#10003; Active</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">You're All Set</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span class="email-badge" style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;font-size:11px;text-align:center;">&#10003;</span>
+          </td>
+          <td style="padding:6px 0;">Upgrade completed</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span class="email-badge" style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;font-size:11px;text-align:center;">&#10003;</span>
+          </td>
+          <td style="padding:6px 0;">${newPlanLabel} Plan active</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span class="email-badge" style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;font-size:11px;text-align:center;">&#10003;</span>
+          </td>
+          <td style="padding:6px 0;">Features available</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:20px 32px 4px;text-align:center;">
+      <a href="${dashboardUrl}" style="display:inline-block;background:#0BA9EF;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;padding:13px 32px;border-radius:8px;">Go to Dashboard &#8594;</a>
+      <p class="email-subtext" style="margin:12px 0 0;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Welcome to ${newPlanLabel} Plan</p>
+    </td>
+  </tr>`;
+
+const buildUpgradeSuccessEmail = ({
+  name,
+  companyName,
+  previousPlan,
+  selectedPlan,
+  effectiveDate,
+  dashboardUrl,
+}) => {
+  const previousPlanData = planInfo(previousPlan);
+  const newPlanData = planInfo(selectedPlan);
+  const effectiveDateLabel = formatLongDate(effectiveDate || new Date());
+
+  return {
+    subject: "Upgrade Successful!",
+    html: renderNotificationEmail({
+      heroTitle: "Upgrade Successful!",
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${newPlanData.label} Plan Is Now Active</span><br/>Your upgraded features are ready for you to use.`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${name},</p>
+        <p class="email-text" style="margin:0;">Great news! Your <b class="email-heading">${companyName || "account"}</b> account has been successfully upgraded to the ${newPlanData.label} Plan.</p>
+      `,
+      bodyHtml: buildUpgradeSummarySuccessBody({
+        previousPlanLabel: previousPlanData.label,
+        newPlanLabel: newPlanData.label,
+        companyName: companyName || "-",
+        effectiveDateLabel,
+        billingCycle: newPlanData.billingCycle,
+        dashboardUrl,
+      }),
+    }),
+  };
+};
 
 const buildBookingPaymentEmail = ({
   customerName,
@@ -217,70 +480,158 @@ const buildBookingPaymentEmail = ({
 }) => {
   const formattedAmount =
     amount === undefined || amount === null
-      ? null
-      : new Intl.NumberFormat("en-IN", {
-          style: "currency",
-          currency: String(currency || "INR").toUpperCase(),
-          maximumFractionDigits: 2,
-        }).format(amount);
+      ? "-"
+      : `${String(currency || "USD").toUpperCase()} ${Number(amount).toFixed(2)}`;
 
   return {
-    subject: `Complete your ${productType || "booking"} payment`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
-        <h2 style="color: #2563eb;">Complete Your Booking Payment</h2>
-
-        <p>Hello ${customerName},</p>
-
-        <p>
-          Thank you for choosing WONO. Your booking details have been confirmed.
-          Please complete the payment using the link below.
-        </p>
-
-        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Company:</strong> ${companyName || "N/A"}</p>
-          <p><strong>Booking type:</strong> ${productType || "N/A"}</p>
-          <p><strong>Number of people:</strong> ${noOfPeople || "N/A"}</p>
-          <p><strong>Start date:</strong> ${startDate || "N/A"}</p>
-          <p><strong>End date:</strong> ${endDate || "N/A"}</p>
-          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
-        </div>
-
-        <div style="text-align: center; margin: 30px 0;">
-          <a
-            href="${paymentLinkUrl}"
-            target="_blank"
-            style="
-              background-color: #2563eb;
-              color: #ffffff;
-              padding: 12px 24px;
-              text-decoration: none;
-              border-radius: 6px;
-              display: inline-block;
-              font-weight: 600;
-            "
-          >
-            Pay Now
-          </a>
-        </div>
-
-        <p>
-          If the button does not work, copy and paste this URL into your browser:
-        </p>
-
-        <p>
-          <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
-        </p>
-
-        <p>Regards,<br />WONO Team</p>
-      </div>
-    `,
+    subject: "Your Booking Payment",
+    html: renderNotificationEmail({
+      heroTitle: "Your Booking Payment",
+      heroSubtitle: "Complete your payment to confirm your booking.",
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Thank you for choosing WONO. We have received your booking request. Please complete the payment below to confirm your booking.</p>
+      `,
+      detailsTitle: "Booking Summary",
+      detailRows: [
+        ["Workspace", companyName || "-"],
+        ["Booking Type", productType || "-"],
+        ["Guests", noOfPeople ? `${noOfPeople} People` : "-"],
+        ["Start Date", formatLongDate(startDate)],
+        ["End Date", formatLongDate(endDate)],
+        ["Booking Status", "Awaiting Payment"],
+      ],
+      totalPayable: { label: "Total Payable", value: formattedAmount },
+      ctaButton: {
+        label: "Complete Payment",
+        href: paymentLinkUrl,
+        caption: "Securely complete your payment to confirm your booking.",
+      },
+      whatNextTitle: "What Happens Next?",
+      whatNextItems: [
+        "Complete your payment",
+        "Your payment will be verified",
+        "Your booking will be confirmed",
+        "You will receive a booking confirmation email",
+      ],
+      noteTitle: "Payment Security",
+      noteHtml:
+        "For your security, payments are processed through our secure payment partner.",
+    }),
   };
 };
 
 // Sent when a payment link is first created for a Signup Leads plan
 // (Professional/Custom) — no booking dates or headcount involved here, this
 // person is subscribing to the HostPanel SaaS platform, not booking a space.
+function planKeyFromLabel(label) {
+  const normalized = String(label || "")
+    .replace(/\s*plan$/i, "")
+    .trim()
+    .toLowerCase();
+  if (["custom", "customise", "customised", "customized"].includes(normalized)) {
+    return "customise";
+  }
+  return normalized;
+}
+
+const buildSubscriptionSummaryBody = ({
+  companyName,
+  planDisplayName,
+  billingCycle,
+  requestId,
+  planPriceLabel,
+  amountDueValue,
+  amountDueCurrency,
+  paymentLinkUrl,
+}) => `
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Subscription Summary</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:16px 24px 6px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Company</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">${companyName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Selected Plan</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${planDisplayName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Billing Cycle</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${billingCycle}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Request ID</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${requestId}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Status</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">Payment Pending</td></tr>
+            </table>
+          </td>
+        </tr>
+        <tr><td class="email-divider" style="padding:0;"></td></tr>
+        <tr>
+          <td style="padding:12px 24px 16px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:0;font-weight:600;">Plan Price</td><td class="email-heading" style="padding:0;font-weight:700;text-align:right;">${planPriceLabel}</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:18px 24px;text-align:center;">
+            <p class="email-subtext" style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;">Amount Due</p>
+            <p class="email-heading" style="margin:0;font-size:28px;font-weight:700;">${amountDueValue}</p>
+            <p class="email-subtext" style="margin:2px 0 0;font-size:12px;font-weight:600;letter-spacing:0.5px;">${amountDueCurrency}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;text-align:center;">
+      <a href="${paymentLinkUrl}" style="display:inline-block;background:#0BA9EF;color:#ffffff;font-weight:600;font-size:14px;text-decoration:none;padding:13px 32px;border-radius:8px;">Complete Payment &#8594;</a>
+      <p class="email-subtext" style="margin:12px 0 0;font-size:12px;">Securely complete your payment to activate your ${planDisplayName} Plan.</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 16px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">What Happens Next?</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">1</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Payment</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">2</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Confirmation</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">3</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Plan Active</p>
+          </td>
+          <td style="width:4%;text-align:center;color:#8a93a3;font-size:13px;">&#8594;</td>
+          <td style="width:22%;text-align:center;">
+            <span style="display:inline-block;width:22px;height:22px;line-height:22px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:12px;font-weight:600;">4</span>
+            <p class="email-text" style="margin:6px 0 0;font-size:12px;font-weight:600;">Get Started</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:14px 18px;">
+            <p class="email-heading" style="margin:0 0 6px;font-size:13px;font-weight:600;">&#128274; Secure Payment</p>
+            <p class="email-subtext" style="margin:0 0 4px;font-size:12px;line-height:1.6;">Your payment is processed securely through our authorized payment partner.</p>
+            <p class="email-subtext" style="margin:0;font-size:12px;line-height:1.6;">Never share your OTP, password, CVV, or PIN.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+
 const buildPlanSubscriptionPaymentEmail = ({
   customerName,
   companyName,
@@ -288,74 +639,140 @@ const buildPlanSubscriptionPaymentEmail = ({
   paymentLinkUrl,
   amount,
   currency,
+  requestId,
 }) => {
-  const formattedAmount =
-    amount === undefined || amount === null
-      ? null
-      : new Intl.NumberFormat("en-IN", {
-          style: "currency",
-          currency: String(currency || "USD").toUpperCase(),
-          maximumFractionDigits: 2,
-        }).format(amount);
+  const planData = planInfo(planKeyFromLabel(planLabel));
+  const amountDueValue =
+    amount === undefined || amount === null ? "-" : `$${Number(amount).toFixed(2)}`;
+  const amountDueCurrency = String(currency || "usd").toUpperCase();
 
   return {
-    subject: `Complete your payment for the WONO ${planLabel || "plan"}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
-        <h2 style="color: #2563eb;">Complete Your Payment</h2>
-
-        <p>Hello ${customerName},</p>
-
-        <p>
-          Thank you for choosing WONO's HostPanel. Please complete the payment below to
-          activate your ${planLabel || "plan"} subscription${companyName ? ` for ${companyName}` : ""}.
-        </p>
-
-        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Company:</strong> ${companyName || "N/A"}</p>
-          <p><strong>Plan:</strong> ${planLabel || "N/A"}</p>
-          ${formattedAmount ? `<p><strong>Amount due:</strong> ${formattedAmount}</p>` : ""}
-        </div>
-
-        <div style="text-align: center; margin: 30px 0;">
-          <a
-            href="${paymentLinkUrl}"
-            target="_blank"
-            style="
-              background-color: #2563eb;
-              color: #ffffff;
-              padding: 12px 24px;
-              text-decoration: none;
-              border-radius: 6px;
-              display: inline-block;
-              font-weight: 600;
-            "
-          >
-            Pay Now
-          </a>
-        </div>
-
-        <p>
-          If the button does not work, copy and paste this URL into your browser:
-        </p>
-
-        <p>
-          <a href="${paymentLinkUrl}">${paymentLinkUrl}</a>
-        </p>
-
-        <p>Regards,<br />WONO Team</p>
-      </div>
-    `,
+    subject: "Complete Your Payment",
+    html: renderNotificationEmail({
+      heroTitle: "Complete Your Payment",
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Activate Your ${planData.label} Plan</span><br/>Your plan is ready. Complete your payment to activate your access.`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Thank you for choosing WONO. Your <b class="email-heading">${planData.label} Plan</b> request has been received and is ready for payment.</p>
+      `,
+      bodyHtml: buildSubscriptionSummaryBody({
+        companyName: companyName || "-",
+        planDisplayName: planData.label.toUpperCase(),
+        billingCycle: planData.billingCycle,
+        requestId,
+        planPriceLabel: planData.priceLabel,
+        amountDueValue,
+        amountDueCurrency,
+        paymentLinkUrl,
+      }),
+    }),
   };
 };
+
+const buildBookingConfirmationBody = ({
+  bookingId,
+  companyName,
+  productType,
+  location,
+  startDateLabel,
+  endDateLabel,
+  noOfPeople,
+  formattedAmount,
+  paymentDateLabel,
+  invoiceNumber,
+  paymentMethod,
+}) => `
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Booking Details</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:16px 24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Booking ID</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">${bookingId}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Workspace</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${companyName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Booking Type</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${productType}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Location</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${location}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Start Date</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${startDateLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">End Date</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${endDateLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Guests</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${noOfPeople}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Booking Status</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">&#10003; Confirmed</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Payment Summary</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:16px 24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Payment Status</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">&#10003; Paid</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Amount Paid</td><td class="email-heading email-divider" style="padding:8px 0;font-weight:700;text-align:right;">${formattedAmount}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Payment Date</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${paymentDateLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Invoice Number</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${invoiceNumber}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Payment Method</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${paymentMethod}</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">What Happens Next?</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:13px;">
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:11px;font-weight:600;text-align:center;">1</span>
+          </td>
+          <td style="padding:6px 0;font-weight:600;">Booking Confirmed &#10003;</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:11px;font-weight:600;text-align:center;">2</span>
+          </td>
+          <td style="padding:6px 0;font-weight:600;">Keep Your Booking ID Handy</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0;width:26px;vertical-align:top;">
+            <span style="display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#e5f4fd;color:#0BA9EF;font-size:11px;font-weight:600;text-align:center;">3</span>
+          </td>
+          <td style="padding:6px 0;font-weight:600;">Get Ready For Your Visit</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Your Invoice</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:14px 18px;text-align:center;">
+            <p class="email-subtext" style="margin:0;font-size:12px;line-height:1.6;">Your payment invoice is attached to this email as a PDF for your records.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
 
 const buildBookingConfirmationEmail = ({
   customerName,
   companyName,
   productType,
+  bookingId,
+  location,
+  startDate,
+  endDate,
+  noOfPeople,
   amount,
   currency,
+  paidAt,
   invoiceNumber,
+  paymentMethod,
 }) => {
   const formattedAmount = new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -364,42 +781,90 @@ const buildBookingConfirmationEmail = ({
   }).format(amount || 0);
 
   return {
-    subject: "Your WONO booking is confirmed",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
-        <h2 style="color: #059669;">Booking Confirmed</h2>
-
-        <p>Hello ${customerName},</p>
-
-        <p>
-          Thank you — your payment has been received and your ${productType || "booking"}
-          with WONO${companyName ? ` (${companyName})` : ""} is now confirmed.
-        </p>
-
-        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Amount Paid:</strong> ${formattedAmount}</p>
-          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
-        </div>
-
-        <p>Your invoice is attached to this email as a PDF for your records.</p>
-
-        <p>Regards,<br />WONO Team</p>
-      </div>
-    `,
+    subject: "Booking Confirmed!",
+    html: renderNotificationEmail({
+      heroTitle: "Booking Confirmed!",
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${companyName || "WONO"} Reservation Is Confirmed</span>`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Thank you for your payment. Your <b class="email-heading">${companyName || "WONO"}</b> ${productType || "booking"} has been successfully confirmed.</p>
+        <p class="email-text" style="margin:8px 0 0;">We've included your booking and payment details below for easy reference.</p>
+      `,
+      bodyHtml: buildBookingConfirmationBody({
+        bookingId: bookingId || "-",
+        companyName: companyName || "-",
+        productType: productType || "-",
+        location: location || "-",
+        startDateLabel: formatLongDate(startDate),
+        endDateLabel: formatLongDate(endDate),
+        noOfPeople: noOfPeople ? `${noOfPeople} People` : "-",
+        formattedAmount,
+        paymentDateLabel: formatLongDate(paidAt || new Date()),
+        invoiceNumber,
+        paymentMethod: paymentMethod || "-",
+      }),
+    }),
   };
 };
 
 // For Signup Leads plan payments (Professional/Custom) — the payer is
 // subscribing to the HostPanel SaaS platform, not booking a physical
 // coworking service, so this must not use "booking" language.
+const buildPlanSubscriptionConfirmationBody = ({
+  companyName,
+  planLabel,
+  formattedAmount,
+  paymentDateLabel,
+  invoiceNumber,
+  paymentMethod,
+  requestId,
+}) => `
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Payment Summary</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:16px 24px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;">
+              <tr><td class="email-label" style="padding:8px 0;width:45%;">Company</td><td class="email-value" style="padding:8px 0;font-weight:500;text-align:right;">${companyName}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Plan</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${planLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Request ID</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${requestId}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Payment Status</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">&#10003; Paid</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Amount Paid</td><td class="email-heading email-divider" style="padding:8px 0;font-weight:700;text-align:right;">${formattedAmount}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Payment Date</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${paymentDateLabel}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Invoice Number</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${invoiceNumber}</td></tr>
+              <tr><td class="email-label email-divider" style="padding:8px 0;">Payment Method</td><td class="email-value email-divider" style="padding:8px 0;font-weight:500;text-align:right;">${paymentMethod}</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:28px 32px 4px;">
+      <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;text-align:center;">Your Invoice</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-detail-bg" style="border-radius:10px;border-width:1px;border-style:solid;">
+        <tr>
+          <td style="padding:14px 18px;text-align:center;">
+            <p class="email-subtext" style="margin:0;font-size:12px;line-height:1.6;">Your payment invoice is attached to this email as a PDF for your records.</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>`;
+
 const buildPlanSubscriptionConfirmationEmail = ({
   customerName,
   companyName,
   planLabel,
   amount,
   currency,
+  paidAt,
   invoiceNumber,
+  paymentMethod,
+  requestId,
 }) => {
+  const planData = planInfo(planKeyFromLabel(planLabel));
   const formattedAmount = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: String(currency || "USD").toUpperCase(),
@@ -407,30 +872,24 @@ const buildPlanSubscriptionConfirmationEmail = ({
   }).format(amount || 0);
 
   return {
-    subject: `Your WONO ${planLabel || "plan"} payment is confirmed`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; color: #1f2937;">
-        <h2 style="color: #059669;">Payment Confirmed</h2>
-
-        <p>Hello ${customerName},</p>
-
-        <p>
-          Thank you — we've received your payment for the WONO ${planLabel || "plan"}${companyName ? ` for ${companyName}` : ""}.
-          Your HostPanel subscription is now active.
-        </p>
-
-        <div style="background: #f0fdf4; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <p><strong>Amount Paid:</strong> ${formattedAmount}</p>
-          <p><strong>Invoice Number:</strong> ${invoiceNumber}</p>
-        </div>
-
-        <p>Our team will be in touch shortly with your HostPanel setup and login details.</p>
-
-        <p>Your invoice is attached to this email as a PDF for your records.</p>
-
-        <p>Regards,<br />WONO Team</p>
-      </div>
-    `,
+    subject: "Payment Successful!",
+    html: renderNotificationEmail({
+      heroTitle: "Payment Successful!",
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${planData.label} Plan Payment Is Confirmed</span><br/>Thank you for your payment.`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">We've received your payment for the <b class="email-heading">${planData.label} Plan</b>${companyName ? ` for <b class="email-heading">${companyName}</b>` : ""}. Our team will be in touch shortly with your setup.</p>
+      `,
+      bodyHtml: buildPlanSubscriptionConfirmationBody({
+        companyName: companyName || "-",
+        planLabel: planData.label,
+        formattedAmount,
+        paymentDateLabel: formatLongDate(paidAt || new Date()),
+        invoiceNumber,
+        paymentMethod: paymentMethod || "-",
+        requestId: requestId || "-",
+      }),
+    }),
   };
 };
 
@@ -1738,10 +2197,15 @@ const sendInviteEmail = async (req, res, next) => {
 
     const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
     const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
+    const totalInvites = await HostLeadCompany.countDocuments({});
+    const requestId = `WN-ACT-${referenceDateStamp()}-${String(
+      totalInvites,
+    ).padStart(5, "0")}`;
     const signupMail = buildSignupInviteEmail({
       name,
       companyName,
       inviteLink,
+      requestId,
     });
     await sendMail({ to: email, ...signupMail });
 
@@ -2737,7 +3201,8 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
 
 const sendUpgradePaymentLinkEmail = async (req, res, next) => {
   try {
-    const { email, name, companyName, selectedPlan, paymentLinkUrl } = req.body || {};
+    const { email, name, companyName, currentPlan, selectedPlan, paymentLinkUrl } =
+      req.body || {};
 
     if (!email || !name || !paymentLinkUrl) {
       return res.status(400).json({
@@ -2745,11 +3210,18 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
       });
     }
 
+    const totalUpgradeRequests = await HostCompany.countDocuments({});
+    const requestId = `WN-UPG-${referenceDateStamp()}-${String(
+      totalUpgradeRequests,
+    ).padStart(5, "0")}`;
+
     const paymentMail = buildUpgradePaymentEmail({
       name,
       companyName,
+      currentPlan,
       selectedPlan: String(selectedPlan || "requested").trim(),
       paymentLinkUrl: String(paymentLinkUrl).trim(),
+      requestId,
     });
 
     await sendMail({
@@ -2767,7 +3239,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
 
 const sendUpgradeSuccessEmail = async (req, res, next) => {
   try {
-    const { email, name, companyName, selectedPlan } = req.body || {};
+    const { email, name, companyId, companyName, selectedPlan } = req.body || {};
 
     if (!email || !name) {
       return res.status(400).json({
@@ -2775,12 +3247,18 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
       });
     }
 
-    const loginUrl = `${resolveHostPanelFrontendUrl()}/login`;
+    const leadCompany = companyId
+      ? await HostLeadCompany.findOne({ companyId: String(companyId).trim() }).lean()
+      : null;
+
+    const dashboardUrl = `${resolveHostPanelFrontendUrl()}/login`;
     const successMail = buildUpgradeSuccessEmail({
       name,
       companyName,
-      selectedPlan: String(selectedPlan || "requested").trim(),
-      loginUrl,
+      previousPlan: leadCompany?.previousPlan,
+      selectedPlan: String(selectedPlan || leadCompany?.plan || "requested").trim(),
+      effectiveDate: leadCompany?.paymentConfirmedAt,
+      dashboardUrl,
     });
 
     await sendMail({
@@ -2807,6 +3285,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       startDate,
       endDate,
       noOfPeople,
+      location,
       amount,
       currency,
       description,
@@ -2852,12 +3331,23 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       ],
     });
 
+    const resolvedBookingId =
+      resolvedPaymentType === "plan_subscription" ? undefined : generateBookingId(companyName);
+    const resolvedRegistrationId =
+      resolvedPaymentType === "plan_subscription" ? generateRegistrationId() : undefined;
+
     await BookingPaymentLink.create({
       leadId,
       leadEmail: customerEmail,
       leadName: customerName,
+      bookingId: resolvedBookingId,
+      registrationId: resolvedRegistrationId,
       companyName,
       productType,
+      location,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      noOfPeople: noOfPeople != null && noOfPeople !== "" ? Number(noOfPeople) : null,
       description,
       paymentType: resolvedPaymentType,
       amount: numericAmount,
@@ -2874,6 +3364,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
           paymentLinkUrl: paymentLink.url,
           amount: numericAmount,
           currency: resolvedCurrency,
+          requestId: resolvedRegistrationId,
         })
       : buildBookingPaymentEmail({
           customerName,
@@ -2974,7 +3465,13 @@ const handleStripeWebhook = async (req, res) => {
             }),
             customerName: updated.leadName,
             customerEmail: updated.leadEmail,
+            bookingId: updated.bookingId,
+            registrationId: updated.registrationId,
             companyName: updated.companyName,
+            productType: updated.productType,
+            startDate: updated.startDate,
+            endDate: updated.endDate,
+            noOfPeople: updated.noOfPeople,
             description: updated.description || updated.productType,
             amount: updated.amount,
             currency: updated.currency,
@@ -2988,15 +3485,29 @@ const handleStripeWebhook = async (req, res) => {
                 planLabel: updated.productType,
                 amount: updated.amount,
                 currency: updated.currency,
+                paidAt: updated.paidAt,
                 invoiceNumber,
+                requestId: updated.bookingId,
+                paymentMethod: session.payment_method_types?.[0]
+                  ? session.payment_method_types[0].replace(/^\w/, (c) => c.toUpperCase())
+                  : undefined,
               })
             : buildBookingConfirmationEmail({
                 customerName: updated.leadName,
                 companyName: updated.companyName,
                 productType: updated.productType,
+                bookingId: updated.bookingId,
+                location: updated.location,
+                startDate: updated.startDate,
+                endDate: updated.endDate,
+                noOfPeople: updated.noOfPeople,
                 amount: updated.amount,
                 currency: updated.currency,
+                paidAt: updated.paidAt,
                 invoiceNumber,
+                paymentMethod: session.payment_method_types?.[0]
+                  ? session.payment_method_types[0].replace(/^\w/, (c) => c.toUpperCase())
+                  : undefined,
               });
 
           await sendMail({
