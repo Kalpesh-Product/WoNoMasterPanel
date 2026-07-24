@@ -33,6 +33,7 @@ const inclusionOptions = [
   "Housekeeping",
   "Community",
   "Meeting Room",
+  "Swimming Pool",
 ];
 
 // Dummy company types
