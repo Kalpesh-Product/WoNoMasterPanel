@@ -35,6 +35,13 @@ const {
   createCompanyListing,
   editCompanyListing,
 } = require("../controllers/hostListingControllers");
+const {
+  getCompanyUnits,
+  getCompanyRecoveryQueue,
+  setUnitActiveStatus,
+  deleteUnit,
+  recoverUnit,
+} = require("../controllers/hostCompanyControllers/unitManagementControllers");
 
 //company
 router.post(
@@ -73,6 +80,13 @@ router.post(
 );
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);
+
+//unit (workspace) management
+router.get("/units", getCompanyUnits);
+router.get("/units/recovery-queue", getCompanyRecoveryQueue);
+router.patch("/units/:workspaceId/status", setUnitActiveStatus);
+router.delete("/units/:workspaceId", deleteUnit);
+router.post("/units/:workspaceId/recover", recoverUnit);
 
 //listing
 router.post(
