@@ -47,6 +47,21 @@ const workspaceSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Soft-delete fields, mirrored from HostPanel's real Workspace schema
+    // (server/models/Workspace.ts) so the master panel can read/write them
+    // directly on the shared collection.
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
+    recoveryRequestedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

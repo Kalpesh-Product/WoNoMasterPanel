@@ -198,6 +198,7 @@ import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/Wono
 import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadReviews";
 import NomadsLeads from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadsLeads";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import UnitsManagement from "../pages/Dashboard/FrontendDashboard/UnitsManagement";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
 // import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
@@ -631,6 +632,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/module-access",
                         element: <ModuleAccess />,
+                      },
+                      {
+                        path: ":companyId/units",
+                        element: <UnitsManagement />,
                       },
                       {
                         path: ":companyId/wono-nomads",
