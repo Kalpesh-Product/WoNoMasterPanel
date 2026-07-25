@@ -2178,6 +2178,12 @@ const sendInviteEmail = async (req, res, next) => {
       fullName: fullName || name,
       name: fullName || name,
       email,
+      // Without this, HostPanel registration has no way to link back to the
+      // lead row upserted above and mints its own companyId on setup —
+      // leaving this row orphaned and creating a second, duplicate company
+      // for the same host (visible in Host Companies with mismatched plans).
+      companyId,
+      leadId: companyId,
       selectedPlan: normalizedPlan,
       goals: normalizedPlan,
       companyName: companyName || "",
