@@ -99,7 +99,15 @@ const normalizeMapUrl = (rawValue) => {
 };
 
 const resolveUsableCompanyName = (...candidates) => {
-  const invalid = new Set(["n/a", "na", "none", "undefined", "null", "-", "unknown"]);
+  const invalid = new Set([
+    "n/a",
+    "na",
+    "none",
+    "undefined",
+    "null",
+    "-",
+    "unknown",
+  ]);
   for (const candidate of candidates) {
     const value = String(candidate || "").trim();
     if (!value) continue;
@@ -150,7 +158,9 @@ const normalizeSocials = (value = {}) =>
 const normalizePageNavItems = (items = []) =>
   (Array.isArray(items) ? items : []).map((item) => ({
     name: String(item?.name || "").trim(),
-    slug: String(item?.slug || "").trim().toLowerCase(),
+    slug: String(item?.slug || "")
+      .trim()
+      .toLowerCase(),
     enabled: toBool(item?.enabled, true),
     pageHeading: String(item?.pageHeading || "").trim(),
     pageIntro: String(item?.pageIntro || "").trim(),
@@ -162,11 +172,15 @@ const normalizeProductDropdownPages = (items = []) =>
   (Array.isArray(items) ? items : []).map((item) => {
     const page = {
       name: String(item?.name || "").trim(),
-      slug: String(item?.slug || "").trim().toLowerCase(),
+      slug: String(item?.slug || "")
+        .trim()
+        .toLowerCase(),
       enabled: toBool(item?.enabled, true),
       heroHeading: String(item?.heroHeading || "").trim(),
       heroSubHeading: String(item?.heroSubHeading || "").trim(),
-      heroMode: String(item?.heroMode || "single").trim().toLowerCase(),
+      heroMode: String(item?.heroMode || "single")
+        .trim()
+        .toLowerCase(),
       heroImages: Array.isArray(item?.heroImages)
         ? item.heroImages
             .map((img) => ({
@@ -283,8 +297,11 @@ const buildPublishedSnapshot = (template) => {
 const serializeWebsiteTemplateForClient = (template) => {
   const payload = template?.toObject ? template.toObject() : { ...template };
   payload.mapUrl = normalizeMapUrl(payload.mapUrl);
-    payload.companyName =
-    resolveUsableCompanyName(payload.companyName, payload.registeredCompanyName) ||
+  payload.companyName =
+    resolveUsableCompanyName(
+      payload.companyName,
+      payload.registeredCompanyName,
+    ) ||
     payload.searchKey ||
     "";
   payload.socials = normalizeSocials(payload.socials);
@@ -326,7 +343,9 @@ const serializeWebsiteTemplateForClient = (template) => {
 };
 
 const buildTemplateLookupByCompanyAndVertical = (searchKey, vertical) => {
-  const normalizedSearchKey = String(searchKey || "").trim().toLowerCase();
+  const normalizedSearchKey = String(searchKey || "")
+    .trim()
+    .toLowerCase();
   return { searchKey: normalizedSearchKey };
 };
 
@@ -345,16 +364,23 @@ const buildStrictTemplateLookupByCompanyAndVertical = (
   if (normalizedCompanyId) {
     return { companyId: normalizedCompanyId };
   }
-  const normalizedSearchKey = String(searchKey || "").trim().toLowerCase();
+  const normalizedSearchKey = String(searchKey || "")
+    .trim()
+    .toLowerCase();
   return { searchKey: normalizedSearchKey };
 };
 
 const getFirstDayOfNextMonthUtc = () => {
   const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0),
+  );
 };
 
-const deductWorkspaceCreditOnSuccess = async ({ workspaceId, companyId } = {}) => {
+const deductWorkspaceCreditOnSuccess = async ({
+  workspaceId,
+  companyId,
+} = {}) => {
   const normalizedWorkspaceId = String(workspaceId || "").trim();
   const normalizedCompanyId = String(companyId || "").trim();
   if (!normalizedWorkspaceId && !normalizedCompanyId) return;
@@ -403,7 +429,7 @@ const creditsRemainingOf = (subscription) => {
   return Math.max(0, limit - Number(subscription.creditsUsed || 0));
 };
 
-const NOMADS_BASE_URL = "https://wononomadsbe.vercel.app";
+const NOMADS_BASE_URL = "http://localhost:3000";
 
 const safeNum = (value, fallback = 0) => {
   const num = Number(value);
@@ -508,9 +534,13 @@ const ensureNomadsCompanyRecord = async ({
   };
 
   try {
-    await axios.post(`${NOMADS_BASE_URL}/api/company/create-company`, nomadsPayload, {
-      timeout: 15000,
-    });
+    await axios.post(
+      `${NOMADS_BASE_URL}/api/company/create-company`,
+      nomadsPayload,
+      {
+        timeout: 15000,
+      },
+    );
     console.log("Nomads company auto-created", {
       companyName: resolvedCompanyName,
       companyId: nomadsPayload.companyId,
@@ -597,9 +627,11 @@ const saveTemplateDraft = async (req, res) => {
     template.searchKey = searchKey;
     template.companyName = resolvedCompanyName;
     template.companyId =
-      String(req.body?.companyId || template.companyId || "").trim() || undefined;
+      String(req.body?.companyId || template.companyId || "").trim() ||
+      undefined;
     template.workspaceId =
-      String(req.body?.workspaceId || template.workspaceId || "").trim() || null;
+      String(req.body?.workspaceId || template.workspaceId || "").trim() ||
+      null;
     template.themeId = themeId;
     template.activeSections = activeSections;
     template.isActive = true;
@@ -678,7 +710,9 @@ const saveTemplateDraft = async (req, res) => {
         ? normalizePageNavItems(draftData.pageNavItems)
         : template.pageNavItems;
     if (draftData?.productDropdownPages !== undefined) {
-      const normalizedPages = normalizeProductDropdownPages(draftData.productDropdownPages);
+      const normalizedPages = normalizeProductDropdownPages(
+        draftData.productDropdownPages,
+      );
       template.productDropdownPages = normalizedPages.map((page, index) => {
         const existing = template.productDropdownPages?.[index] || {};
         return {
@@ -784,11 +818,11 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.products.map((item, index) => {
           const existing = template.products?.[index];
           return {
-          type: String(item?.type || "").trim(),
-          name: String(item?.name || "").trim(),
-          cost: String(item?.cost || "").trim(),
-          description: String(item?.description || "").trim(),
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            type: String(item?.type || "").trim(),
+            name: String(item?.name || "").trim(),
+            cost: String(item?.cost || "").trim(),
+            description: String(item?.description || "").trim(),
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : template.products;
@@ -810,11 +844,11 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.rooms.map((item, index) => {
           const existing = template.rooms?.[index];
           return {
-          title: String(item?.title || "").trim(),
-          description: String(item?.description || "").trim(),
-          price: String(item?.price || "").trim(),
-          enabled: item?.enabled !== false,
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            title: String(item?.title || "").trim(),
+            description: String(item?.description || "").trim(),
+            price: String(item?.price || "").trim(),
+            enabled: item?.enabled !== false,
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : template.rooms;
@@ -822,22 +856,22 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.meetingRooms.map((item, index) => {
           const existing = template.meetingRooms?.[index];
           return {
-          title: String(item?.title || "").trim(),
-          description: String(item?.description || "").trim(),
-          price: String(item?.price || "").trim(),
-          enabled: item?.enabled !== false,
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            title: String(item?.title || "").trim(),
+            description: String(item?.description || "").trim(),
+            price: String(item?.price || "").trim(),
+            enabled: item?.enabled !== false,
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : Array.isArray(draftData?.rooms)
         ? draftData.rooms.map((item, index) => {
             const existing = template.meetingRooms?.[index];
             return {
-            title: String(item?.title || "").trim(),
-            description: String(item?.description || "").trim(),
-            price: String(item?.price || "").trim(),
-            enabled: item?.enabled !== false,
-            images: Array.isArray(existing?.images) ? existing.images : [],
+              title: String(item?.title || "").trim(),
+              description: String(item?.description || "").trim(),
+              price: String(item?.price || "").trim(),
+              enabled: item?.enabled !== false,
+              images: Array.isArray(existing?.images) ? existing.images : [],
             };
           })
         : template.meetingRooms;
@@ -845,11 +879,11 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.coLivingRooms.map((item, index) => {
           const existing = template.coLivingRooms?.[index];
           return {
-          title: String(item?.title || "").trim(),
-          description: String(item?.description || "").trim(),
-          price: String(item?.price || "").trim(),
-          enabled: item?.enabled !== false,
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            title: String(item?.title || "").trim(),
+            description: String(item?.description || "").trim(),
+            price: String(item?.price || "").trim(),
+            enabled: item?.enabled !== false,
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : template.coLivingRooms;
@@ -857,12 +891,12 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.packages.map((item, index) => {
           const existing = template.packages?.[index];
           return {
-          title: String(item?.title || "").trim(),
-          description: String(item?.description || "").trim(),
-          price: String(item?.price || "").trim(),
-          duration: String(item?.duration || "").trim(),
-          enabled: item?.enabled !== false,
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            title: String(item?.title || "").trim(),
+            description: String(item?.description || "").trim(),
+            price: String(item?.price || "").trim(),
+            duration: String(item?.duration || "").trim(),
+            enabled: item?.enabled !== false,
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : template.packages;
@@ -870,21 +904,19 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.dorms.map((item, index) => {
           const existing = template.dorms?.[index];
           return {
-          title: String(item?.title || "").trim(),
-          description: String(item?.description || "").trim(),
-          price: String(item?.price || "").trim(),
-          capacity: toNum(item?.capacity, 0),
-          enabled: item?.enabled !== false,
-          images: Array.isArray(existing?.images) ? existing.images : [],
+            title: String(item?.title || "").trim(),
+            description: String(item?.description || "").trim(),
+            price: String(item?.price || "").trim(),
+            capacity: toNum(item?.capacity, 0),
+            enabled: item?.enabled !== false,
+            images: Array.isArray(existing?.images) ? existing.images : [],
           };
         })
       : template.dorms;
     template.testimonials = Array.isArray(draftData?.testimonials)
       ? draftData.testimonials.map((item) => ({
           name: String(item?.name || "").trim(),
-          jobPosition: String(
-            item?.jobPosition || item?.role || "",
-          ).trim(),
+          jobPosition: String(item?.jobPosition || item?.role || "").trim(),
           testimony: String(item?.testimony || item?.text || "").trim(),
           rating: toNum(item?.rating, 5),
         }))
@@ -908,47 +940,74 @@ const saveTemplateDraft = async (req, res) => {
       template.logoCarousel = {
         enabled: toBool(draftData.logoCarousel?.enabled, false),
         title: String(draftData.logoCarousel?.title || "").trim(),
-        logos: Array.isArray(template.logoCarousel?.logos) ? template.logoCarousel.logos : [],
+        logos: Array.isArray(template.logoCarousel?.logos)
+          ? template.logoCarousel.logos
+          : [],
       };
     }
 
     // Partner page fields
     if (draftData?.partnerPageHeading !== undefined) {
-      template.partnerPageHeading = String(draftData.partnerPageHeading || "").trim();
+      template.partnerPageHeading = String(
+        draftData.partnerPageHeading || "",
+      ).trim();
     }
     if (draftData?.partnerPageContent !== undefined) {
-      template.partnerPageContent = String(draftData.partnerPageContent || "").trim();
+      template.partnerPageContent = String(
+        draftData.partnerPageContent || "",
+      ).trim();
     }
     if (draftData?.partnerFormTitle !== undefined) {
-      template.partnerFormTitle = String(draftData.partnerFormTitle || "").trim();
+      template.partnerFormTitle = String(
+        draftData.partnerFormTitle || "",
+      ).trim();
     }
 
     // Careers page
     if (draftData?.careersPageHeading !== undefined) {
-      template.careersPageHeading = String(draftData.careersPageHeading || "").trim();
+      template.careersPageHeading = String(
+        draftData.careersPageHeading || "",
+      ).trim();
     }
     if (draftData?.careersPageIntro !== undefined) {
-      template.careersPageIntro = String(draftData.careersPageIntro || "").trim();
+      template.careersPageIntro = String(
+        draftData.careersPageIntro || "",
+      ).trim();
     }
     if (draftData?.careersHeroButtonText !== undefined) {
-      template.careersHeroButtonText = String(draftData.careersHeroButtonText || "").trim();
+      template.careersHeroButtonText = String(
+        draftData.careersHeroButtonText || "",
+      ).trim();
     }
     if (draftData?.careersClosingHeading !== undefined) {
-      template.careersClosingHeading = String(draftData.careersClosingHeading || "").trim();
+      template.careersClosingHeading = String(
+        draftData.careersClosingHeading || "",
+      ).trim();
     }
     if (draftData?.careersClosingText !== undefined) {
-      template.careersClosingText = String(draftData.careersClosingText || "").trim();
+      template.careersClosingText = String(
+        draftData.careersClosingText || "",
+      ).trim();
     }
     if (draftData?.careersApplyButtonText !== undefined) {
-      template.careersApplyButtonText = String(draftData.careersApplyButtonText || "").trim();
+      template.careersApplyButtonText = String(
+        draftData.careersApplyButtonText || "",
+      ).trim();
     }
     if (draftData?.careersApplyButtonLink !== undefined) {
-      template.careersApplyButtonLink = String(draftData.careersApplyButtonLink || "").trim();
+      template.careersApplyButtonLink = String(
+        draftData.careersApplyButtonLink || "",
+      ).trim();
     }
     if (draftData?.careersFormFields !== undefined) {
-      template.careersFormFields = typeof draftData.careersFormFields === "string"
-        ? String(draftData.careersFormFields || "[]").trim()
-        : JSON.stringify(Array.isArray(draftData.careersFormFields) ? draftData.careersFormFields : []);
+      template.careersFormFields =
+        typeof draftData.careersFormFields === "string"
+          ? String(draftData.careersFormFields || "[]").trim()
+          : JSON.stringify(
+              Array.isArray(draftData.careersFormFields)
+                ? draftData.careersFormFields
+                : [],
+            );
     }
 
     // Founders (text only — images handled via filesByField below)
@@ -971,7 +1030,9 @@ const saveTemplateDraft = async (req, res) => {
     const uploadImagesForDraft = async (files = [], folder, limit = 10) => {
       const uploaded = [];
       for (const file of files.slice(0, limit)) {
-        const buffer = await sharp(file.buffer).webp({ quality: 80 }).toBuffer();
+        const buffer = await sharp(file.buffer)
+          .webp({ quality: 80 })
+          .toBuffer();
         const route = `${folder}/${Date.now()}_${file.originalname.replace(/\s+/g, "_")}`;
         const data = await uploadFileToS3(route, {
           buffer,
@@ -1026,8 +1087,12 @@ const saveTemplateDraft = async (req, res) => {
         `${baseFolder}/logoCarousel`,
         12,
       );
-      if (!template.logoCarousel) template.logoCarousel = { enabled: false, title: "", logos: [] };
-      template.logoCarousel.logos = [...(template.logoCarousel.logos || []), ...uploaded];
+      if (!template.logoCarousel)
+        template.logoCarousel = { enabled: false, title: "", logos: [] };
+      template.logoCarousel.logos = [
+        ...(template.logoCarousel.logos || []),
+        ...uploaded,
+      ];
     }
 
     if (filesByField.aboutPageImages?.length) {
@@ -1036,7 +1101,10 @@ const saveTemplateDraft = async (req, res) => {
         `${baseFolder}/aboutPageImages`,
         20,
       );
-      template.aboutPageImages = [...(template.aboutPageImages || []), ...uploaded];
+      template.aboutPageImages = [
+        ...(template.aboutPageImages || []),
+        ...uploaded,
+      ];
     }
 
     // Upload team-member (about page) card images sent as aboutPageImageCardImage_<index>.
@@ -1044,7 +1112,8 @@ const saveTemplateDraft = async (req, res) => {
     if (Array.isArray(template.aboutPageImageCards)) {
       let cardImageChanged = false;
       for (let i = 0; i < template.aboutPageImageCards.length; i++) {
-        const cardFile = (filesByField[`aboutPageImageCardImage_${i}`] || [])[0];
+        const cardFile = (filesByField[`aboutPageImageCardImage_${i}`] ||
+          [])[0];
         if (cardFile) {
           const uploaded = await uploadImagesForDraft(
             [cardFile],
@@ -1077,21 +1146,24 @@ const saveTemplateDraft = async (req, res) => {
 
         const heroImages = filesByField[`productPageHeroImages_${i}`] || [];
         if (heroImages.length) {
-          template.productDropdownPages[i].heroImages = await uploadImagesForDraft(
-            heroImages,
-            `${baseFolder}/productPageHeroImages/${i}`,
-            5,
-          );
+          template.productDropdownPages[i].heroImages =
+            await uploadImagesForDraft(
+              heroImages,
+              `${baseFolder}/productPageHeroImages/${i}`,
+              5,
+            );
         }
 
-        const homeCardImage = (filesByField[`productPageHomeCardImage_${i}`] || [])[0];
+        const homeCardImage = (filesByField[`productPageHomeCardImage_${i}`] ||
+          [])[0];
         if (homeCardImage) {
           const uploaded = await uploadImagesForDraft(
             [homeCardImage],
             `${baseFolder}/productPageHomeCardImage/${i}`,
             1,
           );
-          template.productDropdownPages[i].homeCardImage = uploaded[0] || undefined;
+          template.productDropdownPages[i].homeCardImage =
+            uploaded[0] || undefined;
         }
       }
     }
@@ -1111,7 +1183,8 @@ const saveTemplateDraft = async (req, res) => {
           1,
         );
         if (!template.menuItems[idx]) template.menuItems[idx] = {};
-        template.menuItems[idx].image = uploaded[0] || template.menuItems[idx].image;
+        template.menuItems[idx].image =
+          uploaded[0] || template.menuItems[idx].image;
         continue;
       }
 
@@ -1147,11 +1220,17 @@ const saveTemplateDraft = async (req, res) => {
         target.images = [...existing, ...uploaded];
         draftData.meetingRooms = meetingRooms;
         if (!Array.isArray(template.meetingRooms)) template.meetingRooms = [];
-        if (!template.meetingRooms[itemIdx]) template.meetingRooms[itemIdx] = {};
-        const templateExisting = Array.isArray(template.meetingRooms[itemIdx].images)
+        if (!template.meetingRooms[itemIdx])
+          template.meetingRooms[itemIdx] = {};
+        const templateExisting = Array.isArray(
+          template.meetingRooms[itemIdx].images,
+        )
           ? template.meetingRooms[itemIdx].images
           : [];
-        template.meetingRooms[itemIdx].images = [...templateExisting, ...uploaded];
+        template.meetingRooms[itemIdx].images = [
+          ...templateExisting,
+          ...uploaded,
+        ];
         continue;
       }
 
@@ -1219,11 +1298,17 @@ const saveTemplateDraft = async (req, res) => {
         target.images = [...existing, ...uploaded];
         draftData.coLivingRooms = coLivingRooms;
         if (!Array.isArray(template.coLivingRooms)) template.coLivingRooms = [];
-        if (!template.coLivingRooms[itemIdx]) template.coLivingRooms[itemIdx] = {};
-        const templateExisting = Array.isArray(template.coLivingRooms[itemIdx].images)
+        if (!template.coLivingRooms[itemIdx])
+          template.coLivingRooms[itemIdx] = {};
+        const templateExisting = Array.isArray(
+          template.coLivingRooms[itemIdx].images,
+        )
           ? template.coLivingRooms[itemIdx].images
           : [];
-        template.coLivingRooms[itemIdx].images = [...templateExisting, ...uploaded];
+        template.coLivingRooms[itemIdx].images = [
+          ...templateExisting,
+          ...uploaded,
+        ];
       }
     }
 
@@ -1239,7 +1324,10 @@ const saveTemplateDraft = async (req, res) => {
         );
         if (!Array.isArray(template.founders)) template.founders = [];
         while (template.founders.length <= idx) template.founders.push({});
-        template.founders[idx] = { ...(template.founders[idx] || {}), image: uploaded[0] || template.founders[idx]?.image };
+        template.founders[idx] = {
+          ...(template.founders[idx] || {}),
+          image: uploaded[0] || template.founders[idx]?.image,
+        };
       }
     }
 
@@ -1276,7 +1364,9 @@ const saveTemplateDraft = async (req, res) => {
           "A website draft for this company was just saved by another request. Please reload and try again.",
       });
     }
-    return res.status(500).json({ message: error.message || "Failed to save website draft" });
+    return res
+      .status(500)
+      .json({ message: error.message || "Failed to save website draft" });
   }
 };
 
@@ -1395,7 +1485,11 @@ const createTemplate = async (req, res, next) => {
       const fieldLimits = [
         ["Title", req.body.title, TEXT_LIMITS.title],
         ["Subtitle", req.body.subTitle, TEXT_LIMITS.subTitle],
-        ["Call To Action button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
+        [
+          "Call To Action button text",
+          req.body.CTAButtonText,
+          TEXT_LIMITS.CTAButtonText,
+        ],
         ["Product title", req.body.productTitle, TEXT_LIMITS.productTitle],
         ["Gallery title", req.body.galleryTitle, TEXT_LIMITS.galleryTitle],
         [
@@ -1549,18 +1643,18 @@ const createTemplate = async (req, res, next) => {
     );
 
     const canPromoteExistingDraft =
-      Boolean(template) && template.isDraft === true && template.isPublished !== true;
+      Boolean(template) &&
+      template.isDraft === true &&
+      template.isPublished !== true;
 
     if (template && !canPromoteExistingDraft) {
-      return res
-        .status(400)
-        .json({
-          message: "Template for this company already exists",
-          duplicateKey: {
-            searchKey,
-            existingTemplateId: String(template?._id || ""),
-          },
-        });
+      return res.status(400).json({
+        message: "Template for this company already exists",
+        duplicateKey: {
+          searchKey,
+          existingTemplateId: String(template?._id || ""),
+        },
+      });
     }
 
     if (!template || !canPromoteExistingDraft) {
@@ -1596,8 +1690,13 @@ const createTemplate = async (req, res, next) => {
         sectionOverrides,
         styleConfig,
         pageNavItems: normalizePageNavItems(pageNavItems),
-        productDropdownPages: normalizeProductDropdownPages(productDropdownPages),
-        inclusions: Array.isArray(inclusions) ? inclusions : (typeof inclusions === "string" ? JSON.parse(inclusions || "[]") : []),
+        productDropdownPages:
+          normalizeProductDropdownPages(productDropdownPages),
+        inclusions: Array.isArray(inclusions)
+          ? inclusions
+          : typeof inclusions === "string"
+            ? JSON.parse(inclusions || "[]")
+            : [],
         logoCarousel: {
           enabled: toBool(req.body?.logoCarouselEnabled, false),
           title: String(req.body?.logoCarouselTitle || "").trim(),
@@ -1609,18 +1708,39 @@ const createTemplate = async (req, res, next) => {
         aboutPageMission: String(req.body?.aboutPageMission || "").trim(),
         aboutPageVision: String(req.body?.aboutPageVision || "").trim(),
         aboutPageValues: String(req.body?.aboutPageValues || "").trim(),
-        aboutPageTeamHeading: String(req.body?.aboutPageTeamHeading || "").trim(),
+        aboutPageTeamHeading: String(
+          req.body?.aboutPageTeamHeading || "",
+        ).trim(),
         galleryPageHeading: String(req.body?.galleryPageHeading || "").trim(),
-        testimonialsPageHeading: String(req.body?.testimonialsPageHeading || "").trim(),
-        testimonialsPageIntro: String(req.body?.testimonialsPageIntro || "").trim(),
-        testimonialsHomePreviewCount: toNum(req.body?.testimonialsHomePreviewCount, 3),
-        testimonialsEnableWriteReview: toBool(req.body?.testimonialsEnableWriteReview, true),
-        testimonialsSuccessMessage: String(req.body?.testimonialsSuccessMessage || "").trim(),
+        testimonialsPageHeading: String(
+          req.body?.testimonialsPageHeading || "",
+        ).trim(),
+        testimonialsPageIntro: String(
+          req.body?.testimonialsPageIntro || "",
+        ).trim(),
+        testimonialsHomePreviewCount: toNum(
+          req.body?.testimonialsHomePreviewCount,
+          3,
+        ),
+        testimonialsEnableWriteReview: toBool(
+          req.body?.testimonialsEnableWriteReview,
+          true,
+        ),
+        testimonialsSuccessMessage: String(
+          req.body?.testimonialsSuccessMessage || "",
+        ).trim(),
         contactPageHeading: String(req.body?.contactPageHeading || "").trim(),
         contactPageIntro: String(req.body?.contactPageIntro || "").trim(),
-        contactEnableInquiryForm: toBool(req.body?.contactEnableInquiryForm, true),
-        contactInquirySuccessMessage: String(req.body?.contactInquirySuccessMessage || "").trim(),
-        contactBusinessHours: String(req.body?.contactBusinessHours || "").trim(),
+        contactEnableInquiryForm: toBool(
+          req.body?.contactEnableInquiryForm,
+          true,
+        ),
+        contactInquirySuccessMessage: String(
+          req.body?.contactInquirySuccessMessage || "",
+        ).trim(),
+        contactBusinessHours: String(
+          req.body?.contactBusinessHours || "",
+        ).trim(),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -1630,19 +1750,39 @@ const createTemplate = async (req, res, next) => {
         partnerFormTitle: String(req.body?.partnerFormTitle || "").trim(),
         careersPageHeading: String(req.body?.careersPageHeading || "").trim(),
         careersPageIntro: String(req.body?.careersPageIntro || "").trim(),
-        careersHeroButtonText: String(req.body?.careersHeroButtonText || "").trim(),
-        careersClosingHeading: String(req.body?.careersClosingHeading || "").trim(),
+        careersHeroButtonText: String(
+          req.body?.careersHeroButtonText || "",
+        ).trim(),
+        careersClosingHeading: String(
+          req.body?.careersClosingHeading || "",
+        ).trim(),
         careersClosingText: String(req.body?.careersClosingText || "").trim(),
-        careersApplyButtonText: String(req.body?.careersApplyButtonText || "").trim(),
-        careersApplyButtonLink: String(req.body?.careersApplyButtonLink || "").trim(),
+        careersApplyButtonText: String(
+          req.body?.careersApplyButtonText || "",
+        ).trim(),
+        careersApplyButtonLink: String(
+          req.body?.careersApplyButtonLink || "",
+        ).trim(),
         careersFormFields: Array.isArray(req.body?.careersFormFields)
           ? JSON.stringify(req.body.careersFormFields)
           : String(req.body?.careersFormFields || "[]").trim(),
         founders: (() => {
           try {
-            const raw = typeof req.body?.founders === "string" ? JSON.parse(req.body.founders) : (Array.isArray(req.body?.founders) ? req.body.founders : []);
-            return raw.map((f) => ({ name: String(f?.name || "").trim(), role: String(f?.role || "").trim(), bio: String(f?.bio || "").trim(), highlights: String(f?.highlights || "").trim() }));
-          } catch { return []; }
+            const raw =
+              typeof req.body?.founders === "string"
+                ? JSON.parse(req.body.founders)
+                : Array.isArray(req.body?.founders)
+                  ? req.body.founders
+                  : [];
+            return raw.map((f) => ({
+              name: String(f?.name || "").trim(),
+              role: String(f?.role || "").trim(),
+              bio: String(f?.bio || "").trim(),
+              highlights: String(f?.highlights || "").trim(),
+            }));
+          } catch {
+            return [];
+          }
         })(),
         isWebsiteTemplate: true,
         isActive: true,
@@ -1687,8 +1827,13 @@ const createTemplate = async (req, res, next) => {
         sectionOverrides,
         styleConfig,
         pageNavItems: normalizePageNavItems(pageNavItems),
-        productDropdownPages: normalizeProductDropdownPages(productDropdownPages),
-        inclusions: Array.isArray(inclusions) ? inclusions : (typeof inclusions === "string" ? JSON.parse(inclusions || "[]") : []),
+        productDropdownPages:
+          normalizeProductDropdownPages(productDropdownPages),
+        inclusions: Array.isArray(inclusions)
+          ? inclusions
+          : typeof inclusions === "string"
+            ? JSON.parse(inclusions || "[]")
+            : [],
         logoCarousel: {
           enabled: toBool(req.body?.logoCarouselEnabled, false),
           title: String(req.body?.logoCarouselTitle || "").trim(),
@@ -1700,18 +1845,39 @@ const createTemplate = async (req, res, next) => {
         aboutPageMission: String(req.body?.aboutPageMission || "").trim(),
         aboutPageVision: String(req.body?.aboutPageVision || "").trim(),
         aboutPageValues: String(req.body?.aboutPageValues || "").trim(),
-        aboutPageTeamHeading: String(req.body?.aboutPageTeamHeading || "").trim(),
+        aboutPageTeamHeading: String(
+          req.body?.aboutPageTeamHeading || "",
+        ).trim(),
         galleryPageHeading: String(req.body?.galleryPageHeading || "").trim(),
-        testimonialsPageHeading: String(req.body?.testimonialsPageHeading || "").trim(),
-        testimonialsPageIntro: String(req.body?.testimonialsPageIntro || "").trim(),
-        testimonialsHomePreviewCount: toNum(req.body?.testimonialsHomePreviewCount, 3),
-        testimonialsEnableWriteReview: toBool(req.body?.testimonialsEnableWriteReview, true),
-        testimonialsSuccessMessage: String(req.body?.testimonialsSuccessMessage || "").trim(),
+        testimonialsPageHeading: String(
+          req.body?.testimonialsPageHeading || "",
+        ).trim(),
+        testimonialsPageIntro: String(
+          req.body?.testimonialsPageIntro || "",
+        ).trim(),
+        testimonialsHomePreviewCount: toNum(
+          req.body?.testimonialsHomePreviewCount,
+          3,
+        ),
+        testimonialsEnableWriteReview: toBool(
+          req.body?.testimonialsEnableWriteReview,
+          true,
+        ),
+        testimonialsSuccessMessage: String(
+          req.body?.testimonialsSuccessMessage || "",
+        ).trim(),
         contactPageHeading: String(req.body?.contactPageHeading || "").trim(),
         contactPageIntro: String(req.body?.contactPageIntro || "").trim(),
-        contactEnableInquiryForm: toBool(req.body?.contactEnableInquiryForm, true),
-        contactInquirySuccessMessage: String(req.body?.contactInquirySuccessMessage || "").trim(),
-        contactBusinessHours: String(req.body?.contactBusinessHours || "").trim(),
+        contactEnableInquiryForm: toBool(
+          req.body?.contactEnableInquiryForm,
+          true,
+        ),
+        contactInquirySuccessMessage: String(
+          req.body?.contactInquirySuccessMessage || "",
+        ).trim(),
+        contactBusinessHours: String(
+          req.body?.contactBusinessHours || "",
+        ).trim(),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -1721,19 +1887,39 @@ const createTemplate = async (req, res, next) => {
         partnerFormTitle: String(req.body?.partnerFormTitle || "").trim(),
         careersPageHeading: String(req.body?.careersPageHeading || "").trim(),
         careersPageIntro: String(req.body?.careersPageIntro || "").trim(),
-        careersHeroButtonText: String(req.body?.careersHeroButtonText || "").trim(),
-        careersClosingHeading: String(req.body?.careersClosingHeading || "").trim(),
+        careersHeroButtonText: String(
+          req.body?.careersHeroButtonText || "",
+        ).trim(),
+        careersClosingHeading: String(
+          req.body?.careersClosingHeading || "",
+        ).trim(),
         careersClosingText: String(req.body?.careersClosingText || "").trim(),
-        careersApplyButtonText: String(req.body?.careersApplyButtonText || "").trim(),
-        careersApplyButtonLink: String(req.body?.careersApplyButtonLink || "").trim(),
+        careersApplyButtonText: String(
+          req.body?.careersApplyButtonText || "",
+        ).trim(),
+        careersApplyButtonLink: String(
+          req.body?.careersApplyButtonLink || "",
+        ).trim(),
         careersFormFields: Array.isArray(req.body?.careersFormFields)
           ? JSON.stringify(req.body.careersFormFields)
           : String(req.body?.careersFormFields || "[]").trim(),
         founders: (() => {
           try {
-            const raw = typeof req.body?.founders === "string" ? JSON.parse(req.body.founders) : (Array.isArray(req.body?.founders) ? req.body.founders : []);
-            return raw.map((f) => ({ name: String(f?.name || "").trim(), role: String(f?.role || "").trim(), bio: String(f?.bio || "").trim(), highlights: String(f?.highlights || "").trim() }));
-          } catch { return []; }
+            const raw =
+              typeof req.body?.founders === "string"
+                ? JSON.parse(req.body.founders)
+                : Array.isArray(req.body?.founders)
+                  ? req.body.founders
+                  : [];
+            return raw.map((f) => ({
+              name: String(f?.name || "").trim(),
+              role: String(f?.role || "").trim(),
+              bio: String(f?.bio || "").trim(),
+              highlights: String(f?.highlights || "").trim(),
+            }));
+          } catch {
+            return [];
+          }
         })(),
         isWebsiteTemplate: true,
         isActive: true,
@@ -1851,7 +2037,9 @@ const createTemplate = async (req, res, next) => {
     const allowProductFallback = products.length === 0;
 
     for (let i = 0; i < rooms.length; i++) {
-      const roomFiles = filesByField[`roomImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
+      const roomFiles =
+        filesByField[`roomImages_${i}`] ||
+        (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
       if (roomFiles.length > 10) {
         return res.status(400).json({
           message: `Max 10 images allowed per room (${rooms[i].title || "Room"}).`,
@@ -1861,7 +2049,8 @@ const createTemplate = async (req, res, next) => {
 
     for (let i = 0; i < meetingRooms.length; i++) {
       const meetingRoomFiles =
-        filesByField[`meetingRoomImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
+        filesByField[`meetingRoomImages_${i}`] ||
+        (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
       if (meetingRoomFiles.length > 10) {
         return res.status(400).json({
           message: `Max 10 images allowed per meeting room (${meetingRooms[i].title || "Room"}).`,
@@ -1879,7 +2068,9 @@ const createTemplate = async (req, res, next) => {
     }
 
     for (let i = 0; i < packages.length; i++) {
-      const packageFiles = filesByField[`packageImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
+      const packageFiles =
+        filesByField[`packageImages_${i}`] ||
+        (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
       if (packageFiles.length > 10) {
         return res.status(400).json({
           message: `Max 10 images allowed per package (${packages[i].title || "Package"}).`,
@@ -1888,7 +2079,9 @@ const createTemplate = async (req, res, next) => {
     }
 
     for (let i = 0; i < dorms.length; i++) {
-      const dormFiles = filesByField[`dormImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
+      const dormFiles =
+        filesByField[`dormImages_${i}`] ||
+        (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []);
       if (dormFiles.length > 10) {
         return res.status(400).json({
           message: `Max 10 images allowed per dorm (${dorms[i].title || "Dorm"}).`,
@@ -1975,21 +2168,27 @@ const createTemplate = async (req, res, next) => {
           [cardFiles[0]],
           `${baseFolder}/aboutPageImageCards/${i}`,
         );
-        normalizedAboutCards[i].image = uploaded[0] || normalizedAboutCards[i].image;
+        normalizedAboutCards[i].image =
+          uploaded[0] || normalizedAboutCards[i].image;
       }
     }
     if (normalizedAboutCards.length) {
       template.aboutPageImageCards = normalizedAboutCards;
-      if (!Array.isArray(template.aboutPageImages) || template.aboutPageImages.length === 0) {
+      if (
+        !Array.isArray(template.aboutPageImages) ||
+        template.aboutPageImages.length === 0
+      ) {
         template.aboutPageImages = normalizedAboutCards
           .map((card) => card.image)
           .filter(Boolean);
       }
     }
 
-    const normalizedProductPages = normalizeProductDropdownPages(productDropdownPages);
+    const normalizedProductPages =
+      normalizeProductDropdownPages(productDropdownPages);
     for (let i = 0; i < normalizedProductPages.length; i++) {
-      const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] || [])[0];
+      const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] ||
+        [])[0];
       if (singleHeroFile) {
         const uploaded = await uploadImages(
           [singleHeroFile],
@@ -1997,7 +2196,8 @@ const createTemplate = async (req, res, next) => {
         );
         normalizedProductPages[i].heroImage = uploaded[0] || undefined;
       }
-      const heroCarouselFiles = filesByField[`productPageHeroImages_${i}`] || [];
+      const heroCarouselFiles =
+        filesByField[`productPageHeroImages_${i}`] || [];
       if (heroCarouselFiles.length) {
         normalizedProductPages[i].heroImages = await uploadImages(
           heroCarouselFiles.slice(0, 5),
@@ -2006,7 +2206,8 @@ const createTemplate = async (req, res, next) => {
       } else {
         normalizedProductPages[i].heroImages = [];
       }
-      const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] || [])[0];
+      const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] ||
+        [])[0];
       if (homeCardFile) {
         const uploaded = await uploadImages(
           [homeCardFile],
@@ -2042,7 +2243,10 @@ const createTemplate = async (req, res, next) => {
     if (Array.isArray(menuItems) && menuItems.length) {
       for (let i = 0; i < menuItems.length; i++) {
         const item = menuItems[i] || {};
-        const imageFile = (filesByField[`menuItemImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []))[0];
+        const imageFile = (filesByField[`menuItemImages_${i}`] ||
+          (allowProductFallback
+            ? filesByField[`productImages_${i}`] || []
+            : []))[0];
         let uploadedImage;
         if (imageFile) {
           const uploaded = await uploadImages(
@@ -2066,7 +2270,10 @@ const createTemplate = async (req, res, next) => {
       for (let i = 0; i < rooms.length; i++) {
         const item = rooms[i] || {};
         const uploaded = await uploadImages(
-          filesByField[`roomImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []),
+          filesByField[`roomImages_${i}`] ||
+            (allowProductFallback
+              ? filesByField[`productImages_${i}`] || []
+              : []),
           `${baseFolder}/rooms/${i}`,
         );
         template.rooms.push({
@@ -2082,7 +2289,10 @@ const createTemplate = async (req, res, next) => {
       for (let i = 0; i < meetingRooms.length; i++) {
         const item = meetingRooms[i] || {};
         const uploaded = await uploadImages(
-          filesByField[`meetingRoomImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []),
+          filesByField[`meetingRoomImages_${i}`] ||
+            (allowProductFallback
+              ? filesByField[`productImages_${i}`] || []
+              : []),
           `${baseFolder}/meetingRooms/${i}`,
         );
         template.meetingRooms.push({
@@ -2114,7 +2324,10 @@ const createTemplate = async (req, res, next) => {
       for (let i = 0; i < packages.length; i++) {
         const item = packages[i] || {};
         const uploaded = await uploadImages(
-          filesByField[`packageImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []),
+          filesByField[`packageImages_${i}`] ||
+            (allowProductFallback
+              ? filesByField[`productImages_${i}`] || []
+              : []),
           `${baseFolder}/packages/${i}`,
         );
         template.packages.push({
@@ -2131,7 +2344,10 @@ const createTemplate = async (req, res, next) => {
       for (let i = 0; i < dorms.length; i++) {
         const item = dorms[i] || {};
         const uploaded = await uploadImages(
-          filesByField[`dormImages_${i}`] || (allowProductFallback ? filesByField[`productImages_${i}`] || [] : []),
+          filesByField[`dormImages_${i}`] ||
+            (allowProductFallback
+              ? filesByField[`productImages_${i}`] || []
+              : []),
           `${baseFolder}/dorms/${i}`,
         );
         template.dorms.push({
@@ -2169,8 +2385,14 @@ const createTemplate = async (req, res, next) => {
       for (let i = 0; i < template.founders.length; i++) {
         const founderFile = (filesByField[`founderImage_${i}`] || [])[0];
         if (founderFile) {
-          const uploaded = await uploadImages([founderFile], `${baseFolder}/founders/${i}`);
-          template.founders[i] = { ...(template.founders[i] || {}), image: uploaded[0] || template.founders[i]?.image };
+          const uploaded = await uploadImages(
+            [founderFile],
+            `${baseFolder}/founders/${i}`,
+          );
+          template.founders[i] = {
+            ...(template.founders[i] || {}),
+            image: uploaded[0] || template.founders[i]?.image,
+          };
         }
       }
     }
@@ -2208,14 +2430,22 @@ const createTemplate = async (req, res, next) => {
     }
 
     if (source !== "Nomad") {
-      const derivedBusinessType = businessTypeLabelByVertical[vertical] || "Co-Working";
-      const normalizedIndustry = [derivedBusinessType].filter(Boolean).join(", ");
+      const derivedBusinessType =
+        businessTypeLabelByVertical[vertical] || "Co-Working";
+      const normalizedIndustry = [derivedBusinessType]
+        .filter(Boolean)
+        .join(", ");
 
       const updateHostCompany = await HostCompany.findOneAndUpdate(
         {
           $or: [
             { companyId: req.body.companyId },
-            { companyName: new RegExp(`^${String(req.body.companyName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+            {
+              companyName: new RegExp(
+                `^${String(req.body.companyName || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+                "i",
+              ),
+            },
           ],
         },
         {
@@ -2244,13 +2474,12 @@ const createTemplate = async (req, res, next) => {
         vertical,
       }).catch(() => {});
 
-      void axios.patch(
-        "https://wononomadsbe.vercel.app/api/company/add-template-link",
-        {
+      void axios
+        .patch("http://localhost:3000/api/company/add-template-link", {
           companyName: req.body.companyName,
           link: `https://${savedTemplate.searchKey}.wono.co/`,
-        },
-      ).catch(() => {});
+        })
+        .catch(() => {});
     }
 
     // First-time website creation is FREE â€” no credit deduction.
@@ -2269,7 +2498,10 @@ const createTemplate = async (req, res, next) => {
 
     return res
       .status(201)
-      .json({ message: "Template created", template: serializeWebsiteTemplateForClient(savedTemplate) });
+      .json({
+        message: "Template created",
+        template: serializeWebsiteTemplateForClient(savedTemplate),
+      });
   } catch (error) {
     // See saveTemplateDraft for why this can happen under a race.
     if (error?.code === 11000) {
@@ -2353,7 +2585,13 @@ const getTemplates = async (req, res) => {
 
     if (workspaceId) {
       appendUnique(
-        await WebsiteTemplate.find({ isActive: true, isDeleted: { $ne: true }, workspaceId }).lean().exec(),
+        await WebsiteTemplate.find({
+          isActive: true,
+          isDeleted: { $ne: true },
+          workspaceId,
+        })
+          .lean()
+          .exec(),
       );
     }
 
@@ -2363,7 +2601,9 @@ const getTemplates = async (req, res) => {
           isActive: true,
           isDeleted: { $ne: true },
           companyId: normalizedCompanyId,
-        }).lean().exec(),
+        })
+          .lean()
+          .exec(),
       );
     }
 
@@ -2377,7 +2617,9 @@ const getTemplates = async (req, res) => {
             { companyName: { $regex: new RegExp(`^${safeBusiness}$`, "i") } },
             { searchKey: normalizeSearchKeyFromName(normalizedBusinessName) },
           ],
-        }).lean().exec(),
+        })
+          .lean()
+          .exec(),
       );
     }
 
@@ -2391,7 +2633,9 @@ const getTemplates = async (req, res) => {
             { companyName: { $regex: new RegExp(`^${safeCompany}$`, "i") } },
             { searchKey: normalizeSearchKeyFromName(normalizedCompanyName) },
           ],
-        }).lean().exec(),
+        })
+          .lean()
+          .exec(),
       );
     }
 
@@ -2426,7 +2670,9 @@ const getTemplates = async (req, res) => {
 
     if (normalizedRequestedVertical) {
       sanitizedTemplates = sanitizedTemplates.filter(
-        (template) => !template?.vertical || normalizeVertical(template?.vertical) === normalizedRequestedVertical,
+        (template) =>
+          !template?.vertical ||
+          normalizeVertical(template?.vertical) === normalizedRequestedVertical,
       );
     }
 
@@ -2444,7 +2690,9 @@ const getInActiveTemplates = async (req, res) => {
       return res.status(200).json([]);
     }
 
-    res.json(templates.map((template) => serializeWebsiteTemplateForClient(template)));
+    res.json(
+      templates.map((template) => serializeWebsiteTemplateForClient(template)),
+    );
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -2472,7 +2720,12 @@ const activateTemplate = async (req, res) => {
       companyName: template.companyName,
       companyId: template.companyId || template.workspaceId,
       changes: [
-        { field: "isActive", type: "status", change: "activated", to: searchKey },
+        {
+          field: "isActive",
+          type: "status",
+          change: "activated",
+          to: searchKey,
+        },
       ],
     };
 
@@ -2528,12 +2781,15 @@ const editTemplate = async (req, res, next) => {
     enabledSections = safeParse(enabledSections, null);
     sectionOverrides = safeParse(sectionOverrides, null);
     styleConfig = safeParse(styleConfig, null);
-    socials = socials === undefined ? null : normalizeSocials(safeParse(socials, {}));
+    socials =
+      socials === undefined ? null : normalizeSocials(safeParse(socials, {}));
     const parsedInclusions = safeParse(inclusions, null);
 
     const formatCompanyName = (name) =>
       (name || "").toLowerCase().split("-")[0].replace(/\s+/g, "");
-    const bodySearchKey = String(req.body?.searchKey || "").trim().toLowerCase();
+    const bodySearchKey = String(req.body?.searchKey || "")
+      .trim()
+      .toLowerCase();
     const searchKey = bodySearchKey || formatCompanyName(companyName);
     const baseFolder = `hosts/template/${searchKey}`;
     const hasVerticalInBody =
@@ -2583,7 +2839,11 @@ const editTemplate = async (req, res, next) => {
       const fieldLimits = [
         ["Title", req.body.title, TEXT_LIMITS.title],
         ["Subtitle", req.body.subTitle, TEXT_LIMITS.subTitle],
-        ["Call To Action button text", req.body.CTAButtonText, TEXT_LIMITS.CTAButtonText],
+        [
+          "Call To Action button text",
+          req.body.CTAButtonText,
+          TEXT_LIMITS.CTAButtonText,
+        ],
         ["Product title", req.body.productTitle, TEXT_LIMITS.productTitle],
         ["Gallery title", req.body.galleryTitle, TEXT_LIMITS.galleryTitle],
         [
@@ -2681,7 +2941,9 @@ const editTemplate = async (req, res, next) => {
           ? { workspaceId: editLookupWorkspaceId }
           : buildTemplateLookupByCompanyAndVertical(
               searchKey,
-              normalizedVertical || req.body?.vertical || req.body?.verticalType,
+              normalizedVertical ||
+                req.body?.vertical ||
+                req.body?.verticalType,
             ),
     );
     if (!template) {
@@ -2776,7 +3038,9 @@ const editTemplate = async (req, res, next) => {
             ? enabledSections
             : template.enabledSections,
       sectionOverrides:
-        sectionOverrides === null ? template.sectionOverrides : sectionOverrides,
+        sectionOverrides === null
+          ? template.sectionOverrides
+          : sectionOverrides,
       styleConfig: styleConfig === null ? template.styleConfig : styleConfig,
       pageNavItems:
         pageNavItems === null
@@ -2788,17 +3052,26 @@ const editTemplate = async (req, res, next) => {
           : normalizeProductDropdownPages(productDropdownPages),
       inclusions:
         parsedInclusions === null ? template.inclusions : parsedInclusions,
-      faqs: req.body?.faqs !== undefined
-        ? (Array.isArray(req.body.faqs) ? req.body.faqs : (typeof req.body.faqs === "string" ? JSON.parse(req.body.faqs || "[]") : []))
-        : template.faqs,
+      faqs:
+        req.body?.faqs !== undefined
+          ? Array.isArray(req.body.faqs)
+            ? req.body.faqs
+            : typeof req.body.faqs === "string"
+              ? JSON.parse(req.body.faqs || "[]")
+              : []
+          : template.faqs,
       logoCarousel: {
-        enabled: req.body?.logoCarouselEnabled !== undefined
-          ? toBool(req.body.logoCarouselEnabled, false)
-          : template.logoCarousel?.enabled ?? false,
-        title: req.body?.logoCarouselTitle !== undefined
-          ? String(req.body.logoCarouselTitle || "").trim()
-          : template.logoCarousel?.title ?? "",
-        logos: Array.isArray(template.logoCarousel?.logos) ? template.logoCarousel.logos : [],
+        enabled:
+          req.body?.logoCarouselEnabled !== undefined
+            ? toBool(req.body.logoCarouselEnabled, false)
+            : (template.logoCarousel?.enabled ?? false),
+        title:
+          req.body?.logoCarouselTitle !== undefined
+            ? String(req.body.logoCarouselTitle || "").trim()
+            : (template.logoCarousel?.title ?? ""),
+        logos: Array.isArray(template.logoCarousel?.logos)
+          ? template.logoCarousel.logos
+          : [],
       },
       aboutPageIntro:
         req.body?.aboutPageIntro !== undefined
@@ -2937,7 +3210,12 @@ const editTemplate = async (req, res, next) => {
       founders: (() => {
         if (req.body?.founders === undefined) return template.founders;
         try {
-          const raw = typeof req.body.founders === "string" ? JSON.parse(req.body.founders) : (Array.isArray(req.body.founders) ? req.body.founders : []);
+          const raw =
+            typeof req.body.founders === "string"
+              ? JSON.parse(req.body.founders)
+              : Array.isArray(req.body.founders)
+                ? req.body.founders
+                : [];
           return raw.map((f, i) => ({
             name: String(f?.name || "").trim(),
             role: String(f?.role || "").trim(),
@@ -2945,7 +3223,9 @@ const editTemplate = async (req, res, next) => {
             highlights: String(f?.highlights || "").trim(),
             image: template.founders?.[i]?.image || undefined,
           }));
-        } catch { return template.founders; }
+        } catch {
+          return template.founders;
+        }
       })(),
       menuItems:
         String(normalizedVertical || template?.vertical || "").trim() === "cafe"
@@ -3073,8 +3353,8 @@ const editTemplate = async (req, res, next) => {
         (img) => !aboutPageImageKeepIds.includes(img.id),
       );
       await deleteImagesFromS3(toDelete);
-      template.aboutPageImages = (template.aboutPageImages || []).filter((img) =>
-        aboutPageImageKeepIds.includes(img.id),
+      template.aboutPageImages = (template.aboutPageImages || []).filter(
+        (img) => aboutPageImageKeepIds.includes(img.id),
       );
     }
     const newAboutPageImages = filesByField.aboutPageImages || [];
@@ -3090,9 +3370,8 @@ const editTemplate = async (req, res, next) => {
     }
 
     if (aboutPageImageCards !== null) {
-      const normalizedCards = (Array.isArray(aboutPageImageCards)
-        ? aboutPageImageCards
-        : []
+      const normalizedCards = (
+        Array.isArray(aboutPageImageCards) ? aboutPageImageCards : []
       ).map((card, index) => {
         const existing = template.aboutPageImageCards?.[index];
         return {
@@ -3103,7 +3382,8 @@ const editTemplate = async (req, res, next) => {
       });
 
       for (let i = 0; i < normalizedCards.length; i++) {
-        const cardFile = (filesByField[`aboutPageImageCardImage_${i}`] || [])[0];
+        const cardFile = (filesByField[`aboutPageImageCardImage_${i}`] ||
+          [])[0];
         if (cardFile) {
           if (normalizedCards[i]?.image?.url) {
             await deleteImagesFromS3([normalizedCards[i].image]);
@@ -3117,7 +3397,10 @@ const editTemplate = async (req, res, next) => {
         }
       }
       template.aboutPageImageCards = normalizedCards;
-      if (!Array.isArray(template.aboutPageImages) || template.aboutPageImages.length === 0) {
+      if (
+        !Array.isArray(template.aboutPageImages) ||
+        template.aboutPageImages.length === 0
+      ) {
         template.aboutPageImages = normalizedCards
           .map((card) => card.image)
           .filter(Boolean);
@@ -3125,14 +3408,16 @@ const editTemplate = async (req, res, next) => {
     }
 
     if (productDropdownPages !== null) {
-      const normalizedPages = normalizeProductDropdownPages(productDropdownPages);
+      const normalizedPages =
+        normalizeProductDropdownPages(productDropdownPages);
       for (let i = 0; i < normalizedPages.length; i++) {
         const existing = template.productDropdownPages?.[i];
         normalizedPages[i].heroImage = existing?.heroImage || undefined;
         normalizedPages[i].heroImages = existing?.heroImages || [];
         normalizedPages[i].homeCardImage = existing?.homeCardImage || undefined;
 
-        const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] || [])[0];
+        const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] ||
+          [])[0];
         if (singleHeroFile) {
           if (normalizedPages[i]?.heroImage?.url) {
             await deleteImagesFromS3([normalizedPages[i].heroImage]);
@@ -3145,7 +3430,8 @@ const editTemplate = async (req, res, next) => {
           normalizedPages[i].heroImage = uploaded[0] || undefined;
         }
 
-        const heroCarouselFiles = filesByField[`productPageHeroImages_${i}`] || [];
+        const heroCarouselFiles =
+          filesByField[`productPageHeroImages_${i}`] || [];
         if (heroCarouselFiles.length) {
           await deleteImagesFromS3(normalizedPages[i].heroImages || []);
           normalizedPages[i].heroImages = await uploadImages(
@@ -3155,7 +3441,8 @@ const editTemplate = async (req, res, next) => {
           );
         }
 
-        const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] || [])[0];
+        const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] ||
+          [])[0];
         if (homeCardFile) {
           if (normalizedPages[i]?.homeCardImage?.url) {
             await deleteImagesFromS3([normalizedPages[i].homeCardImage]);
@@ -3259,7 +3546,10 @@ const editTemplate = async (req, res, next) => {
     // Keep cafe menu items synced with product cards so published menu images/titles stay consistent.
     if (String(normalizedVertical || "").trim() === "cafe") {
       const existingMenuByName = new Map(
-        (template.menuItems || []).map((item) => [String(item?.name || "").trim(), item]),
+        (template.menuItems || []).map((item) => [
+          String(item?.name || "").trim(),
+          item,
+        ]),
       );
       template.menuItems = (template.products || []).map((p) => {
         const key = String(p?.name || "").trim();
@@ -3270,7 +3560,9 @@ const editTemplate = async (req, res, next) => {
           description: String(p?.description || ""),
           price: String(p?.cost || ""),
           image:
-            (Array.isArray(p?.images) && p.images.length ? p.images[0] : null) ||
+            (Array.isArray(p?.images) && p.images.length
+              ? p.images[0]
+              : null) ||
             existing?.image ||
             null,
         };
@@ -3313,14 +3605,14 @@ const editTemplate = async (req, res, next) => {
         ? await uploadImages(newFiles, `${baseFolder}/testimonialImages`, 1)
         : [];
 
-        if (existing) {
-          if (uploaded[0]) {
-            if (existing.image?.url) await deleteImagesFromS3([existing.image]);
-            existing.image = uploaded[0];
-          } else if (t.imageId === null) {
-            if (existing.image?.url) await deleteImagesFromS3([existing.image]);
-            delete existing.image;
-          }
+      if (existing) {
+        if (uploaded[0]) {
+          if (existing.image?.url) await deleteImagesFromS3([existing.image]);
+          existing.image = uploaded[0];
+        } else if (t.imageId === null) {
+          if (existing.image?.url) await deleteImagesFromS3([existing.image]);
+          delete existing.image;
+        }
         existing.name = t.name ?? existing.name;
         existing.jobPosition = t.jobPosition ?? existing.jobPosition;
         existing.testimony = t.testimony ?? existing.testimony;
@@ -3355,8 +3647,15 @@ const editTemplate = async (req, res, next) => {
           if (template.founders[i]?.image?.url) {
             await deleteImagesFromS3([template.founders[i].image]);
           }
-          const uploaded = await uploadImages([founderFile], `${baseFolder}/founders/${i}`, 1);
-          template.founders[i] = { ...(template.founders[i] || {}), image: uploaded[0] || template.founders[i]?.image };
+          const uploaded = await uploadImages(
+            [founderFile],
+            `${baseFolder}/founders/${i}`,
+            1,
+          );
+          template.founders[i] = {
+            ...(template.founders[i] || {}),
+            image: uploaded[0] || template.founders[i]?.image,
+          };
         }
       }
     }
@@ -3385,18 +3684,27 @@ const editTemplate = async (req, res, next) => {
       credits: 1,
       sourcePanel: "master_panel",
       companyId: String(
-        template?.companyId || req.body?.companyId || updatedSubscription?.companyId || "",
+        template?.companyId ||
+          req.body?.companyId ||
+          updatedSubscription?.companyId ||
+          "",
       ),
-      companyName: template?.companyName || updatedSubscription?.companyName || "",
+      companyName:
+        template?.companyName || updatedSubscription?.companyName || "",
       workspaceId: String(
-        req.body?.workspaceId || template?.workspaceId || updatedSubscription?.workspaceId || "",
+        req.body?.workspaceId ||
+          template?.workspaceId ||
+          updatedSubscription?.workspaceId ||
+          "",
       ),
       workspaceName: updatedSubscription?.workspaceName || "",
       performedById: String(req.user || ""),
       performedByName: String(
         `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
       ).trim(),
-      performedByEmail: String(req.userData?.email || "").trim().toLowerCase(),
+      performedByEmail: String(req.userData?.email || "")
+        .trim()
+        .toLowerCase(),
       description: "Website edit published",
       remainingAfter: creditsRemainingOf(updatedSubscription),
     }).catch((error) =>
@@ -3416,12 +3724,10 @@ const editTemplate = async (req, res, next) => {
       companyId: template.companyId || template.workspaceId,
     };
 
-    res
-      .status(200)
-      .json({
-        message: "Template updated successfully",
-        template: serializeWebsiteTemplateForClient(template),
-      });
+    res.status(200).json({
+      message: "Template updated successfully",
+      template: serializeWebsiteTemplateForClient(template),
+    });
   } catch (err) {
     // Capture the original error message before aborting
     const originalError = err.message || "Template update failed";
@@ -3444,14 +3750,18 @@ const publishWebsite = async (req, res, next) => {
       return res.status(404).json({ error: "Website template not found" });
     }
 
-    const resolvedWorkspaceId = String(workspaceId || template.workspaceId || "").trim();
+    const resolvedWorkspaceId = String(
+      workspaceId || template.workspaceId || "",
+    ).trim();
     const resolvedCompanyId = String(template.companyId || "").trim();
 
     let subscription = null;
     if (resolvedWorkspaceId || resolvedCompanyId) {
       subscription = await WorkspaceSubscription.findOne({
         $or: [
-          ...(resolvedWorkspaceId ? [{ workspaceId: resolvedWorkspaceId }] : []),
+          ...(resolvedWorkspaceId
+            ? [{ workspaceId: resolvedWorkspaceId }]
+            : []),
           { companyId: resolvedCompanyId || resolvedWorkspaceId },
         ],
       }).exec();
@@ -3603,7 +3913,10 @@ const publishTemplate = async (req, res, next) => {
     };
 
     const rawSearchKey =
-      req.body?.searchKey || req.query?.searchKey || req.body?.companyName || "";
+      req.body?.searchKey ||
+      req.query?.searchKey ||
+      req.body?.companyName ||
+      "";
     const searchKey = formatCompanyName(rawSearchKey);
 
     if (!searchKey) {
@@ -3614,7 +3927,9 @@ const publishTemplate = async (req, res, next) => {
         .json({ message: "searchKey or companyName is required" });
     }
 
-    const template = await WebsiteTemplate.findOne({ searchKey }).session(session);
+    const template = await WebsiteTemplate.findOne({ searchKey }).session(
+      session,
+    );
     if (!template) {
       await session.abortTransaction();
       session.endSession();
@@ -3699,7 +4014,12 @@ const deleteTemplate = async (req, res) => {
       companyName: template.companyName,
       companyId: template.companyId || template.workspaceId,
       changes: [
-        { field: "isDeleted", type: "status", change: "deleted", to: searchKey },
+        {
+          field: "isDeleted",
+          type: "status",
+          change: "deleted",
+          to: searchKey,
+        },
       ],
     };
 

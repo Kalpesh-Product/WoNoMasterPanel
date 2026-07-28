@@ -223,10 +223,7 @@ const createCompany = async (req, res, next) => {
     //Store POC data in poc collection (nomads)
 
     try {
-      await axios.post(
-        "https://wononomadsbe.vercel.app/api/poc/create-poc",
-        employeeObj,
-      );
+      await axios.post("http://localhost:3000/api/poc/create-poc", employeeObj);
 
       // await axios.post("http://localhost:3000/api/poc/create-poc", employeeObj);
     } catch (err) {
@@ -428,7 +425,7 @@ const activateProduct = async (req, res, next) => {
     }
 
     const response = await axios.patch(
-      "https://wononomadsbe.vercel.app/api/company/activate-product",
+      "http://localhost:3000/api/company/activate-product",
       {
         businessId,
         status,
@@ -458,7 +455,10 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
     .select("searchKey companyId companyName isActive isPublished")
     .lean();
 
-  const normalize = (value) => String(value || "").trim().toLowerCase();
+  const normalize = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase();
   return companies.map((company) => {
     const companyId = String(company?.companyId || "").trim();
     const companyName = normalize(company?.companyName);
@@ -494,7 +494,8 @@ const getCompanies = async (req, res, next) => {
     // WorldRankingWeights) that expect a plain array.
     if (page === undefined) {
       const companies = await HostCompany.find().lean();
-      const enrichedCompanies = await enrichCompaniesWithWorkspaceAndTemplate(companies);
+      const enrichedCompanies =
+        await enrichCompaniesWithWorkspaceAndTemplate(companies);
       return res.status(200).json(enrichedCompanies);
     }
 
@@ -517,19 +518,21 @@ const getCompanies = async (req, res, next) => {
     const pageNumber = Math.max(1, parseInt(page, 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 25));
 
-    const [companies, total, totalCount, activeCount, inactiveCount] = await Promise.all([
-      HostCompany.find(filter)
-        .sort({ isRegistered: -1, companyName: 1 })
-        .skip((pageNumber - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
-      HostCompany.countDocuments(filter),
-      HostCompany.countDocuments({}),
-      HostCompany.countDocuments({ isRegistered: true }),
-      HostCompany.countDocuments({ isRegistered: false }),
-    ]);
+    const [companies, total, totalCount, activeCount, inactiveCount] =
+      await Promise.all([
+        HostCompany.find(filter)
+          .sort({ isRegistered: -1, companyName: 1 })
+          .skip((pageNumber - 1) * pageSize)
+          .limit(pageSize)
+          .lean(),
+        HostCompany.countDocuments(filter),
+        HostCompany.countDocuments({}),
+        HostCompany.countDocuments({ isRegistered: true }),
+        HostCompany.countDocuments({ isRegistered: false }),
+      ]);
 
-    const enrichedCompanies = await enrichCompaniesWithWorkspaceAndTemplate(companies);
+    const enrichedCompanies =
+      await enrichCompaniesWithWorkspaceAndTemplate(companies);
 
     return res.status(200).json({
       items: enrichedCompanies,
@@ -550,7 +553,9 @@ const getCompanies = async (req, res, next) => {
 
 const getHostLeadCompanies = async (req, res, next) => {
   try {
-    const companies = await HostLeadCompany.find().sort({ createdAt: -1 }).lean();
+    const companies = await HostLeadCompany.find()
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (!companies || !companies.length) {
       return res.status(200).json([]);
@@ -570,9 +575,13 @@ const getHostLeadCompanies = async (req, res, next) => {
       .lean();
 
     const companiesWithPlanStatus = companies.map((company) => {
-      const requestedPlan = String(company?.requestedPlan || "").trim().toLowerCase();
+      const requestedPlan = String(company?.requestedPlan || "")
+        .trim()
+        .toLowerCase();
       const normalizedCompanyId = String(company.companyId || "").trim();
-      const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+      const companyNameRegex = buildExactCaseInsensitiveRegex(
+        company.companyName,
+      );
       // The "<companyId>-<suffix>" prefix convention assumes every suffixed
       // id still belongs to *this* company's own extra workspaces. That
       // breaks when a suffixed id was independently registered as its own,
@@ -617,12 +626,18 @@ const getHostLeadCompanies = async (req, res, next) => {
             companyNameRegex &&
             companyNameRegex.test(String(template?.companyName || "")),
         );
-      const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "").trim().toLowerCase();
+      const workspaceSelectedPlan = String(matchedWorkspace?.selectedPlan || "")
+        .trim()
+        .toLowerCase();
       return {
         ...company,
         workspaceId: matchedWorkspace?._id ? String(matchedWorkspace._id) : "",
         workspaceCompanyId: String(matchedWorkspace?.companyId || "").trim(),
-        selectedPlan: matchedWorkspace?.selectedPlan || company?.selectedPlan || company?.plan || "",
+        selectedPlan:
+          matchedWorkspace?.selectedPlan ||
+          company?.selectedPlan ||
+          company?.plan ||
+          "",
         workspacePlanApplied:
           Boolean(requestedPlan) &&
           Boolean(matchedWorkspace) &&
@@ -650,7 +665,9 @@ const sendUpgradePaymentLink = async (req, res, next) => {
       return res.status(400).json({ message: "paymentLinkUrl is required" });
     }
 
-    const company = await HostLeadCompany.findOne({ companyId: String(companyId).trim() });
+    const company = await HostLeadCompany.findOne({
+      companyId: String(companyId).trim(),
+    });
 
     if (!company) {
       return res.status(404).json({ message: "Host lead company not found" });
@@ -732,7 +749,9 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
     }
 
     if (typeof paymentStatus !== "boolean") {
-      return res.status(400).json({ message: "paymentStatus must be true or false" });
+      return res
+        .status(400)
+        .json({ message: "paymentStatus must be true or false" });
     }
 
     const company = await HostLeadCompany.findOne({
@@ -774,10 +793,14 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
         // unlock.
         if (WORKSPACE_PLAN_VALUES.has(requestedPlan)) {
           const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
-          const companyNameRegex = buildExactCaseInsensitiveRegex(company.companyName);
+          const companyNameRegex = buildExactCaseInsensitiveRegex(
+            company.companyName,
+          );
           const matchOr = [];
-          if (companyIdRegex) matchOr.push({ companyId: { $regex: companyIdRegex } });
-          if (companyNameRegex) matchOr.push({ businessName: { $regex: companyNameRegex } });
+          if (companyIdRegex)
+            matchOr.push({ companyId: { $regex: companyIdRegex } });
+          if (companyNameRegex)
+            matchOr.push({ businessName: { $regex: companyNameRegex } });
           if (matchOr.length) {
             workspacePlanUpdate = await Workspace.updateMany(
               { $or: matchOr, isActive: true },
@@ -817,7 +840,9 @@ const markUpgradeSuccessEmailSent = async (req, res, next) => {
       return res.status(400).json({ message: "companyId is required" });
     }
 
-    const company = await HostLeadCompany.findOne({ companyId: String(companyId).trim() });
+    const company = await HostLeadCompany.findOne({
+      companyId: String(companyId).trim(),
+    });
 
     if (!company) {
       return res.status(404).json({ message: "Host lead company not found" });
@@ -825,7 +850,8 @@ const markUpgradeSuccessEmailSent = async (req, res, next) => {
 
     if (company.paymentStatus !== true) {
       return res.status(400).json({
-        message: "Payment must be confirmed before sending upgrade success email",
+        message:
+          "Payment must be confirmed before sending upgrade success email",
       });
     }
 
@@ -1272,7 +1298,7 @@ const bulkInsertLogos = async (req, res, next) => {
 
     //fetch companies from master panel
     const productCompanies = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies",
+      "http://localhost:3000/api/company/companies",
     );
 
     const companyMap = new Map();
@@ -1428,7 +1454,8 @@ const getLinkedNomadCompanyMeta = async (req, res, next) => {
       companyState: hostLeadCompany.companyState,
       companyCountry: hostLeadCompany.companyCountry,
       companyContinent: hostLeadCompany.companyContinent,
-      companiesListingRequestedAt: hostLeadCompany.companiesListingRequestedAt || null,
+      companiesListingRequestedAt:
+        hostLeadCompany.companiesListingRequestedAt || null,
       alreadyInCompanies: !!linkedCompaniesEntry,
     });
   } catch (error) {
@@ -1452,7 +1479,8 @@ const getEffectiveNomadSourceForCompany = async (req, res, next) => {
     }
 
     return res.status(200).json({
-      effectiveNomadsCompanyId: company.linkedHostCompanyId || company.companyId,
+      effectiveNomadsCompanyId:
+        company.linkedHostCompanyId || company.companyId,
     });
   } catch (error) {
     next(error);
@@ -1481,7 +1509,9 @@ const getCompaniesListingRequests = async (req, res, next) => {
     })
       .select("linkedHostCompanyId")
       .lean();
-    const linkedIdSet = new Set(alreadyLinked.map((c) => c.linkedHostCompanyId));
+    const linkedIdSet = new Set(
+      alreadyLinked.map((c) => c.linkedHostCompanyId),
+    );
 
     const stillPending = pendingRequests.filter(
       (r) => !linkedIdSet.has(r.companyId),
@@ -1502,33 +1532,51 @@ const getCompaniesListingRequests = async (req, res, next) => {
 const approveCompaniesListingRequest = async (req, res, next) => {
   try {
     const { hostCompanyId } = req.params;
-    const { companyName, companyCity, companyState, companyCountry, companyContinent } =
-      req.body || {};
+    const {
+      companyName,
+      companyCity,
+      companyState,
+      companyCountry,
+      companyContinent,
+    } = req.body || {};
 
-    const hostLeadCompany = await HostLeadCompany.findOne({ companyId: hostCompanyId });
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: hostCompanyId,
+    });
 
     if (!hostLeadCompany) {
       return res.status(404).json({ message: "Host company not found" });
     }
 
-    const existingLink = await HostCompany.findOne({ linkedHostCompanyId: hostCompanyId });
+    const existingLink = await HostCompany.findOne({
+      linkedHostCompanyId: hostCompanyId,
+    });
     if (existingLink) {
       return res.status(400).json({
         message: "A Companies entry is already linked to this host company",
       });
     }
 
-    const finalCompanyName = String(companyName || hostLeadCompany.companyName || "").trim();
+    const finalCompanyName = String(
+      companyName || hostLeadCompany.companyName || "",
+    ).trim();
     if (!finalCompanyName) {
       return res.status(400).json({ message: "companyName is required" });
     }
 
-    const finalCity = String(companyCity || hostLeadCompany.companyCity || "").trim();
-    const finalState = String(companyState || hostLeadCompany.companyState || "").trim();
-    const finalCountry = String(companyCountry || hostLeadCompany.companyCountry || "").trim();
+    const finalCity = String(
+      companyCity || hostLeadCompany.companyCity || "",
+    ).trim();
+    const finalState = String(
+      companyState || hostLeadCompany.companyState || "",
+    ).trim();
+    const finalCountry = String(
+      companyCountry || hostLeadCompany.companyCountry || "",
+    ).trim();
     const finalContinent =
-      String(companyContinent || hostLeadCompany.companyContinent || "").trim() ||
-      getContinentForCountry(finalCountry);
+      String(
+        companyContinent || hostLeadCompany.companyContinent || "",
+      ).trim() || getContinentForCountry(finalCountry);
 
     if (!finalCity || !finalState || !finalCountry || !finalContinent) {
       return res.status(400).json({
@@ -1568,7 +1616,9 @@ const rejectCompaniesListingRequest = async (req, res, next) => {
   try {
     const { hostCompanyId } = req.params;
 
-    const hostLeadCompany = await HostLeadCompany.findOne({ companyId: hostCompanyId });
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: hostCompanyId,
+    });
 
     if (!hostLeadCompany) {
       return res.status(404).json({ message: "Host company not found" });

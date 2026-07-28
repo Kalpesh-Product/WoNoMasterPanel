@@ -167,8 +167,7 @@ const changePassword = async (req, res) => {
   }
 };
 
-const NOMADS_BASE =
-  process.env.NOMADS_BASE_URL || "https://wononomadsbe.vercel.app/api";
+const NOMADS_BASE = process.env.NOMADS_BASE_URL || "http://localhost:3000/api";
 
 const TYPE_MAP = {
   products: {
@@ -417,9 +416,13 @@ const resolveCompanyIdFromWorkspace = async (workspaceId) => {
 };
 
 const resolveTemplateFromRequest = async (req) => {
-  const workspaceId = sanitizeValue(req.query?.workspaceId || req.body?.workspaceId);
+  const workspaceId = sanitizeValue(
+    req.query?.workspaceId || req.body?.workspaceId,
+  );
   const companyId = sanitizeValue(req.query?.companyId || req.body?.companyId);
-  const companyName = sanitizeValue(req.query?.companyName || req.body?.companyName);
+  const companyName = sanitizeValue(
+    req.query?.companyName || req.body?.companyName,
+  );
   const searchKey = sanitizeValue(req.query?.searchKey || req.body?.searchKey);
   const filters = [];
 
@@ -492,9 +495,12 @@ const isWebsiteReviewRecord = (review) => {
   if (reviewSource.includes("nomad")) return false;
   if (reviewSource === "website reviews") return true;
 
-  return ["website", "website form", "website preview", "website reviews"].includes(
-    source,
-  );
+  return [
+    "website",
+    "website form",
+    "website preview",
+    "website reviews",
+  ].includes(source);
 };
 
 const isWebsiteLeadRecord = (lead) =>
@@ -532,7 +538,9 @@ const getWebsiteLeads = async (req, res, next) => {
         lead?.isEscalated === true &&
         sanitizeValue(lead?.escalatedWorkspaceId) === workspaceId;
       const belongsToScope =
-        leadScope === "nomads" ? isNomadsLeadRecord(lead) : isWebsiteLeadRecord(lead);
+        leadScope === "nomads"
+          ? isNomadsLeadRecord(lead)
+          : isWebsiteLeadRecord(lead);
       return belongsToWorkspace && belongsToScope;
     });
 
@@ -551,9 +559,16 @@ const getWebsiteLeads = async (req, res, next) => {
 const escapeRegex = (value) =>
   String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const resolveLeadEscalationWorkspace = async ({ workspaceId, companyId, companyName }) => {
+const resolveLeadEscalationWorkspace = async ({
+  workspaceId,
+  companyId,
+  companyName,
+}) => {
   const requestedWorkspaceId = sanitizeValue(workspaceId);
-  if (requestedWorkspaceId && mongoose.Types.ObjectId.isValid(requestedWorkspaceId)) {
+  if (
+    requestedWorkspaceId &&
+    mongoose.Types.ObjectId.isValid(requestedWorkspaceId)
+  ) {
     const requestedWorkspace = await Workspace.findOne({
       _id: requestedWorkspaceId,
       isActive: { $ne: false },
@@ -588,15 +603,23 @@ const resolveLeadEscalationWorkspace = async ({ workspaceId, companyId, companyN
     ),
   );
 
-  const hostCompanyFilters = candidateCompanyIds.map((value) => ({ companyId: value }));
-  if (companyNameRegex) hostCompanyFilters.push({ companyName: companyNameRegex });
+  const hostCompanyFilters = candidateCompanyIds.map((value) => ({
+    companyId: value,
+  }));
+  if (companyNameRegex)
+    hostCompanyFilters.push({ companyName: companyNameRegex });
   const hostCompany = hostCompanyFilters.length
-    ? await HostCompany.findOne({ $or: hostCompanyFilters }).select("_id companyId").lean()
+    ? await HostCompany.findOne({ $or: hostCompanyFilters })
+        .select("_id companyId")
+        .lean()
     : null;
 
-  const workspaceFilters = candidateCompanyIds.map((value) => ({ companyId: value }));
+  const workspaceFilters = candidateCompanyIds.map((value) => ({
+    companyId: value,
+  }));
   if (hostCompany?._id) workspaceFilters.push({ company: hostCompany._id });
-  if (companyNameRegex) workspaceFilters.push({ businessName: companyNameRegex });
+  if (companyNameRegex)
+    workspaceFilters.push({ businessName: companyNameRegex });
 
   if (!workspaceFilters.length) return null;
   return Workspace.findOne({
@@ -624,7 +647,8 @@ const escalateWebsiteLeadToHostPanel = async (req, res, next) => {
 
     if (!workspace?._id) {
       return res.status(409).json({
-        message: "No active HostPanel workspace is linked to this lead's company",
+        message:
+          "No active HostPanel workspace is linked to this lead's company",
       });
     }
 
@@ -650,7 +674,8 @@ const escalateWebsiteLeadToHostPanel = async (req, res, next) => {
     };
 
     return res.status(200).json({
-      message: response?.data?.message || "Lead escalated to HostPanel successfully",
+      message:
+        response?.data?.message || "Lead escalated to HostPanel successfully",
       lead: response?.data?.lead,
     });
   } catch (error) {
@@ -675,16 +700,22 @@ const updateWebsiteLead = async (req, res, next) => {
       });
     }
 
-    if (normalizedStatus && !["Pending", "Contacted", "Closed"].includes(normalizedStatus)) {
-      return res.status(400).json({ message: "Invalid Master Panel lead status" });
+    if (
+      normalizedStatus &&
+      !["Pending", "Contacted", "Closed"].includes(normalizedStatus)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Invalid Master Panel lead status" });
     }
 
     let updatedLead = null;
     try {
-      const leads = await axios.patch(
-        `${NOMADS_BASE}/company/update-lead`,
-        { leadId, ...(normalizedStatus ? { status: normalizedStatus } : {}), ...(typeof comment === "string" ? { comment } : {}) },
-      );
+      const leads = await axios.patch(`${NOMADS_BASE}/company/update-lead`, {
+        leadId,
+        ...(normalizedStatus ? { status: normalizedStatus } : {}),
+        ...(typeof comment === "string" ? { comment } : {}),
+      });
 
       updatedLead = leads?.data?.lead || null;
 
@@ -714,7 +745,10 @@ const updateWebsiteLead = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: `Lead ${comment ? "comment" : "status"} updated`, lead: updatedLead });
+      .json({
+        message: `Lead ${comment ? "comment" : "status"} updated`,
+        lead: updatedLead,
+      });
   } catch (error) {
     next(error);
   }
@@ -809,11 +843,7 @@ const updateReviewStatus = async (req, res, next) => {
 
 const getReviewsByCompany = async (req, res, next) => {
   try {
-    const {
-      companyType = "",
-      status,
-      reviewScope = "",
-    } = req.query;
+    const { companyType = "", status, reviewScope = "" } = req.query;
     const normalizedReviewScope = sanitizeValue(reviewScope).toLowerCase();
     const includeAllCompanies =
       normalizedReviewScope === "nomads" &&

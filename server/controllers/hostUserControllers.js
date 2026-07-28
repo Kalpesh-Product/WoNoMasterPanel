@@ -33,7 +33,7 @@ const resolveHostPanelFrontendUrl = () => {
 
   if (isProd) {
     return normalizeBaseUrl(
-      process.env.HOST_PANEL_FRONTEND_URL || "https://wonohostfe.vercel.app",
+      process.env.HOST_PANEL_FRONTEND_URL || "https://hostpanel.wono.co",
     );
   }
 
@@ -162,7 +162,12 @@ const getMailButton = (href, label) => `
   </a>
 `;
 
-const buildSignupInviteEmail = ({ name, companyName, inviteLink, requestId }) => ({
+const buildSignupInviteEmail = ({
+  name,
+  companyName,
+  inviteLink,
+  requestId,
+}) => ({
   subject: "You're Invited to WONO",
   html: renderNotificationEmail({
     heroTitle: "You're Invited to WONO",
@@ -195,7 +200,12 @@ const buildSignupInviteEmail = ({ name, companyName, inviteLink, requestId }) =>
 });
 
 const PLAN_INFO = {
-  basic: { label: "Basic", priceLabel: "Free", billingCycle: "-", amount: null },
+  basic: {
+    label: "Basic",
+    priceLabel: "Free",
+    billingCycle: "-",
+    amount: null,
+  },
   professional: {
     label: "Professional",
     priceLabel: "$199/month",
@@ -211,9 +221,16 @@ const PLAN_INFO = {
 };
 
 function planInfo(plan) {
-  const key = String(plan || "").trim().toLowerCase();
+  const key = String(plan || "")
+    .trim()
+    .toLowerCase();
   return (
-    PLAN_INFO[key] || { label: plan || "-", priceLabel: "-", billingCycle: "-", amount: null }
+    PLAN_INFO[key] || {
+      label: plan || "-",
+      priceLabel: "-",
+      billingCycle: "-",
+      amount: null,
+    }
   );
 }
 
@@ -529,7 +546,9 @@ function planKeyFromLabel(label) {
     .replace(/\s*plan$/i, "")
     .trim()
     .toLowerCase();
-  if (["custom", "customise", "customised", "customized"].includes(normalized)) {
+  if (
+    ["custom", "customise", "customised", "customized"].includes(normalized)
+  ) {
     return "customise";
   }
   return normalized;
@@ -643,7 +662,9 @@ const buildPlanSubscriptionPaymentEmail = ({
 }) => {
   const planData = planInfo(planKeyFromLabel(planLabel));
   const amountDueValue =
-    amount === undefined || amount === null ? "-" : `$${Number(amount).toFixed(2)}`;
+    amount === undefined || amount === null
+      ? "-"
+      : `$${Number(amount).toFixed(2)}`;
   const amountDueCurrency = String(currency || "usd").toUpperCase();
 
   return {
@@ -1013,8 +1034,14 @@ const KEY_APPS_BLUEPRINT = {
       id: "visitor-management",
       name: "Visitor Management",
       children: [
-        { id: "visitors_manage_internal_visitors", name: "Standard/Internal Visitors (Manage Visitors)" },
-        { id: "visitors_manage_external_clients", name: "External Clients (Manage Visitors)" },
+        {
+          id: "visitors_manage_internal_visitors",
+          name: "Standard/Internal Visitors (Manage Visitors)",
+        },
+        {
+          id: "visitors_manage_external_clients",
+          name: "External Clients (Manage Visitors)",
+        },
         { id: "visitors_tab_daily", name: "Daily Visitors Tab" },
         { id: "visitors_tab_history", name: "Visitor History Tab" },
         { id: "visitors_tab_bookings", name: "Bookings Tab" },
@@ -1024,13 +1051,25 @@ const KEY_APPS_BLUEPRINT = {
           name: "New Frontdesk Action — Standard Visitor",
           children: [
             { id: "visitors_standard_type_standard", name: "Standard Subtab" },
-            { id: "visitors_standard_type_department", name: "Department Subtab" },
+            {
+              id: "visitors_standard_type_department",
+              name: "Department Subtab",
+            },
             { id: "visitors_standard_type_tenant", name: "Tenant Subtab" },
           ],
         },
-        { id: "visitors_mode_workspace_tour", name: "New Frontdesk Action — Unit Tour" },
-        { id: "visitors_mode_walkin_booking", name: "New Frontdesk Action — Walk-in Booking" },
-        { id: "visitors_mode_verify_booking", name: "New Frontdesk Action — Verify Booking" },
+        {
+          id: "visitors_mode_workspace_tour",
+          name: "New Frontdesk Action — Unit Tour",
+        },
+        {
+          id: "visitors_mode_walkin_booking",
+          name: "New Frontdesk Action — Walk-in Booking",
+        },
+        {
+          id: "visitors_mode_verify_booking",
+          name: "New Frontdesk Action — Verify Booking",
+        },
       ],
     },
     { id: "website-builder", name: "Website Builder" },
@@ -1062,8 +1101,14 @@ const FOUNDER_CORE_MODULES_BLUEPRINT = {
             { id: "org_departments_create", name: "Create Department" },
             { id: "org_departments_edit", name: "Edit Department" },
             { id: "org_departments_assign_manager", name: "Assign Manager" },
-            { id: "org_departments_assign_acting_manager", name: "Assign Acting Manager" },
-            { id: "org_departments_remove_acting_manager", name: "Remove Acting Manager" },
+            {
+              id: "org_departments_assign_acting_manager",
+              name: "Assign Acting Manager",
+            },
+            {
+              id: "org_departments_remove_acting_manager",
+              name: "Remove Acting Manager",
+            },
           ],
         },
       ],
@@ -1080,10 +1125,19 @@ const FOUNDER_CORE_MODULES_BLUEPRINT = {
 // mergeCanonicalModulesIntoWorkspace below). Add a module here once, in one
 // place, and every workspace self-heals to include it on its next read/save.
 const CANONICAL_SECTION_BLUEPRINTS = [
-  { category: COMMON_MODULES_BLUEPRINT.category, items: COMMON_MODULES_BLUEPRINT.items },
-  { category: EXTRA_COMMON_MODULES_BLUEPRINT.category, items: EXTRA_COMMON_MODULES_BLUEPRINT.items },
+  {
+    category: COMMON_MODULES_BLUEPRINT.category,
+    items: COMMON_MODULES_BLUEPRINT.items,
+  },
+  {
+    category: EXTRA_COMMON_MODULES_BLUEPRINT.category,
+    items: EXTRA_COMMON_MODULES_BLUEPRINT.items,
+  },
   { category: KEY_APPS_BLUEPRINT.category, items: KEY_APPS_BLUEPRINT.items },
-  { category: FOUNDER_CORE_MODULES_BLUEPRINT.category, items: FOUNDER_CORE_MODULES_BLUEPRINT.items },
+  {
+    category: FOUNDER_CORE_MODULES_BLUEPRINT.category,
+    items: FOUNDER_CORE_MODULES_BLUEPRINT.items,
+  },
   { category: DEPARTMENT_ACCESS_CATEGORY, items: DEPARTMENT_ACCESS_BLUEPRINT },
 ];
 
@@ -1115,7 +1169,9 @@ const normalizeMemberWorkspaceAccess = (member, options = {}) => {
         workspaceId: DEFAULT_WORKSPACE_ID,
         workspaceName: "Main Workspace",
         moduleAccess: member?.moduleAccess || {},
-        grantedModules: Array.isArray(member?.grantedModules) ? member.grantedModules : [],
+        grantedModules: Array.isArray(member?.grantedModules)
+          ? member.grantedModules
+          : [],
       },
     ];
   }
@@ -1124,7 +1180,9 @@ const normalizeMemberWorkspaceAccess = (member, options = {}) => {
     workspaceId: normalizeWorkspaceId(workspace?.workspaceId),
     workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
     moduleAccess: workspace?.moduleAccess || {},
-    grantedModules: Array.isArray(workspace?.grantedModules) ? workspace.grantedModules : [],
+    grantedModules: Array.isArray(workspace?.grantedModules)
+      ? workspace.grantedModules
+      : [],
   }));
 };
 
@@ -1184,7 +1242,9 @@ const indexWorkspaceModuleIds = (rawModules = []) => {
   };
 
   modules.forEach((category) => {
-    const categoryName = String(category?.category || category?.name || "").trim();
+    const categoryName = String(
+      category?.category || category?.name || "",
+    ).trim();
     const startPath = categoryName ? [categoryName] : [];
     visit(getNodeChildren(category), startPath);
   });
@@ -1411,7 +1471,10 @@ const resolveFounderRoleId = async () => {
   if (cachedFounderRoleId) return cachedFounderRoleId;
 
   const rolesCollection = mongoose.connection.db.collection("roles");
-  let founderRole = await rolesCollection.findOne({ name: "founder", isSystemRole: true });
+  let founderRole = await rolesCollection.findOne({
+    name: "founder",
+    isSystemRole: true,
+  });
   if (!founderRole) {
     const insertResult = await rolesCollection.insertOne({
       name: "founder",
@@ -1442,12 +1505,20 @@ const resolveMemberRoleNames = async (rawRoles = []) => {
 
   const roleDocs = await mongoose.connection.db
     .collection("roles")
-    .find({ _id: { $in: Array.from(objectIdKeys).map((id) => new mongoose.Types.ObjectId(id)) } })
+    .find({
+      _id: {
+        $in: Array.from(objectIdKeys).map(
+          (id) => new mongoose.Types.ObjectId(id),
+        ),
+      },
+    })
     .project({ name: 1 })
     .toArray();
 
   const map = new Map();
-  roleDocs.forEach((doc) => map.set(String(doc._id), String(doc?.name || "").trim()));
+  roleDocs.forEach((doc) =>
+    map.set(String(doc._id), String(doc?.name || "").trim()),
+  );
   return map;
 };
 
@@ -1463,7 +1534,9 @@ const upsertFounderWorkspaceMembership = async ({
 }) => {
   if (!workspaceId || !founderUserId) return null;
 
-  const normalizedEnabled = (Array.isArray(enabledModuleIds) ? enabledModuleIds : [])
+  const normalizedEnabled = (
+    Array.isArray(enabledModuleIds) ? enabledModuleIds : []
+  )
     .map((id) => String(id || "").trim())
     .filter(Boolean);
   const founderRoleId = await resolveFounderRoleId();
@@ -1511,11 +1584,15 @@ const getNodeChildren = (node = {}) => {
 };
 
 const findNodeByModuleId = (nodes = [], moduleId = "") => {
-  const target = String(moduleId || "").trim().toLowerCase();
+  const target = String(moduleId || "")
+    .trim()
+    .toLowerCase();
   if (!target || !Array.isArray(nodes)) return null;
 
   for (const node of nodes) {
-    const currentId = String(node?.id || node?.moduleId || "").trim().toLowerCase();
+    const currentId = String(node?.id || node?.moduleId || "")
+      .trim()
+      .toLowerCase();
     if (currentId && currentId === target) return node;
     const inChildren = findNodeByModuleId(getNodeChildren(node), target);
     if (inChildren) return inChildren;
@@ -1542,7 +1619,9 @@ const buildBlueprintNode = (entry, allRootNodes) => {
     id: entry.id,
     moduleId: entry.id,
     name: entry.name,
-    children: (entry.children || []).map((child) => buildBlueprintNode(child, allRootNodes)),
+    children: (entry.children || []).map((child) =>
+      buildBlueprintNode(child, allRootNodes),
+    ),
   };
 };
 
@@ -1552,7 +1631,9 @@ const buildBlueprintNode = (entry, allRootNodes) => {
 // node missing from the existing set, at any depth.
 const mergeBlueprintNodes = (blueprintNodes = [], existingNodes = []) => {
   const itemMapByName = new Map(
-    (existingNodes || []).map((item) => [normalizeNodeName(item), item]).filter(([key]) => key),
+    (existingNodes || [])
+      .map((item) => [normalizeNodeName(item), item])
+      .filter(([key]) => key),
   );
 
   let changed = existingNodes.length !== blueprintNodes.length;
@@ -1563,7 +1644,8 @@ const mergeBlueprintNodes = (blueprintNodes = [], existingNodes = []) => {
       return blueprintNode;
     }
 
-    const hasBlueprintChildren = Array.isArray(blueprintNode.children) && blueprintNode.children.length;
+    const hasBlueprintChildren =
+      Array.isArray(blueprintNode.children) && blueprintNode.children.length;
     if (!hasBlueprintChildren) {
       return {
         ...deepClone(existingItem),
@@ -1574,10 +1656,8 @@ const mergeBlueprintNodes = (blueprintNodes = [], existingNodes = []) => {
     }
 
     const existingChildren = getNodeChildren(existingItem);
-    const { mergedNodes: mergedChildren, changed: childrenChanged } = mergeBlueprintNodes(
-      blueprintNode.children,
-      existingChildren,
-    );
+    const { mergedNodes: mergedChildren, changed: childrenChanged } =
+      mergeBlueprintNodes(blueprintNode.children, existingChildren);
     if (childrenChanged) changed = true;
 
     return {
@@ -1605,7 +1685,9 @@ const mergeCanonicalModulesIntoWorkspace = (rawModules = []) => {
       ? deepClone(Object.values(rawModules))
       : [];
 
-  const allRootNodes = sourceModules.flatMap((category) => getNodeChildren(category));
+  const allRootNodes = sourceModules.flatMap((category) =>
+    getNodeChildren(category),
+  );
   let changed = false;
 
   // Rebuilds the modules array from scratch as exactly the 5 real canonical
@@ -1615,32 +1697,36 @@ const mergeCanonicalModulesIntoWorkspace = (rawModules = []) => {
   // an "add-ons" section that's just a flattened duplicate of every other
   // section, used only for its sidebar's locked-items upsell tray — never a
   // real category here).
-  const nextModules = CANONICAL_SECTION_BLUEPRINTS.map(({ category, items }) => {
-    const blueprintItems = items.map((entry) => buildBlueprintNode(entry, allRootNodes));
+  const nextModules = CANONICAL_SECTION_BLUEPRINTS.map(
+    ({ category, items }) => {
+      const blueprintItems = items.map((entry) =>
+        buildBlueprintNode(entry, allRootNodes),
+      );
 
-    const existingCategory = sourceModules.find((candidate) => {
-      const name = String(candidate?.category || candidate?.name || "").trim().toLowerCase();
-      return name === category.toLowerCase();
-    });
+      const existingCategory = sourceModules.find((candidate) => {
+        const name = String(candidate?.category || candidate?.name || "")
+          .trim()
+          .toLowerCase();
+        return name === category.toLowerCase();
+      });
 
-    if (!existingCategory) {
-      changed = true;
-      return { category, items: blueprintItems };
-    }
+      if (!existingCategory) {
+        changed = true;
+        return { category, items: blueprintItems };
+      }
 
-    const existingItems = getNodeChildren(existingCategory);
-    const { mergedNodes: mergedItems, changed: categoryChanged } = mergeBlueprintNodes(
-      blueprintItems,
-      existingItems,
-    );
-    if (categoryChanged) changed = true;
+      const existingItems = getNodeChildren(existingCategory);
+      const { mergedNodes: mergedItems, changed: categoryChanged } =
+        mergeBlueprintNodes(blueprintItems, existingItems);
+      if (categoryChanged) changed = true;
 
-    return {
-      ...existingCategory,
-      category,
-      items: mergedItems,
-    };
-  });
+      return {
+        ...existingCategory,
+        category,
+        items: mergedItems,
+      };
+    },
+  );
 
   if (sourceModules.length !== nextModules.length) changed = true;
 
@@ -1650,12 +1736,17 @@ const mergeCanonicalModulesIntoWorkspace = (rawModules = []) => {
 const getEnabledCommonModuleIds = (workspace = {}) => {
   const enabledIds = new Set(
     Array.isArray(workspace?.enabledModuleIds)
-      ? workspace.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean)
+      ? workspace.enabledModuleIds
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
       : [],
   );
 
-  const commonGroups = normalizeWorkspaceModules(workspace?.modules).filter((group) =>
-    String(group.category || "").toLowerCase().includes("common"),
+  const commonGroups = normalizeWorkspaceModules(workspace?.modules).filter(
+    (group) =>
+      String(group.category || "")
+        .toLowerCase()
+        .includes("common"),
   );
 
   if (!commonGroups.length) return Array.from(enabledIds);
@@ -1666,10 +1757,17 @@ const getEnabledCommonModuleIds = (workspace = {}) => {
     .filter((id) => id && enabledIds.has(id));
 };
 
-const getDefaultMemberEnabledModules = ({ workspace = {}, designation = "" }) => {
-  const role = String(designation || "").trim().toLowerCase();
+const getDefaultMemberEnabledModules = ({
+  workspace = {},
+  designation = "",
+}) => {
+  const role = String(designation || "")
+    .trim()
+    .toLowerCase();
   const enabledIds = Array.isArray(workspace?.enabledModuleIds)
-    ? workspace.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean)
+    ? workspace.enabledModuleIds
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
     : [];
 
   if (!enabledIds.length) return [];
@@ -1730,7 +1828,9 @@ const buildModuleAccessTreeStateFromIds = ({
   };
 
   modules.forEach((category) => {
-    const categoryName = String(category?.category || category?.name || "").trim();
+    const categoryName = String(
+      category?.category || category?.name || "",
+    ).trim();
     const rootPath = categoryName ? [categoryName] : [];
     visit(getNodeChildren(category), rootPath);
   });
@@ -1758,7 +1858,9 @@ const extractNormalizedRoleTokens = (rolesInput = []) => {
         role.name,
         role.value,
       ].forEach((value) => {
-        const normalized = String(value || "").trim().toLowerCase();
+        const normalized = String(value || "")
+          .trim()
+          .toLowerCase();
         if (normalized) tokens.add(normalized);
       });
     }
@@ -1791,8 +1893,12 @@ const hasOrganizationAccess = async ({
   if (!required || !ORGANIZATION_ACCESS_KEYS.has(required)) return false;
   if (!actorUserId) return false;
 
-  const actor = await HostUser.findById(actorUserId).select("designation").lean();
-  const designation = String(actor?.designation || "").trim().toLowerCase();
+  const actor = await HostUser.findById(actorUserId)
+    .select("designation")
+    .lean();
+  const designation = String(actor?.designation || "")
+    .trim()
+    .toLowerCase();
   if (
     designation.includes("founder") ||
     designation.includes("super admin") ||
@@ -1815,10 +1921,17 @@ const hasOrganizationAccess = async ({
     }
     if (isObjectIdLike(membership?.role)) {
       const roleNameMap = await resolveMemberRoleNames([membership.role]);
-      if (resolveMemberRoleName(membership.role, roleNameMap).toLowerCase() === "founder") {
+      if (
+        resolveMemberRoleName(membership.role, roleNameMap).toLowerCase() ===
+        "founder"
+      ) {
         return true;
       }
-    } else if (String(membership?.role || "").trim().toLowerCase() === "founder") {
+    } else if (
+      String(membership?.role || "")
+        .trim()
+        .toLowerCase() === "founder"
+    ) {
       return true;
     }
     const granted = Array.isArray(membership?.grantedModules)
@@ -1839,7 +1952,9 @@ const hasOrganizationAccess = async ({
   })
     .select("_id")
     .lean();
-  const workspaceIds = workspaces.map((workspace) => workspace?._id).filter(Boolean);
+  const workspaceIds = workspaces
+    .map((workspace) => workspace?._id)
+    .filter(Boolean);
   if (!workspaceIds.length) return false;
 
   const memberships = await WorkspaceMember.find({
@@ -2001,7 +2116,9 @@ const getInviteStatuses = async (req, res, next) => {
         Object.assign(hostUser, updates);
       }
 
-      const key = String(hostUser.email || "").trim().toLowerCase();
+      const key = String(hostUser.email || "")
+        .trim()
+        .toLowerCase();
       statusSource.set(key, {
         inviteStatus: deriveInviteStatus(hostUser),
         inviteSentAt: hostUser.inviteSentAt,
@@ -2011,7 +2128,9 @@ const getInviteStatuses = async (req, res, next) => {
     }
 
     for (const doc of inviteStatusDocs) {
-      const key = String(doc.email || "").trim().toLowerCase();
+      const key = String(doc.email || "")
+        .trim()
+        .toLowerCase();
       const existing = statusSource.get(key);
       statusSource.set(key, mergeInviteRecords(existing, doc));
     }
@@ -2090,7 +2209,9 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    const normalizedEmailForLookup = String(email || "").trim().toLowerCase();
+    const normalizedEmailForLookup = String(email || "")
+      .trim()
+      .toLowerCase();
     const normalizedCompanyNameForLookup = String(companyName || "").trim();
     const normalizedCityForLookup = String(city || "").trim();
     const normalizedStateForLookup = String(state || "").trim();
@@ -2283,37 +2404,36 @@ const getCompanyMembers = async (req, res, next) => {
       requestedCompanyName || String(fallbackCompany?.companyName || "").trim();
     const companyNameRegex = buildExactCaseInsensitiveRegex(scopedCompanyName);
 
-    const [members, directWorkspaces, nameMatchedWorkspaces] = await Promise.all([
-      HostUser.find({
-        companyId: companyIdRegex
-          ? { $regex: companyIdRegex }
-          : companyId,
-      })
-        .select(
-          "name email phone designation companyId isActive isDeleted deletedAt workspaceAccess createdAt updatedAt",
-        )
-        .lean(),
-      Workspace.find({
-        companyId: companyIdRegex
-          ? { $regex: companyIdRegex }
-          : companyId,
-        isActive: true,
-      })
-        .select("_id workspaceName companyId modules enabledModuleIds selectedPlan")
-        .lean(),
-      companyNameRegex
-        ? Workspace.find({
-            businessName: { $regex: companyNameRegex },
-            isActive: true,
-          })
-            .select("_id workspaceName companyId businessName modules enabledModuleIds selectedPlan")
-            .lean()
-        : Promise.resolve([]),
-    ]);
+    const [members, directWorkspaces, nameMatchedWorkspaces] =
+      await Promise.all([
+        HostUser.find({
+          companyId: companyIdRegex ? { $regex: companyIdRegex } : companyId,
+        })
+          .select(
+            "name email phone designation companyId isActive isDeleted deletedAt workspaceAccess createdAt updatedAt",
+          )
+          .lean(),
+        Workspace.find({
+          companyId: companyIdRegex ? { $regex: companyIdRegex } : companyId,
+          isActive: true,
+        })
+          .select(
+            "_id workspaceName companyId modules enabledModuleIds selectedPlan",
+          )
+          .lean(),
+        companyNameRegex
+          ? Workspace.find({
+              businessName: { $regex: companyNameRegex },
+              isActive: true,
+            })
+              .select(
+                "_id workspaceName companyId businessName modules enabledModuleIds selectedPlan",
+              )
+              .lean()
+          : Promise.resolve([]),
+      ]);
 
-    const memberIds = members
-      .map((member) => member?._id)
-      .filter(Boolean);
+    const memberIds = members.map((member) => member?._id).filter(Boolean);
 
     const workspaceDocs = [
       ...directWorkspaces,
@@ -2338,7 +2458,10 @@ const getCompanyMembers = async (req, res, next) => {
       ? await WorkspaceMember.find({
           workspace: { $in: workspaceIds },
         })
-          .populate("user", "name email phone designation companyId isActive isDeleted deletedAt createdAt updatedAt")
+          .populate(
+            "user",
+            "name email phone designation companyId isActive isDeleted deletedAt createdAt updatedAt",
+          )
           .lean()
       : [];
 
@@ -2351,7 +2474,9 @@ const getCompanyMembers = async (req, res, next) => {
           _id: { $in: membershipWorkspaceIds },
           isActive: true,
         })
-          .select("_id workspaceName companyId businessName modules enabledModuleIds selectedPlan")
+          .select(
+            "_id workspaceName companyId businessName modules enabledModuleIds selectedPlan",
+          )
           .lean()
       : [];
 
@@ -2366,17 +2491,23 @@ const getCompanyMembers = async (req, res, next) => {
       ),
     ];
 
-    const workspaceDocsWithDepartmentAccess = allWorkspaceDocs.map((workspace) => {
-      const merged = mergeCanonicalModulesIntoWorkspace(workspace?.modules || []);
-      return {
-        ...workspace,
-        modules: merged.modules,
-        __departmentModulesChanged: merged.changed,
-      };
-    });
+    const workspaceDocsWithDepartmentAccess = allWorkspaceDocs.map(
+      (workspace) => {
+        const merged = mergeCanonicalModulesIntoWorkspace(
+          workspace?.modules || [],
+        );
+        return {
+          ...workspace,
+          modules: merged.modules,
+          __departmentModulesChanged: merged.changed,
+        };
+      },
+    );
 
     const workspaceModuleUpdates = workspaceDocsWithDepartmentAccess
-      .filter((workspace) => workspace?.__departmentModulesChanged && workspace?._id)
+      .filter(
+        (workspace) => workspace?.__departmentModulesChanged && workspace?._id,
+      )
       .map((workspace) => ({
         updateOne: {
           filter: { _id: workspace._id },
@@ -2395,7 +2526,9 @@ const getCompanyMembers = async (req, res, next) => {
     const ensureMemberRecord = (member = {}) => {
       const key =
         String(member?._id || "").trim() ||
-        String(member?.email || "").trim().toLowerCase();
+        String(member?.email || "")
+          .trim()
+          .toLowerCase();
 
       if (!key) return null;
 
@@ -2447,7 +2580,9 @@ const getCompanyMembers = async (req, res, next) => {
       const workspaceId = normalizeWorkspaceId(workspace?._id?.toString());
       const sanitizedEnabled = expandLinkedModuleIds(
         sanitizeEnabledModuleIds(
-          Array.isArray(workspace?.enabledModuleIds) ? workspace.enabledModuleIds : [],
+          Array.isArray(workspace?.enabledModuleIds)
+            ? workspace.enabledModuleIds
+            : [],
           workspace?.modules || [],
         ),
         workspace?.modules || [],
@@ -2457,7 +2592,9 @@ const getCompanyMembers = async (req, res, next) => {
         workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
         modules: workspace?.modules || [],
         enabledModuleIds: sanitizedEnabled,
-        selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
+        selectedPlan: String(workspace?.selectedPlan || "basic")
+          .trim()
+          .toLowerCase(),
       });
     });
 
@@ -2475,7 +2612,9 @@ const getCompanyMembers = async (req, res, next) => {
       const workspaceName = normalizeWorkspaceName(workspaceDoc?.workspaceName);
       const sanitizedEnabled = expandLinkedModuleIds(
         sanitizeEnabledModuleIds(
-          Array.isArray(workspaceDoc?.enabledModuleIds) ? workspaceDoc.enabledModuleIds : [],
+          Array.isArray(workspaceDoc?.enabledModuleIds)
+            ? workspaceDoc.enabledModuleIds
+            : [],
           workspaceDoc?.modules || [],
         ),
         workspaceDoc?.modules || [],
@@ -2486,7 +2625,9 @@ const getCompanyMembers = async (req, res, next) => {
         workspaceName,
         modules: workspaceDoc?.modules || [],
         enabledModuleIds: sanitizedEnabled,
-        selectedPlan: String(workspaceDoc?.selectedPlan || "basic").trim().toLowerCase(),
+        selectedPlan: String(workspaceDoc?.selectedPlan || "basic")
+          .trim()
+          .toLowerCase(),
       });
 
       const populatedUser = membership?.user || {};
@@ -2508,7 +2649,9 @@ const getCompanyMembers = async (req, res, next) => {
 
       const workspaceEnabledIds = expandLinkedModuleIds(
         sanitizeEnabledModuleIds(
-          Array.isArray(workspaceDoc?.enabledModuleIds) ? workspaceDoc.enabledModuleIds : [],
+          Array.isArray(workspaceDoc?.enabledModuleIds)
+            ? workspaceDoc.enabledModuleIds
+            : [],
           workspaceDoc?.modules || [],
         ),
         workspaceDoc?.modules || [],
@@ -2527,7 +2670,9 @@ const getCompanyMembers = async (req, res, next) => {
       // falling back to the founder preset — i.e. every toggle looks off
       // even though the founder actually has full workspace access.
       const effectiveMemberGrantedIds =
-        membership?.isPrimary === true ? workspaceEnabledIds : filteredMemberGrantedIds;
+        membership?.isPrimary === true
+          ? workspaceEnabledIds
+          : filteredMemberGrantedIds;
       const grantedModules = buildModuleAccessTreeStateFromIds({
         workspaceModules: workspaceDoc?.modules || [],
         enabledModuleIds: effectiveMemberGrantedIds,
@@ -2567,7 +2712,8 @@ const getCompanyMembers = async (req, res, next) => {
         }
       });
 
-      const activeWorkspace = normalizedWorkspaces[0] || buildFallbackWorkspace();
+      const activeWorkspace =
+        normalizedWorkspaces[0] || buildFallbackWorkspace();
 
       return {
         ...member,
@@ -2600,11 +2746,15 @@ const updateWorkspaceAccountStatus = async (req, res, next) => {
     const { isDeleted } = req.body || {};
 
     if (!workspaceId || !mongoose.Types.ObjectId.isValid(workspaceId)) {
-      return res.status(400).json({ message: "A valid workspaceId is required" });
+      return res
+        .status(400)
+        .json({ message: "A valid workspaceId is required" });
     }
 
     if (typeof isDeleted !== "boolean") {
-      return res.status(400).json({ message: "isDeleted must be true or false" });
+      return res
+        .status(400)
+        .json({ message: "isDeleted must be true or false" });
     }
 
     // Scoped strictly to this one real workspace _id — deliberately not
@@ -2618,10 +2768,14 @@ const updateWorkspaceAccountStatus = async (req, res, next) => {
     const memberships = await WorkspaceMember.find({ workspace: workspaceId })
       .select("user")
       .lean();
-    const memberIds = memberships.map((membership) => membership.user).filter(Boolean);
+    const memberIds = memberships
+      .map((membership) => membership.user)
+      .filter(Boolean);
 
     if (!memberIds.length) {
-      return res.status(404).json({ message: "No employees found for this workspace" });
+      return res
+        .status(404)
+        .json({ message: "No employees found for this workspace" });
     }
 
     const now = new Date();
@@ -2630,7 +2784,10 @@ const updateWorkspaceAccountStatus = async (req, res, next) => {
       : { isDeleted: false, deletedAt: null };
 
     await HostUser.updateMany({ _id: { $in: memberIds } }, userUpdate);
-    await WorkspaceMember.updateMany({ workspace: workspaceId }, { isActive: !isDeleted });
+    await WorkspaceMember.updateMany(
+      { workspace: workspaceId },
+      { isActive: !isDeleted },
+    );
 
     return res.status(200).json({
       message: isDeleted
@@ -2653,7 +2810,9 @@ const updateHostUserAccountStatus = async (req, res, next) => {
     }
 
     if (typeof isDeleted !== "boolean") {
-      return res.status(400).json({ message: "isDeleted must be true or false" });
+      return res
+        .status(400)
+        .json({ message: "isDeleted must be true or false" });
     }
 
     const member = await HostUser.findById(memberId);
@@ -2672,7 +2831,9 @@ const updateHostUserAccountStatus = async (req, res, next) => {
     await member.save();
 
     return res.status(200).json({
-      message: isDeleted ? "Host user account deleted." : "Host user account reactivated.",
+      message: isDeleted
+        ? "Host user account deleted."
+        : "Host user account reactivated.",
       data: {
         _id: member._id,
         isDeleted: member.isDeleted,
@@ -2687,7 +2848,13 @@ const updateHostUserAccountStatus = async (req, res, next) => {
 const updateMemberWorkspaceAccess = async (req, res, next) => {
   try {
     const { memberId } = req.params;
-    const { workspaceId, workspaceName, moduleAccess, accessModules, accessSource } = req.body || {};
+    const {
+      workspaceId,
+      workspaceName,
+      moduleAccess,
+      accessModules,
+      accessSource,
+    } = req.body || {};
     const requestedAccessModules = Array.isArray(accessModules)
       ? accessModules.map((id) => String(id || "").trim()).filter(Boolean)
       : [];
@@ -2728,7 +2895,11 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
         workspaceDocRaw = await Workspace.findOne({
           isActive: true,
           ...(memberCompanyId
-            ? { companyId: companyRegex ? { $regex: companyRegex } : memberCompanyId }
+            ? {
+                companyId: companyRegex
+                  ? { $regex: companyRegex }
+                  : memberCompanyId,
+              }
             : {}),
           workspaceName: { $regex: workspaceNameRegex },
         })
@@ -2753,33 +2924,39 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     const nextWorkspaceName = normalizeWorkspaceName(
       workspaceDocRaw?.workspaceName || workspaceName,
     );
-      const previousWorkspaceAccess = normalizeMemberWorkspaceAccess(member, {
-        allowFallback: true,
-      }).find((entry) => {
+    const previousWorkspaceAccess = normalizeMemberWorkspaceAccess(member, {
+      allowFallback: true,
+    }).find((entry) => {
       const entryWorkspaceId = normalizeWorkspaceId(entry?.workspaceId);
       const entryWorkspaceName = normalizeWorkspaceName(entry?.workspaceName);
       return (
         entryWorkspaceId === effectiveWorkspaceId ||
         entryWorkspaceName === nextWorkspaceName
       );
-      });
-      let previousGrantedModules = Array.isArray(previousWorkspaceAccess?.grantedModules)
-        ? previousWorkspaceAccess.grantedModules
-            .map((id) => String(id || "").trim())
-            .filter(Boolean)
-        : [];
-      if (
-        !previousGrantedModules.length &&
-        previousWorkspaceAccess?.moduleAccess &&
-        typeof previousWorkspaceAccess.moduleAccess === "object"
-      ) {
-        previousGrantedModules = Object.entries(previousWorkspaceAccess.moduleAccess)
-          .filter(([, isEnabled]) => Boolean(isEnabled))
-          .map(([moduleKey]) => String(moduleKey || "").trim())
-          .filter(Boolean);
-      }
+    });
+    let previousGrantedModules = Array.isArray(
+      previousWorkspaceAccess?.grantedModules,
+    )
+      ? previousWorkspaceAccess.grantedModules
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      : [];
+    if (
+      !previousGrantedModules.length &&
+      previousWorkspaceAccess?.moduleAccess &&
+      typeof previousWorkspaceAccess.moduleAccess === "object"
+    ) {
+      previousGrantedModules = Object.entries(
+        previousWorkspaceAccess.moduleAccess,
+      )
+        .filter(([, isEnabled]) => Boolean(isEnabled))
+        .map(([moduleKey]) => String(moduleKey || "").trim())
+        .filter(Boolean);
+    }
     const hasWorkspaceDoc = Boolean(workspaceDocRaw?._id);
-    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(workspaceDocRaw?.modules || []);
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(
+      workspaceDocRaw?.modules || [],
+    );
     const workspaceDoc = {
       ...workspaceDocRaw,
       modules: ensuredCanonical.modules,
@@ -2813,13 +2990,21 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
       !hasWorkspaceDoc ||
       workspaceEnabledIds.includes(VISITOR_PERMISSION_MAP.module) ||
       workspaceEnabledIds.includes("visitors-management") ||
-      VISITOR_PERMISSION_MAP.tabs.some((key) => workspaceEnabledIds.includes(key)) ||
-      VISITOR_PERMISSION_MAP.actions.some((key) => workspaceEnabledIds.includes(key));
+      VISITOR_PERMISSION_MAP.tabs.some((key) =>
+        workspaceEnabledIds.includes(key),
+      ) ||
+      VISITOR_PERMISSION_MAP.actions.some((key) =>
+        workspaceEnabledIds.includes(key),
+      );
     const hasOrganizationModuleEnabled =
       !hasWorkspaceDoc ||
       workspaceEnabledIds.includes(ORGANIZATION_PERMISSION_MAP.module) ||
-      ORGANIZATION_PERMISSION_MAP.tabs.some((key) => workspaceEnabledIds.includes(key)) ||
-      ORGANIZATION_PERMISSION_MAP.actions.some((key) => workspaceEnabledIds.includes(key));
+      ORGANIZATION_PERMISSION_MAP.tabs.some((key) =>
+        workspaceEnabledIds.includes(key),
+      ) ||
+      ORGANIZATION_PERMISSION_MAP.actions.some((key) =>
+        workspaceEnabledIds.includes(key),
+      );
 
     const explicitAccessModules = requestedAccessModules.length
       ? requestedAccessModules
@@ -2848,11 +3033,14 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
         .filter(Boolean),
     );
     const grantedModules = hasWorkspaceDoc
-      ? grantedModulesRaw.filter((key) => workspaceEnabledSet.has(String(key || "").trim()))
+      ? grantedModulesRaw.filter((key) =>
+          workspaceEnabledSet.has(String(key || "").trim()),
+        )
       : grantedModulesRaw;
     const currentAccess = Array.isArray(member.workspaceAccess)
       ? member.workspaceAccess.filter(
-          (item) => normalizeWorkspaceId(item?.workspaceId) !== effectiveWorkspaceId,
+          (item) =>
+            normalizeWorkspaceId(item?.workspaceId) !== effectiveWorkspaceId,
         )
       : [];
 
@@ -2870,24 +3058,24 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     member.workspaceAccess = currentAccess;
     await member.save();
 
-      const filteredGrantedModules = grantedModules;
+    const filteredGrantedModules = grantedModules;
 
-      if (workspaceDoc?._id) {
-        const existingWorkspaceMember = await WorkspaceMember.findOne({
+    if (workspaceDoc?._id) {
+      const existingWorkspaceMember = await WorkspaceMember.findOne({
+        user: member._id,
+        workspace: workspaceDoc._id,
+      })
+        .select("grantedModules")
+        .lean();
+      if (Array.isArray(existingWorkspaceMember?.grantedModules)) {
+        previousGrantedModules = existingWorkspaceMember.grantedModules
+          .map((id) => String(id || "").trim())
+          .filter(Boolean);
+      }
+
+      await WorkspaceMember.findOneAndUpdate(
+        {
           user: member._id,
-          workspace: workspaceDoc._id,
-        })
-          .select("grantedModules")
-          .lean();
-        if (Array.isArray(existingWorkspaceMember?.grantedModules)) {
-          previousGrantedModules = existingWorkspaceMember.grantedModules
-            .map((id) => String(id || "").trim())
-            .filter(Boolean);
-        }
-
-        await WorkspaceMember.findOneAndUpdate(
-          {
-            user: member._id,
           workspace: workspaceDoc._id,
         },
         {
@@ -2903,8 +3091,12 @@ const updateMemberWorkspaceAccess = async (req, res, next) => {
     const actor = getActorFromRequest(req);
     const previousGrantedSet = new Set(previousGrantedModules);
     const nextGrantedSet = new Set(filteredGrantedModules);
-    const enabledModules = filteredGrantedModules.filter((id) => !previousGrantedSet.has(id));
-    const disabledModules = previousGrantedModules.filter((id) => !nextGrantedSet.has(id));
+    const enabledModules = filteredGrantedModules.filter(
+      (id) => !previousGrantedSet.has(id),
+    );
+    const disabledModules = previousGrantedModules.filter(
+      (id) => !nextGrantedSet.has(id),
+    );
     await createModuleAccessLog({
       ...actor,
       sourcePanel: resolveSourcePanel(req, "host_panel"),
@@ -2957,7 +3149,9 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
       return res.status(400).json({ message: "workspaceId is required" });
     }
 
-    const requestedEnabled = Array.isArray(enabledModuleIds) ? enabledModuleIds : [];
+    const requestedEnabled = Array.isArray(enabledModuleIds)
+      ? enabledModuleIds
+      : [];
 
     const currentWorkspaceRaw = await Workspace.findById(workspaceId)
       .select("_id workspaceName companyId modules enabledModuleIds")
@@ -2965,7 +3159,9 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
     if (!currentWorkspaceRaw?._id) {
       return res.status(404).json({ message: "Workspace not found" });
     }
-    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(currentWorkspaceRaw?.modules || []);
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(
+      currentWorkspaceRaw?.modules || [],
+    );
     const currentWorkspace = {
       ...currentWorkspaceRaw,
       modules: ensuredCanonical.modules,
@@ -3051,9 +3247,14 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
         .lean();
 
       const userOps = users.map((userDoc) => {
-        const access = Array.isArray(userDoc?.workspaceAccess) ? userDoc.workspaceAccess : [];
+        const access = Array.isArray(userDoc?.workspaceAccess)
+          ? userDoc.workspaceAccess
+          : [];
         const updatedAccess = access.map((entry) => {
-          if (normalizeWorkspaceId(entry?.workspaceId) !== normalizeWorkspaceId(workspaceId)) {
+          if (
+            normalizeWorkspaceId(entry?.workspaceId) !==
+            normalizeWorkspaceId(workspaceId)
+          ) {
             return entry;
           }
           return {
@@ -3119,7 +3320,9 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
 
 const syncWorkspaceDepartmentModules = async (req, res, next) => {
   try {
-    const companyId = String(req.query?.companyId || req.body?.companyId || "").trim();
+    const companyId = String(
+      req.query?.companyId || req.body?.companyId || "",
+    ).trim();
     const query = { isActive: true };
     if (companyId) {
       const regex = buildCompanyIdPrefixRegex(companyId);
@@ -3134,11 +3337,15 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
     const memberOps = [];
 
     for (const workspace of workspaces) {
-      const merged = mergeCanonicalModulesIntoWorkspace(workspace?.modules || []);
+      const merged = mergeCanonicalModulesIntoWorkspace(
+        workspace?.modules || [],
+      );
       const modules = merged.modules;
       const changed = merged.changed;
       const rawWorkspaceEnabled = Array.isArray(workspace?.enabledModuleIds)
-        ? workspace.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean)
+        ? workspace.enabledModuleIds
+            .map((id) => String(id || "").trim())
+            .filter(Boolean)
         : [];
       const workspaceEnabled = expandLinkedModuleIds(
         sanitizeEnabledModuleIds(rawWorkspaceEnabled, modules),
@@ -3183,7 +3390,12 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
         memberOps.push({
           updateOne: {
             filter: { _id: membership._id },
-            update: { $set: { grantedModules: filtered, enabledModules: workspaceEnabled } },
+            update: {
+              $set: {
+                grantedModules: filtered,
+                enabledModules: workspaceEnabled,
+              },
+            },
           },
         });
       });
@@ -3207,8 +3419,14 @@ const syncWorkspaceDepartmentModules = async (req, res, next) => {
 
 const sendUpgradePaymentLinkEmail = async (req, res, next) => {
   try {
-    const { email, name, companyName, currentPlan, selectedPlan, paymentLinkUrl } =
-      req.body || {};
+    const {
+      email,
+      name,
+      companyName,
+      currentPlan,
+      selectedPlan,
+      paymentLinkUrl,
+    } = req.body || {};
 
     if (!email || !name || !paymentLinkUrl) {
       return res.status(400).json({
@@ -3245,7 +3463,8 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
 
 const sendUpgradeSuccessEmail = async (req, res, next) => {
   try {
-    const { email, name, companyId, companyName, selectedPlan } = req.body || {};
+    const { email, name, companyId, companyName, selectedPlan } =
+      req.body || {};
 
     if (!email || !name) {
       return res.status(400).json({
@@ -3254,7 +3473,9 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
     }
 
     const leadCompany = companyId
-      ? await HostLeadCompany.findOne({ companyId: String(companyId).trim() }).lean()
+      ? await HostLeadCompany.findOne({
+          companyId: String(companyId).trim(),
+        }).lean()
       : null;
 
     const dashboardUrl = `${resolveHostPanelFrontendUrl()}/login`;
@@ -3262,7 +3483,9 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
       name,
       companyName,
       previousPlan: leadCompany?.previousPlan,
-      selectedPlan: String(selectedPlan || leadCompany?.plan || "requested").trim(),
+      selectedPlan: String(
+        selectedPlan || leadCompany?.plan || "requested",
+      ).trim(),
       effectiveDate: leadCompany?.paymentConfirmedAt,
       dashboardUrl,
     });
@@ -3299,7 +3522,8 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
     } = req.body || {};
 
     const numericAmount = Number(amount);
-    const resolvedPaymentType = paymentType === "plan_subscription" ? "plan_subscription" : "booking";
+    const resolvedPaymentType =
+      paymentType === "plan_subscription" ? "plan_subscription" : "booking";
 
     if (!leadId || !customerName || !customerEmail) {
       return res.status(400).json({
@@ -3313,10 +3537,14 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       });
     }
 
-    const alreadyPaid = await BookingPaymentLink.exists({ leadId, status: "paid" });
+    const alreadyPaid = await BookingPaymentLink.exists({
+      leadId,
+      status: "paid",
+    });
     if (alreadyPaid) {
       return res.status(400).json({
-        message: "This lead has already paid — a new payment link cannot be created",
+        message:
+          "This lead has already paid — a new payment link cannot be created",
       });
     }
 
@@ -3329,7 +3557,9 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
             currency: resolvedCurrency,
             unit_amount: Math.round(numericAmount * 100),
             product_data: {
-              name: description || `${productType || "Booking"} payment — ${companyName || customerName}`,
+              name:
+                description ||
+                `${productType || "Booking"} payment — ${companyName || customerName}`,
             },
           },
           quantity: 1,
@@ -3338,9 +3568,13 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
     });
 
     const resolvedBookingId =
-      resolvedPaymentType === "plan_subscription" ? undefined : generateBookingId(companyName);
+      resolvedPaymentType === "plan_subscription"
+        ? undefined
+        : generateBookingId(companyName);
     const resolvedRegistrationId =
-      resolvedPaymentType === "plan_subscription" ? generateRegistrationId() : undefined;
+      resolvedPaymentType === "plan_subscription"
+        ? generateRegistrationId()
+        : undefined;
 
     await BookingPaymentLink.create({
       leadId,
@@ -3353,7 +3587,8 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       location,
       startDate: startDate || null,
       endDate: endDate || null,
-      noOfPeople: noOfPeople != null && noOfPeople !== "" ? Number(noOfPeople) : null,
+      noOfPeople:
+        noOfPeople != null && noOfPeople !== "" ? Number(noOfPeople) : null,
       description,
       paymentType: resolvedPaymentType,
       amount: numericAmount,
@@ -3362,27 +3597,28 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       stripePaymentLinkUrl: paymentLink.url,
     });
 
-    const paymentEmail = resolvedPaymentType === "plan_subscription"
-      ? buildPlanSubscriptionPaymentEmail({
-          customerName,
-          companyName,
-          planLabel: productType,
-          paymentLinkUrl: paymentLink.url,
-          amount: numericAmount,
-          currency: resolvedCurrency,
-          requestId: resolvedRegistrationId,
-        })
-      : buildBookingPaymentEmail({
-          customerName,
-          companyName,
-          productType,
-          startDate,
-          endDate,
-          noOfPeople,
-          paymentLinkUrl: paymentLink.url,
-          amount: numericAmount,
-          currency: resolvedCurrency,
-        });
+    const paymentEmail =
+      resolvedPaymentType === "plan_subscription"
+        ? buildPlanSubscriptionPaymentEmail({
+            customerName,
+            companyName,
+            planLabel: productType,
+            paymentLinkUrl: paymentLink.url,
+            amount: numericAmount,
+            currency: resolvedCurrency,
+            requestId: resolvedRegistrationId,
+          })
+        : buildBookingPaymentEmail({
+            customerName,
+            companyName,
+            productType,
+            startDate,
+            endDate,
+            noOfPeople,
+            paymentLinkUrl: paymentLink.url,
+            amount: numericAmount,
+            currency: resolvedCurrency,
+          });
 
     await sendMail({
       to: customerEmail,
@@ -3441,7 +3677,10 @@ const handleStripeWebhook = async (req, res) => {
       process.env.STRIPE_WEBHOOK_SECRET,
     );
   } catch (error) {
-    console.error("Stripe webhook signature verification failed:", error.message);
+    console.error(
+      "Stripe webhook signature verification failed:",
+      error.message,
+    );
     return res.status(400).send(`Webhook Error: ${error.message}`);
   }
 
@@ -3455,8 +3694,15 @@ const handleStripeWebhook = async (req, res) => {
         // retries on any non-2xx or timeout), the second call finds nothing
         // left to update, so the confirmation email never sends twice.
         const updated = await BookingPaymentLink.findOneAndUpdate(
-          { stripePaymentLinkId: session.payment_link, status: { $ne: "paid" } },
-          { status: "paid", paidAt: new Date(), stripeCheckoutSessionId: session.id },
+          {
+            stripePaymentLinkId: session.payment_link,
+            status: { $ne: "paid" },
+          },
+          {
+            status: "paid",
+            paidAt: new Date(),
+            stripeCheckoutSessionId: session.id,
+          },
           { new: true },
         );
 
@@ -3484,37 +3730,42 @@ const handleStripeWebhook = async (req, res) => {
             paymentReference: updated.stripePaymentLinkId,
           });
 
-          const confirmationEmail = updated.paymentType === "plan_subscription"
-            ? buildPlanSubscriptionConfirmationEmail({
-                customerName: updated.leadName,
-                companyName: updated.companyName,
-                planLabel: updated.productType,
-                amount: updated.amount,
-                currency: updated.currency,
-                paidAt: updated.paidAt,
-                invoiceNumber,
-                requestId: updated.bookingId,
-                paymentMethod: session.payment_method_types?.[0]
-                  ? session.payment_method_types[0].replace(/^\w/, (c) => c.toUpperCase())
-                  : undefined,
-              })
-            : buildBookingConfirmationEmail({
-                customerName: updated.leadName,
-                companyName: updated.companyName,
-                productType: updated.productType,
-                bookingId: updated.bookingId,
-                location: updated.location,
-                startDate: updated.startDate,
-                endDate: updated.endDate,
-                noOfPeople: updated.noOfPeople,
-                amount: updated.amount,
-                currency: updated.currency,
-                paidAt: updated.paidAt,
-                invoiceNumber,
-                paymentMethod: session.payment_method_types?.[0]
-                  ? session.payment_method_types[0].replace(/^\w/, (c) => c.toUpperCase())
-                  : undefined,
-              });
+          const confirmationEmail =
+            updated.paymentType === "plan_subscription"
+              ? buildPlanSubscriptionConfirmationEmail({
+                  customerName: updated.leadName,
+                  companyName: updated.companyName,
+                  planLabel: updated.productType,
+                  amount: updated.amount,
+                  currency: updated.currency,
+                  paidAt: updated.paidAt,
+                  invoiceNumber,
+                  requestId: updated.bookingId,
+                  paymentMethod: session.payment_method_types?.[0]
+                    ? session.payment_method_types[0].replace(/^\w/, (c) =>
+                        c.toUpperCase(),
+                      )
+                    : undefined,
+                })
+              : buildBookingConfirmationEmail({
+                  customerName: updated.leadName,
+                  companyName: updated.companyName,
+                  productType: updated.productType,
+                  bookingId: updated.bookingId,
+                  location: updated.location,
+                  startDate: updated.startDate,
+                  endDate: updated.endDate,
+                  noOfPeople: updated.noOfPeople,
+                  amount: updated.amount,
+                  currency: updated.currency,
+                  paidAt: updated.paidAt,
+                  invoiceNumber,
+                  paymentMethod: session.payment_method_types?.[0]
+                    ? session.payment_method_types[0].replace(/^\w/, (c) =>
+                        c.toUpperCase(),
+                      )
+                    : undefined,
+                });
 
           await sendMail({
             to: updated.leadEmail,
@@ -3529,7 +3780,10 @@ const handleStripeWebhook = async (req, res) => {
           });
         }
       } catch (error) {
-        console.error("Failed to finalize booking payment / send confirmation:", error);
+        console.error(
+          "Failed to finalize booking payment / send confirmation:",
+          error,
+        );
       }
     }
   }
