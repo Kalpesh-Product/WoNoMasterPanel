@@ -11,10 +11,10 @@ const allowedOrigins = [
   "http://localhost:5007",
   "http://localhost:3001",
   "http://localhost:4173",
-  "https://wononomadsbe.vercel.app",
+  "http://localhost:3000",
   process.env.CORS_FRONTEND_URL,
-  "https://wonohostbe.vercel.app/",
-  "https://wonohostfe.vercel.app"
+  "http://localhost:5006/",
+  "https://hostpanel.wono.co",
 ];
 
 // regex rules for subdomains

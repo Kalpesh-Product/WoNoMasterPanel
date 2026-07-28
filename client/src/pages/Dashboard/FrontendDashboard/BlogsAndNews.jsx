@@ -65,6 +65,37 @@ const pickFirst = (obj, keys, fallback = "-") => {
 const normalizeKey = (value) =>
   `${value}`.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+const levenshteinDistance = (a, b) => {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const dp = Array.from({ length: rows }, () => new Array(cols).fill(0));
+  for (let i = 0; i < rows; i++) dp[i][0] = i;
+  for (let j = 0; j < cols; j++) dp[0][j] = j;
+  for (let i = 1; i < rows; i++) {
+    for (let j = 1; j < cols; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  return dp[rows - 1][cols - 1];
+};
+
+// Treats destination names as the same place when they only differ by a
+// suffix (e.g. "Ho Chi Minh" vs "Ho Chi Minh City"), a dash/whitespace
+// variant, or a small typo (e.g. "Cebu City" vs "Cebu ClIty").
+const isSameDestinationKey = (keyA, keyB) => {
+  if (!keyA || !keyB) return false;
+  if (keyA === keyB) return true;
+  if (keyA.length < 3 || keyB.length < 3) return false;
+  if (keyA.startsWith(keyB) || keyB.startsWith(keyA)) return true;
+  if (Math.min(keyA.length, keyB.length) >= 4 && levenshteinDistance(keyA, keyB) <= 1) {
+    return true;
+  }
+  return false;
+};
+
 const pickByLooseKey = (obj, preferredKeys, fallback = "-") => {
   if (!obj || typeof obj !== "object") return fallback;
 
@@ -282,6 +313,7 @@ const BlogsAndNews = () => {
       : [];
     const companies = Array.isArray(data?.companies) ? data.companies : [];
     const destinationMap = new Map();
+    const destinationEntries = [];
     const locationLookup = new Map();
 
     companies.forEach((company) => {
@@ -303,33 +335,62 @@ const BlogsAndNews = () => {
       countryName = "Unknown",
       continentName = "-",
     ) => {
-      const safeDest = destinationName || "-";
-      if (!destinationMap.has(safeDest)) {
-        let finalCountry = countryName;
-        let finalContinent = continentName;
+      const safeDest = `${destinationName || "-"}`.trim() || "-";
+      const finalCountryRaw = countryName || "Unknown";
+      const destKey = normalizeKey(safeDest);
+      const countryKey = normalizeKey(finalCountryRaw);
+      const mapKey = `${countryKey}::${destKey}`;
 
-        if (
-          (finalCountry === "Unknown" || finalCountry === "-") &&
-          locationLookup.has(safeDest)
-        ) {
-          finalCountry = locationLookup.get(safeDest).country;
-        }
-        if (finalContinent === "-" && locationLookup.has(safeDest)) {
-          finalContinent = locationLookup.get(safeDest).continent;
-        }
-
-        destinationMap.set(safeDest, {
-          destination: safeDest,
-          country: finalCountry || "Unknown",
-          continent: finalContinent || "-",
-          blogCount: 0,
-          newsCount: 0,
-          eventCount: 0,
-          placeCount: 0,
-          restaurantCount: 0,
-        });
+      if (destinationMap.has(mapKey)) {
+        return destinationMap.get(mapKey);
       }
-      return destinationMap.get(safeDest);
+
+      // Different sources spell the same place differently (e.g. "Ho Chi
+      // Minh" vs "Ho Chi Minh City", or a typo like "Cebu ClIty"). Reuse an
+      // existing row within the same country instead of creating a
+      // duplicate, so counts land on a single row.
+      if (safeDest !== "-") {
+        const existing = destinationEntries.find(
+          (entry) =>
+            entry.destination !== "-" &&
+            normalizeKey(entry.country || "") === countryKey &&
+            isSameDestinationKey(destKey, normalizeKey(entry.destination)),
+        );
+        if (existing) {
+          if (safeDest.length > existing.destination.length) {
+            existing.destination = safeDest;
+          }
+          destinationMap.set(mapKey, existing);
+          return existing;
+        }
+      }
+
+      let finalCountry = finalCountryRaw;
+      let finalContinent = continentName;
+
+      if (
+        (finalCountry === "Unknown" || finalCountry === "-") &&
+        locationLookup.has(safeDest)
+      ) {
+        finalCountry = locationLookup.get(safeDest).country;
+      }
+      if (finalContinent === "-" && locationLookup.has(safeDest)) {
+        finalContinent = locationLookup.get(safeDest).continent;
+      }
+
+      const entry = {
+        destination: safeDest,
+        country: finalCountry || "Unknown",
+        continent: finalContinent || "-",
+        blogCount: 0,
+        newsCount: 0,
+        eventCount: 0,
+        placeCount: 0,
+        restaurantCount: 0,
+      };
+      destinationMap.set(mapKey, entry);
+      destinationEntries.push(entry);
+      return entry;
     };
 
     companies.forEach((company) => {
@@ -390,7 +451,17 @@ const BlogsAndNews = () => {
       row.restaurantCount += 1;
     });
 
-    return Array.from(destinationMap.values())
+    return destinationEntries
+      .filter(
+        (row) =>
+          row.destination !== "-" &&
+          row.blogCount +
+            row.newsCount +
+            row.eventCount +
+            row.placeCount +
+            row.restaurantCount >
+            0,
+      )
       .sort((a, b) => {
         const contComp = a.continent.localeCompare(b.continent);
         if (contComp !== 0) return contComp;

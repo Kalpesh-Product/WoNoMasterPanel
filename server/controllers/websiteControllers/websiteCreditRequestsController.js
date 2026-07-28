@@ -12,7 +12,7 @@ const DEFAULT_TEST_PAYMENT_LINK = "https://example.com/test-payment-link";
 const formatHostLoginUrl = () => {
   const baseUrl =
     process.env.NODE_ENV === "production"
-      ? process.env.HOST_PANEL_FRONTEND_URL || "https://wonohostfe.vercel.app"
+      ? process.env.HOST_PANEL_FRONTEND_URL || "https://hostpanel.wono.co"
       : process.env.HOST_PANEL_FRONTEND_URL_DEV ||
         process.env.HOST_PANEL_FRONTEND_URL_LOCAL ||
         "http://localhost:3006";
@@ -44,7 +44,9 @@ const resolveRequestedCredits = (requestDoc = {}) => {
 
 const getNextResetDate = (baseDate = new Date()) => {
   const date = new Date(baseDate);
-  const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  const next = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 1, 0, 0, 0, 0),
+  );
   return next;
 };
 
@@ -53,7 +55,9 @@ const normalizeRoleTitles = (roles = []) => {
   const output = [];
 
   const pushValue = (value) => {
-    const normalized = String(value || "").trim().toLowerCase();
+    const normalized = String(value || "")
+      .trim()
+      .toLowerCase();
     if (normalized) output.push(normalized);
   };
 
@@ -89,10 +93,11 @@ const ensureMasterRole = (roles = [], userData = {}) => {
     return Boolean(userData && Object.keys(userData).length);
   }
 
-  return normalizedRoles.some((role) =>
-    ["master admin", "super admin"].includes(role) ||
-    role.includes("master") ||
-    role.includes("super admin"),
+  return normalizedRoles.some(
+    (role) =>
+      ["master admin", "super admin"].includes(role) ||
+      role.includes("master") ||
+      role.includes("super admin"),
   );
 };
 
@@ -112,7 +117,9 @@ const resolveCompanyDisplayName = async (requestDoc = {}) => {
 
   const [workspace, leadCompany, hostCompany] = await Promise.all([
     workspaceId
-      ? Workspace.findById(workspaceId).select("businessName workspaceName").lean()
+      ? Workspace.findById(workspaceId)
+          .select("businessName workspaceName")
+          .lean()
       : Promise.resolve(null),
     HostLeadCompany.findOne({ companyId: normalizedCompanyId })
       .select("companyName")
@@ -124,9 +131,9 @@ const resolveCompanyDisplayName = async (requestDoc = {}) => {
 
   const companyName = String(
     workspace?.businessName ||
-    leadCompany?.companyName ||
-    hostCompany?.companyName ||
-    requestDoc.companyName ||
+      leadCompany?.companyName ||
+      hostCompany?.companyName ||
+      requestDoc.companyName ||
       requestDoc.company ||
       requestDoc.businessName ||
       "",
@@ -140,7 +147,10 @@ const resolveWorkspaceDisplayName = async (requestDoc = {}) => {
   if (!workspaceId) {
     return (
       String(
-        requestDoc.workspaceName || requestDoc.workspace || requestDoc.workspaceTitle || "",
+        requestDoc.workspaceName ||
+          requestDoc.workspace ||
+          requestDoc.workspaceTitle ||
+          "",
       ).trim() || "your workspace"
     );
   }
@@ -198,7 +208,9 @@ const resolveRequesterForCreditEmail = async (requestDoc = {}) => {
   }
 
   if (!user && workspaceId) {
-    const workspace = await Workspace.findById(workspaceId).select("owner").lean();
+    const workspace = await Workspace.findById(workspaceId)
+      .select("owner")
+      .lean();
     const ownerId = String(workspace?.owner || "").trim();
     if (ownerId) {
       user = await HostUser.findById(ownerId).select("name email").lean();
@@ -219,14 +231,8 @@ const getWebsiteCreditRequests = async (req, res, next) => {
       return res.status(403).json({ message: "Master access required" });
     }
 
-    const {
-      companyId,
-      workspaceId,
-      status,
-      search,
-      fromDate,
-      toDate,
-    } = req.query || {};
+    const { companyId, workspaceId, status, search, fromDate, toDate } =
+      req.query || {};
     const query = {};
 
     if (String(companyId || "").trim()) {
@@ -240,7 +246,8 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     if (String(workspaceId || "").trim()) {
       query.workspaceId = String(workspaceId).trim();
     }
-    if (String(status || "").trim()) query.status = String(status).trim().toLowerCase();
+    if (String(status || "").trim())
+      query.status = String(status).trim().toLowerCase();
 
     if (String(fromDate || "").trim() || String(toDate || "").trim()) {
       query.createdAt = {};
@@ -270,9 +277,7 @@ const getWebsiteCreditRequests = async (req, res, next) => {
 
     const companyIds = [
       ...new Set(
-        rows
-          .map((row) => String(row?.companyId || "").trim())
-          .filter(Boolean),
+        rows.map((row) => String(row?.companyId || "").trim()).filter(Boolean),
       ),
     ];
     const workspaceIds = [
@@ -285,7 +290,11 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     const requestedByUserIds = [
       ...new Set(
         rows
-          .map((row) => String(row?.requestedByUserId || row?.requestedBy?.userId || "").trim())
+          .map((row) =>
+            String(
+              row?.requestedByUserId || row?.requestedBy?.userId || "",
+            ).trim(),
+          )
           .filter(Boolean),
       ),
     ];
@@ -306,38 +315,46 @@ const getWebsiteCreditRequests = async (req, res, next) => {
       ),
     ];
 
-    const [hostLeadCompanies, hostCompanies, workspaces, usersById, usersByEmail] =
-      await Promise.all([
-        companyIds.length
-          ? HostLeadCompany.find({ companyId: { $in: companyIds } })
-              .select("companyId companyName")
-              .lean()
-          : Promise.resolve([]),
-        companyIds.length
-          ? HostCompany.find({ companyId: { $in: companyIds } })
-              .select("companyId companyName")
-              .lean()
-          : Promise.resolve([]),
-        workspaceIds.length
-          ? Workspace.find({ _id: { $in: workspaceIds } })
-              .select("_id workspaceName owner")
-              .lean()
-          : Promise.resolve([]),
-        requestedByUserIds.length
-          ? HostUser.find({ _id: { $in: requestedByUserIds } })
-              .select("_id name email")
-              .lean()
-          : Promise.resolve([]),
-        requestedByEmails.length
-          ? HostUser.find({ email: { $in: requestedByEmails } })
-              .select("_id name email")
-              .lean()
-          : Promise.resolve([]),
-      ]);
+    const [
+      hostLeadCompanies,
+      hostCompanies,
+      workspaces,
+      usersById,
+      usersByEmail,
+    ] = await Promise.all([
+      companyIds.length
+        ? HostLeadCompany.find({ companyId: { $in: companyIds } })
+            .select("companyId companyName")
+            .lean()
+        : Promise.resolve([]),
+      companyIds.length
+        ? HostCompany.find({ companyId: { $in: companyIds } })
+            .select("companyId companyName")
+            .lean()
+        : Promise.resolve([]),
+      workspaceIds.length
+        ? Workspace.find({ _id: { $in: workspaceIds } })
+            .select("_id workspaceName owner")
+            .lean()
+        : Promise.resolve([]),
+      requestedByUserIds.length
+        ? HostUser.find({ _id: { $in: requestedByUserIds } })
+            .select("_id name email")
+            .lean()
+        : Promise.resolve([]),
+      requestedByEmails.length
+        ? HostUser.find({ email: { $in: requestedByEmails } })
+            .select("_id name email")
+            .lean()
+        : Promise.resolve([]),
+    ]);
 
     const companyNameMap = new Map();
     hostCompanies.forEach((company) => {
-      companyNameMap.set(String(company.companyId || "").trim(), company.companyName || "");
+      companyNameMap.set(
+        String(company.companyId || "").trim(),
+        company.companyName || "",
+      );
     });
     hostLeadCompanies.forEach((company) => {
       const key = String(company.companyId || "").trim();
@@ -349,7 +366,10 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     const workspaceNameMap = new Map();
     const workspaceOwnerIdMap = new Map();
     workspaces.forEach((workspace) => {
-      workspaceNameMap.set(String(workspace?._id || "").trim(), workspace.workspaceName || "");
+      workspaceNameMap.set(
+        String(workspace?._id || "").trim(),
+        workspace.workspaceName || "",
+      );
       workspaceOwnerIdMap.set(
         String(workspace?._id || "").trim(),
         String(workspace?.owner || "").trim(),
@@ -362,7 +382,9 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     });
     const userByEmailMap = new Map();
     usersByEmail.forEach((user) => {
-      const key = String(user?.email || "").trim().toLowerCase();
+      const key = String(user?.email || "")
+        .trim()
+        .toLowerCase();
       if (key) userByEmailMap.set(key, user);
     });
 
@@ -375,7 +397,9 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     ];
 
     if (missingOwnerUserIds.length) {
-      const ownerUsers = await HostUser.find({ _id: { $in: missingOwnerUserIds } })
+      const ownerUsers = await HostUser.find({
+        _id: { $in: missingOwnerUserIds },
+      })
         .select("_id name email")
         .lean();
 
@@ -391,12 +415,17 @@ const getWebsiteCreditRequests = async (req, res, next) => {
         row?.requestedByUserId || row?.requestedBy?.userId || "",
       ).trim();
       const requesterEmailKey = String(
-        row?.requestedByEmail || row?.requestedBy?.email || row?.userEmail || "",
+        row?.requestedByEmail ||
+          row?.requestedBy?.email ||
+          row?.userEmail ||
+          "",
       )
         .trim()
         .toLowerCase();
 
-      const requesterById = requesterIdKey ? userByIdMap.get(requesterIdKey) : null;
+      const requesterById = requesterIdKey
+        ? userByIdMap.get(requesterIdKey)
+        : null;
       const requesterByEmail = requesterEmailKey
         ? userByEmailMap.get(requesterEmailKey)
         : null;
@@ -473,12 +502,16 @@ const createWebsiteCreditRequest = async (req, res, next) => {
     } = req.body || {};
 
     if (!String(companyId || "").trim() || !String(workspaceId || "").trim()) {
-      return res.status(400).json({ message: "companyId and workspaceId are required" });
+      return res
+        .status(400)
+        .json({ message: "companyId and workspaceId are required" });
     }
 
     const numericCredits = Number(requestedCredits);
     if (!Number.isFinite(numericCredits) || numericCredits <= 0) {
-      return res.status(400).json({ message: "requestedCredits must be a positive number" });
+      return res
+        .status(400)
+        .json({ message: "requestedCredits must be a positive number" });
     }
 
     const requesterName = String(
@@ -487,9 +520,9 @@ const createWebsiteCreditRequest = async (req, res, next) => {
         `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
     ).trim();
     const requesterUserId = String(requestedByUserId || req.user || "").trim();
-    const requesterEmail = String(
-      requestedByEmail || req.userData?.email || "",
-    ).trim().toLowerCase();
+    const requesterEmail = String(requestedByEmail || req.userData?.email || "")
+      .trim()
+      .toLowerCase();
 
     const doc = await WebsiteCreditRequest.create({
       companyId: String(companyId).trim(),
@@ -534,7 +567,9 @@ const approveWebsiteCreditRequest = async (req, res, next) => {
 
     const requestDoc = await WebsiteCreditRequest.findById(requestId).lean();
     if (!requestDoc) {
-      return res.status(404).json({ message: "Website credit request not found" });
+      return res
+        .status(404)
+        .json({ message: "Website credit request not found" });
     }
 
     const updatedDoc = await WebsiteCreditRequest.findByIdAndUpdate(
@@ -547,7 +582,9 @@ const approveWebsiteCreditRequest = async (req, res, next) => {
           reviewedAt: new Date(),
           reviewedBy: {
             userId: String(req.user || ""),
-            email: String(req.userData?.email || "").trim().toLowerCase(),
+            email: String(req.userData?.email || "")
+              .trim()
+              .toLowerCase(),
             name: String(
               `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
             ).trim(),
@@ -555,7 +592,9 @@ const approveWebsiteCreditRequest = async (req, res, next) => {
           approvedAt: new Date(),
           approvedBy: {
             userId: String(req.user || ""),
-            email: String(req.userData?.email || "").trim().toLowerCase(),
+            email: String(req.userData?.email || "")
+              .trim()
+              .toLowerCase(),
             name: String(
               `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
             ).trim(),
@@ -567,7 +606,10 @@ const approveWebsiteCreditRequest = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: "Request approved successfully", requestDoc: updatedDoc });
+      .json({
+        message: "Request approved successfully",
+        requestDoc: updatedDoc,
+      });
   } catch (error) {
     next(error);
   }
@@ -592,7 +634,9 @@ const rejectWebsiteCreditRequest = async (req, res, next) => {
 
     const requestDoc = await WebsiteCreditRequest.findById(requestId).lean();
     if (!requestDoc) {
-      return res.status(404).json({ message: "Website credit request not found" });
+      return res
+        .status(404)
+        .json({ message: "Website credit request not found" });
     }
 
     const updatedDoc = await WebsiteCreditRequest.findByIdAndUpdate(
@@ -605,7 +649,9 @@ const rejectWebsiteCreditRequest = async (req, res, next) => {
           reviewedAt: new Date(),
           reviewedBy: {
             userId: String(req.user || ""),
-            email: String(req.userData?.email || "").trim().toLowerCase(),
+            email: String(req.userData?.email || "")
+              .trim()
+              .toLowerCase(),
             name: String(
               `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
             ).trim(),
@@ -623,7 +669,10 @@ const rejectWebsiteCreditRequest = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: "Request rejected successfully", requestDoc: updatedDoc });
+      .json({
+        message: "Request rejected successfully",
+        requestDoc: updatedDoc,
+      });
   } catch (error) {
     next(error);
   }
@@ -644,7 +693,9 @@ const sendWebsiteCreditPaymentLink = async (req, res, next) => {
 
     const requestDoc = await WebsiteCreditRequest.findById(requestId).lean();
     if (!requestDoc) {
-      return res.status(404).json({ message: "Website credit request not found" });
+      return res
+        .status(404)
+        .json({ message: "Website credit request not found" });
     }
 
     const companyNameForEmail = await resolveCompanyDisplayName(requestDoc);
@@ -653,10 +704,13 @@ const sendWebsiteCreditPaymentLink = async (req, res, next) => {
     const name = requester.name;
 
     if (!email) {
-      return res.status(400).json({ message: "Requested user email not found" });
+      return res
+        .status(400)
+        .json({ message: "Requested user email not found" });
     }
 
-    const finalLink = String(paymentLinkUrl || "").trim() || DEFAULT_TEST_PAYMENT_LINK;
+    const finalLink =
+      String(paymentLinkUrl || "").trim() || DEFAULT_TEST_PAYMENT_LINK;
 
     await sendMail({
       to: email,
@@ -690,7 +744,10 @@ const sendWebsiteCreditPaymentLink = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: "Payment link sent successfully", requestDoc: updatedDoc });
+      .json({
+        message: "Payment link sent successfully",
+        requestDoc: updatedDoc,
+      });
   } catch (error) {
     next(error);
   }
@@ -709,13 +766,23 @@ const updateWebsiteCreditPaymentStatus = async (req, res, next) => {
       return res.status(400).json({ message: "requestId is required" });
     }
 
-    if (!["paid", "unpaid"].includes(String(paymentStatus || "").trim().toLowerCase())) {
-      return res.status(400).json({ message: "paymentStatus must be paid/unpaid" });
+    if (
+      !["paid", "unpaid"].includes(
+        String(paymentStatus || "")
+          .trim()
+          .toLowerCase(),
+      )
+    ) {
+      return res
+        .status(400)
+        .json({ message: "paymentStatus must be paid/unpaid" });
     }
 
     const requestDoc = await WebsiteCreditRequest.findById(requestId).lean();
     if (!requestDoc) {
-      return res.status(404).json({ message: "Website credit request not found" });
+      return res
+        .status(404)
+        .json({ message: "Website credit request not found" });
     }
 
     const normalized = String(paymentStatus).trim().toLowerCase();
@@ -732,7 +799,10 @@ const updateWebsiteCreditPaymentStatus = async (req, res, next) => {
 
     return res
       .status(200)
-      .json({ message: "Payment status updated successfully", requestDoc: updatedDoc });
+      .json({
+        message: "Payment status updated successfully",
+        requestDoc: updatedDoc,
+      });
   } catch (error) {
     next(error);
   }
@@ -751,7 +821,9 @@ const addWebsiteCredits = async (req, res, next) => {
 
     const requestDoc = await WebsiteCreditRequest.findById(requestId).lean();
     if (!requestDoc) {
-      return res.status(404).json({ message: "Website credit request not found" });
+      return res
+        .status(404)
+        .json({ message: "Website credit request not found" });
     }
 
     const lockDoc = await WebsiteCreditRequest.findOneAndUpdate(
@@ -770,7 +842,9 @@ const addWebsiteCredits = async (req, res, next) => {
         .lean();
 
       if (!latestDoc) {
-        return res.status(404).json({ message: "Website credit request not found" });
+        return res
+          .status(404)
+          .json({ message: "Website credit request not found" });
       }
 
       if (latestDoc.creditsAddedAt) {
@@ -796,7 +870,9 @@ const addWebsiteCredits = async (req, res, next) => {
       const companyId = normalizeCompanyId(lockDoc.companyId);
       const approvalMeta = {
         userId: String(req.user || ""),
-        email: String(req.userData?.email || "").trim().toLowerCase(),
+        email: String(req.userData?.email || "")
+          .trim()
+          .toLowerCase(),
         name: String(
           `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
         ).trim(),
@@ -1032,9 +1108,7 @@ const getWebsiteCreditsSummary = async (req, res, next) => {
 
     const companyIds = [
       ...new Set(
-        rows
-          .map((row) => normalizeCompanyId(row.companyId))
-          .filter(Boolean),
+        rows.map((row) => normalizeCompanyId(row.companyId)).filter(Boolean),
       ),
     ];
     // Some legacy rows store the HostCompany ObjectId in companyId.
@@ -1075,7 +1149,10 @@ const getWebsiteCreditsSummary = async (req, res, next) => {
 
     const companyNameMap = new Map();
     hostCompanies.forEach((company) => {
-      companyNameMap.set(String(company.companyId || "").trim(), company.companyName || "");
+      companyNameMap.set(
+        String(company.companyId || "").trim(),
+        company.companyName || "",
+      );
     });
     leadCompanies.forEach((company) => {
       const key = String(company.companyId || "").trim();
@@ -1132,10 +1209,14 @@ const addWebsiteCreditsToCompany = async (req, res, next) => {
     const numericCredits = Number(credits);
 
     if (!Number.isFinite(numericCredits) || numericCredits <= 0) {
-      return res.status(400).json({ message: "credits must be a positive number" });
+      return res
+        .status(400)
+        .json({ message: "credits must be a positive number" });
     }
     if (!String(companyId || "").trim() && !String(workspaceId || "").trim()) {
-      return res.status(400).json({ message: "companyId or workspaceId is required" });
+      return res
+        .status(400)
+        .json({ message: "companyId or workspaceId is required" });
     }
 
     const lookupClauses = [];
@@ -1150,7 +1231,9 @@ const addWebsiteCreditsToCompany = async (req, res, next) => {
     if (!existingDoc) {
       return res
         .status(404)
-        .json({ message: "No credits record found for this company/workspace" });
+        .json({
+          message: "No credits record found for this company/workspace",
+        });
     }
 
     // Top-ups are capped by the plan limit: remaining after adding can never
@@ -1196,8 +1279,11 @@ const addWebsiteCreditsToCompany = async (req, res, next) => {
       performedByName: String(
         `${req.userData?.firstName || ""} ${req.userData?.lastName || ""}`,
       ).trim(),
-      performedByEmail: String(req.userData?.email || "").trim().toLowerCase(),
-      description: String(note || "").trim() || "Credits added from master panel",
+      performedByEmail: String(req.userData?.email || "")
+        .trim()
+        .toLowerCase(),
+      description:
+        String(note || "").trim() || "Credits added from master panel",
       remainingAfter: creditsRow.creditsRemaining,
     }).catch((error) =>
       console.error("Failed to record credit grant:", error?.message),

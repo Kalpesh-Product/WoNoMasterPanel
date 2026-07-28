@@ -134,7 +134,7 @@ const createCompanyListing = async (req, res) => {
 
     try {
       const response = await axios.post(
-        "https://wononomadsbe.vercel.app/api/company/create-company",
+        "http://localhost:3000/api/company/create-company",
         listingData,
       );
 
@@ -301,7 +301,7 @@ const createCompanyListing = async (req, res) => {
 //     // ---------- REMOTE UPDATE (NO DELETION YET) ----------
 //     try {
 //       const response = await axios.patch(
-//         "https://wononomadsbe.vercel.app/api/company/update-company",
+//         "http://localhost:3000/api/company/update-company",
 //         updateData,
 //       );
 //     } catch (err) {
@@ -501,7 +501,7 @@ const editCompanyListing = async (req, res) => {
     // ---------- REMOTE UPDATE (NO DELETION YET) ----------
     try {
       const response = await axios.patch(
-        "https://wononomadsbe.vercel.app/api/company/update-company",
+        "http://localhost:3000/api/company/update-company",
         updateData,
       );
 
@@ -588,7 +588,7 @@ const editCompanyListing = async (req, res) => {
 const getAllCompanyListings = async (req, res) => {
   try {
     const response = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies",
+      "http://localhost:3000/api/company/companies",
     );
 
     if (!response.data) {
@@ -604,7 +604,7 @@ const getAllCompanyListings = async (req, res) => {
 const getCompanyListings = async (req, res) => {
   try {
     const response = await axios.get(
-      "https://wononomadsbe.vercel.app/api/company/companies",
+      "http://localhost:3000/api/company/companies",
     );
 
     if (!response.data) {

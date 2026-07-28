@@ -13,6 +13,7 @@ import { statusPillClass } from "../../../lib/status-pill";
 import { CompaniesSkeleton } from "../../../components/ui/Skeleton";
 
 const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 700;
 
 const toCompanySlug = (value = "") =>
   String(value || "")
@@ -54,7 +55,10 @@ const Companies = () => {
   const loadMoreRef = useRef(null);
 
   useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    const timeout = setTimeout(
+      () => setDebouncedSearch(searchQuery.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
