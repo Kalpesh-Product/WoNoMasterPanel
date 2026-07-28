@@ -26,6 +26,18 @@ const parseReviews = (reviews) => {
   return normalizeReviews(reviews);
 };
 
+const parseJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 const createCompanyListing = async (req, res) => {
   try {
     const {
@@ -396,6 +408,7 @@ const editCompanyListing = async (req, res) => {
       inclusions,
       about,
       address,
+      googleMap,
       reviews,
       existingImages = [],
     } = req.body;
@@ -407,6 +420,7 @@ const editCompanyListing = async (req, res) => {
     }
 
     const parsedReviews = parseReviews(reviews);
+    const parsedExistingImages = parseJsonArray(existingImages);
 
     // FIX: Search by both businessId and companyId
     const company = await HostCompany.findOne({
@@ -428,6 +442,7 @@ const editCompanyListing = async (req, res) => {
       inclusions,
       about,
       address,
+      googleMap,
       reviews: parsedReviews,
     };
 
@@ -443,7 +458,7 @@ const editCompanyListing = async (req, res) => {
       businessId,
       companyType,
       companyName: company.companyName,
-      images: [...existingImages], // Start with existing images
+      images: [...parsedExistingImages], // Start with existing images
     };
 
     // ---------- IMAGE UPLOAD (NO DELETION HERE) ----------
@@ -470,7 +485,7 @@ const editCompanyListing = async (req, res) => {
     if (req.files?.length) {
       const imageFiles = req.files.filter((f) => f.fieldname === "images");
 
-      const totalImages = imageFiles.length + existingImages.length;
+      const totalImages = imageFiles.length + parsedExistingImages.length;
       if (totalImages > 10) {
         return res.status(400).json({ message: "Maximum 10 images allowed" });
       }
@@ -524,7 +539,7 @@ const editCompanyListing = async (req, res) => {
             "🧹 Cleaning up newly uploaded images due to remote failure...",
           );
           const newlyUploadedUrls = updateData.images.slice(
-            existingImages.length,
+            parsedExistingImages.length,
           );
           await Promise.allSettled(
             newlyUploadedUrls.map((img) => deleteFileFromS3ByUrl(img.url)),
@@ -551,7 +566,7 @@ const editCompanyListing = async (req, res) => {
             ? JSON.stringify(value).slice(0, 300)
             : String(value).slice(0, 300),
       }));
-    const newImageCount = updateData.images.length - existingImages.length;
+    const newImageCount = updateData.images.length - parsedExistingImages.length;
     req.logContext = {
       ...(req.logContext || {}),
       action: "edit-company-listing",
