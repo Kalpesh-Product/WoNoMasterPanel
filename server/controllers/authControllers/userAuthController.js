@@ -18,6 +18,11 @@ const login = async (req, res, next) => {
     const user = await AdminUser.findOne({ email }).lean().exec();
     if (!user) return res.status(404).json({ message: "No user found" });
 
+    if (user.isActive === false)
+      return res
+        .status(403)
+        .json({ message: "Your account has been disabled. Contact a superadmin for access." });
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid)
       return res.status(400).json({ message: "invalid password" });

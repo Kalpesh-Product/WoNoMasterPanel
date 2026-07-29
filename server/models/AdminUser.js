@@ -31,6 +31,12 @@ const adminUserSchema = new mongoose.Schema({
     type: [String],
     default: [],
   },
+  // Login access switch. Superadmins can never be set to false — enforced
+  // in adminAccessController.js, not here, since it depends on isSuperAdmin.
+  isActive: {
+    type: Boolean,
+    default: true,
+  },
 });
 
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);

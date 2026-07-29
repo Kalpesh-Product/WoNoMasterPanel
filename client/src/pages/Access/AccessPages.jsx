@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Switch } from "@mui/material";
-import { LuShieldCheck, LuUser, LuSearch } from "react-icons/lu";
+import { LuShieldCheck, LuUser, LuSearch, LuUserX, LuUserCheck } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ const AccessPages = () => {
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [draftIsSuperAdmin, setDraftIsSuperAdmin] = useState(false);
   const [draftAllowedModules, setDraftAllowedModules] = useState([]);
+  const [draftIsActive, setDraftIsActive] = useState(true);
 
   useEffect(() => {
     if (!auth?.user?.isSuperAdmin) {
@@ -61,6 +62,7 @@ const AccessPages = () => {
   const isDirty =
     !!selectedUser &&
     (draftIsSuperAdmin !== Boolean(selectedUser.isSuperAdmin) ||
+      draftIsActive !== (selectedUser.isActive ?? true) ||
       JSON.stringify([...draftAllowedModules].sort()) !==
         JSON.stringify([...(selectedUser.allowedModules || [])].sort()));
 
@@ -68,6 +70,13 @@ const AccessPages = () => {
     setSelectedUserId(user._id);
     setDraftIsSuperAdmin(Boolean(user.isSuperAdmin));
     setDraftAllowedModules(user.allowedModules || []);
+    setDraftIsActive(user.isActive ?? true);
+  };
+
+  const handleSuperAdminToggle = (checked) => {
+    setDraftIsSuperAdmin(checked);
+    // Superadmins can never be disabled, so flipping this on re-enables login.
+    if (checked) setDraftIsActive(true);
   };
 
   const toggleModuleKey = (key) => {
@@ -92,6 +101,7 @@ const AccessPages = () => {
         {
           isSuperAdmin: draftIsSuperAdmin,
           allowedModules: draftAllowedModules,
+          isActive: draftIsActive,
         },
       );
       return res.data;
@@ -162,7 +172,7 @@ const AccessPages = () => {
                       isSelected
                         ? "border-primary bg-primary/5"
                         : "border-transparent hover:bg-gray-50"
-                    }`}
+                    } ${user.isActive === false ? "opacity-50" : ""}`}
                   >
                     <div
                       className={`shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-[12px] font-pmedium ${
@@ -183,6 +193,13 @@ const AccessPages = () => {
                             className="text-primary shrink-0"
                             size={14}
                             title="Superadmin"
+                          />
+                        )}
+                        {user.isActive === false && (
+                          <LuUserX
+                            className="text-red-400 shrink-0"
+                            size={14}
+                            title="Login disabled"
                           />
                         )}
                       </div>
@@ -254,12 +271,50 @@ const AccessPages = () => {
                   <Switch
                     checked={draftIsSuperAdmin}
                     disabled={isSelf}
-                    onChange={(e) => setDraftIsSuperAdmin(e.target.checked)}
+                    onChange={(e) => handleSuperAdminToggle(e.target.checked)}
                   />
                 </div>
                 {isSelf && (
                   <p className="text-[11px] font-pregular text-gray-400 -mt-2">
                     You can't change your own superadmin status.
+                  </p>
+                )}
+
+                <div
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 ${
+                    draftIsActive
+                      ? "border-borderGray"
+                      : "border-red-300 bg-red-50"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {draftIsActive ? (
+                      <LuUserCheck className="text-gray-400" size={20} />
+                    ) : (
+                      <LuUserX className="text-red-500" size={20} />
+                    )}
+                    <div>
+                      <span className="block text-content font-pmedium">
+                        Login Access
+                      </span>
+                      <span className="block text-[11px] font-pregular text-gray-500">
+                        {draftIsSuperAdmin
+                          ? "Superadmins can't be disabled"
+                          : draftIsActive
+                            ? "This user can log in to the Master Panel"
+                            : "This user can no longer log in"}
+                      </span>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={draftIsActive}
+                    disabled={isSelf || draftIsSuperAdmin}
+                    onChange={(e) => setDraftIsActive(e.target.checked)}
+                  />
+                </div>
+                {isSelf && (
+                  <p className="text-[11px] font-pregular text-gray-400 -mt-2">
+                    You can't disable your own login access.
                   </p>
                 )}
 

@@ -12,6 +12,11 @@ const refreshTokenController = async (req, res, next) => {
     if (!user) {
       return res.sendStatus(401);
     }
+    if (user.isActive === false) {
+      return res
+        .status(403)
+        .json({ message: "Your account has been disabled." });
+    }
     jwt.verify(
       refreshToken,
       process.env.REFRESH_TOKEN_SECRET,

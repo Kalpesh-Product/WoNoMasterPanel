@@ -28,9 +28,14 @@ const getModuleCatalog = async (req, res, next) => {
 const updateAdminUserAccess = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { isSuperAdmin, allowedModules } = req.body;
+    const { isSuperAdmin, allowedModules, isActive } = req.body;
+    const isSelf = String(userId) === String(req.userData?._id);
 
-    if (isSuperAdmin === undefined && allowedModules === undefined) {
+    if (
+      isSuperAdmin === undefined &&
+      allowedModules === undefined &&
+      isActive === undefined
+    ) {
       return res
         .status(400)
         .json({ message: "Nothing to update" });
@@ -52,19 +57,39 @@ const updateAdminUserAccess = async (req, res, next) => {
       }
     }
 
-    if (
-      isSuperAdmin === false &&
-      String(userId) === String(req.userData?._id)
-    ) {
+    if (isSuperAdmin === false && isSelf) {
       return res
         .status(400)
         .json({ message: "You cannot remove your own superadmin access" });
+    }
+
+    if (isActive === false) {
+      if (isSelf) {
+        return res
+          .status(400)
+          .json({ message: "You cannot disable your own account" });
+      }
+      const targetUser = await AdminUser.findById(userId)
+        .select("isSuperAdmin")
+        .lean()
+        .exec();
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const resultingIsSuperAdmin =
+        isSuperAdmin !== undefined ? isSuperAdmin : targetUser.isSuperAdmin;
+      if (resultingIsSuperAdmin) {
+        return res
+          .status(400)
+          .json({ message: "Superadmins cannot be disabled" });
+      }
     }
 
     const update = {};
     if (isSuperAdmin !== undefined) update.isSuperAdmin = Boolean(isSuperAdmin);
     if (allowedModules !== undefined)
       update.allowedModules = [...new Set(allowedModules)];
+    if (isActive !== undefined) update.isActive = Boolean(isActive);
 
     const updatedUser = await AdminUser.findByIdAndUpdate(userId, update, {
       new: true,
