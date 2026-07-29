@@ -184,24 +184,25 @@ const TYPE_MAP = {
 const bulkUploadData = async (req, res) => {
   const { kind = "data" } = req.body;
   let file = req.file;
+  const uploadType = TYPE_MAP[kind];
 
   if (!file) {
     return res.status(400).json({ message: "No file provided" });
   }
 
-  if (!TYPE_MAP[kind]) {
+  if (!uploadType) {
     return res.status(400).json({ message: "Invalid upload kind" });
   }
 
   try {
     const formData = new FormData();
-    formData.append(TYPE_MAP[kind].formKey, file.buffer, {
+    formData.append(uploadType.formKey, file.buffer, {
       filename: file.originalname,
       contentType: file.mimetype,
     });
 
-    const response = await axios.post(TYPE_MAP[kind].api, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    const response = await axios.post(uploadType.api, formData, {
+      headers: formData.getHeaders(),
     });
 
     res.status(200).json({
@@ -217,11 +218,26 @@ const bulkUploadData = async (req, res) => {
     const data = err.response?.data;
 
     console.error("=== Bulk Upload Error ===");
+    console.error("Kind:", kind);
+    console.error("URL:", uploadType.api);
+    console.error("Axios code:", err.code);
+    console.error("Message:", err.message);
     console.error("Status:", status);
     console.error("Data:", data);
+    if (err.errors) {
+      console.error(
+        "Connection errors:",
+        err.errors.map((item) => ({
+          code: item.code,
+          address: item.address,
+          port: item.port,
+          message: item.message,
+        })),
+      );
+    }
     console.error("Full Error:", err.toString());
     console.error("=========================");
-    res.status(500).json({
+    res.status(status).json({
       success: false,
       message: data,
     });
