@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { Country, State, City } from "country-state-city";
 import {
   TextField,
   MenuItem,
@@ -78,6 +79,8 @@ const EditNomadListing = () => {
     control,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -90,6 +93,9 @@ const EditNomadListing = () => {
       description: "",
       latitude: "",
       longitude: "",
+      country: "",
+      state: "",
+      city: "",
       inclusions: [],
       about: "",
       address: "",
@@ -205,6 +211,9 @@ const EditNomadListing = () => {
       totalReviews: src.totalReviews ?? "",
       latitude: src.latitude != null ? String(src.latitude) : "",
       longitude: src.longitude != null ? String(src.longitude) : "",
+      country: src.country || "",
+      state: src.state || "",
+      city: src.city || "",
       inclusions: inclusionsArr,
       about: src.about || "",
       address: src.address || "",
@@ -234,14 +243,6 @@ const EditNomadListing = () => {
   });
 
   const onSubmit = (values, e) => {
-    const normalizedSelectedType = normalizeCompanyType(values.companyType);
-    if (
-      normalizedSelectedType !== originalType &&
-      addedTypes.has(normalizedSelectedType)
-    ) {
-      toast.error("This Nomad listing type has already been added.");
-      return;
-    }
     const formEl = e?.target || formRef.current;
     const fd = new FormData(formEl);
 
@@ -261,6 +262,9 @@ const EditNomadListing = () => {
     fd.set("companyTitle", values.companyTitle);
     fd.set("companyName", values.companyName);
     fd.set("existingImages", JSON.stringify(fetchedListing?.images || []));
+    fd.set("country", values.country);
+    fd.set("state", values.state);
+    fd.set("city", values.city);
 
     // ✅ inclusions always string
     const inclusionsArr = Array.isArray(values.inclusions)
@@ -315,6 +319,9 @@ const EditNomadListing = () => {
       description: "",
       latitude: "",
       longitude: "",
+      country: "",
+      state: "",
+      city: "",
       inclusions: [],
       about: "",
       address: "",
@@ -389,13 +396,12 @@ const EditNomadListing = () => {
                     <MenuItem
                       key={type}
                       value={type.toLowerCase().replace(/\s+/g, "")}
-                      disabled={alreadyAdded}
                     >
                       <span className="flex w-full items-center justify-between gap-4 font-pmedium">
                         <span>{type}</span>
                         {alreadyAdded && (
                           <span className="text-[10px] font-pmedium uppercase tracking-wide text-emerald-600">
-                            Already added
+                            Added
                           </span>
                         )}
                       </span>
@@ -583,6 +589,115 @@ const EditNomadListing = () => {
             />
           </div>
           {/* </div> */}
+
+          {/* Country — each listing has its own location, independent of
+              the Host Company's registered address. */}
+          <Controller
+            name="country"
+            control={control}
+            rules={{ required: "Country is required" }}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                select
+                size="small"
+                label="Country"
+                className="col-span-2 md:col-span-1"
+                error={!!errors.country}
+                helperText={errors?.country?.message}
+                onChange={(e) => {
+                  field.onChange(e);
+                  setValue("state", "");
+                  setValue("city", "");
+                }}
+              >
+                {Country.getAllCountries().map((c) => (
+                  <MenuItem key={c.isoCode} value={c.name}>
+                    {c.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+
+          {/* State */}
+          <Controller
+            name="state"
+            control={control}
+            rules={{ required: "State is required" }}
+            render={({ field }) => {
+              const countryName = watch("country");
+              const countryObj = Country.getAllCountries().find(
+                (c) => c.name === countryName,
+              );
+              const states = countryObj
+                ? State.getStatesOfCountry(countryObj.isoCode)
+                : [];
+              return (
+                <TextField
+                  {...field}
+                  select
+                  size="small"
+                  label="State"
+                  className="col-span-2 md:col-span-1"
+                  disabled={!countryObj}
+                  error={!!errors.state}
+                  helperText={errors?.state?.message}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setValue("city", "");
+                  }}
+                >
+                  {states.map((s) => (
+                    <MenuItem key={s.isoCode} value={s.name}>
+                      {s.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              );
+            }}
+          />
+
+          {/* City */}
+          <Controller
+            name="city"
+            control={control}
+            rules={{ required: "City is required" }}
+            render={({ field }) => {
+              const countryName = watch("country");
+              const stateName = watch("state");
+              const countryObj = Country.getAllCountries().find(
+                (c) => c.name === countryName,
+              );
+              const stateObj =
+                countryObj &&
+                State.getStatesOfCountry(countryObj.isoCode).find(
+                  (s) => s.name === stateName,
+                );
+              const cities =
+                countryObj && stateObj
+                  ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode)
+                  : [];
+              return (
+                <TextField
+                  {...field}
+                  select
+                  size="small"
+                  label="City"
+                  className="col-span-2 md:col-span-1"
+                  disabled={!stateObj}
+                  error={!!errors.city}
+                  helperText={errors?.city?.message}
+                >
+                  {cities.map((c) => (
+                    <MenuItem key={c.name} value={c.name}>
+                      {c.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              );
+            }}
+          />
 
           {/* Images Upload */}
           {/* <div className="col-span-2">

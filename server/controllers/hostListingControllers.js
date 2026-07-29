@@ -68,6 +68,9 @@ const createCompanyListing = async (req, res) => {
       description,
       latitude,
       longitude,
+      city,
+      state,
+      country,
       inclusions,
       about,
       address,
@@ -82,13 +85,21 @@ const createCompanyListing = async (req, res) => {
 
     const parsedReviews = parseReviews(reviews);
 
+    // Each listing has its own location — staff can add several locations
+    // of the same product type in different cities — so prefer whatever the
+    // form submitted, only falling back to the Host Company's registered
+    // address when it was left blank.
+    const resolvedCity = String(city || "").trim() || company.companyCity;
+    const resolvedState = String(state || "").trim() || company.companyState;
+    const resolvedCountry = String(country || "").trim() || company.companyCountry;
+
     const listingData = {
       companyName: productName,
       companyTitle: companyTitle ? companyTitle : company.companyName,
       companyId: company.companyId,
-      city: company.companyCity,
-      state: company.companyState,
-      country: company.companyCountry,
+      city: resolvedCity,
+      state: resolvedState,
+      country: resolvedCountry,
       website: company.websiteLink,
       companyType: companyType,
       ratings: ratings,
@@ -130,7 +141,7 @@ const createCompanyListing = async (req, res) => {
       (company.companyName || "unnamed").replace(/[^\w\- ]+/g, "").trim() ||
       "unnamed";
 
-    const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
+    const folderPath = `nomads/${pathCompanyType}/${resolvedCountry}/${safeCompanyName}`;
 
     if (req.files?.length > 0) {
       const imageFiles = req.files.filter((f) => f.fieldname === "images");
@@ -424,6 +435,9 @@ const editCompanyListing = async (req, res) => {
       description,
       latitude,
       longitude,
+      city,
+      state,
+      country,
       inclusions,
       about,
       address,
@@ -458,6 +472,9 @@ const editCompanyListing = async (req, res) => {
       description,
       latitude,
       longitude,
+      city,
+      state,
+      country,
       inclusions,
       about,
       address,
