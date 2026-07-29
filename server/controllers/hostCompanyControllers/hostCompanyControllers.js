@@ -41,6 +41,23 @@ const validDefaults = new Set(serviceOptions[2].items);
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+const normalizeLogo = (logo) => {
+  if (!logo) return null;
+
+  if (typeof logo === "string") {
+    const url = logo.trim();
+    return url ? { url, id: "" } : null;
+  }
+
+  if (typeof logo === "object") {
+    const url = typeof logo.url === "string" ? logo.url.trim() : "";
+    const id = typeof logo.id === "string" ? logo.id : "";
+    return url ? { url, id } : null;
+  }
+
+  return null;
+};
+
 // Same prefix-match convention getCompanyMembers uses in hostUserControllers.js
 // (a workspace's companyId can be "<companyId>" or "<companyId>-<suffix>").
 const buildCompanyIdPrefixRegex = (companyId = "") => {
@@ -1314,7 +1331,7 @@ const bulkInsertLogos = async (req, res, next) => {
 
         const company = {
           companyName: row["Business Name"]?.trim(),
-          logo: companyMap.get(businessId) || "",
+          logo: normalizeLogo(companyMap.get(businessId)),
         };
         companies.push(company);
       })
@@ -1323,7 +1340,9 @@ const bulkInsertLogos = async (req, res, next) => {
           const operations = companies.map((company) => ({
             updateOne: {
               filter: { companyName: company.companyName },
-              update: { $set: { logo: company.logo } },
+              update: company.logo
+                ? { $set: { logo: company.logo } }
+                : { $unset: { logo: "" } },
             },
           }));
 

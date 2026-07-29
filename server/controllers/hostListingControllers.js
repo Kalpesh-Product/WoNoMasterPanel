@@ -38,6 +38,23 @@ const parseJsonArray = (value) => {
   }
 };
 
+const normalizeLogo = (logo) => {
+  if (!logo) return null;
+
+  if (typeof logo === "string") {
+    const url = logo.trim();
+    return url ? { url, id: "" } : null;
+  }
+
+  if (typeof logo === "object") {
+    const url = typeof logo.url === "string" ? logo.url.trim() : "";
+    const id = typeof logo.id === "string" ? logo.id : "";
+    return url ? { url, id } : null;
+  }
+
+  return null;
+};
+
 const createCompanyListing = async (req, res) => {
   try {
     const {
@@ -69,7 +86,6 @@ const createCompanyListing = async (req, res) => {
       companyName: productName,
       companyTitle: companyTitle ? companyTitle : company.companyName,
       companyId: company.companyId,
-      logo: company.logo,
       city: company.companyCity,
       state: company.companyState,
       country: company.companyCountry,
@@ -88,6 +104,9 @@ const createCompanyListing = async (req, res) => {
       reviews: parsedReviews,
       images: [],
     };
+
+    const logo = normalizeLogo(company.logo);
+    if (logo) listingData.logo = logo;
 
     //Upload images
 
@@ -460,6 +479,9 @@ const editCompanyListing = async (req, res) => {
       companyName: company.companyName,
       images: [...parsedExistingImages], // Start with existing images
     };
+
+    const logo = normalizeLogo(company.logo);
+    if (logo) updateData.logo = logo;
 
     // ---------- IMAGE UPLOAD (NO DELETION HERE) ----------
     const formatCompanyType = (type) => {
