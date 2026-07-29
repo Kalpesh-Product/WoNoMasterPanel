@@ -130,6 +130,7 @@ import AssetsHome from "../pages/Assets/AssetsHome";
 import ManageAssetsHome from "../pages/Assets/ManageAssetsHome";
 import LogPage from "../pages/LogPage";
 import AccessPages from "../pages/Access/AccessPages";
+import AddMasterUser from "../pages/Access/AddMasterUser";
 import ModulePermissions from "../pages/Access/ModulePermissions";
 import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/CreateWebsite";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
@@ -462,6 +463,14 @@ export const routes = createBrowserRouter([
                     element: <VisaCountries />,
                   },
                   {
+                    path: "master-panel-users",
+                    element: <AccessPages />,
+                  },
+                  {
+                    path: "add-master-user",
+                    element: <AddMasterUser />,
+                  },
+                  {
                     path: "companies",
                     children: [
                       {
@@ -713,10 +722,6 @@ export const routes = createBrowserRouter([
               {
                 path: "access/permissions/:module",
                 element: <ModulePermissions />,
-              },
-              {
-                path: "access/permissions/pages",
-                element: <AccessPages />,
               },
               {
                 path: "notifications",

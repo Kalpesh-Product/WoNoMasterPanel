@@ -29,45 +29,35 @@ const Sidebar = ({ onCloseDrawer }) => {
   const [expandedModule, setExpandedModule] = useState(0);
   const { auth } = useAuth();
 
-  const userEmail = auth?.user?.email;
+  const isSuperAdmin = auth?.user?.isSuperAdmin;
+  const allowedModules = auth?.user?.allowedModules || [];
 
-  const restrictedEmails = [
-    "shawnsilveira.wono@gmail.com",
-    "mehak.wono@gmail.com",
-    "savita.wono@gmail.com",
-    "gourish.wono@gmail.com",
-  ];
-
-  const companiesAccessAllowedEmails = [
-    "gourish.wono@gmail.com",
-    "savita.wono@gmail.com",
-  ];
-
-  const worldRankingWeightsAccessAllowedEmails = [
-    "shawnsilveira.wono@gmail.com",
-  ];
-
+  // Submenu `key`s must stay in sync with server/config/masterPanelModules.js
   const defaultModules = [
     {
       id: 1,
+      key: "dashboard",
       icon: LuLayoutDashboard,
       title: "Dashboard",
       route: "/dashboard",
       submenus: [
         {
           id: 2,
+          key: "dashboard.companies",
           title: "Companies",
           icon: LuBuilding2,
           route: "/dashboard/companies",
         },
         {
           id: 3,
+          key: "dashboard.all-leads",
           title: "All Leads",
           icon: LuUsers,
           route: "/dashboard/all-leads",
         },
         {
           id: 4,
+          key: "dashboard.value-adds-leads",
           title: "Value Adds Leads",
           icon: LuUsers,
           route: "/dashboard/value-adds-leads",
@@ -86,92 +76,125 @@ const Sidebar = ({ onCloseDrawer }) => {
         // },
         {
           id: 11,
+          key: "dashboard.data-upload",
           title: "Data Upload",
           icon: LuUpload,
           route: "/dashboard/data-upload",
         },
         {
           id: 12,
+          key: "dashboard.profile",
           title: "Profile",
           icon: LuUser,
           route: "/dashboard/profile/my-profile",
         },
         {
           id: 13,
+          key: "dashboard.logs",
           title: "Logs",
           icon: LuFileText,
           route: "/dashboard/logs-layout",
         },
         {
           id: 14,
+          key: "dashboard.reviews",
           title: "Reviews",
           icon: LuMessageSquareText,
           route: "/dashboard/company-reviews",
         },
         {
           id: 15,
+          key: "dashboard.destinations-data",
           title: "Destinations Data",
           icon: LuNewspaper,
           route: "/dashboard/destinations-data",
         },
         {
           id: 16,
+          key: "dashboard.world-ranking-weights",
           title: "World Ranking Weights",
           icon: LuChartLine,
           route: "/dashboard/world-ranking-weights",
         },
         {
           id: 17,
+          key: "dashboard.visa-countries",
           title: "Visa Countries",
           icon: LuPlane,
           route: "/dashboard/visa-countries",
         },
+        {
+          id: 23,
+          key: "dashboard.add-master-user",
+          title: "Add Master User",
+          icon: LuUserPlus,
+          route: "/dashboard/add-master-user",
+        },
+        ...(isSuperAdmin
+          ? [
+              {
+                id: 22,
+                key: "dashboard.user-access",
+                title: "User Access",
+                icon: LuShieldCheck,
+                route: "/dashboard/master-panel-users",
+              },
+            ]
+          : []),
       ],
     },
     {
       id: 2,
+      key: "hostpanel",
       icon: LuLayoutDashboard,
       title: "Host Panel",
       route: "/dashboard",
       submenus: [
         {
           id: 2,
+          key: "hostpanel.companies",
           title: "Companies",
           icon: LuBuilding2,
           route: "/dashboard/companies",
         },
         {
           id: 8,
+          key: "hostpanel.support-tickets",
           title: "Support Tickets",
           icon: LuTicket,
           route: "/dashboard/support-tickets",
         },
         {
           id: 5,
+          key: "hostpanel.signup-leads",
           title: "Signup Leads",
           icon: LuUserPlus,
           route: "/dashboard/signup-leads",
         },
         {
           id: 21,
+          key: "hostpanel.website-credits",
           title: "Website Credits",
           icon: LuTicket,
           route: "/dashboard/website-credits",
         },
         {
           id: 6,
+          key: "hostpanel.host-companies",
           title: "Host Companies",
           icon: LuBuilding2,
           route: "/dashboard/host-companies",
         },
         {
           id: 7,
+          key: "hostpanel.module-access-logs",
           title: "Module Access Logs",
           icon: LuShieldCheck,
           route: "/dashboard/module-access-logs",
         },
         {
           id: 20,
+          key: "hostpanel.host-panel-logs",
           title: "Host Panel Logs",
           icon: LuFileText,
           route: "/dashboard/host-panel-logs",
@@ -209,27 +232,16 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   const isActive = (path) => location.pathname.startsWith(path);
 
-  const isRestrictedUser = restrictedEmails.includes(userEmail);
-  const canAccessCompanies = companiesAccessAllowedEmails.includes(userEmail);
-  const canAccessWorldRankingWeights =
-    worldRankingWeightsAccessAllowedEmails.includes(userEmail);
-
-  const restrictedVisibleSubmenuTitles = [
-    "Data Upload",
-    "Profile",
-    "Destinations Data",
-    ...(canAccessCompanies ? ["Companies"] : []),
-    ...(canAccessWorldRankingWeights ? ["World Ranking Weights"] : []),
-  ];
-
-  const filteredModules = isRestrictedUser
-    ? defaultModules.map((module) => ({
-        ...module,
-        submenus: module.submenus.filter((submenu) =>
-          restrictedVisibleSubmenuTitles.includes(submenu.title),
-        ),
-      }))
-    : defaultModules;
+  const filteredModules = isSuperAdmin
+    ? defaultModules
+    : defaultModules
+        .map((module) => ({
+          ...module,
+          submenus: module.submenus.filter((submenu) =>
+            allowedModules.includes(submenu.key),
+          ),
+        }))
+        .filter((module) => module.submenus.length > 0);
 
   return (
     <div

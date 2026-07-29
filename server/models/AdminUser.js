@@ -20,6 +20,17 @@ const adminUserSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
   },
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
+  },
+  // Submenu keys this user can see in the Master Panel sidebar.
+  // Ignored when isSuperAdmin is true. Keys must match masterPanelModules.js
+  // and the `key` on each submenu in client/src/components/Sidebar.jsx.
+  allowedModules: {
+    type: [String],
+    default: [],
+  },
 });
 
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);

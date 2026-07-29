@@ -54,6 +54,7 @@ const verifyJwtOptional = require("./middlewares/verifyJwtOptional");
 const hostCompanyRoutes = require("./routes/hostCompanyRoutes");
 const employeeRoutes = require("./routes/employeeRoutes");
 const adminUserRoutes = require("./routes/adminUserRoutes");
+const adminAccessRoutes = require("./routes/adminAccessRoutes");
 const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
@@ -110,6 +111,9 @@ app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs
 app.use("/api/admin", verifyJwt, auditLogger, adminUserRoutes);
+// Per-route access checks (superadmin-only vs. module-grantable) live in
+// adminAccessRoutes.js since not every route there requires superadmin.
+app.use("/api/admin-access", verifyJwt, auditLogger, adminAccessRoutes);
 app.use("/api/host-user", hostUserRoutes);
 
 app.use("/api/auth", authRoutes);

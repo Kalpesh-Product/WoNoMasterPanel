@@ -26,12 +26,17 @@ const BreadCrumbComponent = () => {
   const pathSegments =
     location.pathname === "/dashboard"
       ? ["dashboard"]
-      : location.pathname
-          .split("/")
-          .filter(
-            (segment) =>
-              segment && segment !== "app" && segment !== "dashboard",
-          );
+      : location.pathname === "/access"
+        ? ["access"]
+        : location.pathname
+            .split("/")
+            .filter(
+              (segment) =>
+                segment &&
+                segment !== "app" &&
+                segment !== "dashboard" &&
+                segment !== "access",
+            );
 
   // Generate breadcrumb links
   const breadcrumbs = pathSegments.map((segment, index) => {
