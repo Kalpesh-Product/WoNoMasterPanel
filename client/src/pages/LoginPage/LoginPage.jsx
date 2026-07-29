@@ -13,7 +13,7 @@ import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { Drawer, List, ListItem, ListItemText } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import { IoCloseSharp } from "react-icons/io5";
-import logo from "../../assets/WONO_LOGO_Black_TP.png";
+import logo from "../../assets/WONO_LOGO_Black_TP.svg";
 
 const LoginPage = () => {
   const { auth, setAuth } = useAuth();
