@@ -260,6 +260,7 @@ const EditNomadListing = () => {
     fd.set("googleMap", values.googleMap);
     fd.set("companyTitle", values.companyTitle);
     fd.set("companyName", values.companyName);
+    fd.set("existingImages", JSON.stringify(fetchedListing?.images || []));
 
     // ✅ inclusions always string
     const inclusionsArr = Array.isArray(values.inclusions)
