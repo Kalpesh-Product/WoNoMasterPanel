@@ -75,7 +75,11 @@ const ProductsUpload = () => {
     onError: (err) => {
       console.log(err);
 
-      toast.error(err?.data?.message || "Upload failed");
+      toast.error(
+        err?.response?.data?.message?.message ||
+          err?.response?.data?.message ||
+          "Upload failed",
+      );
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
