@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Switch } from "@mui/material";
-import { LuShieldCheck, LuUser, LuSearch, LuUserX, LuUserCheck } from "react-icons/lu";
+import { LuShieldCheck, LuUser, LuSearch, LuUserX, LuUserCheck, LuGlobe } from "react-icons/lu";
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ const AccessPages = () => {
   const [draftIsSuperAdmin, setDraftIsSuperAdmin] = useState(false);
   const [draftAllowedModules, setDraftAllowedModules] = useState([]);
   const [draftIsActive, setDraftIsActive] = useState(true);
+  const [draftCanViewPrivateNomadListings, setDraftCanViewPrivateNomadListings] =
+    useState(false);
 
   useEffect(() => {
     if (!auth?.user?.isSuperAdmin) {
@@ -63,6 +65,8 @@ const AccessPages = () => {
     !!selectedUser &&
     (draftIsSuperAdmin !== Boolean(selectedUser.isSuperAdmin) ||
       draftIsActive !== (selectedUser.isActive ?? true) ||
+      draftCanViewPrivateNomadListings !==
+        Boolean(selectedUser.canViewPrivateNomadListings) ||
       JSON.stringify([...draftAllowedModules].sort()) !==
         JSON.stringify([...(selectedUser.allowedModules || [])].sort()));
 
@@ -71,6 +75,9 @@ const AccessPages = () => {
     setDraftIsSuperAdmin(Boolean(user.isSuperAdmin));
     setDraftAllowedModules(user.allowedModules || []);
     setDraftIsActive(user.isActive ?? true);
+    setDraftCanViewPrivateNomadListings(
+      Boolean(user.canViewPrivateNomadListings),
+    );
   };
 
   const handleSuperAdminToggle = (checked) => {
@@ -102,6 +109,7 @@ const AccessPages = () => {
           isSuperAdmin: draftIsSuperAdmin,
           allowedModules: draftAllowedModules,
           isActive: draftIsActive,
+          canViewPrivateNomadListings: draftCanViewPrivateNomadListings,
         },
       );
       return res.data;
@@ -317,6 +325,40 @@ const AccessPages = () => {
                     You can't disable your own login access.
                   </p>
                 )}
+
+                <div
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 ${
+                    draftCanViewPrivateNomadListings
+                      ? "border-primary bg-primary/5"
+                      : "border-borderGray"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <LuGlobe
+                      className={
+                        draftCanViewPrivateNomadListings
+                          ? "text-primary"
+                          : "text-gray-400"
+                      }
+                      size={20}
+                    />
+                    <div>
+                      <span className="block text-content font-pmedium">
+                        Nomad Listing Access
+                      </span>
+                      <span className="block text-[11px] font-pregular text-gray-500">
+                        On the Nomads site, this user can see every
+                        country/state and listings which are not public yet.
+                      </span>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={draftCanViewPrivateNomadListings}
+                    onChange={(e) =>
+                      setDraftCanViewPrivateNomadListings(e.target.checked)
+                    }
+                  />
+                </div>
 
                 <div>
                   <span className="text-content font-pmedium text-gray-700">

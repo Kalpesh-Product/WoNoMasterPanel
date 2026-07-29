@@ -1,9 +1,36 @@
 const bcrypt = require("bcryptjs");
+const axios = require("axios");
 const AdminUser = require("../models/AdminUser");
 const { masterPanelModules, allModuleKeys } = require("../config/masterPanelModules");
 const { createLog } = require("../utils/moduleLogs");
 
 const EMAIL_REGEX = /^[a-zA-Z0-9_.±]+@[a-zA-Z0-9-]+.[a-zA-Z0-9-.]+$/;
+
+const NOMADS_BASE = process.env.NOMADS_BASE_URL || "http://localhost:3000/api";
+
+// Mirrors the toggle onto the Nomads backend's special-access list. Best
+// effort: if the Nomads service is unreachable we still keep the master
+// panel's own record of intent (canViewPrivateNomadListings) so a retry
+// (e.g. re-saving) can re-sync it later.
+const syncNomadSpecialAccess = async (email, shouldHaveAccess) => {
+  try {
+    if (shouldHaveAccess) {
+      await axios.post(`${NOMADS_BASE}/special-access`, { email });
+    } else {
+      await axios.delete(`${NOMADS_BASE}/special-access/${encodeURIComponent(email)}`);
+    }
+  } catch (error) {
+    // 404 (not found on delete) / 409 (already exists on add) are fine —
+    // they mean the desired state already holds.
+    const status = error?.response?.status;
+    if (status !== 404 && status !== 409) {
+      console.error(
+        `[syncNomadSpecialAccess] Failed to sync ${email}:`,
+        error?.response?.data?.message || error.message,
+      );
+    }
+  }
+};
 
 const listAdminUsers = async (req, res, next) => {
   try {
@@ -28,13 +55,15 @@ const getModuleCatalog = async (req, res, next) => {
 const updateAdminUserAccess = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    const { isSuperAdmin, allowedModules, isActive } = req.body;
+    const { isSuperAdmin, allowedModules, isActive, canViewPrivateNomadListings } =
+      req.body;
     const isSelf = String(userId) === String(req.userData?._id);
 
     if (
       isSuperAdmin === undefined &&
       allowedModules === undefined &&
-      isActive === undefined
+      isActive === undefined &&
+      canViewPrivateNomadListings === undefined
     ) {
       return res
         .status(400)
@@ -90,6 +119,8 @@ const updateAdminUserAccess = async (req, res, next) => {
     if (allowedModules !== undefined)
       update.allowedModules = [...new Set(allowedModules)];
     if (isActive !== undefined) update.isActive = Boolean(isActive);
+    if (canViewPrivateNomadListings !== undefined)
+      update.canViewPrivateNomadListings = Boolean(canViewPrivateNomadListings);
 
     const updatedUser = await AdminUser.findByIdAndUpdate(userId, update, {
       new: true,
@@ -100,6 +131,13 @@ const updateAdminUserAccess = async (req, res, next) => {
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    if (canViewPrivateNomadListings !== undefined) {
+      await syncNomadSpecialAccess(
+        updatedUser.email,
+        Boolean(canViewPrivateNomadListings),
+      );
     }
 
     await createLog({

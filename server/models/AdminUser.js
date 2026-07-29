@@ -37,6 +37,14 @@ const adminUserSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  // When true, this admin's email is also granted special access on the
+  // Nomads site (can see all countries/states and isPublic:false listings).
+  // Kept in sync with the Nomads backend's SpecialAccessUser collection by
+  // updateAdminUserAccess in adminAccessController.js.
+  canViewPrivateNomadListings: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);
