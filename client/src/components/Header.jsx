@@ -36,7 +36,7 @@ import { toast } from "sonner";
 import { queryClient } from "../main";
 import relativeTime from "dayjs/plugin/relativeTime";
 import dayjs from "dayjs";
-import WoNoLogo from "../assets/WONO_LOGO_Black_TP.png";
+import WoNoLogo from "../assets/WONO_LOGO_Black_TP.svg";
 
 const Header = ({
   notifications = [],

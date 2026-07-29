@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import logo from "../assets/WONO_LOGO_Black_TP.png";
+import logo from "../assets/WONO_LOGO_Black_TP.svg";
 
 import { FaGlobe, FaRupeeSign, FaFacebookF, FaInstagram } from "react-icons/fa";
 import { FaXTwitter } from "react-icons/fa6";
