@@ -51,6 +51,14 @@ const companyTypes = [
 const normalizeCompanyType = (value) =>
   String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
 
+const getListingCompanyTitle = (listing) =>
+  String(
+    listing?.companyTitle ||
+    listing?.registeredEntityName ||
+    listing?.companyName ||
+    "",
+  ).trim();
+
 // ✅ Default review structure
 const defaultReview = {
   name: "",
@@ -199,6 +207,8 @@ const EditNomadListing = () => {
           .filter(Boolean)
         : [];
 
+    const resolvedCompanyTitle = getListingCompanyTitle(src);
+
     reset({
       businessId: src.businessId || businessId || `BIZ_${Date.now()}`,
       // productName: src.productName || src.companyName || src.name || "",
@@ -219,7 +229,7 @@ const EditNomadListing = () => {
       address: src.address || "",
       googleMap: src.googleMap || "",
       images: [], // cannot prefill file inputs
-      companyTitle: src.companyTitle || "",
+      companyTitle: resolvedCompanyTitle,
       companyName: src.companyName || "",
       reviews,
     });

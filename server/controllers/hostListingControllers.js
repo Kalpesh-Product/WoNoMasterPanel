@@ -57,6 +57,15 @@ const normalizeLogo = (logo) => {
   return null;
 };
 
+const firstNonEmptyString = (...values) => {
+  for (const value of values) {
+    const normalized = String(value || "").trim();
+    if (normalized) return normalized;
+  }
+
+  return "";
+};
+
 const createCompanyListing = async (req, res) => {
   try {
     const {
@@ -445,6 +454,7 @@ const editCompanyListing = async (req, res) => {
       businessId,
       companyId,
       companyTitle,
+      companyName,
       companyType,
       ratings,
       totalReviews,
@@ -482,8 +492,14 @@ const editCompanyListing = async (req, res) => {
       return res.status(404).json({ message: "Company not found" });
     }
 
-    const allowedFields = {
+    const resolvedCompanyTitle = firstNonEmptyString(
       companyTitle,
+      companyName,
+      company.companyName,
+    );
+
+    const allowedFields = {
+      companyTitle: resolvedCompanyTitle,
       ratings,
       totalReviews,
       cost,
