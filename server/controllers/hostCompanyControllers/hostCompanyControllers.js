@@ -40,6 +40,8 @@ const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const normalizeListingType = (value) =>
+  String(value || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const normalizeLogo = (logo) => {
   if (!logo) return null;
@@ -458,6 +460,38 @@ const activateProduct = async (req, res, next) => {
       .status(200)
       .json({ message: `Product ${activeStatus} successfully` });
   } catch (error) {
+    next(error);
+  }
+};
+
+const setListingPublicStatus = async (req, res, next) => {
+  try {
+    const { businessId, isPublic } = req.body;
+
+    if (!businessId) {
+      return res.status(400).json({
+        message: "Business Id missing",
+      });
+    }
+
+    if (typeof isPublic !== "boolean") {
+      return res.status(400).json({
+        message: "isPublic must be true/false",
+      });
+    }
+
+    const response = await axios.patch(
+      "http://localhost:3000/api/company/set-public-status",
+      { businessId, isPublic },
+    );
+
+    return res.status(200).json(response.data);
+  } catch (error) {
+    if (error.response) {
+      return res
+        .status(error.response.status)
+        .json(error.response.data || { message: "Failed to update listing visibility" });
+    }
     next(error);
   }
 };
@@ -1617,7 +1651,55 @@ const approveCompaniesListingRequest = async (req, res, next) => {
     });
     await newCompany.save();
 
+    // If the host asked for specific product types to go live, activate
+    // exactly those listings and deactivate everything else under this
+    // company. Staff-initiated Transfers (no prior host request) leave
+    // listing status untouched — nothing to reconcile against.
+    const requestedTypes = Array.isArray(
+      hostLeadCompany.companiesListingRequestedTypes,
+    )
+      ? hostLeadCompany.companiesListingRequestedTypes
+          .map(normalizeListingType)
+          .filter(Boolean)
+      : [];
+
+    if (requestedTypes.length) {
+      try {
+        const listingsResponse = await axios.get(
+          `http://localhost:3000/api/company/get-listings/${encodeURIComponent(hostCompanyId)}`,
+        );
+        const existingListings = Array.isArray(listingsResponse.data)
+          ? listingsResponse.data
+          : [];
+
+        await Promise.allSettled(
+          existingListings
+            .filter((listing) => listing?.businessId)
+            .map((listing) => {
+              const shouldBeActive = requestedTypes.includes(
+                normalizeListingType(listing?.companyType),
+              );
+              if (Boolean(listing?.isActive) === shouldBeActive) {
+                return Promise.resolve();
+              }
+              return axios.patch(
+                "http://localhost:3000/api/company/activate-product",
+                { businessId: listing.businessId, status: shouldBeActive },
+              );
+            }),
+        );
+      } catch (error) {
+        if (error?.response?.status !== 404) {
+          console.error(
+            "⚠️ Failed to sync listing activation for approved company:",
+            error?.response?.data || error.message,
+          );
+        }
+      }
+    }
+
     hostLeadCompany.companiesListingRequestedAt = null;
+    hostLeadCompany.companiesListingRequestedTypes = [];
     await hostLeadCompany.save();
 
     return res.status(201).json({
@@ -1644,6 +1726,7 @@ const rejectCompaniesListingRequest = async (req, res, next) => {
     }
 
     hostLeadCompany.companiesListingRequestedAt = null;
+    hostLeadCompany.companiesListingRequestedTypes = [];
     await hostLeadCompany.save();
 
     return res.status(200).json({ message: "Request dismissed" });
@@ -1656,6 +1739,7 @@ module.exports = {
   createCompany,
   editCompany,
   activateProduct,
+  setListingPublicStatus,
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,

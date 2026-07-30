@@ -1,6 +1,8 @@
 const { default: axios } = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
+const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const { uploadFileToS3, deleteFileFromS3ByUrl } = require("../config/s3config");
+const { getContinentForCountry } = require("../utils/countryContinent");
 
 const normalizeReviews = (reviews) => {
   if (!Array.isArray(reviews)) return reviews;
@@ -77,7 +79,9 @@ const createCompanyListing = async (req, res) => {
       reviews,
     } = req.body;
 
-    const company = await HostCompany.findOne({ companyId: companyId.trim() });
+    const company =
+      (await HostCompany.findOne({ companyId: companyId.trim() })) ||
+      (await HostLeadCompany.findOne({ companyId: companyId.trim() }));
 
     if (!company) {
       return res.status(400).json({ message: "Company not found" });
@@ -92,14 +96,27 @@ const createCompanyListing = async (req, res) => {
     const resolvedCity = String(city || "").trim() || company.companyCity;
     const resolvedState = String(state || "").trim() || company.companyState;
     const resolvedCountry = String(country || "").trim() || company.companyCountry;
+    // Nomads' Company schema requires `continent` — most Host Company
+    // records don't have one on file, so fall back to deriving it from the
+    // listing's own country.
+    const resolvedContinent =
+      company.companyContinent || getContinentForCountry(resolvedCountry);
+
+    if (!resolvedContinent) {
+      return res.status(400).json({
+        message:
+          "Could not determine continent for this listing — please check the selected country.",
+      });
+    }
 
     const listingData = {
-      companyName: productName,
+      companyName: company.companyName,
       companyTitle: companyTitle ? companyTitle : company.companyName,
       companyId: company.companyId,
       city: resolvedCity,
       state: resolvedState,
       country: resolvedCountry,
+      continent: resolvedContinent,
       website: company.websiteLink,
       companyType: companyType,
       ratings: ratings,
@@ -217,6 +234,7 @@ const createCompanyListing = async (req, res) => {
       .status(201)
       .json({ message: "Listing added successfully", data: listingData });
   } catch (error) {
+    console.error("❌ createCompanyListing failed:", error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -456,9 +474,9 @@ const editCompanyListing = async (req, res) => {
     const parsedExistingImages = parseJsonArray(existingImages);
 
     // FIX: Search by both businessId and companyId
-    const company = await HostCompany.findOne({
-      companyId: companyId?.trim(),
-    });
+    const company =
+      (await HostCompany.findOne({ companyId: companyId?.trim() })) ||
+      (await HostLeadCompany.findOne({ companyId: companyId?.trim() }));
 
     if (!company) {
       return res.status(404).json({ message: "Company not found" });

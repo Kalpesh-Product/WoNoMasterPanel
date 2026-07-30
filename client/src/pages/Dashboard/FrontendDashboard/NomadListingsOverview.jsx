@@ -12,6 +12,7 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   Edit3,
+  Globe,
   Layers,
   Plus,
   Search,
@@ -19,7 +20,7 @@ import {
   Target,
   XCircle,
 } from "lucide-react";
-import { statusPillClass } from "../../../lib/status-pill";
+import { statusPillClass, STATUS_PILL_BASE } from "../../../lib/status-pill";
 
 const CONTINENT_OPTIONS = [
   "Asia",
@@ -30,18 +31,6 @@ const CONTINENT_OPTIONS = [
   "Oceania",
   "Antarctica",
 ];
-
-const formatDate = (raw) => {
-  if (!raw) return "—";
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      });
-};
 
 const getInitials = (value) =>
   String(value || "")
@@ -203,6 +192,36 @@ export default function NomadListingsOverview({
       console.log("error", error);
     },
   });
+
+  const { mutate: togglePublic, isPending: isTogglingPublic } = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/hosts/set-public-status", data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Visibility updated");
+      queryClient.invalidateQueries({ queryKey: ["nomad-listings"] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update visibility");
+    },
+  });
+
+  const [publicConfirmTarget, setPublicConfirmTarget] = useState(null);
+
+  const handleTogglePublic = (item) => {
+    if (!item.isPublic) {
+      setPublicConfirmTarget(item);
+      return;
+    }
+    togglePublic({ businessId: item.businessId, isPublic: false });
+  };
+
+  const confirmMakePublic = () => {
+    if (!publicConfirmTarget) return;
+    togglePublic({ businessId: publicConfirmTarget.businessId, isPublic: true });
+    setPublicConfirmTarget(null);
+  };
 
   // ✅ Table data
   // ✅ Table columns
@@ -375,22 +394,24 @@ export default function NomadListingsOverview({
               </div>
 
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[820px]">
+                <table className="w-full text-left min-w-[1080px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-4">Sr No</th>
                       <th className="px-5 py-4">Company Name</th>
                       <th className="px-5 py-4">Product Type</th>
-                      <th className="px-5 py-4">Location</th>
+                      <th className="px-5 py-4">Country</th>
+                      <th className="px-5 py-4">State</th>
+                      <th className="px-5 py-4">City</th>
                       <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4">Date</th>
+                      <th className="px-5 py-4">Visibility</th>
                       <th className="px-5 py-4 text-center">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {filteredListings.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-5 py-16 text-center">
+                        <td colSpan={9} className="px-5 py-16 text-center">
                           <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 mx-auto">
                             <Target size={28} />
                           </div>
@@ -410,9 +431,15 @@ export default function NomadListingsOverview({
                             </div>
                           </td>
                           <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 capitalize">{item.companyType || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{[item.city, item.country].filter(Boolean).join(", ") || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.country || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.state || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.city || "—"}</td>
                           <td className="px-5 py-4"><span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>{item.isActive ? "Active" : "Inactive"}</span></td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">{formatDate(item.createdAt)}</td>
+                          <td className="px-5 py-4">
+                            <span className={`${STATUS_PILL_BASE} ${item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                              {item.isPublic ? "Public" : "Private"}
+                            </span>
+                          </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-center gap-1.5">
                               <button type="button" onClick={() => handleEdit(item)} title="Edit listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
@@ -432,6 +459,21 @@ export default function NomadListingsOverview({
                                 className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${item.isActive ? "bg-rose-50 text-rose-600 hover:bg-rose-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
                               >
                                 {item.isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isTogglingPublic || !item.isActive}
+                                onClick={() => handleTogglePublic(item)}
+                                title={
+                                  !item.isActive
+                                    ? "Activate this listing before making it public"
+                                    : item.isPublic
+                                      ? "Make private"
+                                      : "Make public"
+                                }
+                                className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${item.isPublic ? "bg-blue-50 text-blue-600 hover:bg-blue-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+                              >
+                                <Globe size={15} />
                               </button>
                             </div>
                           </td>
@@ -527,6 +569,40 @@ export default function NomadListingsOverview({
           </div>
         </MuiModal>
       )}
+
+      <MuiModal
+        open={!!publicConfirmTarget}
+        onClose={() => setPublicConfirmTarget(null)}
+        title="Make Listing Public"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-gray-500">
+            This will make{" "}
+            <span className="font-pmedium text-slate-800">
+              {publicConfirmTarget?.companyName || "this listing"}
+            </span>
+            's <span className="capitalize">{publicConfirmTarget?.companyType}</span> listing
+            {publicConfirmTarget?.city ? ` in ${publicConfirmTarget.city}` : ""} visible to all
+            users on the public Nomads site. Continue?
+          </p>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setPublicConfirmTarget(null)}
+              className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+            <PrimaryButton
+              type="button"
+              title={isTogglingPublic ? "Updating..." : "Make Public"}
+              disabled={isTogglingPublic}
+              handleSubmit={confirmMakePublic}
+            />
+          </div>
+        </div>
+      </MuiModal>
     </div>
   );
 }

@@ -166,6 +166,13 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Which product types (normalized, e.g. "coworking") the host asked to
+    // have activated — approval activates listings of these types and
+    // deactivates every other listing under the company.
+    companiesListingRequestedTypes: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

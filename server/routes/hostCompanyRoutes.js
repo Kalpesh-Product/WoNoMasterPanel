@@ -13,6 +13,7 @@ const {
   bulkInsertCompanies,
   updateServices,
   activateProduct,
+  setListingPublicStatus,
   bulkInsertLogos,
   uploadLogo,
   editCompany,
@@ -53,6 +54,7 @@ router.post(
 router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
+router.patch("/set-public-status", setListingPublicStatus);
 router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);

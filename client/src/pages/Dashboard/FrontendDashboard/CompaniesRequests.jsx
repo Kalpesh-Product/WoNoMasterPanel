@@ -140,6 +140,7 @@ const CompaniesRequests = () => {
               <tr>
                 <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
                 <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
+                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Requested Types</th>
                 <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
                 <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
                 <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
@@ -150,7 +151,7 @@ const CompaniesRequests = () => {
             <tbody>
               {filteredRequests.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">No requests found.</td>
+                  <td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">No requests found.</td>
                 </tr>
               ) : (
                 filteredRequests.map((request) => {
@@ -182,6 +183,22 @@ const CompaniesRequests = () => {
                         >
                           {request.companyName || "-"}
                         </span>
+                      </td>
+                      <td className="px-5 py-4 align-top">
+                        {request.companiesListingRequestedTypes?.length ? (
+                          <div className="flex flex-wrap gap-1 max-w-[160px]">
+                            {request.companiesListingRequestedTypes.map((type) => (
+                              <span
+                                key={type}
+                                className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-pmedium capitalize whitespace-nowrap"
+                              >
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 text-xs">-</span>
+                        )}
                       </td>
                       <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyContinent || "-"}</td>
                       <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyCountry || "-"}</td>
@@ -247,6 +264,19 @@ const CompaniesRequests = () => {
             </div>
 
             <div className="p-5 sm:p-6 space-y-4 overflow-y-auto bg-white">
+              {reviewTarget?.companiesListingRequestedTypes?.length ? (
+                <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-blue-50/60 border border-blue-100">
+                  <span className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">Requested Product Types</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {reviewTarget.companiesListingRequestedTypes.map((type) => (
+                      <span key={type} className="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-700 text-[10px] font-pmedium capitalize">
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] font-medium text-slate-500">On approval, listings of these types will be activated and every other existing listing under this company will be deactivated automatically.</p>
+                </div>
+              ) : null}
               <div className="flex flex-col gap-1">
                 <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">Company Name <span className="text-red-400">*</span></label>
                 <input
