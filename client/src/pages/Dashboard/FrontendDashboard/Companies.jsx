@@ -1,7 +1,7 @@
 // src/pages/Dashboard/FrontendDashboard/Companies.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import { Eye, Pencil, Power, Search, X } from "lucide-react";
 import { toast } from "sonner";
@@ -50,6 +50,9 @@ const Companies = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
+  const [cityFilter, setCityFilter] = useState("");
   const [selectedCompany, setSelectedCompanyDetail] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const loadMoreRef = useRef(null);
@@ -84,6 +87,38 @@ const Companies = () => {
     }
   }, [shouldRedirectFromCompanies, navigate]);
 
+  const { data: locationOptions } = useQuery({
+    queryKey: ["companyLocations", countryFilter, stateFilter],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/hosts/companies/locations", {
+        params: { country: countryFilter, state: stateFilter },
+      });
+      return response.data;
+    },
+  });
+
+  const countryOptions = locationOptions?.countries ?? [];
+  const stateOptions = locationOptions?.states ?? [];
+  const cityOptions = locationOptions?.cities ?? [];
+
+  const handleCountryFilterChange = (value) => {
+    setCountryFilter(value);
+    setStateFilter("");
+    setCityFilter("");
+  };
+
+  const handleStateFilterChange = (value) => {
+    setStateFilter(value);
+    setCityFilter("");
+  };
+
+  const hasLocationFilters = Boolean(countryFilter || stateFilter || cityFilter);
+  const clearLocationFilters = () => {
+    setCountryFilter("");
+    setStateFilter("");
+    setCityFilter("");
+  };
+
   const { mutate: toggleCompanyStatus } = useMutation({
     mutationFn: async ({ companyId, status }) => {
       const response = await axiosPrivate.patch(`/api/admin/registration/${companyId}`, {
@@ -108,7 +143,14 @@ const Companies = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ["companiesList", statusFilter, debouncedSearch],
+    queryKey: [
+      "companiesList",
+      statusFilter,
+      debouncedSearch,
+      countryFilter,
+      stateFilter,
+      cityFilter,
+    ],
     enabled: !shouldRedirectFromCompanies,
     initialPageParam: 1,
     queryFn: async ({ pageParam }) => {
@@ -119,6 +161,9 @@ const Companies = () => {
             limit: PAGE_SIZE,
             status: statusFilter,
             search: debouncedSearch,
+            country: countryFilter,
+            state: stateFilter,
+            city: cityFilter,
           },
         });
         return response.data;
@@ -257,6 +302,55 @@ const Companies = () => {
                   Add Company
                 </button>
               </div>
+            </div>
+
+            <div className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
+              <select
+                value={countryFilter}
+                onChange={(event) => handleCountryFilterChange(event.target.value)}
+                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+              >
+                <option value="">All Countries</option>
+                {countryOptions.map((country) => (
+                  <option key={country} value={country}>
+                    {country}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={stateFilter}
+                onChange={(event) => handleStateFilterChange(event.target.value)}
+                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+              >
+                <option value="">All States</option>
+                {stateOptions.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={cityFilter}
+                onChange={(event) => setCityFilter(event.target.value)}
+                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+              >
+                <option value="">All Cities</option>
+                {cityOptions.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+              {hasLocationFilters ? (
+                <button
+                  type="button"
+                  onClick={clearLocationFilters}
+                  className="flex items-center gap-1 px-3 py-2 rounded-lg text-[11px] font-pmedium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
+                >
+                  <X size={13} />
+                  Clear location filters
+                </button>
+              ) : null}
             </div>
 
             <div className="overflow-x-auto flex-1">

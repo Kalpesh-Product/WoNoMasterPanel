@@ -10,6 +10,7 @@ const {
   createCompany,
   getCompany,
   getCompanies,
+  getCompanyLocations,
   bulkInsertCompanies,
   updateServices,
   activateProduct,
@@ -61,6 +62,7 @@ router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
 router.get("/companies", getCompanies);
+router.get("/companies/locations", getCompanyLocations);
 router.get("/host-companies", getHostLeadCompanies);
 router.post(
   "/transfer-nomad-listing",

@@ -538,7 +538,7 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
 
 const getCompanies = async (req, res, next) => {
   try {
-    const { page, limit, search, status } = req.query;
+    const { page, limit, search, status, country, state, city } = req.query;
 
     // No `page` param: existing full-list behavior, unchanged for the other
     // callers of this endpoint (RequestedServices, BlogsAndNews,
@@ -553,6 +553,19 @@ const getCompanies = async (req, res, next) => {
     const filter = {};
     if (status === "active") filter.isRegistered = true;
     else if (status === "inactive") filter.isRegistered = false;
+
+    const trimmedCountry = String(country || "").trim();
+    if (trimmedCountry) {
+      filter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
+    }
+    const trimmedState = String(state || "").trim();
+    if (trimmedState) {
+      filter.companyState = new RegExp(`^${escapeRegex(trimmedState)}$`, "i");
+    }
+    const trimmedCity = String(city || "").trim();
+    if (trimmedCity) {
+      filter.companyCity = new RegExp(`^${escapeRegex(trimmedCity)}$`, "i");
+    }
 
     const trimmedSearch = String(search || "").trim();
     if (trimmedSearch) {
@@ -596,6 +609,46 @@ const getCompanies = async (req, res, next) => {
         active: activeCount,
         inactive: inactiveCount,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const sortDistinct = (values = []) =>
+  Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean))).sort(
+    (a, b) => a.localeCompare(b),
+  );
+
+// Returns cascading location options: states are scoped to the selected
+// country, cities to the selected state, so the Companies filter dropdowns
+// only ever show combinations that exist in the data.
+const getCompanyLocations = async (req, res, next) => {
+  try {
+    const { country, state } = req.query;
+
+    const countryFilter = {};
+    const trimmedCountry = String(country || "").trim();
+    if (trimmedCountry) {
+      countryFilter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
+    }
+
+    const stateFilter = { ...countryFilter };
+    const trimmedState = String(state || "").trim();
+    if (trimmedState) {
+      stateFilter.companyState = new RegExp(`^${escapeRegex(trimmedState)}$`, "i");
+    }
+
+    const [countries, states, cities] = await Promise.all([
+      HostCompany.distinct("companyCountry", {}),
+      HostCompany.distinct("companyState", countryFilter),
+      HostCompany.distinct("companyCity", stateFilter),
+    ]);
+
+    return res.status(200).json({
+      countries: sortDistinct(countries),
+      states: sortDistinct(states),
+      cities: sortDistinct(cities),
     });
   } catch (error) {
     next(error);
@@ -1746,6 +1799,7 @@ module.exports = {
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
   getCompanies,
+  getCompanyLocations,
   getHostLeadCompanies,
   getCompany,
   bulkInsertCompanies,
