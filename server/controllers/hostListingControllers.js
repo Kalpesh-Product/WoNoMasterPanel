@@ -515,9 +515,6 @@ const editCompanyListing = async (req, res) => {
       images: [...parsedExistingImages], // Start with existing images
     };
 
-    const logo = normalizeLogo(company.logo);
-    if (logo) updateData.logo = logo;
-
     // ---------- IMAGE UPLOAD (NO DELETION HERE) ----------
     const formatCompanyType = (type) => {
       const map = {
