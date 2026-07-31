@@ -66,6 +66,161 @@ const firstNonEmptyString = (...values) => {
   return "";
 };
 
+// `/api/company/companies` (the Nomads public site's own feed) only returns
+// active listings and never inactive ones, so it can't be the source for an
+// admin overview. The per-company `get-listings/:companyId` endpoint does
+// return everything (public/private, active/inactive) — the first attempt
+// at crawling it here hung the whole page because that endpoint queries
+// Mongo by `companyId` with no index on that field (Company model, Nomads
+// backend repo), turning every call into a full collection scan. Added the
+// missing index there (`companySchema.index({ companyId: 1 })` in
+// D:\Nomads\backend\models\Company.js) so each call is now fast, and kept a
+// per-request timeout here as a safety net so one slow/broken company still
+// can't freeze the whole crawl. Stale-while-revalidate + patch-in-place
+// below keep this off the request path except on a cold cache.
+const NOMAD_LISTINGS_CACHE_TTL_MS = 60 * 1000;
+const NOMAD_LISTINGS_FETCH_CONCURRENCY = 25;
+const NOMAD_LISTINGS_FETCH_TIMEOUT_MS = 8000;
+let nomadListingsCache = { items: null, fetchedAt: 0 };
+let nomadListingsRefreshPromise = null;
+
+const mapWithConcurrency = async (items, concurrency, mapper) => {
+  const results = new Array(items.length);
+  let cursor = 0;
+
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const current = cursor;
+      cursor += 1;
+      results[current] = await mapper(items[current], current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
+const crawlAllNomadListings = async () => {
+  const [hostCompanies, hostLeadCompanies] = await Promise.all([
+    HostCompany.find().select("companyId").lean(),
+    HostLeadCompany.find().select("companyId").lean(),
+  ]);
+
+  const companyIds = Array.from(
+    new Set(
+      [...hostCompanies, ...hostLeadCompanies]
+        .map((company) => String(company?.companyId || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+  const listingsByCompany = await mapWithConcurrency(
+    companyIds,
+    NOMAD_LISTINGS_FETCH_CONCURRENCY,
+    async (companyId) => {
+      try {
+        const response = await axios.get(
+          `http://localhost:3000/api/company/get-listings/${encodeURIComponent(companyId)}`,
+          { timeout: NOMAD_LISTINGS_FETCH_TIMEOUT_MS },
+        );
+        return Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        // A 404 just means this company has no listings yet — anything
+        // else (including a timeout) is logged but still treated as "no
+        // data for this one" so a single bad company can't take the whole
+        // crawl down with it.
+        if (error?.response?.status !== 404) {
+          console.error(
+            `Failed to fetch Nomad listings for company ${companyId}:`,
+            error?.response?.data || error.message,
+          );
+        }
+        return [];
+      }
+    },
+  );
+
+  return listingsByCompany.flat();
+};
+
+const refreshNomadListingsCache = () => {
+  if (!nomadListingsRefreshPromise) {
+    nomadListingsRefreshPromise = crawlAllNomadListings()
+      .then((items) => {
+        nomadListingsCache = { items, fetchedAt: Date.now() };
+        return items;
+      })
+      .finally(() => {
+        nomadListingsRefreshPromise = null;
+      });
+  }
+  return nomadListingsRefreshPromise;
+};
+
+const fetchAllNomadListings = async () => {
+  const isFresh =
+    nomadListingsCache.items &&
+    Date.now() - nomadListingsCache.fetchedAt < NOMAD_LISTINGS_CACHE_TTL_MS;
+  if (isFresh) return nomadListingsCache.items;
+
+  // Stale but present: hand back what we have and let the refresh happen
+  // in the background rather than blocking this request on it.
+  if (nomadListingsCache.items) {
+    refreshNomadListingsCache().catch((error) => {
+      console.error("Background Nomad listings refresh failed:", error.message);
+    });
+    return nomadListingsCache.items;
+  }
+
+  // Cold start — nothing cached yet, so this one request has to wait.
+  return refreshNomadListingsCache();
+};
+
+// Cheap in-place update used right after a mutation so the next read
+// reflects it immediately without paying for a full re-crawl.
+const patchNomadListingsCache = (businessIds, patch) => {
+  if (!nomadListingsCache.items || !businessIds?.length) return;
+  const idSet = new Set(businessIds.filter(Boolean).map(String));
+  if (!idSet.size) return;
+  nomadListingsCache.items = nomadListingsCache.items.map((item) =>
+    idSet.has(String(item.businessId)) ? { ...item, ...patch } : item,
+  );
+};
+
+// Still exposed for anything that needs a hard reset (e.g. if the crawl
+// itself turns out wrong) — normal mutations should prefer patching.
+const invalidateNomadListingsCache = () => {
+  nomadListingsCache = { items: null, fetchedAt: 0 };
+};
+
+const normalizeListingValue = (value) => String(value || "").trim().toLowerCase();
+const normalizeListingTypeKey = (value) =>
+  normalizeListingValue(value).replace(/[^a-z0-9]/g, "");
+
+const summarizeListings = (items) =>
+  items.reduce(
+    (acc, item) => {
+      acc.total += 1;
+      if (item.isActive) acc.active += 1;
+      else acc.inactive += 1;
+      if (item.isPublic) acc.public += 1;
+      else acc.private += 1;
+      return acc;
+    },
+    { total: 0, active: 0, inactive: 0, public: 0, private: 0 },
+  );
+
+const categorizeListings = (items) => {
+  const counts = new Map();
+  items.forEach((item) => {
+    const key = normalizeListingTypeKey(item.companyType) || "unknown";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return Array.from(counts.entries())
+    .map(([key, count]) => ({ key, count }))
+    .sort((a, b) => b.count - a.count);
+};
+
 const createCompanyListing = async (req, res) => {
   try {
     const {
@@ -672,15 +827,112 @@ const editCompanyListing = async (req, res) => {
 
 const getAllCompanyListings = async (req, res) => {
   try {
-    const response = await axios.get(
-      "http://localhost:3000/api/company/companies",
-    );
+    const allItems = await fetchAllNomadListings();
+    const { page } = req.query;
 
-    if (!response.data) {
-      return res.status(200).json([]);
+    // No `page` param: keep the original plain-array contract for any other
+    // caller that still expects the full list in one shot.
+    if (page === undefined) {
+      return res.json(allItems);
     }
 
-    return res.json(response.data);
+    const { limit, search, status, isPublic, type, country, state, city } = req.query;
+
+    const trimmedCountry = normalizeListingValue(country);
+    const trimmedState = normalizeListingValue(state);
+    const trimmedCity = normalizeListingValue(city);
+
+    let locationFiltered = allItems;
+    if (trimmedCountry) {
+      locationFiltered = locationFiltered.filter(
+        (item) => normalizeListingValue(item.country) === trimmedCountry,
+      );
+    }
+    if (trimmedState) {
+      locationFiltered = locationFiltered.filter(
+        (item) => normalizeListingValue(item.state) === trimmedState,
+      );
+    }
+    if (trimmedCity) {
+      locationFiltered = locationFiltered.filter(
+        (item) => normalizeListingValue(item.city) === trimmedCity,
+      );
+    }
+
+    let filtered = locationFiltered;
+    if (status === "active") filtered = filtered.filter((item) => item.isActive);
+    else if (status === "inactive") filtered = filtered.filter((item) => !item.isActive);
+
+    if (isPublic === "true") filtered = filtered.filter((item) => item.isPublic);
+    else if (isPublic === "false") filtered = filtered.filter((item) => !item.isPublic);
+
+    const trimmedType = normalizeListingTypeKey(type);
+    if (trimmedType && trimmedType !== "all") {
+      filtered = filtered.filter(
+        (item) => (normalizeListingTypeKey(item.companyType) || "unknown") === trimmedType,
+      );
+    }
+
+    const trimmedSearch = normalizeListingValue(search);
+    if (trimmedSearch) {
+      filtered = filtered.filter((item) =>
+        [item.companyName, item.companyTitle, item.companyType, item.city, item.state, item.country]
+          .filter(Boolean)
+          .some((value) => normalizeListingValue(value).includes(trimmedSearch)),
+      );
+    }
+
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 30));
+    const total = filtered.length;
+    const start = (pageNumber - 1) * pageSize;
+    const items = filtered.slice(start, start + pageSize);
+
+    const countryOptions = Array.from(
+      new Set(allItems.map((item) => item.country).filter(Boolean)),
+    ).sort();
+    const stateOptions = trimmedCountry
+      ? Array.from(
+          new Set(
+            allItems
+              .filter((item) => normalizeListingValue(item.country) === trimmedCountry)
+              .map((item) => item.state)
+              .filter(Boolean),
+          ),
+        ).sort()
+      : [];
+    const cityOptions =
+      trimmedCountry && trimmedState
+        ? Array.from(
+            new Set(
+              allItems
+                .filter(
+                  (item) =>
+                    normalizeListingValue(item.country) === trimmedCountry &&
+                    normalizeListingValue(item.state) === trimmedState,
+                )
+                .map((item) => item.city)
+                .filter(Boolean),
+            ),
+          ).sort()
+        : [];
+
+    return res.json({
+      items,
+      page: pageNumber,
+      limit: pageSize,
+      total,
+      hasMore: pageNumber * pageSize < total,
+      globalCounts: summarizeListings(allItems),
+      categoryCounts: categorizeListings(allItems),
+      locationCounts:
+        trimmedCountry && trimmedState ? summarizeListings(locationFiltered) : null,
+      filterOptions: {
+        countries: countryOptions,
+        states: stateOptions,
+        cities: cityOptions,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -688,15 +940,8 @@ const getAllCompanyListings = async (req, res) => {
 
 const getCompanyListings = async (req, res) => {
   try {
-    const response = await axios.get(
-      "http://localhost:3000/api/company/companies",
-    );
-
-    if (!response.data) {
-      return res.status(200).json([]);
-    }
-
-    return res.json(response.data);
+    const items = await fetchAllNomadListings();
+    return res.json(items);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -707,4 +952,7 @@ module.exports = {
   getAllCompanyListings,
   createCompanyListing,
   editCompanyListing,
+  invalidateNomadListingsCache,
+  patchNomadListingsCache,
+  fetchAllNomadListings,
 };

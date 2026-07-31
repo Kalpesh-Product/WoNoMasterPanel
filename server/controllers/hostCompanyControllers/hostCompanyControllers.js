@@ -15,6 +15,10 @@ const {
   deleteFileFromS3ByUrl,
 } = require("../../config/s3config");
 const { getContinentForCountry } = require("../../utils/countryContinent");
+const {
+  patchNomadListingsCache,
+  fetchAllNomadListings,
+} = require("../hostListingControllers");
 
 const serviceOptions = [
   {
@@ -455,6 +459,15 @@ const activateProduct = async (req, res, next) => {
       return res.status(400).json({ message: "Failed to activate product" });
     }
 
+    // Nomads' activate-product also clears isPublic when (re)activating (a
+    // listing can't be public while active — active is the internal review
+    // state) — mirror that in the cache patch so it doesn't sit stale as
+    // public+active until the next crawl.
+    patchNomadListingsCache(
+      [businessId],
+      status ? { isActive: true, isPublic: false } : { isActive: false },
+    );
+
     const activeStatus = status ? "activated" : "inactivated";
     return res
       .status(200)
@@ -485,6 +498,7 @@ const setListingPublicStatus = async (req, res, next) => {
       { businessId, isPublic },
     );
 
+    patchNomadListingsCache([businessId], { isPublic });
     return res.status(200).json(response.data);
   } catch (error) {
     if (error.response) {
@@ -533,11 +547,35 @@ const bulkSetListingPublicStatus = async (req, res, next) => {
       });
     }
 
+    // Resolve which businessIds this affects *before* calling upstream so we
+    // can patch them in the cache directly afterwards, instead of
+    // invalidating and forcing the next read to pay for a full re-crawl.
+    // Mirrors the upstream rule: "active" is the internal Wono-team review
+    // state, so publishing only touches currently-*inactive* listings (review
+    // done); un-publishing only touches currently-public ones.
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const trimmedCountry = normalize(country);
+    const trimmedState = normalize(state);
+    const trimmedCity = normalize(city);
+
+    const allListings = await fetchAllNomadListings();
+    const targetIds = allListings
+      .filter((listing) => {
+        if (!listing.businessId) return false;
+        if (isPublic ? listing.isActive : !listing.isPublic) return false;
+        const matchesCountry = normalize(listing.country) === trimmedCountry;
+        const matchesState = normalize(listing.state) === trimmedState;
+        const matchesCity = !trimmedCity || normalize(listing.city) === trimmedCity;
+        return matchesCountry && matchesState && matchesCity;
+      })
+      .map((listing) => listing.businessId);
+
     const response = await axios.patch(
       "http://localhost:3000/api/company/bulk-set-public-status",
       { country, state, city, isPublic },
     );
 
+    patchNomadListingsCache(targetIds, { isPublic });
     return res.status(200).json(response.data);
   } catch (error) {
     if (error.response) {
@@ -545,6 +583,75 @@ const bulkSetListingPublicStatus = async (req, res, next) => {
         .status(error.response.status)
         .json(error.response.data || { message: "Failed to bulk update listing visibility" });
     }
+    next(error);
+  }
+};
+
+// Nomads has no bulk activate/inactivate endpoint like it does for
+// public-status, so this resolves every matching listing locally (via the
+// same aggregated listings source the Publish Listings table uses) and fans
+// out individual activate-product calls across them.
+const bulkSetListingActiveStatus = async (req, res, next) => {
+  try {
+    const { country, state, city, isActive } = req.body;
+
+    if (!country || !state) {
+      return res.status(400).json({
+        message: "Country and state are required",
+      });
+    }
+
+    if (typeof isActive !== "boolean") {
+      return res.status(400).json({
+        message: "isActive must be true/false",
+      });
+    }
+
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const trimmedCountry = normalize(country);
+    const trimmedState = normalize(state);
+    const trimmedCity = normalize(city);
+
+    const allListings = await fetchAllNomadListings();
+    const targets = allListings.filter((listing) => {
+      if (!listing.businessId) return false;
+      if (Boolean(listing.isActive) === isActive) return false;
+      const matchesCountry = normalize(listing.country) === trimmedCountry;
+      const matchesState = normalize(listing.state) === trimmedState;
+      const matchesCity = !trimmedCity || normalize(listing.city) === trimmedCity;
+      return matchesCountry && matchesState && matchesCity;
+    });
+
+    const results = await Promise.allSettled(
+      targets.map((listing) =>
+        axios.patch("http://localhost:3000/api/company/activate-product", {
+          businessId: listing.businessId,
+          status: isActive,
+        }),
+      ),
+    );
+
+    const updatedCount = results.filter((result) => result.status === "fulfilled").length;
+    const failedCount = results.length - updatedCount;
+
+    // Same isPublic side effect as the single activate-product proxy above:
+    // (re)activating clears isPublic upstream (active is the internal
+    // review state, not public), so mirror it here too.
+    patchNomadListingsCache(
+      results
+        .map((result, index) => (result.status === "fulfilled" ? targets[index].businessId : null))
+        .filter(Boolean),
+      isActive ? { isActive: true, isPublic: false } : { isActive: false },
+    );
+
+    return res.status(200).json({
+      message: failedCount
+        ? `${updatedCount} listing(s) marked ${isActive ? "active" : "inactive"}, ${failedCount} failed`
+        : `${updatedCount} listing(s) marked ${isActive ? "active" : "inactive"}`,
+      updatedCount,
+      failedCount,
+    });
+  } catch (error) {
     next(error);
   }
 };
@@ -1848,6 +1955,7 @@ module.exports = {
   setListingPublicStatus,
   getPublicLocationTree,
   bulkSetListingPublicStatus,
+  bulkSetListingActiveStatus,
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,

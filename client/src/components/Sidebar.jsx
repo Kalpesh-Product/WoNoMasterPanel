@@ -82,6 +82,13 @@ const Sidebar = ({ onCloseDrawer }) => {
           route: "/dashboard/data-upload",
         },
         {
+          id: 24,
+          key: "dashboard.publish-listings",
+          title: "Publish Listings",
+          icon: LuGlobe,
+          route: "/dashboard/publish-listings",
+        },
+        {
           id: 12,
           key: "dashboard.profile",
           title: "Profile",
