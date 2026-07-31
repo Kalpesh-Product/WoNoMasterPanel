@@ -9,6 +9,7 @@ import { queryClient } from "../../../main";
 import MuiModal from "../../../components/MuiModal";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import {
+  AlertTriangle,
   ArrowRightLeft,
   CheckCircle2,
   Edit3,
@@ -21,16 +22,6 @@ import {
   XCircle,
 } from "lucide-react";
 import { statusPillClass, STATUS_PILL_BASE } from "../../../lib/status-pill";
-
-const CONTINENT_OPTIONS = [
-  "Asia",
-  "Europe",
-  "Africa",
-  "North America",
-  "South America",
-  "Oceania",
-  "Antarctica",
-];
 
 const getInitials = (value) =>
   String(value || "")
@@ -54,9 +45,6 @@ export default function NomadListingsOverview({
   const [isTransferToCompanyModalOpen, setIsTransferToCompanyModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [transferToCompanyContinent, setTransferToCompanyContinent] = useState(
-    transferToCompanyData?.companyContinent || "",
-  );
   const navigate = useNavigate();
   // const location = useLocation();
   // const { companyId } = location?.state || "";
@@ -162,7 +150,7 @@ export default function NomadListingsOverview({
           companyCity: transferToCompanyData.companyCity,
           companyState: transferToCompanyData.companyState,
           companyCountry: transferToCompanyData.companyCountry,
-          companyContinent: transferToCompanyContinent,
+          companyContinent: transferToCompanyData.companyContinent,
         },
       );
       return response.data;
@@ -538,31 +526,21 @@ export default function NomadListingsOverview({
           title="Transfer to Company"
         >
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-gray-500">
-              This creates a new entry in Companies for "{transferToCompanyData?.companyName}
-              ", linked back to this host's already-existing Nomads listing(s) — nothing gets
-              duplicated or moved in Nomads. Staff can add the remaining details (industry,
-              logo, etc.) from the Companies page afterward.
-            </p>
-
-            <select
-              className="w-full border border-borderGray rounded-lg p-2 text-sm"
-              value={transferToCompanyContinent}
-              onChange={(e) => setTransferToCompanyContinent(e.target.value)}
-            >
-              <option value="">Select Continent</option>
-              {CONTINENT_OPTIONS.map((continent) => (
-                <option key={continent} value={continent}>
-                  {continent}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200">
+              <AlertTriangle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800">
+                Confirm transfer to Companies to show {transferToCompanyData?.companyName
+                  ? `"${transferToCompanyData.companyName}"'s`
+                  : "this"}{" "}
+                listing(s) on the Nomads website.
+              </p>
+            </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <PrimaryButton
                 type="button"
                 title={isTransferringToCompany ? "Transferring..." : "Confirm Transfer"}
-                disabled={!transferToCompanyContinent || isTransferringToCompany}
+                disabled={isTransferringToCompany}
                 handleSubmit={() => transferToCompany()}
               />
             </div>
