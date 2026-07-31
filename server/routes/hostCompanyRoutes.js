@@ -15,6 +15,8 @@ const {
   updateServices,
   activateProduct,
   setListingPublicStatus,
+  getPublicLocationTree,
+  bulkSetListingPublicStatus,
   bulkInsertLogos,
   uploadLogo,
   editCompany,
@@ -56,6 +58,8 @@ router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/set-public-status", setListingPublicStatus);
+router.get("/public-location-tree", getPublicLocationTree);
+router.patch("/bulk-set-public-status", bulkSetListingPublicStatus);
 router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);

@@ -496,6 +496,59 @@ const setListingPublicStatus = async (req, res, next) => {
   }
 };
 
+// Country > state > city tree with listing counts, for the Data Upload
+// "Bulk Publish Listings" tab's cascading location selects.
+const getPublicLocationTree = async (req, res, next) => {
+  try {
+    const response = await axios.get(
+      "http://localhost:3000/api/company/location-tree",
+    );
+
+    return res.status(200).json(response.data);
+  } catch (error) {
+    if (error.response) {
+      return res
+        .status(error.response.status)
+        .json(error.response.data || { message: "Failed to load locations" });
+    }
+    next(error);
+  }
+};
+
+// Bulk sibling of setListingPublicStatus: flips isPublic for every listing
+// in a country (+ optional state/city) at once.
+const bulkSetListingPublicStatus = async (req, res, next) => {
+  try {
+    const { country, state, city, isPublic } = req.body;
+
+    if (!country || !state) {
+      return res.status(400).json({
+        message: "Country and state are required",
+      });
+    }
+
+    if (typeof isPublic !== "boolean") {
+      return res.status(400).json({
+        message: "isPublic must be true/false",
+      });
+    }
+
+    const response = await axios.patch(
+      "http://localhost:3000/api/company/bulk-set-public-status",
+      { country, state, city, isPublic },
+    );
+
+    return res.status(200).json(response.data);
+  } catch (error) {
+    if (error.response) {
+      return res
+        .status(error.response.status)
+        .json(error.response.data || { message: "Failed to bulk update listing visibility" });
+    }
+    next(error);
+  }
+};
+
 const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
   if (!companies || !companies.length) return [];
 
@@ -1793,6 +1846,8 @@ module.exports = {
   editCompany,
   activateProduct,
   setListingPublicStatus,
+  getPublicLocationTree,
+  bulkSetListingPublicStatus,
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,

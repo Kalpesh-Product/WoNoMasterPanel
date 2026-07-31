@@ -69,12 +69,10 @@ const UpgradePlan = () => {
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
-    "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
   ];
   const companiesAccessAllowedEmails = [
     "gourish.wono@gmail.com",
-    "savita.wono@gmail.com",
   ];
 
   const isRestrictedUser = restrictedEmails.includes(userEmail);

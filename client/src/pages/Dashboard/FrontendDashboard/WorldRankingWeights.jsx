@@ -1333,6 +1333,40 @@ const WorldRankingWeights = () => {
     },
   });
 
+  const {
+    mutate: toggleActive,
+    isPending: isTogglingActive,
+    variables: togglingVariables,
+  } = useMutation({
+    mutationFn: async ({ id, payload }) => {
+      const response = await axios.patch(
+        `${WORLD_RANKING_ENDPOINT}/${id}`,
+        payload,
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "Status updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights"] });
+    },
+    onError: (error) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to update status",
+      );
+    },
+  });
+
+  const handleToggleActive = (row) => {
+    if (!row?._id) return;
+    const currentlyActive = row.isActive === true || row.isActive === "true";
+    const form = getInitialForm(row);
+    const payload = buildPayload({
+      ...form,
+      isActive: currentlyActive ? "false" : "true",
+    });
+    toggleActive({ id: row._id, payload });
+  };
+
   const { mutate: createWeight, isPending: isCreating } = useMutation({
     mutationFn: async (payload) => {
       const response = await axios.post(
@@ -1836,6 +1870,26 @@ const WorldRankingWeights = () => {
                                 title="Edit"
                               >
                                 <Edit size={15} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleActive(row)}
+                                disabled={
+                                  isTogglingActive &&
+                                  togglingVariables?.id === row._id
+                                }
+                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                  isActive
+                                    ? "bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700"
+                                    : "bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                                title={isActive ? "Disable" : "Enable"}
+                              >
+                                {isActive ? (
+                                  <XCircle size={15} strokeWidth={2.5} />
+                                ) : (
+                                  <CheckCircle2 size={15} strokeWidth={2.5} />
+                                )}
                               </button>
                             </div>
                           </td>

@@ -192,6 +192,7 @@ import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import BulkPublishListings from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkPublishListings";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
@@ -368,6 +369,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "product-image-upload",
                         element: <ProductImageUpload />,
+                      },
+                      {
+                        path: "bulk-publish-listings",
+                        element: <BulkPublishListings />,
                       },
                     ],
                   },

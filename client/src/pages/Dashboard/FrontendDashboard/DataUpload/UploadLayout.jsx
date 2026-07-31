@@ -10,7 +10,6 @@ const UploadLayout = () => {
   const restrictedEmails = [
     "shawnsilveira.wono@gmail.com",
     "mehak.wono@gmail.com",
-    "savita.wono@gmail.com",
     "gourish.wono@gmail.com",
   ];
 
@@ -25,6 +24,7 @@ const UploadLayout = () => {
     { label: "Events Upload", path: "events-upload", heading: "Events Upload", description: "Upload and manage events." },
     { label: "Places Upload", path: "places-upload", heading: "Places Upload", description: "Upload and manage places." },
     { label: "Restaurants Upload", path: "restaurants-upload", heading: "Restaurants Upload", description: "Upload and manage restaurants." },
+    { label: "Bulk Publish Listings", path: "bulk-publish-listings", heading: "Bulk Publish Listings", description: "Make listings public/private in bulk by location." },
   ];
 
   const filteredTabs = restrictedEmails.includes(userEmail)
