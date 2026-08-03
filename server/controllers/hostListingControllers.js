@@ -79,8 +79,8 @@ const firstNonEmptyString = (...values) => {
 // can't freeze the whole crawl. Stale-while-revalidate + patch-in-place
 // below keep this off the request path except on a cold cache.
 const NOMAD_LISTINGS_CACHE_TTL_MS = 60 * 1000;
-const NOMAD_LISTINGS_FETCH_CONCURRENCY = 25;
-const NOMAD_LISTINGS_FETCH_TIMEOUT_MS = 8000;
+const NOMAD_LISTINGS_FETCH_CONCURRENCY = 40;
+const NOMAD_LISTINGS_FETCH_TIMEOUT_MS = 4000;
 let nomadListingsCache = { items: null, fetchedAt: 0 };
 let nomadListingsRefreshPromise = null;
 
@@ -100,7 +100,33 @@ const mapWithConcurrency = async (items, concurrency, mapper) => {
   return results;
 };
 
+const fetchListingsForCompany = async (companyId) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:3000/api/company/get-listings/${encodeURIComponent(companyId)}`,
+      { timeout: NOMAD_LISTINGS_FETCH_TIMEOUT_MS },
+    );
+    return { ok: true, items: Array.isArray(response.data) ? response.data : [] };
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      // No listings for this company yet — not a failure.
+      return { ok: true, items: [] };
+    }
+    // No retry: a company that's genuinely slow/unreachable should fail
+    // fast and get skipped, not double the wait for every bad company in
+    // the crawl. With the companyId index in place, a healthy call should
+    // resolve in well under a second — this timeout only exists to bound
+    // the damage from one that isn't.
+    console.error(
+      `Failed to fetch Nomad listings for company ${companyId}:`,
+      error?.response?.data || error.message,
+    );
+    return { ok: false, items: [] };
+  }
+};
+
 const crawlAllNomadListings = async () => {
+  const startedAt = Date.now();
   const [hostCompanies, hostLeadCompanies] = await Promise.all([
     HostCompany.find().select("companyId").lean(),
     HostLeadCompany.find().select("companyId").lean(),
@@ -114,33 +140,23 @@ const crawlAllNomadListings = async () => {
     ),
   );
 
-  const listingsByCompany = await mapWithConcurrency(
+  const results = await mapWithConcurrency(
     companyIds,
     NOMAD_LISTINGS_FETCH_CONCURRENCY,
-    async (companyId) => {
-      try {
-        const response = await axios.get(
-          `http://localhost:3000/api/company/get-listings/${encodeURIComponent(companyId)}`,
-          { timeout: NOMAD_LISTINGS_FETCH_TIMEOUT_MS },
-        );
-        return Array.isArray(response.data) ? response.data : [];
-      } catch (error) {
-        // A 404 just means this company has no listings yet — anything
-        // else (including a timeout) is logged but still treated as "no
-        // data for this one" so a single bad company can't take the whole
-        // crawl down with it.
-        if (error?.response?.status !== 404) {
-          console.error(
-            `Failed to fetch Nomad listings for company ${companyId}:`,
-            error?.response?.data || error.message,
-          );
-        }
-        return [];
-      }
-    },
+    (companyId) => fetchListingsForCompany(companyId),
   );
 
-  return listingsByCompany.flat();
+  const failedCount = results.filter((result) => !result.ok).length;
+  const items = results.flatMap((result) => result.items);
+
+  // Visible in the server console every time the cache refreshes — makes it
+  // obvious if companies are being silently dropped from the crawl again.
+  console.log(
+    `Nomad listings crawl: ${companyIds.length} companies, ${failedCount} failed, ` +
+      `${items.length} listings found, ${Date.now() - startedAt}ms`,
+  );
+
+  return items;
 };
 
 const refreshNomadListingsCache = () => {

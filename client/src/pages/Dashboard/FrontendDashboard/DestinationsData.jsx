@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Search, Eye, ArrowLeft, Plus, MapPin, Calendar, Utensils } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -32,6 +32,11 @@ const RESTAURANT_ENDPOINTS = [`${NOMADS_API_BASE_URL}/restaurants`];
 const RESTAURANT_API_BASE_URL = NOMADS_BACKEND_URL;
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
+const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 700;
+
+const selectClassName =
+  "min-w-[140px] flex-1 px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400";
 
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -188,7 +193,62 @@ const fetchFirstSuccessfulArray = async (axios, endpoints) => {
   return [];
 };
 
-const BlogsAndNews = () => {
+const DestinationsDataSkeleton = () => (
+  <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+    <PageFrame>
+      <div className="flex flex-col gap-4 animate-pulse">
+        <div className="mb-3 space-y-2">
+          <div className="h-5 w-44 rounded-lg bg-slate-200" />
+          <div className="h-3 w-full max-w-lg rounded-full bg-slate-100" />
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"
+            >
+              <div className="h-2.5 w-24 rounded-full bg-slate-200 mb-3" />
+              <div className="h-4 w-12 rounded-full bg-slate-200" />
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[500px]">
+          <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
+            <div className="flex flex-col lg:flex-row gap-2.5">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-10 min-w-[140px] flex-1 rounded-lg bg-slate-200" />
+              ))}
+              <div className="h-10 min-w-[220px] flex-[2] rounded-lg bg-slate-200" />
+            </div>
+          </div>
+          <div className="overflow-hidden">
+            <div className="grid grid-cols-9 gap-4 border-b border-slate-100 bg-slate-50/50 px-5 py-4">
+              {Array.from({ length: 9 }).map((_, index) => (
+                <div key={index} className="h-2.5 rounded-full bg-slate-200" />
+              ))}
+            </div>
+            <div className="divide-y divide-slate-100/60 px-5">
+              {Array.from({ length: 8 }).map((_, rowIndex) => (
+                <div key={rowIndex} className="grid grid-cols-9 gap-4 py-4">
+                  {Array.from({ length: 9 }).map((_, columnIndex) => (
+                    <div
+                      key={columnIndex}
+                      className={`h-3 rounded-full bg-slate-100 ${columnIndex === 3 ? "w-full" : "w-3/4"}`}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </PageFrame>
+  </div>
+);
+
+const DestinationsData = () => {
   const { locationType } = useParams();
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
@@ -197,6 +257,11 @@ const BlogsAndNews = () => {
   const [detailType, setDetailType] = React.useState("blog");
   const [selectedLocation, setSelectedLocation] = React.useState(null);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  const [countryFilter, setCountryFilter] = React.useState("");
+  const [stateFilter, setStateFilter] = React.useState("");
+  const [cityFilter, setCityFilter] = React.useState("");
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     if (locationType) {
@@ -214,6 +279,24 @@ const BlogsAndNews = () => {
       setDetailType("blog");
     }
   }, [locationType]);
+  useEffect(() => {
+    const timeout = setTimeout(
+      () => setDebouncedSearch(searchQuery.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const handleCountryFilterChange = (value) => {
+    setCountryFilter(value);
+    setStateFilter("");
+    setCityFilter("");
+  };
+
+  const handleStateFilterChange = (value) => {
+    setStateFilter(value);
+    setCityFilter("");
+  };
 
   const {
     data = {
@@ -224,8 +307,8 @@ const BlogsAndNews = () => {
       allRestaurants: [],
       companies: [],
     },
-    isPending,
-    isError,
+    isPending: isComprehensivePending,
+    isError: isComprehensiveError,
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
@@ -247,7 +330,84 @@ const BlogsAndNews = () => {
         companies,
       };
     },
+    enabled: currentView === "detail",
   });
+
+  const {
+    data: summaryData,
+    isLoading: isSummaryLoading,
+    isError: isSummaryError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: [
+      "destinations-data-summary",
+      debouncedSearch,
+      countryFilter,
+      stateFilter,
+      cityFilter,
+    ],
+    initialPageParam: 1,
+    enabled: currentView === "summary",
+    placeholderData: (previousData) => previousData,
+    queryFn: async ({ pageParam }) => {
+      const response = await axios.get("/api/hosts/destinations-data", {
+        params: {
+          page: pageParam,
+          limit: PAGE_SIZE,
+          search: debouncedSearch,
+          country: countryFilter,
+          state: stateFilter,
+          city: cityFilter,
+        },
+      });
+      return response.data;
+    },
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
+  });
+
+  const summaryItems = useMemo(
+    () => summaryData?.pages.flatMap((page) => page.items) ?? [],
+    [summaryData],
+  );
+  const summaryFirstPage = summaryData?.pages?.[0];
+  const summaryCounts = summaryFirstPage?.counts ?? {
+    destinations: 0,
+    blogs: 0,
+    news: 0,
+    events: 0,
+    places: 0,
+    restaurants: 0,
+  };
+  const summaryTotal = summaryFirstPage?.total ?? 0;
+  const filterOptions = summaryFirstPage?.filterOptions ?? {
+    countries: [],
+    states: [],
+    cities: [],
+  };
+
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (!node || !hasNextPage || currentView !== "summary") return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "250px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [
+    currentView,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    summaryItems.length,
+  ]);
 
   const {
     data: destinationEvents = [],
@@ -475,16 +635,6 @@ const BlogsAndNews = () => {
       }));
   }, [data]);
 
-  const filteredStats = useMemo(() => {
-    if (!searchQuery.trim()) return stats;
-    const q = searchQuery.trim().toLowerCase();
-    return stats.filter(
-      (s) =>
-        s.destination?.toLowerCase().includes(q) ||
-        s.country?.toLowerCase().includes(q) ||
-        s.continent?.toLowerCase().includes(q),
-    );
-  }, [stats, searchQuery]);
 
   const { mutate: toggleStatus, isPending: isTogglePending } = useMutation({
     mutationFn: async ({ id, currentStatus, itemType }) => {
@@ -686,17 +836,21 @@ const BlogsAndNews = () => {
             : "Event";
 
   const isLoading =
-    isPending ||
+    isComprehensivePending ||
     isTogglePending ||
     (detailType === "event" && isDestinationEventsPending) ||
     (detailType === "place" && isDestinationPlacesPending) ||
     (detailType === "restaurant" && isDestinationRestaurantsPending);
 
   const hasError =
-    isError ||
+    isComprehensiveError ||
     isDestinationEventsError ||
     isDestinationPlacesError ||
     isDestinationRestaurantsError;
+
+  if (currentView === "summary" && isSummaryLoading && !summaryData) {
+    return <DestinationsDataSkeleton />;
+  }
 
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -747,74 +901,104 @@ const BlogsAndNews = () => {
           </div>
 
           {currentView === "summary" && (
-            isPending ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse">
-                    <div className="h-2.5 bg-slate-200 rounded-full w-24 mb-3" />
-                    <div className="h-4 bg-slate-200 rounded-full w-12" />
-                  </div>
-                ))}
-              </div>
-            ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Destinations</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.length}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.destinations}</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Total Blogs</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.blogCount, 0)}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.blogs}</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-amber-500">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-amber-600 uppercase tracking-widest mb-1">Total News</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.newsCount, 0)}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.news}</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">Total Events</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.eventCount, 0)}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.events}</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Total Places</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.placeCount, 0)}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.places}</p>
                 </div>
               </div>
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Total Restaurants</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{stats.reduce((acc, s) => acc + s.restaurantCount, 0)}</p>
+                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.restaurants}</p>
                 </div>
               </div>
             </div>
-            )
           )}
 
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-            <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-              <div className="w-full xl:max-w-md">
-                <div className="relative w-full">
+            <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
+              <div className="flex flex-col lg:flex-row items-stretch gap-2.5">
+                {currentView === "summary" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-1 gap-2.5">
+                    <select
+                      value={countryFilter}
+                      onChange={(event) => handleCountryFilterChange(event.target.value)}
+                      className={selectClassName}
+                    >
+                      <option value="">All Countries</option>
+                      {filterOptions.countries.map((country) => (
+                        <option key={country} value={country}>{country}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={stateFilter}
+                      disabled={!countryFilter}
+                      onChange={(event) => handleStateFilterChange(event.target.value)}
+                      className={selectClassName}
+                    >
+                      <option value="">All States</option>
+                      {filterOptions.states.map((state) => (
+                        <option key={state} value={state}>{state}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={cityFilter}
+                      disabled={!stateFilter}
+                      onChange={(event) => setCityFilter(event.target.value)}
+                      className={selectClassName}
+                    >
+                      <option value="">All Cities</option>
+                      {filterOptions.cities.map((city) => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : null}
+                <div className="relative min-w-[220px] flex-[2]">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
                     type="text"
                     placeholder={currentView === "summary" ? "Search destinations..." : `Search ${detailLabel.toLowerCase()}...`}
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(event) => setSearchQuery(event.target.value)}
                   />
                 </div>
               </div>
+              {currentView === "summary" && summaryData ? (
+                <p className="mt-2 text-[10px] font-pmedium text-slate-400 uppercase tracking-widest">
+                  Showing {summaryItems.length} of {summaryTotal} destinations
+                </p>
+              ) : null}
             </div>
             <div className="overflow-x-auto flex-1">
-              {isPending || (currentView === "detail" && isLoading) ? (
+              {currentView === "detail" && isLoading ? (
                 <div className="p-6 space-y-4">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-4 animate-pulse">
@@ -846,13 +1030,13 @@ const BlogsAndNews = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStats.length === 0 ? (
+                    {summaryItems.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">No destinations found.</td>
+                        <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
                       </tr>
                     ) : (
-                      filteredStats.map((row) => (
-                        <tr key={row.destination} className="hover:bg-slate-50/50 transition-colors group">
+                      summaryItems.map((row) => (
+                        <tr key={`${row.country}-${row.destination}`} className="hover:bg-slate-50/50 transition-colors group">
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.srNo}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.continent}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.country}</td>
@@ -875,6 +1059,17 @@ const BlogsAndNews = () => {
                         </tr>
                       ))
                     )}
+                    {hasNextPage ? (
+                      <tr ref={loadMoreRef}>
+                        <td colSpan={9} className="py-4 text-center">
+                          {isFetchingNextPage ? (
+                            <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
+                              Loading more destinations...
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               ) : (
@@ -974,4 +1169,4 @@ const BlogsAndNews = () => {
   );
 };
 
-export default BlogsAndNews;
+export default DestinationsData;

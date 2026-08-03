@@ -41,6 +41,9 @@ const {
   editCompanyListing,
 } = require("../controllers/hostListingControllers");
 const {
+  getDestinationsData,
+} = require("../controllers/destinationDataControllers");
+const {
   getCompanyUnits,
   getCompanyRecoveryQueue,
   setUnitActiveStatus,
@@ -69,6 +72,7 @@ router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
 router.get("/companies", getCompanies);
 router.get("/companies/locations", getCompanyLocations);
+router.get("/destinations-data", getDestinationsData);
 router.get("/host-companies", getHostLeadCompanies);
 router.post(
   "/transfer-nomad-listing",

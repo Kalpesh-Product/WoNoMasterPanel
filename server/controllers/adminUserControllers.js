@@ -4,6 +4,10 @@ const { default: mongoose } = require("mongoose");
 // const { default: axios } = require("axios");
 const axios = require("axios");
 const FormData = require("form-data");
+const {
+  handleFileUpload,
+  handleFileDelete,
+} = require("../config/cloudinaryConfig");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -14,9 +18,10 @@ const updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
     const { firstName, lastName } = req.body;
+    const newProfilePicture = req.file;
 
     if (!userId) {
-      return res.status(400).json({ message: "Missing  user ID" });
+      return res.status(400).json({ message: "Missing user ID" });
     }
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -28,22 +33,77 @@ const updateProfile = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (firstName) user.firstName = firstName.trim();
-    if (lastName) user.lastName = lastName.trim();
+    if (firstName !== undefined) {
+      const trimmedFirstName = String(firstName).trim();
+      if (!trimmedFirstName) {
+        return res.status(400).json({ message: "First name is required" });
+      }
+      user.firstName = trimmedFirstName;
+    }
+
+    if (lastName !== undefined) {
+      const trimmedLastName = String(lastName).trim();
+      if (!trimmedLastName) {
+        return res.status(400).json({ message: "Last name is required" });
+      }
+      user.lastName = trimmedLastName;
+    }
+
+    let previousProfilePictureId = null;
+    if (newProfilePicture) {
+      previousProfilePictureId = user.profilePicture?.id || null;
+      const base64Image = `data:${newProfilePicture.mimetype};base64,${newProfilePicture.buffer.toString("base64")}`;
+      const uploadResult = await handleFileUpload(
+        base64Image,
+        `master-panel/admin-users/${userId}/profile-picture`,
+      );
+
+      if (!uploadResult?.public_id || !uploadResult?.secure_url) {
+        return res.status(500).json({ message: "Unable to upload profile photo" });
+      }
+
+      user.profilePicture = {
+        id: uploadResult.public_id,
+        url: uploadResult.secure_url,
+      };
+    }
+
+    if (
+      firstName === undefined &&
+      lastName === undefined &&
+      !newProfilePicture
+    ) {
+      return res.status(400).json({ message: "No profile changes provided" });
+    }
 
     const updatedUser = await user.save();
 
+    if (
+      previousProfilePictureId &&
+      previousProfilePictureId !== updatedUser.profilePicture?.id
+    ) {
+      handleFileDelete(previousProfilePictureId).catch((deleteError) => {
+        console.error("[updateProfile] old photo cleanup error:", deleteError);
+      });
+    }
+
     return res.status(200).json({
-      message: "Profile updated successfully",
+      message: newProfilePicture
+        ? "Profile photo updated successfully"
+        : "Profile updated successfully",
       user: {
-        id: updatedUser._id,
+        _id: updatedUser._id,
         firstName: updatedUser.firstName,
         lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        profilePicture: updatedUser.profilePicture || null,
       },
     });
   } catch (error) {
     console.error("[updateProfile] error:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({
+      message: error.message || "Internal server error",
+    });
   }
 };
 

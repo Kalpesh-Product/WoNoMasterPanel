@@ -6,34 +6,131 @@ const Workspace = require("../models/hostCompany/Workspace");
 const modelMap = require("../config/modelMap");
 const mongoose = require("mongoose");
 
+const escapeRegex = (value = "") =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const populateLogPayload = async (log) => {
+  const populatedPayload = { ...(log?.payload || {}) };
+
+  await Promise.all(
+    Object.keys(populatedPayload).map(async (key) => {
+      const modelName = modelMap[key];
+      const value = populatedPayload[key];
+      if (!modelName || !mongoose.isValidObjectId(value)) return;
+
+      try {
+        const Model = mongoose.model(modelName);
+        populatedPayload[key] = await Model.findById(value).lean();
+      } catch (error) {
+        console.error(`Failed to populate log payload field ${key}:`, error.message);
+      }
+    }),
+  );
+
+  return { ...log, payload: populatedPayload };
+};
+
 const getLogs = async (req, res, next) => {
   try {
-    const logs = await Log.find().populate([
-      { path: "performedBy", select: "firstName middleName lastName" },
-    ]);
+    const { page, limit, search, month, dateFrom, dateTo } = req.query;
 
-    const populatedLogs = await Promise.all(
-      logs.map(async (log) => {
-        const populatedPayload = { ...log.payload };
+    // Preserve the original array response for older callers. The Logs module
+    // sends `page`, which activates the fast paginated contract below.
+    if (page === undefined) {
+      const logs = await Log.find()
+        .sort({ createdAt: -1 })
+        .populate({ path: "performedBy", select: "firstName middleName lastName" })
+        .lean();
+      return res.status(200).json(await Promise.all(logs.map(populateLogPayload)));
+    }
 
-        for (const key of Object.keys(populatedPayload)) {
-          const modelName = modelMap[key];
-          const value = populatedPayload[key];
+    const filter = {};
+    const trimmedSearch = String(search || "").trim();
+    if (trimmedSearch) {
+      const searchRegex = new RegExp(escapeRegex(trimmedSearch), "i");
+      filter.$or = [
+        { action: searchRegex },
+        { module: searchRegex },
+        { companyName: searchRegex },
+        { fullName: searchRegex },
+        { page: searchRegex },
+      ];
+    }
 
-          if (modelName && mongoose.isValidObjectId(value)) {
-            const Model = mongoose.model(modelName);
-            populatedPayload[key] = await Model.findById(value).lean();
-          }
-        }
+    const normalizedMonth = /^\d{4}-\d{2}$/.test(String(month || ""))
+      ? String(month)
+      : "";
+    if (normalizedMonth) {
+      const monthStart = new Date(`${normalizedMonth}-01T00:00:00.000Z`);
+      const monthEnd = new Date(monthStart);
+      monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+      filter.createdAt = { $gte: monthStart, $lt: monthEnd };
+    }
 
-        return {
-          ...log.toObject(),
-          payload: populatedPayload,
-        };
-      })
-    );
+    // A custom calendar range takes precedence over the month shortcut.
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo) filter.createdAt.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
 
-    return res.status(200).json(populatedLogs);
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(limit, 10) || 30));
+    const start = (pageNumber - 1) * pageSize;
+
+    const [logs, total, totalLogs, companies, users, modules, monthRows] =
+      await Promise.all([
+        Log.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(start)
+          .limit(pageSize)
+          .populate({ path: "performedBy", select: "firstName middleName lastName" })
+          .lean(),
+        Log.countDocuments(filter),
+        Log.countDocuments({}),
+        Log.distinct("companyName", { companyName: { $nin: [null, "", "-"] } }),
+        Log.distinct("fullName", { fullName: { $nin: [null, "", "-"] } }),
+        Log.distinct("module", { module: { $nin: [null, "", "-"] } }),
+        Log.aggregate([
+          { $match: { createdAt: { $type: "date" } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m", date: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: -1 } },
+        ]),
+      ]);
+
+    const populatedLogs = await Promise.all(logs.map(populateLogPayload));
+
+    return res.status(200).json({
+      items: populatedLogs.map((log, index) => ({
+        ...log,
+        srNo: start + index + 1,
+      })),
+      page: pageNumber,
+      limit: pageSize,
+      total,
+      hasMore: pageNumber * pageSize < total,
+      counts: {
+        total: totalLogs,
+        companies: companies.length,
+        users: users.length,
+        modules: modules.length,
+      },
+      monthOptions: monthRows.map((row) => ({
+        value: row._id,
+        label: new Date(`${row._id}-01T00:00:00.000Z`).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }),
+        count: row.count,
+      })),
+    });
   } catch (error) {
     next(error);
   }

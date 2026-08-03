@@ -188,7 +188,7 @@ import {
   BecomeAContributorTable,
 } from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
-import BlogsAndNews from "../pages/Dashboard/FrontendDashboard/BlogsAndNews";
+import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
@@ -438,14 +438,14 @@ export const routes = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        element: <BlogsAndNews />,
+                        element: <DestinationsData />,
                       },
                       {
                         path: ":locationType",
                         children: [
                           {
                             index: true,
-                            element: <BlogsAndNews />,
+                            element: <DestinationsData />,
                           },
                           {
                             path: "add",
