@@ -119,34 +119,36 @@ const tabButtonClass = (isActive) =>
 // Copy shown in the confirmation dialog for every publish/active action —
 // bulk (by location) and per-row alike, since all four now require an
 // explicit confirmation before firing.
+// Active/inactive and public/private are independent toggles — neither one
+// restricts or changes the other.
 const ACTION_COPY = {
   active: {
     title: "Make listing(s) active?",
     describeSingle: (item) =>
-      `This makes "${item?.companyName || "this listing"}" active — visible internally to Wono team members with access, but not yet visible to the public. Use this to review and test before publishing.`,
+      `This makes "${item?.companyName || "this listing"}" active — visible to Wono team members with access for internal review. Doesn't change its public/private visibility.`,
     describeBulk: (label, count) =>
-      `This makes ${count} inactive listing(s) in ${label} active — visible internally to Wono team members with access, but not yet visible to the public. Use this to review and test before publishing.`,
+      `This makes ${count} inactive listing(s) in ${label} active — visible to Wono team members with access for internal review. Doesn't change public/private visibility.`,
   },
   inactive: {
     title: "Make listing(s) inactive?",
     describeSingle: (item) =>
-      `This makes "${item?.companyName || "this listing"}" inactive — hidden from everyone, including the Wono team, until reactivated. It will also stop being publicly visible if it was public.`,
+      `This makes "${item?.companyName || "this listing"}" inactive — no longer flagged for internal Wono review. Doesn't change its public/private visibility.`,
     describeBulk: (label, count) =>
-      `This makes ${count} active listing(s) in ${label} inactive — hidden from everyone, including the Wono team, until reactivated. Any of them that were public will also stop being visible.`,
+      `This makes ${count} active listing(s) in ${label} inactive — no longer flagged for internal Wono review. Doesn't change public/private visibility.`,
   },
   public: {
     title: "Make listing(s) public?",
     describeSingle: (item) =>
-      `This makes "${item?.companyName || "this listing"}" visible to everyone on the public Wono Nomads site. Make sure the Wono team's internal testing and review on this listing is complete before continuing.`,
+      `This makes "${item?.companyName || "this listing"}" visible to everyone on the public Wono Nomads site.`,
     describeBulk: (label, count) =>
-      `This makes ${count} active listing(s) in ${label} visible to everyone on the public Wono Nomads site. Make sure the Wono team's internal testing and review is complete before continuing.`,
+      `This makes ${count} listing(s) in ${label} visible to everyone on the public Wono Nomads site.`,
   },
   private: {
     title: "Make listing(s) private?",
     describeSingle: (item) =>
-      `This removes "${item?.companyName || "this listing"}" from the public site. It stays active and visible internally to the Wono team.`,
+      `This removes "${item?.companyName || "this listing"}" from the public site. Its active/inactive status is unchanged.`,
     describeBulk: (label, count) =>
-      `This removes ${count} public listing(s) in ${label} from the public site. They stay active and visible internally to the Wono team.`,
+      `This removes ${count} public listing(s) in ${label} from the public site. Their active/inactive status is unchanged.`,
   },
 };
 
@@ -509,12 +511,12 @@ const PublishListings = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={!canSubmit || !(locationCounts.active > 0)}
+                  disabled={!canSubmit || !(locationCounts.private > 0)}
                   onClick={() => setBulkAction("public")}
                   title={
-                    !(locationCounts.active > 0)
-                      ? "No active listings here to publish"
-                      : "Make all active listings here public"
+                    !(locationCounts.private > 0)
+                      ? "No private listings here to publish"
+                      : "Make all private listings here public"
                   }
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-[#2563EB] text-white rounded-lg font-pmedium text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
@@ -691,15 +693,9 @@ const PublishListings = () => {
                             </button>
                             <button
                               type="button"
-                              disabled={isRowPending || !item.isActive}
+                              disabled={isRowPending}
                               onClick={() => setRowAction({ item, action: item.isPublic ? "private" : "public" })}
-                              title={
-                                !item.isActive
-                                  ? "Activate this listing before making it public"
-                                  : item.isPublic
-                                    ? "Make private"
-                                    : "Make public"
-                              }
+                              title={item.isPublic ? "Make private" : "Make public"}
                               className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${item.isPublic ? "bg-blue-50 text-blue-600 hover:bg-blue-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
                             >
                               <Globe size={15} />
@@ -757,7 +753,7 @@ const PublishListings = () => {
                     : bulkAction === "inactive"
                       ? locationCounts?.active ?? 0
                       : bulkAction === "public"
-                        ? locationCounts?.active ?? 0
+                        ? locationCounts?.private ?? 0
                         : locationCounts?.public ?? 0,
                 )}
               </p>
