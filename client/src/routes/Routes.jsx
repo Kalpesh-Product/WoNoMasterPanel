@@ -193,6 +193,7 @@ import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import PublishListings from "../pages/Dashboard/FrontendDashboard/PublishListings";
+import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLeads";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
@@ -375,6 +376,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "publish-listings",
                     element: <PublishListings />,
+                  },
+                  {
+                    path: "nomad-signup-leads",
+                    element: <NomadSignupLeads />,
                   },
                   {
                     path: "inactive-websites",

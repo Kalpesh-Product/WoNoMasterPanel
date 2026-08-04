@@ -61,6 +61,7 @@ const newsRoutes = require("./routes/newsRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
 const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
+const nomadUserRoutes = require("./routes/nomadUserRoutes");
 
 const {
   getTemplate,
@@ -158,6 +159,7 @@ app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
 app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
+app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 
 app.all("*", (req, res) => {
   if (req.accepts("html")) {
