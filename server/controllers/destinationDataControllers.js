@@ -153,8 +153,11 @@ const buildDestinationStats = async () => {
     HostCompany.find()
       .select("companyCountry companyState companyCity companyContinent")
       .lean(),
-    fetchNomadsRows("/blogs/blogs"),
-    fetchNomadsRows("/news/news"),
+    // Pre-aggregated on the Nomads side (destination + count only) — pulling
+    // full blog/news documents just to count them by destination was taking
+    // 50-120s+ over this link; the grouped summary takes well under a second.
+    fetchNomadsRows("/blogs/destination-counts"),
+    fetchNomadsRows("/news/destination-counts"),
     fetchNomadsRows("/events"),
     fetchNomadsRows("/places"),
     fetchNomadsRows("/restaurants"),
@@ -243,7 +246,9 @@ const buildDestinationStats = async () => {
     rows.forEach((row) => {
       if (row?.isActive === false) return;
       const entry = ensureDestination(row);
-      if (entry) entry[countField] += 1;
+      // Pre-aggregated sources (blogs/news) carry a `count`; raw per-item
+      // sources (events/places/restaurants) don't, so each row is just 1.
+      if (entry) entry[countField] += row?.count || 1;
     });
   });
 
