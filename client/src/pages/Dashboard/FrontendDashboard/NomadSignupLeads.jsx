@@ -58,6 +58,15 @@ const getPrimaryText = (lead = {}) =>
 const getCountryLabel = (lead = {}) =>
   String(lead.country || lead.countryOfResidence || "-").trim() || "-";
 
+const getPhoneLabel = (lead = {}) => {
+  const number = String(lead.mobile || lead.contactNumber || "").trim();
+  if (!number) return "-";
+  const rawCode = String(lead.contactCode || "").trim();
+  if (!rawCode) return number;
+  const code = rawCode.startsWith("+") ? rawCode : `+${rawCode}`;
+  return `${code} ${number}`;
+};
+
 const getDestinationLabel = (destination = {}) =>
   [destination.title, destination.state, destination.country].filter(Boolean).join(", ") || "-";
 
@@ -319,6 +328,7 @@ const NomadSignupLeads = () => {
           lead.email,
           lead.mobile,
           lead.contactNumber,
+          lead.contactCode,
           lead.country,
           lead.countryOfResidence,
         ]
@@ -448,7 +458,7 @@ const NomadSignupLeads = () => {
                         <td className="px-5 py-4">
                           <p className="flex items-center gap-1.5 text-[12px] font-pmedium text-slate-600 truncate">
                             <Phone size={11} className="text-slate-400 shrink-0" />
-                            {lead.mobile || lead.contactNumber || "-"}
+                            {getPhoneLabel(lead)}
                           </p>
                         </td>
                         <td className="px-5 py-4">
@@ -549,7 +559,7 @@ const NomadSignupLeads = () => {
                   </div>
                   <div>
                     <p className="mb-1 text-[9px] font-pmedium uppercase tracking-widest text-slate-500">Phone</p>
-                    <p className="text-[12px] font-pmedium text-slate-900">{selectedLead.mobile || selectedLead.contactNumber || "-"}</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{getPhoneLabel(selectedLead)}</p>
                   </div>
                   <div>
                     <p className="mb-1 text-[9px] font-pmedium uppercase tracking-widest text-slate-500">Country</p>
