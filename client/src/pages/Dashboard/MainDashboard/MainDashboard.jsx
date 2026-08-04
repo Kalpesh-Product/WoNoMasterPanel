@@ -12,7 +12,8 @@ const MainDashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/dashboard/companies", { replace: true });
+    // Temporary landing page until a real dashboard is built.
+    navigate("/dashboard/all-leads", { replace: true });
   }, [navigate]);
 
   const mainWidgets = [

@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { DateRange } from "react-date-range";
+import { toast } from "sonner";
 import {
   CalendarDays,
   Clock3,
+  Download,
   Eye,
   Heart,
   Loader2,
@@ -88,6 +91,31 @@ const isSameDay = (left, right) =>
 const isSameMonth = (left, right) =>
   !!left && !!right && left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
 
+const DATE_FILTER_OPTIONS = [
+  { key: "today", label: "Today" },
+  { key: "month", label: "This Month" },
+  { key: "custom", label: "Custom Range" },
+];
+
+const getDateFilterRange = (mode, customRange) => {
+  const now = new Date();
+  if (mode === "today") {
+    const from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    return { from, to };
+  }
+  if (mode === "month") {
+    const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    return { from, to };
+  }
+  const from = new Date(customRange.startDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(customRange.endDate);
+  to.setHours(23, 59, 59, 999);
+  return { from, to };
+};
+
 const NomadSignupLeads = () => {
   const axiosPrivate = useAxiosPrivate();
   const [search, setSearch] = useState("");
@@ -109,14 +137,45 @@ const NomadSignupLeads = () => {
   const [logsPage, setLogsPage] = useState(1);
   const [logEntries, setLogEntries] = useState([]);
   const [logsHasMore, setLogsHasMore] = useState(false);
+  const [logsDateMode, setLogsDateMode] = useState("today");
+  const [logsCustomRange, setLogsCustomRange] = useState({
+    startDate: new Date(),
+    endDate: new Date(),
+    key: "selection",
+  });
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  // With moveRangeOnFirstSelection={false}, the first click sets start=end
+  // to the same day and the second click sets the real end date — so two
+  // onChange firings means a full range has been picked.
+  const customRangeClicksRef = useRef(0);
+
+  const { from: logsFrom, to: logsTo } = useMemo(
+    () => getDateFilterRange(logsDateMode, logsCustomRange),
+    [logsDateMode, logsCustomRange],
+  );
 
   const { data: logsResponse, isFetching: isLogsFetching } = useQuery({
-    queryKey: ["nomadUserHistory", logsUser?._id, logsTab, logsPage],
+    queryKey: [
+      "nomadUserHistory",
+      logsUser?._id,
+      logsTab,
+      logsPage,
+      logsFrom.getTime(),
+      logsTo.getTime(),
+    ],
     enabled: !!logsUser,
     queryFn: async () => {
       const response = await axiosPrivate.get(
         `/api/nomad-users/${logsUser._id}/${LOGS_TAB_ENDPOINTS[logsTab]}`,
-        { params: { page: logsPage, limit: 20 } },
+        {
+          params: {
+            page: logsPage,
+            limit: 20,
+            from: logsFrom.toISOString(),
+            to: logsTo.toISOString(),
+          },
+        },
       );
       return response.data;
     },
@@ -128,27 +187,94 @@ const NomadSignupLeads = () => {
     setLogsHasMore(!!logsResponse.hasMore);
   }, [logsResponse, logsPage]);
 
-  const openLogsFor = (lead) => {
+  const resetLogsListing = () => {
+    setLogsPage(1);
     setLogEntries([]);
     setLogsHasMore(false);
-    setLogsPage(1);
+  };
+
+  const openLogsFor = (lead) => {
+    resetLogsListing();
     setLogsTab("destinations");
+    setLogsDateMode("today");
+    setIsCustomRangeOpen(false);
     setLogsUser(lead);
   };
 
   const closeLogs = () => {
     setLogsUser(null);
-    setLogEntries([]);
-    setLogsPage(1);
-    setLogsHasMore(false);
+    resetLogsListing();
+    setIsCustomRangeOpen(false);
   };
 
   const switchLogsTab = (tab) => {
     if (tab === logsTab) return;
     setLogsTab(tab);
-    setLogsPage(1);
-    setLogEntries([]);
-    setLogsHasMore(false);
+    resetLogsListing();
+  };
+
+  const switchLogsDateMode = (mode) => {
+    if (mode === "custom") {
+      // Re-clicking "Custom Range" while already on custom toggles the
+      // calendar open/closed instead of forcing it open every time.
+      setIsCustomRangeOpen((prev) => {
+        const next = logsDateMode === "custom" ? !prev : true;
+        if (next) customRangeClicksRef.current = 0;
+        return next;
+      });
+    } else {
+      setIsCustomRangeOpen(false);
+    }
+    if (mode === logsDateMode) return;
+    setLogsDateMode(mode);
+    resetLogsListing();
+  };
+
+  const handleCustomRangeChange = (ranges) => {
+    setLogsCustomRange(ranges.selection);
+    resetLogsListing();
+    customRangeClicksRef.current += 1;
+    if (customRangeClicksRef.current >= 2) {
+      setIsCustomRangeOpen(false);
+    }
+  };
+
+  const getExportDateLabel = () => {
+    if (logsDateMode === "today") {
+      return formatDateOnly(new Date()).replace(/,/g, "").replace(/\s+/g, "-");
+    }
+    if (logsDateMode === "month") {
+      return new Date()
+        .toLocaleDateString("en-US", { month: "long", year: "numeric" })
+        .replace(/\s+/g, "-");
+    }
+    const start = formatDateOnly(logsCustomRange.startDate).replace(/,/g, "").replace(/\s+/g, "-");
+    const end = formatDateOnly(logsCustomRange.endDate).replace(/,/g, "").replace(/\s+/g, "-");
+    return `${start}_to_${end}`;
+  };
+
+  const handleExportLogs = async () => {
+    if (!logsUser) return;
+    setIsExporting(true);
+    try {
+      const response = await axiosPrivate.get(`/api/nomad-users/${logsUser._id}/export`, {
+        params: { from: logsFrom.toISOString(), to: logsTo.toISOString() },
+        responseType: "blob",
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = getPrimaryText(logsUser).trim().replace(/\s+/g, "-").toLowerCase() || "nomad-user";
+      link.setAttribute("download", `nomad-activity-${safeName}-${getExportDateLabel()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to export activity");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const { data: leads = [], isPending, isError } = useQuery({
@@ -502,7 +628,7 @@ const NomadSignupLeads = () => {
           onClick={closeLogs}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl"
+            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-amber-50/40 p-5 sm:p-6">
@@ -543,6 +669,63 @@ const NomadSignupLeads = () => {
                   {tab.label}
                 </button>
               ))}
+            </div>
+
+            <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-5 py-2.5 sm:px-6">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {DATE_FILTER_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => switchLogsDateMode(option.key)}
+                    className={`rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors ${
+                      logsDateMode === option.key
+                        ? "bg-amber-500 text-white shadow-sm"
+                        : "bg-white text-slate-500 border border-slate-200/60 hover:bg-slate-100"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {logsDateMode === "custom" && (
+                  <span className="rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[10px] font-pmedium text-amber-700">
+                    {formatDateOnly(logsCustomRange.startDate)} — {formatDateOnly(logsCustomRange.endDate)}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleExportLogs}
+                disabled={isExporting}
+                title="Export Destinations, Listings & Sign In/Out as Excel"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-[10px] font-pmedium text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isExporting ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                Export Excel
+              </button>
+
+              {isCustomRangeOpen && (
+                <div className="absolute right-5 top-full z-10 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:right-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+                    <span className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                      Select Range
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomRangeOpen(false)}
+                      className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                  <DateRange
+                    ranges={[logsCustomRange]}
+                    onChange={handleCustomRangeChange}
+                    moveRangeOnFirstSelection={false}
+                    maxDate={new Date()}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="overflow-y-auto bg-white p-5 sm:p-6">
