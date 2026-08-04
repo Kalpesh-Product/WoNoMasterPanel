@@ -1,157 +1,73 @@
-const mongoose = require("mongoose");
+const axios = require("axios");
 const ExcelJS = require("exceljs");
-const NomadUser = require("../models/nomads/NomadUser");
-const NomadDestinationView = require("../models/nomads/NomadDestinationView");
-const NomadListingView = require("../models/nomads/NomadListingView");
-const NomadUserSessionLog = require("../models/nomads/NomadUserSessionLog");
-// Registers "Company" and "StateWiseWeight" on the Nomads connection so
-// `.populate()` below can resolve NomadUser's saves/likes/favoriteDestination
-// refs; not referenced directly otherwise.
-require("../models/nomads/Company");
-require("../models/nomads/StateWiseWeight");
 
-const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const NOMADS_BASE_URL = String(
+  process.env.NOMADS_BASE_URL || "http://localhost:3000/api",
+).replace(/\/+$/, "");
 
-// Never surface auth secrets even though the source schema is read with
-// `strict: false`.
-const SENSITIVE_FIELDS = "-password -resetPasswordToken -resetPasswordExpire -refreshToken";
+// Internal admin surface on the Nomads backend, gated by a shared secret
+// (not a per-user JWT) since these requests come from this server, not a
+// signed-in Nomad app user. See D:\Nomads\backend\middlewares\verifyAdminApiKey.js.
+const nomadsAdminClient = axios.create({
+  baseURL: `${NOMADS_BASE_URL}/admin/nomad-users`,
+  headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
+  timeout: 15000,
+});
 
-const POPULATE_OPTIONS = [
-  { path: "saves", select: "companyName city state country" },
-  { path: "likes", select: "companyName city state country" },
-  { path: "favoriteDestination", select: "title state country continent" },
-];
-
-const getNomadUsers = async (req, res, next) => {
-  try {
-    const { page, search } = req.query;
-
-    const filter = {};
-    const trimmedSearch = String(search || "").trim();
-    if (trimmedSearch) {
-      const searchRegex = new RegExp(escapeRegex(trimmedSearch), "i");
-      filter.$or = [
-        { fullName: searchRegex },
-        { firstName: searchRegex },
-        { lastName: searchRegex },
-        { email: searchRegex },
-        { mobile: searchRegex },
-        { country: searchRegex },
-        { state: searchRegex },
-      ];
-    }
-
-    if (page === undefined) {
-      const users = await NomadUser.find(filter)
-        .select(SENSITIVE_FIELDS)
-        .populate(POPULATE_OPTIONS)
-        .sort({ createdAt: -1 })
-        .lean();
-      return res.status(200).json({ items: users, total: users.length });
-    }
-
-    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
-    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
-
-    const [users, total, totalCount] = await Promise.all([
-      NomadUser.find(filter)
-        .select(SENSITIVE_FIELDS)
-        .populate(POPULATE_OPTIONS)
-        .sort({ createdAt: -1 })
-        .skip((pageNumber - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
-      NomadUser.countDocuments(filter),
-      NomadUser.countDocuments({}),
-    ]);
-
-    return res.status(200).json({
-      items: users,
-      page: pageNumber,
-      limit: pageSize,
-      total,
-      hasMore: pageNumber * pageSize < total,
-      counts: { total: totalCount },
-    });
-  } catch (error) {
-    next(error);
-  }
+const forwardNomadsError = (res, error, fallbackMessage) => {
+  const status = error.response?.status || 502;
+  const message = error.response?.data?.message || fallbackMessage;
+  return res.status(status).json({ message });
 };
 
-// `from`/`to` are optional ISO date strings scoping any per-user history
-// query (list view or export) to a date range on `createdAt`.
-const buildDateRangeFilter = (req) => {
-  const { from, to } = req.query;
-  const range = {};
-  if (from) {
-    const fromDate = new Date(from);
-    if (!Number.isNaN(fromDate.getTime())) range.$gte = fromDate;
+const getNomadUsers = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const response = await nomadsAdminClient.get("/", { params: { search } });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardNomadsError(res, error, "Failed to fetch nomad users");
   }
-  if (to) {
-    const toDate = new Date(to);
-    if (!Number.isNaN(toDate.getTime())) range.$lte = toDate;
-  }
-  return Object.keys(range).length ? { createdAt: range } : {};
 };
 
 // Every per-user sub-resource (destination views, listing views, session
-// logs) is paginated, date-filterable, and sorted the same way — factor the
-// shared shape once instead of repeating it per endpoint.
-const paginatedUserHistory = (Model) => async (req, res, next) => {
+// logs) is fetched the same way — factor the shared shape once instead of
+// repeating it per endpoint.
+const paginatedUserHistory = (endpointSuffix) => async (req, res) => {
   try {
     const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid userId" });
-    }
-
-    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
-    const filter = { userId, ...buildDateRangeFilter(req) };
-
-    const [items, total] = await Promise.all([
-      Model.find(filter)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
-      Model.countDocuments(filter),
-    ]);
-
-    return res.status(200).json({
-      items,
-      page,
-      limit: pageSize,
-      total,
-      hasMore: page * pageSize < total,
+    const { page, limit, from, to } = req.query;
+    const response = await nomadsAdminClient.get(`/${userId}/${endpointSuffix}`, {
+      params: { page, limit, from, to },
     });
+    return res.status(200).json(response.data);
   } catch (error) {
-    next(error);
+    return forwardNomadsError(res, error, "Failed to fetch user activity");
   }
 };
 
-const getNomadUserDestinationViews = paginatedUserHistory(NomadDestinationView);
-const getNomadUserListingViews = paginatedUserHistory(NomadListingView);
-const getNomadUserSessionLogs = paginatedUserHistory(NomadUserSessionLog);
-
-const EXPORT_ROW_LIMIT = 20000;
+const getNomadUserDestinationViews = paginatedUserHistory("destination-views");
+const getNomadUserListingViews = paginatedUserHistory("listing-views");
+const getNomadUserSessionLogs = paginatedUserHistory("sessions");
 
 const formatExportDate = (value) => (value ? new Date(value).toLocaleString("en-US") : "");
 
 const exportNomadUserActivity = async (req, res, next) => {
   try {
     const { userId } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ message: "Invalid userId" });
+    const { from, to } = req.query;
+
+    let payload;
+    try {
+      const response = await nomadsAdminClient.get(`/${userId}/export-data`, {
+        params: { from, to },
+      });
+      payload = response.data;
+    } catch (error) {
+      return forwardNomadsError(res, error, "Failed to fetch user activity for export");
     }
 
-    const filter = { userId, ...buildDateRangeFilter(req) };
-
-    const [user, destinations, listings, sessions] = await Promise.all([
-      NomadUser.findById(userId).select("fullName firstName lastName email").lean(),
-      NomadDestinationView.find(filter).sort({ createdAt: -1 }).limit(EXPORT_ROW_LIMIT).lean(),
-      NomadListingView.find(filter).sort({ createdAt: -1 }).limit(EXPORT_ROW_LIMIT).lean(),
-      NomadUserSessionLog.find(filter).sort({ createdAt: -1 }).limit(EXPORT_ROW_LIMIT).lean(),
-    ]);
+    const { user, destinations = [], listings = [], sessions = [] } = payload;
 
     const workbook = new ExcelJS.Workbook();
 

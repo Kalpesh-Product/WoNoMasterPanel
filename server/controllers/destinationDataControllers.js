@@ -1,8 +1,17 @@
 const axios = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
 
-const CACHE_TTL_MS = 60 * 1000;
-const FETCH_TIMEOUT_MS = 12000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+// Some Nomads collections are abnormally slow to query right now — `blogs`
+// alone (only ~11MB / 1062 docs) measured over 2 minutes for a plain sorted
+// find, which points to a real problem on the Nomads DB side (missing
+// indexes and/or an underpowered cluster), not this endpoint. This timeout
+// is a stopgap so the page waits for real data instead of silently showing
+// zero results; it doesn't fix the underlying slowness. Only the very first
+// request after a cold cache pays this cost — subsequent requests are
+// served from cache while a refresh happens in the background (see
+// getCachedDestinationStats below).
+const FETCH_TIMEOUT_MS = 3 * 60 * 1000;
 const NOMADS_BASE_URL = String(
   process.env.NOMADS_BASE_URL || "http://localhost:3000/api",
 ).replace(/\/+$/, "");
