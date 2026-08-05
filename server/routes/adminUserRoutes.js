@@ -4,6 +4,7 @@ const {
   changePassword,
   bulkUploadData,
   bulkUploadImages,
+  bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   updateReviewStatus,
@@ -26,6 +27,11 @@ router.patch("/change-password/:userId", changePassword);
 //Bulk Routes
 router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
 router.post("/bulk-upload-images", upload.array("images"), bulkUploadImages);
+router.post(
+  "/bulk-upload-restaurant-images",
+  upload.array("images"),
+  bulkUploadRestaurantImages,
+);
 router.patch(
   "/bulk-reupload-images",
   upload.array("images"),

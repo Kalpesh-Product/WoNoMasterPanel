@@ -351,6 +351,55 @@ const bulkUploadImages = async (req, res) => {
   }
 };
 
+const bulkUploadRestaurantImages = async (req, res) => {
+  try {
+    const files = req.files;
+    const { restaurantId, businessId } = req.body;
+
+    if (!files || !files.length) {
+      return res.status(400).json({ message: "No image files provided" });
+    }
+
+    if (!restaurantId && !businessId) {
+      return res
+        .status(400)
+        .json({ message: "Missing restaurantId or businessId" });
+    }
+
+    const formData = new FormData();
+    if (restaurantId) formData.append("restaurantId", restaurantId);
+    if (businessId) formData.append("businessId", businessId);
+
+    files.forEach((file) => {
+      formData.append("images", file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+    });
+
+    const response = await axios.post(
+      `${NOMADS_BASE}/restaurants/bulk-add-restaurant-images`,
+      formData,
+      { headers: formData.getHeaders() },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        response.data?.message || "Restaurant images uploaded successfully",
+    });
+  } catch (err) {
+    console.error("[bulkUploadRestaurantImages] error:", err.message);
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Restaurant image upload failed";
+    return res
+      .status(err.response?.status || 500)
+      .json({ success: false, message });
+  }
+};
+
 const bulkReuploadImages = async (req, res) => {
   try {
     const files = req.files;
@@ -1111,6 +1160,7 @@ module.exports = {
   changePassword,
   bulkUploadData,
   bulkUploadImages,
+  bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   updateReviewStatus,

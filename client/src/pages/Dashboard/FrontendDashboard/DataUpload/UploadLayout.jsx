@@ -24,6 +24,7 @@ const UploadLayout = () => {
     { label: "Events Upload", path: "events-upload", heading: "Events Upload", description: "Upload and manage events." },
     { label: "Places Upload", path: "places-upload", heading: "Places Upload", description: "Upload and manage places." },
     { label: "Restaurants Upload", path: "restaurants-upload", heading: "Restaurants Upload", description: "Upload and manage restaurants." },
+    { label: "Bulk Restaurant Images Upload", path: "bulk-restaurant-images-upload", heading: "Bulk Restaurant Images Upload", description: "Upload images in bulk for restaurants." },
   ];
 
   const filteredTabs = restrictedEmails.includes(userEmail)
