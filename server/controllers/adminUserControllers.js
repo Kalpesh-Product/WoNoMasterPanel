@@ -504,6 +504,54 @@ const uploadCompanyLogo = async (req, res) => {
   }
 };
 
+const uploadRestaurantLogo = async (req, res) => {
+  try {
+    const file = req.file;
+    const { restaurantId, businessId } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ message: "No image provided" });
+    }
+
+    if (!restaurantId && !businessId) {
+      return res
+        .status(400)
+        .json({ message: "Missing restaurantId or businessId" });
+    }
+
+    const formData = new FormData();
+    if (restaurantId) formData.append("restaurantId", restaurantId);
+    if (businessId) formData.append("businessId", businessId);
+    formData.append("image", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    const response = await axios.post(
+      `${NOMADS_BASE}/restaurants/upload-logo`,
+      formData,
+      { headers: formData.getHeaders() },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: response.data?.message || "Restaurant logo uploaded successfully",
+    });
+  } catch (err) {
+    console.error(
+      "[uploadRestaurantLogo] error:",
+      err.response?.data || err.message,
+    );
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Restaurant logo upload failed";
+    return res
+      .status(err.response?.status || 500)
+      .json({ success: false, message });
+  }
+};
+
 // ---- Website leads / reviews helpers (mirrors HostPanel's controllers) ----
 
 const sanitizeValue = (value) => String(value || "").trim();
@@ -1163,6 +1211,7 @@ module.exports = {
   bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
+  uploadRestaurantLogo,
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,

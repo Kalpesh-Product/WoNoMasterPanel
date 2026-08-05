@@ -7,6 +7,7 @@ const {
   bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
+  uploadRestaurantLogo,
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,
@@ -38,6 +39,11 @@ router.patch(
   bulkReuploadImages,
 );
 router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
+router.post(
+  "/upload-restaurant-logo",
+  upload.single("image"),
+  uploadRestaurantLogo,
+);
 
 //Review Routes
 router.patch("/review/:reviewId", setLogModule("Reviews"), updateReviewStatus);
