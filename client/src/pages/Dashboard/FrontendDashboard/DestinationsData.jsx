@@ -307,8 +307,6 @@ const DestinationsData = () => {
       allRestaurants: [],
       companies: [],
     },
-    isPending: isComprehensivePending,
-    isError: isComprehensiveError,
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
@@ -331,6 +329,30 @@ const DestinationsData = () => {
       };
     },
     enabled: currentView === "detail",
+  });
+
+  // Blog/news detail views used to wait on the same Promise.all as
+  // events/places/restaurants above — so even though blogs/news came back
+  // fast, the skeleton stayed up until the slow sources also finished.
+  // Separate queries so blog/news can render as soon as they're ready.
+  const {
+    data: destinationBlogs = [],
+    isPending: isDestinationBlogsPending,
+    isError: isDestinationBlogsError,
+  } = useQuery({
+    queryKey: ["destination-blogs"],
+    queryFn: () => fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
+    enabled: currentView === "detail" && detailType === "blog",
+  });
+
+  const {
+    data: destinationNews = [],
+    isPending: isDestinationNewsPending,
+    isError: isDestinationNewsError,
+  } = useQuery({
+    queryKey: ["destination-news"],
+    queryFn: () => fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
+    enabled: currentView === "detail" && detailType === "news",
   });
 
   const {
@@ -747,8 +769,8 @@ const DestinationsData = () => {
     else if (detailType === "place") source = destinationPlaces;
     else if (detailType === "restaurant") source = destinationRestaurants;
     else if (detailType === "blog")
-      source = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
-    else source = Array.isArray(data?.allNews) ? data.allNews : [];
+      source = Array.isArray(destinationBlogs) ? destinationBlogs : [];
+    else source = Array.isArray(destinationNews) ? destinationNews : [];
 
     let filtered = source.filter(
       (item) => normalizeDestination(item) === selectedLocation,
@@ -772,7 +794,8 @@ const DestinationsData = () => {
     currentView,
     selectedLocation,
     detailType,
-    data,
+    destinationBlogs,
+    destinationNews,
     destinationEvents,
     destinationPlaces,
     destinationRestaurants,
@@ -836,14 +859,16 @@ const DestinationsData = () => {
             : "Event";
 
   const isLoading =
-    isComprehensivePending ||
     isTogglePending ||
+    (detailType === "blog" && isDestinationBlogsPending) ||
+    (detailType === "news" && isDestinationNewsPending) ||
     (detailType === "event" && isDestinationEventsPending) ||
     (detailType === "place" && isDestinationPlacesPending) ||
     (detailType === "restaurant" && isDestinationRestaurantsPending);
 
   const hasError =
-    isComprehensiveError ||
+    isDestinationBlogsError ||
+    isDestinationNewsError ||
     isDestinationEventsError ||
     isDestinationPlacesError ||
     isDestinationRestaurantsError;
