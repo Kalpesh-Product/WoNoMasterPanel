@@ -4,8 +4,10 @@ const {
   changePassword,
   bulkUploadData,
   bulkUploadImages,
+  bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
+  uploadRestaurantLogo,
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,
@@ -26,12 +28,22 @@ router.patch("/change-password/:userId", changePassword);
 //Bulk Routes
 router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
 router.post("/bulk-upload-images", upload.array("images"), bulkUploadImages);
+router.post(
+  "/bulk-upload-restaurant-images",
+  upload.array("images"),
+  bulkUploadRestaurantImages,
+);
 router.patch(
   "/bulk-reupload-images",
   upload.array("images"),
   bulkReuploadImages,
 );
 router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
+router.post(
+  "/upload-restaurant-logo",
+  upload.single("image"),
+  uploadRestaurantLogo,
+);
 
 //Review Routes
 router.patch("/review/:reviewId", setLogModule("Reviews"), updateReviewStatus);
