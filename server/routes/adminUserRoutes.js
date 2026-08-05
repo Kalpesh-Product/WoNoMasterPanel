@@ -19,7 +19,7 @@ const { setLogModule } = require("../middlewares/logContext");
 const router = require("express").Router();
 
 //User Routes
-router.patch("/update-profile/:userId", updateProfile);
+router.patch("/update-profile/:userId", upload.single("profilePic"), updateProfile);
 router.patch("/verify-password/:userId", verifyPassword);
 router.patch("/change-password/:userId", changePassword);
 

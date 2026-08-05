@@ -64,5 +64,7 @@ const logSchema = new mongoose.Schema(
   }
 );
 
+logSchema.index({ createdAt: -1 });
+
 const Log = mongoose.model("Log", logSchema);
 module.exports = Log;

@@ -77,17 +77,17 @@ const StatTile = ({ label, value, icon: Icon, tone = "slate" }) => {
   const styles = STAT_TONES[tone] || STAT_TONES.slate;
   return (
     <div
-      className={`bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md ${styles.border}`}
+      className={`bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md ${styles.border}`}
     >
       <div className="min-w-0">
-        <p className={`text-[9px] font-pmedium uppercase tracking-widest mb-1 ${styles.label}`}>
+        <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${styles.label}`}>
           {label}
         </p>
-        <p className="text-[16px] font-pmedium text-slate-900">{value}</p>
+        <p className="text-[15px] font-pmedium text-slate-900">{value}</p>
       </div>
       {Icon ? (
-        <div className={`p-2 rounded-xl shrink-0 ${styles.icon}`}>
-          <Icon size={15} />
+        <div className={`p-2 rounded-2xl shrink-0 ${styles.icon}`}>
+          <Icon size={16} />
         </div>
       ) : null}
     </div>
@@ -119,34 +119,36 @@ const tabButtonClass = (isActive) =>
 // Copy shown in the confirmation dialog for every publish/active action —
 // bulk (by location) and per-row alike, since all four now require an
 // explicit confirmation before firing.
+// Active/inactive and public/private are independent toggles — neither one
+// restricts or changes the other.
 const ACTION_COPY = {
   active: {
     title: "Make listing(s) active?",
     describeSingle: (item) =>
-      `This puts "${item?.companyName || "this listing"}" into internal review — visible only to the Wono team, not the public. If it was public, it will automatically be taken off the public site first (a listing can't be both active and public at once).`,
+      `This makes "${item?.companyName || "this listing"}" active — visible to Wono team members with access for internal review. Doesn't change its public/private visibility.`,
     describeBulk: (label, count) =>
-      `This puts ${count} inactive listing(s) in ${label} into internal review — visible only to the Wono team, not the public. Any of them that were public will automatically be taken off the public site first.`,
+      `This makes ${count} inactive listing(s) in ${label} active — visible to Wono team members with access for internal review. Doesn't change public/private visibility.`,
   },
   inactive: {
     title: "Make listing(s) inactive?",
     describeSingle: (item) =>
-      `This takes "${item?.companyName || "this listing"}" out of internal review. It does not change its public/private status by itself — once review is done, use Make Public separately to actually publish it.`,
+      `This makes "${item?.companyName || "this listing"}" inactive — no longer flagged for internal Wono review. Doesn't change its public/private visibility.`,
     describeBulk: (label, count) =>
-      `This takes ${count} active listing(s) in ${label} out of internal review. It does not change public/private status by itself — use Make Public separately once you're ready to publish.`,
+      `This makes ${count} active listing(s) in ${label} inactive — no longer flagged for internal Wono review. Doesn't change public/private visibility.`,
   },
   public: {
     title: "Make listing(s) public?",
     describeSingle: (item) =>
-      `This makes "${item?.companyName || "this listing"}" visible to everyone on the public Wono Nomads site. Only listings that are currently Inactive (internal review complete) can be made public — this will fail if it's still Active.`,
+      `This makes "${item?.companyName || "this listing"}" visible to everyone on the public Wono Nomads site.`,
     describeBulk: (label, count) =>
-      `This makes ${count} inactive listing(s) in ${label} visible to everyone on the public Wono Nomads site. Only currently Inactive listings are affected — Active ones in this location are skipped since they're still in internal review.`,
+      `This makes ${count} listing(s) in ${label} visible to everyone on the public Wono Nomads site.`,
   },
   private: {
     title: "Make listing(s) private?",
     describeSingle: (item) =>
-      `This removes "${item?.companyName || "this listing"}" from the public site. It goes back to being visible only internally — it does not automatically re-enter active review.`,
+      `This removes "${item?.companyName || "this listing"}" from the public site. Its active/inactive status is unchanged.`,
     describeBulk: (label, count) =>
-      `This removes ${count} public listing(s) in ${label} from the public site. They go back to being visible only internally — they do not automatically re-enter active review.`,
+      `This removes ${count} public listing(s) in ${label} from the public site. Their active/inactive status is unchanged.`,
   },
 };
 
@@ -509,12 +511,12 @@ const PublishListings = () => {
                 </button>
                 <button
                   type="button"
-                  disabled={!canSubmit || !(locationCounts.inactive > 0)}
+                  disabled={!canSubmit || !(locationCounts.private > 0)}
                   onClick={() => setBulkAction("public")}
                   title={
-                    !(locationCounts.inactive > 0)
-                      ? "No inactive listings here to publish — active listings are still in internal review"
-                      : "Make all inactive listings here public"
+                    !(locationCounts.private > 0)
+                      ? "No private listings here to publish"
+                      : "Make all private listings here public"
                   }
                   className="flex items-center gap-1.5 px-4 py-2.5 bg-[#2563EB] text-white rounded-lg font-pmedium text-[11px] uppercase tracking-wider shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
@@ -691,15 +693,9 @@ const PublishListings = () => {
                             </button>
                             <button
                               type="button"
-                              disabled={isRowPending || (item.isActive && !item.isPublic)}
+                              disabled={isRowPending}
                               onClick={() => setRowAction({ item, action: item.isPublic ? "private" : "public" })}
-                              title={
-                                item.isActive && !item.isPublic
-                                  ? "Still in internal review — mark it inactive before making it public"
-                                  : item.isPublic
-                                    ? "Make private"
-                                    : "Make public"
-                              }
+                              title={item.isPublic ? "Make private" : "Make public"}
                               className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${item.isPublic ? "bg-blue-50 text-blue-600 hover:bg-blue-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
                             >
                               <Globe size={15} />
@@ -757,7 +753,7 @@ const PublishListings = () => {
                     : bulkAction === "inactive"
                       ? locationCounts?.active ?? 0
                       : bulkAction === "public"
-                        ? locationCounts?.inactive ?? 0
+                        ? locationCounts?.private ?? 0
                         : locationCounts?.public ?? 0,
                 )}
               </p>
