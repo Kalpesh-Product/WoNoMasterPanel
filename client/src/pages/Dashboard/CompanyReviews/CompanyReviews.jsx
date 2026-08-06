@@ -27,6 +27,7 @@ const REVIEW_TABS = {
   nomadListings: 0,
   eventReviews: 1,
   placeReviews: 2,
+  restaurantReviews: 3,
 };
 
 const STATUSES = ["pending", "approved", "rejected"];
@@ -191,6 +192,21 @@ const CompanyReviews = () => {
     },
   });
 
+  const {
+    data: restaurantReviews = [],
+    isPending: isRestaurantReviewsPending,
+    isError: isRestaurantReviewsError,
+  } = useQuery({
+    queryKey: ["restaurantReviews"],
+    enabled: activeTab === REVIEW_TABS.restaurantReviews,
+    queryFn: async () => {
+      const response = await axios.get(`${NOMADS_API_BASE_URL}/restaurantreviews/all`, {
+        headers: { "Cache-Control": "no-cache" },
+      });
+      return Array.isArray(response?.data?.data) ? response.data.data : [];
+    },
+  });
+
   const updateReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, status }) => {
       const response = await axiosPrivate.patch(`/api/admin/review/${reviewId}`, {
@@ -247,6 +263,22 @@ const CompanyReviews = () => {
     },
   });
 
+  const updateRestaurantReviewStatusMutation = useMutation({
+    mutationFn: async ({ reviewId, status }) => {
+      const response = await axiosPrivate.patch(`${NOMADS_API_BASE_URL}/restaurantreviews/${reviewId}/status`, { status });
+      return response?.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["restaurantReviews"] });
+      toast.success("Restaurant review updated.");
+      setConfirmAction(null);
+      setSelectedReviewId(null);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update restaurant review.");
+    },
+  });
+
   const handleStatusChange = (reviewId, newStatus, scope) => {
     setConfirmAction({ reviewId, updates: { status: newStatus }, scope });
   };
@@ -257,6 +289,7 @@ const CompanyReviews = () => {
     if (scope === "nomad") updateReviewStatusMutation.mutate({ reviewId, updates });
     else if (scope === "event") updateEventReviewStatusMutation.mutate({ reviewId, status: updates.status });
     else if (scope === "place") updatePlaceReviewStatusMutation.mutate({ reviewId, status: updates.status });
+    else if (scope === "restaurant") updateRestaurantReviewStatusMutation.mutate({ reviewId, status: updates.status });
   };
 
   const nomadReviews = useMemo(() => {
@@ -305,15 +338,27 @@ const CompanyReviews = () => {
     });
   }, [placeReviews, searchQuery, stageFilter]);
 
+  const visibleRestaurantReviews = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return restaurantReviews.filter((r) => {
+      const matchesStage = stageFilter === "all" || (r.status || "pending") === stageFilter;
+      const matchesQuery = !query || [r.reviewerName, r.name, r.restaurantName, r.businessName, r.description, r.review]
+        .filter(Boolean).some((v) => String(v).toLowerCase().includes(query));
+      return matchesStage && matchesQuery;
+    });
+  }, [restaurantReviews, searchQuery, stageFilter]);
+
   const getActiveReviews = () => {
     if (activeTab === REVIEW_TABS.nomadListings) return visibleNomadReviews;
     if (activeTab === REVIEW_TABS.eventReviews) return visibleEventReviews;
-    return visiblePlaceReviews;
+    if (activeTab === REVIEW_TABS.placeReviews) return visiblePlaceReviews;
+    return visibleRestaurantReviews;
   };
 
   const getActiveStats = () => {
     const reviews = activeTab === REVIEW_TABS.nomadListings ? nomadReviews
-      : activeTab === REVIEW_TABS.eventReviews ? eventReviews : placeReviews;
+      : activeTab === REVIEW_TABS.eventReviews ? eventReviews
+        : activeTab === REVIEW_TABS.placeReviews ? placeReviews : restaurantReviews;
     const total = reviews.length;
     const pending = reviews.filter((r) => (r.status || "pending") === "pending").length;
     const approved = reviews.filter((r) => r.status === "approved").length;
@@ -328,19 +373,23 @@ const CompanyReviews = () => {
 
   const selectedReview = useMemo(() => {
     const allReviews = activeTab === REVIEW_TABS.nomadListings ? nomadReviews
-      : activeTab === REVIEW_TABS.eventReviews ? eventReviews : placeReviews;
+      : activeTab === REVIEW_TABS.eventReviews ? eventReviews
+        : activeTab === REVIEW_TABS.placeReviews ? placeReviews : restaurantReviews;
     return allReviews.find((r) => r._id === selectedReviewId) || null;
-  }, [selectedReviewId, nomadReviews, eventReviews, placeReviews, activeTab]);
+  }, [selectedReviewId, nomadReviews, eventReviews, placeReviews, restaurantReviews, activeTab]);
 
   const activeStats = getActiveStats();
   const activeReviews = getActiveReviews();
   const activeScope = activeTab === REVIEW_TABS.nomadListings ? "nomad"
-    : activeTab === REVIEW_TABS.eventReviews ? "event" : "place";
+    : activeTab === REVIEW_TABS.eventReviews ? "event"
+      : activeTab === REVIEW_TABS.placeReviews ? "place" : "restaurant";
 
   const isLoading = activeTab === REVIEW_TABS.nomadListings ? isPending
-    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsPending : isPlaceReviewsPending;
+    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsPending
+      : activeTab === REVIEW_TABS.placeReviews ? isPlaceReviewsPending : isRestaurantReviewsPending;
   const hasError = activeTab === REVIEW_TABS.nomadListings ? isError
-    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsError : isPlaceReviewsError;
+    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsError
+      : activeTab === REVIEW_TABS.placeReviews ? isPlaceReviewsError : isRestaurantReviewsError;
 
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -351,7 +400,7 @@ const CompanyReviews = () => {
             <div>
               <h2 className="text-title font-pmedium text-primary uppercase">Company Reviews</h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
-                Manage reviews from Nomads, Events, and Places across all companies.
+                Manage reviews from Nomads, Events, Places, and Restaurants across all companies.
               </p>
             </div>
           </div>
@@ -362,6 +411,7 @@ const CompanyReviews = () => {
               { key: REVIEW_TABS.nomadListings, label: "Nomad Listing Reviews" },
               { key: REVIEW_TABS.eventReviews, label: "Event Reviews" },
               { key: REVIEW_TABS.placeReviews, label: "Places Reviews" },
+              { key: REVIEW_TABS.restaurantReviews, label: "Restaurant Reviews" },
             ].map(({ key, label }) => (
               <button key={key} type="button" role="tab"
                 aria-selected={activeTab === key}
@@ -478,10 +528,20 @@ const CompanyReviews = () => {
                               <th className="px-5 py-4">Created</th>
                               <th className="px-5 py-4 text-center">Action</th>
                             </>
-                          ) : (
+                          ) : activeTab === REVIEW_TABS.placeReviews ? (
                             <>
                               <th className="px-5 py-4">Reviewer</th>
                               <th className="px-5 py-4">Place</th>
+                              <th className="px-5 py-4">Location</th>
+                              <th className="px-5 py-4">Rating</th>
+                              <th className="px-5 py-4">Status</th>
+                              <th className="px-5 py-4">Created</th>
+                              <th className="px-5 py-4 text-center">Action</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-5 py-4">Reviewer</th>
+                              <th className="px-5 py-4">Restaurant</th>
                               <th className="px-5 py-4">Location</th>
                               <th className="px-5 py-4">Rating</th>
                               <th className="px-5 py-4">Status</th>
@@ -538,7 +598,7 @@ const CompanyReviews = () => {
                                     </div>
                                   </td>
                                 </>
-                              ) : (
+                              ) : activeTab === REVIEW_TABS.placeReviews ? (
                                 <>
                                   <td className="px-5 py-4">
                                     <div className="flex items-center gap-2.5">
@@ -548,6 +608,26 @@ const CompanyReviews = () => {
                                   </td>
                                   <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{review.placeName || "—"}</span></td>
                                   <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{[review.country, review.state].filter(Boolean).join(", ") || "—"}</span></td>
+                                  <td className="px-5 py-4"><StarRating count={review.starCount || review.rating || review.ratingValue} /></td>
+                                  <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
+                                  <td className="px-5 py-4"><p className="text-[12px] font-pmedium text-slate-700">{formatDateTime(review.createdAt)}</p></td>
+                                  <td className="px-5 py-4">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button type="button" onClick={() => setSelectedReviewId(reviewId)}
+                                        className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button>
+                                    </div>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-5 py-4">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(review.reviewerName || review.name)}</div>
+                                      <p className="text-[12px] font-pmedium text-slate-900">{review.reviewerName || review.name || "â€”"}</p>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{review.restaurantName || review.businessName || "â€”"}</span></td>
+                                  <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{[review.country, review.state].filter(Boolean).join(", ") || "â€”"}</span></td>
                                   <td className="px-5 py-4"><StarRating count={review.starCount || review.rating || review.ratingValue} /></td>
                                   <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
                                   <td className="px-5 py-4"><p className="text-[12px] font-pmedium text-slate-700">{formatDateTime(review.createdAt)}</p></td>
