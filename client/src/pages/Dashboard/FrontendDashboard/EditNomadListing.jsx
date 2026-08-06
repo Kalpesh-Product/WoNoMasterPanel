@@ -18,7 +18,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
@@ -68,10 +68,12 @@ const defaultReview = {
 
 const EditNomadListing = () => {
   const axiosPriv = useAxiosPrivate();
+  const navigate = useNavigate();
   const formRef = useRef(null);
   const location = useLocation();
   const navState = location?.state || {};
   console.log("navState", navState.website?.companyType);
+  const isViewMode = navState.mode === "view";
 
   // Pull IDs from state or sessionStorage (works after refresh/back)
   const companyId =
@@ -348,10 +350,12 @@ const EditNomadListing = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5 mb-4">
           <div>
             <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
-              Edit Product
+              {isViewMode ? "View Product" : "Edit Product"}
             </h2>
             <p className="text-xs font-pmedium text-slate-500 mt-1">
-              Update the details of your Wono Nomads listing.
+              {isViewMode
+                ? "Viewing the details of this Wono Nomads listing."
+                : "Update the details of your Wono Nomads listing."}
             </p>
           </div>
         </div>
@@ -391,6 +395,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Company Type"
                 className="col-span-2 md:col-span-1"
+                disabled={isViewMode}
               >
                 {/* {companyTypes.map((type) => (
                   <MenuItem key={type} value={type.toLowerCase()}>
@@ -432,6 +437,7 @@ const EditNomadListing = () => {
                 <Select
                   {...field}
                   multiple
+                  disabled={isViewMode}
                   input={<OutlinedInput label="Inclusions" />}
                   renderValue={(selected) => selected.join(", ")}
                 >
@@ -488,6 +494,7 @@ const EditNomadListing = () => {
                   size="small"
                   label="Company Title"
                   className="col-span-2 md:col-span-1"
+                  disabled={isViewMode}
                 />
               )}
             />
@@ -503,6 +510,7 @@ const EditNomadListing = () => {
                   label="Ratings"
                   type="number"
                   className="col-span-2 md:col-span-1"
+                  disabled={isViewMode}
                 />
               )}
             />
@@ -518,6 +526,7 @@ const EditNomadListing = () => {
                   label="Total Reviews"
                   type="number"
                   className="col-span-2 md:col-span-1"
+                  disabled={isViewMode}
                 />
               )}
             />
@@ -533,6 +542,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Latitude"
                 className="col-span-2 md:col-span-1"
+                disabled={isViewMode}
               />
             )}
           />
@@ -547,6 +557,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Longitude"
                 className="col-span-2 md:col-span-1"
+                disabled={isViewMode}
               />
             )}
           />
@@ -565,6 +576,7 @@ const EditNomadListing = () => {
                 minRows={3}
                 fullWidth
                 className="col-span-2 md:col-span-1"
+                disabled={isViewMode}
               />
             )}
           />
@@ -582,6 +594,7 @@ const EditNomadListing = () => {
                   size="small"
                   label="Address"
                   className="col-span-2 md:col-span-1"
+                  disabled={isViewMode}
                 />
               )}
             />
@@ -594,6 +607,7 @@ const EditNomadListing = () => {
                   size="small"
                   label="Google Map Url"
                   className="col-span-2 md:col-span-1"
+                  disabled={isViewMode}
                 />
               )}
             />
@@ -613,6 +627,7 @@ const EditNomadListing = () => {
                 size="small"
                 label="Country"
                 className="col-span-2 md:col-span-1"
+                disabled={isViewMode}
                 error={!!errors.country}
                 helperText={errors?.country?.message}
                 onChange={(e) => {
@@ -650,7 +665,7 @@ const EditNomadListing = () => {
                   size="small"
                   label="State"
                   className="col-span-2 md:col-span-1"
-                  disabled={!countryObj}
+                  disabled={isViewMode || !countryObj}
                   error={!!errors.state}
                   helperText={errors?.state?.message}
                   onChange={(e) => {
@@ -695,7 +710,7 @@ const EditNomadListing = () => {
                   size="small"
                   label="City"
                   className="col-span-2 md:col-span-1"
-                  disabled={!stateObj}
+                  disabled={isViewMode || !stateObj}
                   error={!!errors.city}
                   helperText={errors?.city?.message}
                 >
@@ -747,19 +762,21 @@ const EditNomadListing = () => {
             )}
 
             {/* Upload new images (will be added on top of existing ones) */}
-            <Controller
-              name="images"
-              control={control}
-              render={({ field }) => (
-                <UploadMultipleFilesInput
-                  {...field}
-                  label="Upload New Images"
-                  maxFiles={10}
-                  allowedExtensions={["jpg", "jpeg", "png", "webp"]}
-                  id="images"
-                />
-              )}
-            />
+            {!isViewMode && (
+              <Controller
+                name="images"
+                control={control}
+                render={({ field }) => (
+                  <UploadMultipleFilesInput
+                    {...field}
+                    label="Upload New Images"
+                    maxFiles={10}
+                    allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+                    id="images"
+                  />
+                )}
+              />
+            )}
           </div>
 
           {/* ✅ Reviews Section */}
@@ -775,13 +792,15 @@ const EditNomadListing = () => {
               >
                 <div className="flex items-center justify-between mb-3">
                   <span className="font-semibold">Review {index + 1}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeReview(index)}
-                    className="text-sm text-red-500"
-                  >
-                    Remove
-                  </button>
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => removeReview(index)}
+                      className="text-sm text-red-500"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -795,6 +814,7 @@ const EditNomadListing = () => {
                         size="small"
                         label="Reviewer Name"
                         fullWidth
+                        disabled={isViewMode}
                         helperText={errors?.reviews?.[index]?.name?.message}
                         error={!!errors?.reviews?.[index]?.name}
                       />
@@ -811,6 +831,7 @@ const EditNomadListing = () => {
                         size="small"
                         label="Rating (1-5)"
                         fullWidth
+                        disabled={isViewMode}
                         inputProps={{ min: 1, max: 5 }}
                       />
                     )}
@@ -829,6 +850,7 @@ const EditNomadListing = () => {
                       fullWidth
                       multiline
                       minRows={3}
+                      disabled={isViewMode}
                       helperText={errors?.reviews?.[index]?.review?.message}
                       error={!!errors?.reviews?.[index]?.review}
                       sx={{ mt: 2 }}
@@ -838,28 +860,42 @@ const EditNomadListing = () => {
               </div>
             ))}
 
-            <div>
-              <button
-                type="button"
-                onClick={() => appendReview({ ...defaultReview })}
-                className="text-sm text-primary"
-              >
-                + Add Review
-              </button>
-            </div>
+            {!isViewMode && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => appendReview({ ...defaultReview })}
+                  className="text-sm text-primary"
+                >
+                  + Add Review
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Submit / Reset */}
           <div className="col-span-2 flex items-center justify-center gap-4">
-            <PrimaryButton type="submit" title="Submit" isLoading={isLoading} />
-            {/* <SecondaryButton handleSubmit={handleReset} title="Reset" /> */}
-            <button
-              type="button"
-              onClick={resetFormToEmpty}
-              className="px-6 py-2 bg-gray-200 text-black rounded-md"
-            >
-              Reset
-            </button>
+            {isViewMode ? (
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-6 py-2 bg-gray-200 text-black rounded-md"
+              >
+                Back
+              </button>
+            ) : (
+              <>
+                <PrimaryButton type="submit" title="Submit" isLoading={isLoading} />
+                {/* <SecondaryButton handleSubmit={handleReset} title="Reset" /> */}
+                <button
+                  type="button"
+                  onClick={resetFormToEmpty}
+                  className="px-6 py-2 bg-gray-200 text-black rounded-md"
+                >
+                  Reset
+                </button>
+              </>
+            )}
           </div>
         </form>
       </PageFrame>

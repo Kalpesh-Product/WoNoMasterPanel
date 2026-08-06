@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaAngleDown, FaChevronUp } from "react-icons/fa6";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
 import {
@@ -309,139 +309,139 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   return (
     <div
-      className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-gray-200 bg-[#f1f5f9] shadow-sm transition-all duration-100`}
+      className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
-        <span className="text-[10px] font-bold tracking-wider text-gray-600 bg-gray-200 px-3 py-1 rounded-full uppercase">
+        <span className="text-[10px] font-semibold tracking-wide text-black/70 bg-white px-3 py-1 rounded-full uppercase">
           {isSidebarOpen ? "Master Panel" : "MP"}
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-5 hideScrollBar">
+      <div className="flex-1 overflow-y-auto pb-3 space-y-0 hideScrollBar">
         {!isSidebarOpen ? (
-          <div className="px-2 pt-1 pb-2">
-            <div className="text-[10px] font-pbold tracking-wider text-gray-500 uppercase text-center">
-              MNU
+          <div className="px-4 pt-3">
+            <div className="border-t border-black/10 pt-2">
+              <div className="text-[10px] font-pbold tracking-wide text-black/80 uppercase text-center">
+                MNU
+              </div>
             </div>
-            <div className="mt-2 h-px bg-gray-300" />
           </div>
         ) : null}
 
-        <div className="space-y-1">
+        <div className="space-y-0">
           {filteredModules.map((module, index) => (
-            <div key={module.id}>
-              {isSidebarOpen ? (
-                <button
-                  type="button"
-                  className={`w-full mb-1.5 px-3 py-2.5 flex items-center justify-between text-left rounded-md transition-colors ${
-                    expandedModule === index
-                      ? "bg-gray-200/70"
-                      : "hover:bg-gray-200/50"
-                  }`}
-                  onClick={() => toggleModule(index)}
-                >
-                  <span className="flex items-center gap-2.5">
-                    <module.icon size={16} className="text-black" />
-                    <span className="text-[12.5px] font-pbold text-black tracking-wide uppercase">
-                      {module.title}
-                    </span>
-                  </span>
-                  <span
-                    className={`text-black transition-transform duration-300 ${
-                      expandedModule === index ? "rotate-180" : "rotate-0"
-                    }`}
-                  >
-                    {expandedModule === index ? (
-                      <FaChevronUp size={12} />
-                    ) : (
-                      <FaAngleDown size={12} />
-                    )}
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  title={module.title}
-                  className={`w-full flex items-center justify-center py-2.5 px-3 rounded-md transition-colors ${
-                    isActive(module.route)
-                      ? "bg-gray-200 text-gray-900"
-                      : "text-gray-700 hover:bg-gray-200"
-                  }`}
-                  onClick={() => handleModuleClick(module, index)}
-                >
-                  <span className="text-gray-500">
-                    <module.icon size={16} />
-                  </span>
-                </button>
-              )}
+            <div key={module.id} className="px-4 pt-3">
+              <div className="border-t border-black/10 pt-2">
+                {isSidebarOpen ? (
+                  <>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between text-left font-['Poppins'] text-xs font-semibold uppercase tracking-wide text-black/80"
+                      onClick={() => toggleModule(index)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <module.icon size={16} className="shrink-0" />
+                        <span>{module.title}</span>
+                      </span>
+                      <span>
+                        {expandedModule === index ? (
+                          <ChevronUp size={16} className="shrink-0" />
+                        ) : (
+                          <ChevronDown size={16} className="shrink-0" />
+                        )}
+                      </span>
+                    </button>
 
-              <div
-                className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                  isSidebarOpen && expandedModule === index
-                    ? "max-h-[3200px]"
-                    : "max-h-0"
-                }`}
-              >
-                {isSidebarOpen &&
-                  module.categories?.map((category) => {
-                    const isCategoryOpen = !collapsedCategories[category.id];
-                    return (
-                      <div key={category.id} className="mb-1.5">
-                        <button
-                          type="button"
-                          className={`w-full mt-2 mb-1 px-3 py-2 flex items-center justify-between text-left rounded-md transition-colors ${
-                            isCategoryOpen
-                              ? "bg-gray-200/70"
-                              : "hover:bg-gray-200/50"
-                          }`}
-                          onClick={() => toggleCategory(category.id)}
-                        >
-                          <span className="text-[12px] font-pbold text-gray-700 tracking-wider uppercase">
-                            {category.title}
-                          </span>
-                          <span
-                            className={`text-gray-600 transition-transform duration-300 ${
-                              isCategoryOpen ? "rotate-180" : "rotate-0"
-                            }`}
-                          >
-                            {isCategoryOpen ? (
-                              <FaChevronUp size={12} />
-                            ) : (
-                              <FaAngleDown size={12} />
-                            )}
-                          </span>
-                        </button>
-
-                        <div
-                          className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                            isCategoryOpen ? "max-h-[1200px]" : "max-h-0"
-                          }`}
-                        >
-                          {category.submenus.map((submenu) => (
+                    <div
+                      className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+                        expandedModule === index ? "max-h-[3200px]" : "max-h-0"
+                      }`}
+                    >
+                      {module.categories?.map((category) => {
+                        const isCategoryOpen = !collapsedCategories[category.id];
+                        return (
+                          <div key={category.id}>
                             <button
                               type="button"
-                              key={submenu.id}
-                              className={`my-1.5 w-full flex items-center justify-start py-2.5 px-3 rounded-full transition-colors ${
-                                isActive(submenu.route)
-                                  ? "bg-gray-200 text-gray-900"
-                                  : "text-gray-700 hover:bg-gray-200"
+                              className={`w-full mt-2 mb-1 px-2 py-1.5 flex items-center justify-between text-left rounded-md transition-colors ${
+                                isCategoryOpen
+                                  ? "text-black/80"
+                                  : "text-black/60 hover:text-black/80"
                               }`}
-                              onClick={() => handleMenuOpen(submenu)}
+                              onClick={() => toggleCategory(category.id)}
                             >
-                              <span className="flex items-center gap-3 min-w-0">
-                                <span className="text-gray-500">
-                                  <submenu.icon size={15} />
-                                </span>
-                                <span className="text-[12px] font-pmedium truncate uppercase">
-                                  {submenu.title}
-                                </span>
+                              <span className="text-[11px] font-semibold uppercase tracking-wide">
+                                {category.title}
+                              </span>
+                              <span>
+                                {isCategoryOpen ? (
+                                  <ChevronUp size={14} className="shrink-0 text-black/50" />
+                                ) : (
+                                  <ChevronDown size={14} className="shrink-0 text-black/50" />
+                                )}
                               </span>
                             </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+
+                            <div
+                              className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
+                                isCategoryOpen ? "max-h-[1200px]" : "max-h-0"
+                              }`}
+                            >
+                              <div className="mt-1 flex flex-col gap-1">
+                                {category.submenus.map((submenu) => (
+                                  <button
+                                    type="button"
+                                    key={submenu.id}
+                                    className={`group relative flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left transition-all hover:bg-white ${
+                                      isActive(submenu.route)
+                                        ? "bg-white text-black shadow-sm"
+                                        : "text-black/80"
+                                    }`}
+                                    onClick={() => handleMenuOpen(submenu)}
+                                  >
+                                    <submenu.icon
+                                      size={18}
+                                      className={`shrink-0 ${
+                                        isActive(submenu.route)
+                                          ? "text-accent"
+                                          : "text-black/80"
+                                      }`}
+                                    />
+                                    <span
+                                      className={`truncate font-['Poppins'] text-xs font-medium ${
+                                        isActive(submenu.route) ? "font-semibold" : ""
+                                      }`}
+                                    >
+                                      {submenu.title}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    title={module.title}
+                    className={`group relative flex w-full items-center justify-center rounded-md px-3 py-2.5 text-left transition-all hover:bg-white ${
+                      isActive(module.route)
+                        ? "bg-white text-black shadow-sm"
+                        : "text-black/80"
+                    }`}
+                    onClick={() => handleModuleClick(module, index)}
+                  >
+                    <module.icon
+                      size={18}
+                      className={`shrink-0 ${
+                        isActive(module.route) ? "text-accent" : "text-black/80"
+                      }`}
+                    />
+                  </button>
+                )}
               </div>
             </div>
           ))}

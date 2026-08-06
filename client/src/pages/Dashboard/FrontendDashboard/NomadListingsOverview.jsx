@@ -13,6 +13,7 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   Edit3,
+  Eye,
   Globe,
   Layers,
   Plus,
@@ -287,6 +288,23 @@ export default function NomadListingsOverview({
     );
   };
 
+  const handleView = (item) => {
+    sessionStorage.setItem("companyId", companyId || "");
+    sessionStorage.setItem("companyName", item?.companyName || "");
+    sessionStorage.setItem("businessId", item?.businessId || "");
+    navigate(
+      `/dashboard/companies/${slugify(item?.companyName || companyName)}/nomad-listings/${slugify(item?.companyName || companyName)}`,
+      {
+        state: {
+          website: item,
+          companyId,
+          isLoading: isPending,
+          mode: "view",
+        },
+      },
+    );
+  };
+
   const secondaryActionTitle = showTransferToCompanyButton
     ? "Transfer to Company"
     : hideTransfer
@@ -430,6 +448,9 @@ export default function NomadListingsOverview({
                           </td>
                           <td className="px-5 py-4">
                             <div className="flex items-center justify-center gap-1.5">
+                              <button type="button" onClick={() => handleView(item)} title="View listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-lg transition-all">
+                                <Eye size={15} strokeWidth={2.5} />
+                              </button>
                               <button type="button" onClick={() => handleEdit(item)} title="Edit listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
                                 <Edit3 size={15} strokeWidth={2.5} />
                               </button>
