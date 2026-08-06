@@ -4,6 +4,12 @@ const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const { uploadFileToS3, deleteFileFromS3ByUrl } = require("../config/s3config");
 const { getContinentForCountry } = require("../utils/countryContinent");
 
+// Placeholder listing website when no website is provided — a generated
+// "companyname.wono.co" subdomain rather than the Host Company's own
+// (often unreliable/unset) registered website.
+const buildDefaultListingWebsite = (companyName) =>
+  `${String(companyName || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "")}.wono.co`;
+
 const normalizeReviews = (reviews) => {
   if (!Array.isArray(reviews)) return reviews;
 
@@ -243,11 +249,12 @@ const createCompanyListing = async (req, res) => {
       companyId,
       companyType,
       companyTitle,
+      website,
       ratings,
       totalReviews,
-      productName,
-      cost,
-      description,
+      totalSeats,
+      units,
+      services,
       latitude,
       longitude,
       city,
@@ -256,6 +263,7 @@ const createCompanyListing = async (req, res) => {
       inclusions,
       about,
       address,
+      googleMap,
       reviews,
     } = req.body;
 
@@ -297,18 +305,21 @@ const createCompanyListing = async (req, res) => {
       state: resolvedState,
       country: resolvedCountry,
       continent: resolvedContinent,
-      website: company.websiteLink,
+      // Optional per-listing override — falls back to a generated
+      // "companyname.wono.co" placeholder when left blank.
+      website: String(website || "").trim() || buildDefaultListingWebsite(company.companyName),
       companyType: companyType,
       ratings: ratings,
       totalReviews: totalReviews,
-      // productName: productName,
-      cost: cost,
-      description: description,
+      totalSeats: totalSeats,
+      units: units,
+      services: services,
       latitude: latitude,
       longitude: longitude,
       inclusions: inclusions,
       about: about,
       address: address,
+      googleMap: googleMap,
       reviews: parsedReviews,
       images: [],
     };
@@ -316,7 +327,7 @@ const createCompanyListing = async (req, res) => {
     const logo = normalizeLogo(company.logo);
     if (logo) listingData.logo = logo;
 
-    //Upload images
+    //Upload logo/images
 
     const formatCompanyType = (type) => {
       const map = {
@@ -340,16 +351,27 @@ const createCompanyListing = async (req, res) => {
 
     const folderPath = `nomads/${pathCompanyType}/${resolvedCountry}/${safeCompanyName}`;
 
+    const sanitizeFileName = (name) =>
+      String(name || "file")
+        .replace(/[/\\?%*:|"<>]/g, "_")
+        .replace(/\s+/g, "_");
+
+    // Optional per-listing logo — overrides the company-profile fallback
+    // set above when a file is actually sent.
+    if (req.files?.length > 0) {
+      const logoFile = req.files.find((f) => f.fieldname === "logo");
+      if (logoFile) {
+        const logoKey = `${folderPath}/logo/${sanitizeFileName(logoFile.originalname)}`;
+        const logoData = await uploadFileToS3(logoKey, logoFile);
+        listingData.logo = { url: logoData.url, id: logoData.id };
+      }
+    }
+
     if (req.files?.length > 0) {
       const imageFiles = req.files.filter((f) => f.fieldname === "images");
 
       if (imageFiles.length > 0) {
         const startIndex = listingData.images.length;
-
-        const sanitizeFileName = (name) =>
-          String(name || "file")
-            .replace(/[/\\?%*:|"<>]/g, "_")
-            .replace(/\s+/g, "_");
 
         const results = await Promise.allSettled(
           imageFiles.map((file, i) => {
@@ -627,11 +649,12 @@ const editCompanyListing = async (req, res) => {
       companyTitle,
       companyName,
       companyType,
+      website,
       ratings,
       totalReviews,
-      productName,
-      cost,
-      description,
+      totalSeats,
+      units,
+      services,
       latitude,
       longitude,
       city,
@@ -671,10 +694,12 @@ const editCompanyListing = async (req, res) => {
 
     const allowedFields = {
       companyTitle: resolvedCompanyTitle,
+      website,
       ratings,
       totalReviews,
-      cost,
-      description,
+      totalSeats,
+      units,
+      services,
       latitude,
       longitude,
       city,
@@ -722,6 +747,22 @@ const editCompanyListing = async (req, res) => {
       "unnamed";
 
     const folderPath = `nomads/${pathCompanyType}/${company.companyCountry}/${safeCompanyName}`;
+    const sanitize = (name) =>
+      String(name || "file")
+        .replace(/[/\\?%*:|"<>]/g, "_")
+        .replace(/\s+/g, "_");
+
+    // Optional per-listing logo replacement — left out of updateData
+    // entirely when no new file is sent, so Nomads' editCompany keeps the
+    // listing's existing logo untouched.
+    if (req.files?.length) {
+      const logoFile = req.files.find((f) => f.fieldname === "logo");
+      if (logoFile) {
+        const logoKey = `${folderPath}/logo/${sanitize(logoFile.originalname)}`;
+        const logoData = await uploadFileToS3(logoKey, logoFile);
+        updateData.logo = { url: logoData.url, id: logoData.id };
+      }
+    }
 
     if (req.files?.length) {
       const imageFiles = req.files.filter((f) => f.fieldname === "images");
@@ -732,10 +773,6 @@ const editCompanyListing = async (req, res) => {
       }
 
       if (imageFiles.length) {
-        const sanitize = (name) =>
-          String(name || "file")
-            .replace(/[/\\?%*:|"<>]/g, "_")
-            .replace(/\s+/g, "_");
 
         const results = await Promise.allSettled(
           imageFiles.map(async (file) => {
