@@ -445,7 +445,7 @@ export const routes = createBrowserRouter([
                     element: <WebsiteCreditsOverview />,
                   },
                   {
-                    path: "company-reviews",
+                    path: "company-reviews/:reviewTab?",
                     element: <CompanyReviews />,
                   },
                   {
