@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -30,7 +31,25 @@ const REVIEW_TABS = {
   restaurantReviews: 3,
 };
 
+const REVIEW_TAB_ITEMS = [
+  { key: REVIEW_TABS.nomadListings, slug: "nomad-listing-reviews", label: "Nomad Listing Reviews" },
+  { key: REVIEW_TABS.eventReviews, slug: "event-reviews", label: "Event Reviews" },
+  { key: REVIEW_TABS.placeReviews, slug: "place-reviews", label: "Places Reviews" },
+  { key: REVIEW_TABS.restaurantReviews, slug: "restaurant-reviews", label: "Restaurant Reviews" },
+];
+
+const DEFAULT_REVIEW_TAB = REVIEW_TAB_ITEMS[0];
+const REVIEW_TAB_BY_SLUG = REVIEW_TAB_ITEMS.reduce((tabs, tab) => ({ ...tabs, [tab.slug]: tab }), {});
+
 const STATUSES = ["pending", "approved", "rejected"];
+const NOMAD_REVIEWS_PAGE_SIZE = 25;
+
+const getReviewsFromResponse = (response) => {
+  const payload = response?.data;
+  const reviews =
+    payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
+  return Array.isArray(reviews) ? reviews : [];
+};
 
 const formatDate = (raw) => {
   if (!raw) return "—";
@@ -123,34 +142,68 @@ const getReviewerActionByName = (review) => {
 };
 
 const CompanyReviews = () => {
+  const navigate = useNavigate();
+  const { reviewTab } = useParams();
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState(REVIEW_TABS.nomadListings);
+  const activeTabItem = REVIEW_TAB_BY_SLUG[reviewTab] || DEFAULT_REVIEW_TAB;
+  const activeTab = activeTabItem.key;
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("all");
   const [selectedReviewId, setSelectedReviewId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const loadMoreRef = useRef(null);
+
+  useEffect(() => {
+    if (!reviewTab || !REVIEW_TAB_BY_SLUG[reviewTab]) {
+      navigate(`/dashboard/company-reviews/${DEFAULT_REVIEW_TAB.slug}`, { replace: true });
+    }
+  }, [navigate, reviewTab]);
+
+  useEffect(() => {
+    setSearchQuery("");
+    setDebouncedSearchQuery("");
+    setStageFilter("all");
+    setSelectedReviewId(null);
+    setConfirmAction(null);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [searchQuery]);
 
   const {
-    data = [],
+    data: nomadReviewPages,
     isPending,
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
     isError,
-  } = useQuery({
-    queryKey: ["companyReviews", "all-nomad-listings"],
-    queryFn: async () => {
-      const extractReviews = (response) => {
-        const payload = response?.data;
-        const reviews =
-          payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
-        return Array.isArray(reviews) ? reviews : [];
-      };
+  } = useInfiniteQuery({
+    queryKey: ["companyReviews", "all-nomad-listings", stageFilter, debouncedSearchQuery],
+    enabled: activeTab === REVIEW_TABS.nomadListings,
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       const response = await axiosPrivate.get("/api/admin/reviews", {
-        params: { reviewScope: "nomads", allCompanies: true },
+        params: {
+          reviewScope: "nomads",
+          allCompanies: true,
+          page: pageParam,
+          limit: NOMAD_REVIEWS_PAGE_SIZE,
+          ...(stageFilter !== "all" ? { status: stageFilter } : {}),
+          ...(debouncedSearchQuery ? { search: debouncedSearchQuery } : {}),
+        },
         headers: { "Cache-Control": "no-cache" },
       });
-      const mergedReviews = extractReviews(response);
+      const pagination = response?.data?.pagination || {};
+      const mergedReviews = getReviewsFromResponse(response).slice(0, NOMAD_REVIEWS_PAGE_SIZE);
       const uniqueReviews = new Map();
       mergedReviews.forEach((review, index) => {
         const reviewId = review?._id || review?.id;
@@ -158,8 +211,14 @@ const CompanyReviews = () => {
           uniqueReviews.set(reviewId || `review-${index}`, review);
         }
       });
-      return Array.from(uniqueReviews.values());
+      return {
+        reviews: Array.from(uniqueReviews.values()),
+        page: Number(pagination.page || pageParam),
+        total: Number(pagination.total || 0),
+        hasNextPage: Boolean(pagination.hasNextPage),
+      };
     },
+    getNextPageParam: (lastPage) => lastPage?.hasNextPage ? lastPage.page + 1 : undefined,
   });
 
   const {
@@ -208,9 +267,10 @@ const CompanyReviews = () => {
   });
 
   const updateReviewStatusMutation = useMutation({
-    mutationFn: async ({ reviewId, status }) => {
+    mutationFn: async ({ reviewId, updates = {} }) => {
       const response = await axiosPrivate.patch(`/api/admin/review/${reviewId}`, {
-        status,
+        status: updates.status,
+        ...(Object.prototype.hasOwnProperty.call(updates, "isEnabled") ? { isEnabled: updates.isEnabled } : {}),
         ...(selectedCompany?.companyId ? { companyId: selectedCompany.companyId } : {}),
         ...(selectedCompany?.companyName ? { companyName: selectedCompany.companyName } : {}),
       });
@@ -294,7 +354,8 @@ const CompanyReviews = () => {
 
   const nomadReviews = useMemo(() => {
     const statusOrder = { pending: 0, rejected: 1, approved: 2 };
-    return (Array.isArray(data) ? data : [])
+    const loadedReviews = nomadReviewPages?.pages?.flatMap((page) => page.reviews) || [];
+    return loadedReviews
       .slice()
       .sort((a, b) => {
         const aStatus = String(a?.status || "pending").toLowerCase();
@@ -306,7 +367,7 @@ const CompanyReviews = () => {
         const bDate = new Date(b.createdAt || b.submittedAt || 0).getTime();
         return (Number.isFinite(bDate) ? bDate : 0) - (Number.isFinite(aDate) ? aDate : 0);
       });
-  }, [data]);
+  }, [nomadReviewPages]);
 
   const visibleNomadReviews = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -359,7 +420,10 @@ const CompanyReviews = () => {
     const reviews = activeTab === REVIEW_TABS.nomadListings ? nomadReviews
       : activeTab === REVIEW_TABS.eventReviews ? eventReviews
         : activeTab === REVIEW_TABS.placeReviews ? placeReviews : restaurantReviews;
-    const total = reviews.length;
+    const nomadTotal = nomadReviewPages?.pages?.[0]?.total;
+    const total = activeTab === REVIEW_TABS.nomadListings && Number.isFinite(nomadTotal)
+      ? nomadTotal
+      : reviews.length;
     const pending = reviews.filter((r) => (r.status || "pending") === "pending").length;
     const approved = reviews.filter((r) => r.status === "approved").length;
     const rejected = reviews.filter((r) => r.status === "rejected").length;
@@ -384,6 +448,23 @@ const CompanyReviews = () => {
     : activeTab === REVIEW_TABS.eventReviews ? "event"
       : activeTab === REVIEW_TABS.placeReviews ? "place" : "restaurant";
 
+  useEffect(() => {
+    const node = loadMoreRef.current;
+    if (activeTab !== REVIEW_TABS.nomadListings || !node || !hasNextPage) return undefined;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeTab, hasNextPage, isFetchingNextPage, fetchNextPage, activeReviews.length]);
+
   const isLoading = activeTab === REVIEW_TABS.nomadListings ? isPending
     : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsPending
       : activeTab === REVIEW_TABS.placeReviews ? isPlaceReviewsPending : isRestaurantReviewsPending;
@@ -407,22 +488,17 @@ const CompanyReviews = () => {
 
           <div role="tablist" aria-label="Review type"
             className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
-            {[
-              { key: REVIEW_TABS.nomadListings, label: "Nomad Listing Reviews" },
-              { key: REVIEW_TABS.eventReviews, label: "Event Reviews" },
-              { key: REVIEW_TABS.placeReviews, label: "Places Reviews" },
-              { key: REVIEW_TABS.restaurantReviews, label: "Restaurant Reviews" },
-            ].map(({ key, label }) => (
-              <button key={key} type="button" role="tab"
+            {REVIEW_TAB_ITEMS.map(({ key, slug, label }) => (
+              <NavLink key={slug} role="tab"
                 aria-selected={activeTab === key}
-                onClick={() => { setActiveTab(key); setSearchQuery(""); setStageFilter("all"); }}
+                to={`/dashboard/company-reviews/${slug}`}
                 className={`flex-1 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center ${
                   activeTab === key
                     ? "bg-[#2563EB] text-white shadow-sm"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 }`}>
                 {label}
-              </button>
+              </NavLink>
             ))}
           </div>
 
@@ -642,6 +718,17 @@ const CompanyReviews = () => {
                             </tr>
                           );
                         })}
+                        {activeTab === REVIEW_TABS.nomadListings && hasNextPage ? (
+                          <tr ref={loadMoreRef}>
+                            <td colSpan={8} className="py-4 text-center">
+                              {isFetchingNextPage ? (
+                                <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
+                                  Loading more reviews...
+                                </span>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ) : null}
                       </tbody>
                     </table>
                   </div>

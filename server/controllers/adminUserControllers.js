@@ -652,6 +652,49 @@ const parseReviewList = (response) => {
   return Array.isArray(reviews) ? reviews : [];
 };
 
+const parseReviewPagination = (response, fallbackTotal) => {
+  const payload = response?.data || {};
+  const data = payload?.data || {};
+  const total =
+    payload?.total ??
+    payload?.totalReviews ??
+    payload?.totalCount ??
+    payload?.count ??
+    data?.total ??
+    data?.totalReviews ??
+    data?.totalCount ??
+    data?.count ??
+    fallbackTotal;
+
+  return {
+    total: Number.isFinite(Number(total)) ? Number(total) : fallbackTotal,
+  };
+};
+
+const paginateList = (items, page, limit) => {
+  const start = (page - 1) * limit;
+  return items.slice(start, start + limit);
+};
+
+const reviewMatchesSearch = (review, query) => {
+  if (!query) return true;
+  return [
+    review?.name,
+    review?.reviewerName,
+    review?.reviewSource,
+    review?.companyType,
+    review?.description,
+    review?.review,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(query));
+};
+
+const reviewMatchesStatus = (review, status) => {
+  if (!status) return true;
+  return String(review?.status || "pending").toLowerCase() === status.toLowerCase();
+};
+
 const parseListingList = (response) => {
   const listings =
     response?.data?.listings ?? response?.data?.data ?? response?.data;
@@ -1018,6 +1061,14 @@ const getReviewsByCompany = async (req, res, next) => {
   try {
     const { companyType = "", status, reviewScope = "" } = req.query;
     const normalizedReviewScope = sanitizeValue(reviewScope).toLowerCase();
+    const requestedPage = Math.max(Number.parseInt(req.query?.page, 10) || 1, 1);
+    const requestedLimit = Math.min(
+      Math.max(Number.parseInt(req.query?.limit, 10) || 100, 1),
+      200,
+    );
+    const requestedSearch = sanitizeValue(req.query?.search).toLowerCase();
+    const wantsPagination =
+      req.query?.page !== undefined || req.query?.limit !== undefined;
     const includeAllCompanies =
       normalizedReviewScope === "nomads" &&
       String(req.query?.allCompanies || "").toLowerCase() === "true";
@@ -1037,7 +1088,8 @@ const getReviewsByCompany = async (req, res, next) => {
           : "pending";
 
     let response;
-    let enrichedReviews = [];
+    let reviews = [];
+    let upstreamTotal = 0;
     try {
       response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
@@ -1045,6 +1097,8 @@ const getReviewsByCompany = async (req, res, next) => {
           companyType,
           ...(normalizedReviewScope === "nomads" ? { source: "nomad" } : {}),
           ...(effectiveStatus ? { status: effectiveStatus } : {}),
+          ...(wantsPagination ? { page: requestedPage, limit: requestedLimit } : {}),
+          ...(requestedSearch ? { search: requestedSearch } : {}),
         },
       });
 
@@ -1052,62 +1106,8 @@ const getReviewsByCompany = async (req, res, next) => {
         return res.status(400).json({ message: `Failed to fetch reviews` });
       }
 
-      const reviews = parseReviewList(response);
-
-      const adminIds = new Set();
-      const hostIds = new Set();
-
-      for (const r of reviews) {
-        if (r.approvedBy?.userId) {
-          r.approvedBy.userType === "MASTER"
-            ? adminIds.add(r.approvedBy.userId)
-            : hostIds.add(r.approvedBy.userId);
-        }
-
-        if (r.rejectedBy?.userId) {
-          r.rejectedBy.userType === "MASTER"
-            ? adminIds.add(r.rejectedBy.userId)
-            : hostIds.add(r.rejectedBy.userId);
-        }
-      }
-
-      const [admins, hosts] = await Promise.all([
-        AdminUser.find({ _id: { $in: [...adminIds] } })
-          .select("_id firstName lastName email")
-          .lean(),
-        HostUser.find({ _id: { $in: [...hostIds] } })
-          .select("_id name phone email")
-          .lean(),
-      ]);
-
-      const adminMap = Object.fromEntries(
-        admins.map((a) => [a._id.toString(), a]),
-      );
-      const hostMap = Object.fromEntries(
-        hosts.map((h) => [h._id.toString(), h]),
-      );
-
-      enrichedReviews = reviews.map((r) => ({
-        ...r,
-        approvedBy: r.approvedBy
-          ? {
-              ...r.approvedBy,
-              user:
-                r.approvedBy.userType === "MASTER"
-                  ? adminMap[r.approvedBy.userId]
-                  : hostMap[r.approvedBy.userId],
-            }
-          : null,
-        rejectedBy: r.rejectedBy
-          ? {
-              ...r.rejectedBy,
-              user:
-                r.rejectedBy.userType === "MASTER"
-                  ? adminMap[r.rejectedBy.userId]
-                  : hostMap[r.rejectedBy.userId],
-            }
-          : null,
-      }));
+      reviews = parseReviewList(response);
+      upstreamTotal = parseReviewPagination(response, reviews.length).total;
     } catch (err) {
       return res.status(err.response?.status || 500).json({
         message:
@@ -1120,17 +1120,88 @@ const getReviewsByCompany = async (req, res, next) => {
 
     if (!normalizedReviewScope) {
       return res.status(200).json({
-        reviews: enrichedReviews,
+        reviews,
       });
     }
 
+    let scopedReviews = reviews;
+
     if (normalizedReviewScope === "website") {
-      enrichedReviews = enrichedReviews.filter(isWebsiteReviewRecord);
+      scopedReviews = scopedReviews.filter(isWebsiteReviewRecord);
     } else if (normalizedReviewScope === "nomads") {
-      enrichedReviews = enrichedReviews.filter(
+      scopedReviews = scopedReviews.filter(
         (review) => !isWebsiteReviewRecord(review),
       );
+    }
 
+    const filteredReviews = scopedReviews
+      .filter((review) => reviewMatchesStatus(review, effectiveStatus))
+      .filter((review) => reviewMatchesSearch(review, requestedSearch));
+    const upstreamLooksPaginated =
+      wantsPagination && upstreamTotal > filteredReviews.length;
+    const total = upstreamLooksPaginated
+      ? upstreamTotal
+      : filteredReviews.length;
+    const pageReviews = wantsPagination && !upstreamLooksPaginated
+      ? paginateList(filteredReviews, requestedPage, requestedLimit)
+      : filteredReviews.slice(0, requestedLimit);
+
+    const adminIds = new Set();
+    const hostIds = new Set();
+
+    for (const review of pageReviews) {
+      if (review.approvedBy?.userId) {
+        review.approvedBy.userType === "MASTER"
+          ? adminIds.add(review.approvedBy.userId)
+          : hostIds.add(review.approvedBy.userId);
+      }
+
+      if (review.rejectedBy?.userId) {
+        review.rejectedBy.userType === "MASTER"
+          ? adminIds.add(review.rejectedBy.userId)
+          : hostIds.add(review.rejectedBy.userId);
+      }
+    }
+
+    const [admins, hosts] = await Promise.all([
+      AdminUser.find({ _id: { $in: [...adminIds] } })
+        .select("_id firstName lastName email")
+        .lean(),
+      HostUser.find({ _id: { $in: [...hostIds] } })
+        .select("_id name phone email")
+        .lean(),
+    ]);
+
+    const adminMap = Object.fromEntries(
+      admins.map((admin) => [admin._id.toString(), admin]),
+    );
+    const hostMap = Object.fromEntries(
+      hosts.map((host) => [host._id.toString(), host]),
+    );
+
+    let enrichedReviews = pageReviews.map((review) => ({
+      ...review,
+      approvedBy: review.approvedBy
+        ? {
+            ...review.approvedBy,
+            user:
+              review.approvedBy.userType === "MASTER"
+                ? adminMap[review.approvedBy.userId]
+                : hostMap[review.approvedBy.userId],
+          }
+        : null,
+      rejectedBy: review.rejectedBy
+        ? {
+            ...review.rejectedBy,
+            user:
+              review.rejectedBy.userType === "MASTER"
+                ? adminMap[review.rejectedBy.userId]
+                : hostMap[review.rejectedBy.userId],
+          }
+        : null,
+    }));
+
+    if (normalizedReviewScope === "nomads") {
       if (companyId) {
         try {
           const listingsResponse = await axios.get(
@@ -1159,6 +1230,13 @@ const getReviewsByCompany = async (req, res, next) => {
 
     return res.status(200).json({
       reviews: enrichedReviews,
+      pagination: {
+        page: requestedPage,
+        limit: requestedLimit,
+        total,
+        totalPages: Math.max(Math.ceil(total / requestedLimit), 1),
+        hasNextPage: requestedPage * requestedLimit < total,
+      },
     });
   } catch (error) {
     next(error);
