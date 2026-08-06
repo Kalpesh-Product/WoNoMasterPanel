@@ -346,9 +346,104 @@ const NomadSignupLeads = () => {
 
   if (isPending) {
     return (
-      <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
+      <div
+        className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]"
+        aria-busy="true"
+        aria-label="Loading nomad signup leads"
+      >
         <PageFrame>
-          <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">Loading nomad signup leads...</div>
+          <div className="flex flex-col gap-4">
+            <div className="mb-1">
+              <div className="h-7 w-52 animate-pulse rounded-lg bg-slate-200" />
+              <div className="mt-2 h-3 w-80 max-w-full animate-pulse rounded-full bg-slate-200" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-200 bg-white p-5 shadow-sm"
+                >
+                  <div>
+                    <div className="mb-2 h-2.5 w-20 animate-pulse rounded-full bg-slate-200" />
+                    <div className="h-5 w-10 animate-pulse rounded-lg bg-slate-200" />
+                  </div>
+                  <div className="h-9 w-9 animate-pulse rounded-2xl bg-slate-100" />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 backdrop-blur-md shadow-sm">
+              <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
+                <div className="relative w-full xl:max-w-md">
+                  <div className="h-10 w-full animate-pulse rounded-lg bg-slate-200" />
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-x-auto">
+                <table className="w-full min-w-[1100px] table-fixed text-left">
+                  <colgroup>
+                    <col className="w-[17%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[13%]" />
+                    <col className="w-[17%]" />
+                  </colgroup>
+                  <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    <tr>
+                      {["User", "Contact", "Country", "Salary", "Favorites", "Likes", "Account Created", "Action"].map((heading) => (
+                        <th key={heading} className="px-5 py-4">
+                          <div className="h-2.5 w-16 animate-pulse rounded-full bg-slate-200" />
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100/60">
+                    {Array.from({ length: 6 }).map((_, row) => (
+                      <tr key={row}>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-9 w-9 shrink-0 animate-pulse rounded-2xl bg-slate-200" />
+                            <div className="space-y-1.5">
+                              <div className="h-3 w-32 animate-pulse rounded-full bg-slate-200" />
+                              <div className="h-2.5 w-40 animate-pulse rounded-full bg-slate-200" />
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-3 w-16 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-3 w-12 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <div className="mx-auto h-5 w-8 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <div className="mx-auto h-5 w-8 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="h-3 w-24 animate-pulse rounded-full bg-slate-200" />
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <div className="h-6 w-14 animate-pulse rounded-lg bg-slate-200" />
+                            <div className="h-6 w-14 animate-pulse rounded-lg bg-slate-200" />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </PageFrame>
       </div>
     );
@@ -638,10 +733,10 @@ const NomadSignupLeads = () => {
           onClick={closeLogs}
         >
           <div
-            className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl"
+            className="flex max-h-[95vh] min-h-[650px] w-full max-w-4xl flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-amber-50/40 p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-amber-50/40 p-5 sm:p-6">
               <div className="min-w-0 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-sm">
                   <MapPin size={18} />
@@ -655,13 +750,6 @@ const NomadSignupLeads = () => {
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={closeLogs}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
-              >
-                <X size={16} />
-              </button>
             </div>
 
             <div className="flex items-center gap-1.5 border-b border-slate-100 bg-white px-5 pt-3 sm:px-6">
@@ -715,7 +803,7 @@ const NomadSignupLeads = () => {
               </button>
 
               {isCustomRangeOpen && (
-                <div className="absolute right-5 top-full z-10 mt-2 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:right-6">
+                <div className="absolute right-5 top-full z-10 mt-2 max-h-[75vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl sm:right-6">
                   <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
                     <span className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                       Select Range
@@ -738,7 +826,7 @@ const NomadSignupLeads = () => {
               )}
             </div>
 
-            <div className="overflow-y-auto bg-white p-5 sm:p-6">
+            <div className="flex-1 overflow-y-auto bg-white p-5 sm:p-6">
               {logEntries.length === 0 && !isLogsFetching ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <MapPin size={28} className="mb-2 text-slate-300" />
