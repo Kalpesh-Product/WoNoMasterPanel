@@ -2,264 +2,20 @@ import React, { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
-import {
-  LuLayoutDashboard,
-  LuBuilding2,
-  LuUsers,
-  LuUserPlus,
-  LuHeadset,
-  LuBoxes,
-  LuGlobe,
-  LuUpload,
-  LuUser,
-  LuFileText,
-  LuMessageSquareText,
-  LuNewspaper,
-  LuChartLine,
-  LuPlane,
-  LuShieldCheck,
-  LuTicket,
-  LuUserRound,
-} from "react-icons/lu";
+import { MASTER_PANEL_MODULES } from "../constants/masterPanelModules";
+import { LuLayoutDashboard } from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
 
 const Sidebar = ({ onCloseDrawer }) => {
   const { isSidebarOpen } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
-  const [expandedModule, setExpandedModule] = useState(0);
+  const [expandedModules, setExpandedModules] = useState(new Set([0]));
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const { auth } = useAuth();
 
   const isSuperAdmin = auth?.user?.isSuperAdmin;
   const allowedModules = auth?.user?.allowedModules || [];
-
-  // Submenu `key`s must stay in sync with server/config/masterPanelModules.js
-  const defaultModules = [
-    {
-      id: 1,
-      key: "dashboard",
-      icon: LuLayoutDashboard,
-      title: "Dashboard",
-      route: "/dashboard",
-      categories: [
-        {
-          id: "dashboard-leads-management",
-          title: "Leads Management",
-          submenus: [
-            {
-              id: 3,
-              key: "dashboard.all-leads",
-              title: "All Leads",
-              icon: LuUsers,
-              route: "/dashboard/all-leads",
-            },
-            {
-              id: 4,
-              key: "dashboard.value-adds-leads",
-              title: "Value Adds Leads",
-              icon: LuUsers,
-              route: "/dashboard/value-adds-leads",
-            },
-            {
-              id: 25,
-              key: "dashboard.nomad-signup-leads",
-              title: "Nomad Signup Leads",
-              icon: LuUserRound,
-              route: "/dashboard/nomad-signup-leads",
-            },
-          ],
-        },
-        {
-          id: "dashboard-company-management",
-          title: "Company Management",
-          submenus: [
-            {
-              id: 2,
-              key: "dashboard.companies",
-              title: "Companies",
-              icon: LuBuilding2,
-              route: "/dashboard/companies",
-            },
-            {
-              id: 24,
-              key: "dashboard.publish-listings",
-              title: "Publish Listings",
-              icon: LuGlobe,
-              route: "/dashboard/publish-listings",
-            },
-            {
-              id: 14,
-              key: "dashboard.reviews",
-              title: "Reviews",
-              icon: LuMessageSquareText,
-              route: "/dashboard/company-reviews",
-            },
-          ],
-        },
-        {
-          id: "dashboard-data-management",
-          title: "Data Management",
-          submenus: [
-            {
-              id: 11,
-              key: "dashboard.data-upload",
-              title: "Data Upload",
-              icon: LuUpload,
-              route: "/dashboard/data-upload",
-            },
-            {
-              id: 15,
-              key: "dashboard.destinations-data",
-              title: "Destinations Data",
-              icon: LuNewspaper,
-              route: "/dashboard/destinations-data",
-            },
-            {
-              id: 16,
-              key: "dashboard.world-ranking-weights",
-              title: "World Ranking Weights",
-              icon: LuChartLine,
-              route: "/dashboard/world-ranking-weights",
-            },
-            {
-              id: 17,
-              key: "dashboard.visa-countries",
-              title: "Visa Countries",
-              icon: LuPlane,
-              route: "/dashboard/visa-countries",
-            },
-          ],
-        },
-        {
-          id: "dashboard-user-management",
-          title: "User Management",
-          submenus: [
-            {
-              id: 23,
-              key: "dashboard.add-master-user",
-              title: "Add Master User",
-              icon: LuUserPlus,
-              route: "/dashboard/add-master-user",
-            },
-            ...(isSuperAdmin
-              ? [
-                  {
-                    id: 22,
-                    key: "dashboard.user-access",
-                    title: "User Access",
-                    icon: LuShieldCheck,
-                    route: "/dashboard/master-panel-users",
-                  },
-                ]
-              : []),
-            {
-              id: 12,
-              key: "dashboard.profile",
-              title: "Profile",
-              icon: LuUser,
-              route: "/dashboard/profile/my-profile",
-            },
-          ],
-        },
-        {
-          id: "dashboard-system-management",
-          title: "System Management",
-          submenus: [
-            {
-              id: 13,
-              key: "dashboard.logs",
-              title: "Logs",
-              icon: LuFileText,
-              route: "/dashboard/logs-layout",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      id: 2,
-      key: "hostpanel",
-      icon: LuLayoutDashboard,
-      title: "Host Panel",
-      route: "/dashboard",
-      categories: [
-        {
-          id: "hostpanel-company-management",
-          title: "Company Management",
-          submenus: [
-            {
-              id: 2,
-              key: "hostpanel.companies",
-              title: "Companies",
-              icon: LuBuilding2,
-              route: "/dashboard/companies",
-            },
-            {
-              id: 6,
-              key: "hostpanel.host-companies",
-              title: "Host Companies",
-              icon: LuBuilding2,
-              route: "/dashboard/host-companies",
-            },
-          ],
-        },
-        {
-          id: "hostpanel-support-leads",
-          title: "Support & Leads",
-          submenus: [
-            {
-              id: 8,
-              key: "hostpanel.support-tickets",
-              title: "Support Tickets",
-              icon: LuTicket,
-              route: "/dashboard/support-tickets",
-            },
-            {
-              id: 5,
-              key: "hostpanel.signup-leads",
-              title: "Signup Leads",
-              icon: LuUserPlus,
-              route: "/dashboard/signup-leads",
-            },
-          ],
-        },
-        {
-          id: "hostpanel-credits-access",
-          title: "Credits & Access",
-          submenus: [
-            {
-              id: 21,
-              key: "hostpanel.website-credits",
-              title: "Website Credits",
-              icon: LuTicket,
-              route: "/dashboard/website-credits",
-            },
-            {
-              id: 7,
-              key: "hostpanel.module-access-logs",
-              title: "Module Access Logs",
-              icon: LuShieldCheck,
-              route: "/dashboard/module-access-logs",
-            },
-          ],
-        },
-        {
-          id: "hostpanel-system-logs",
-          title: "System Logs",
-          submenus: [
-            {
-              id: 20,
-              key: "hostpanel.host-panel-logs",
-              title: "Host Panel Logs",
-              icon: LuFileText,
-              route: "/dashboard/host-panel-logs",
-            },
-          ],
-        },
-      ],
-    },
-  ];
 
   const navigateFromSidebar = (route) => {
     navigate(route, { flushSync: true });
@@ -271,15 +27,24 @@ const Sidebar = ({ onCloseDrawer }) => {
   };
 
   const toggleModule = (index) => {
-    setExpandedModule((prev) => (prev === index ? null : index));
+    setExpandedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
   };
 
   const handleModuleClick = (module, index) => {
     if (module.categories?.length) {
       toggleModule(index);
-      return;
     }
-    navigateFromSidebar(module.route);
+    if (module.route) {
+      navigateFromSidebar(module.route);
+    }
   };
 
   const toggleCategory = (categoryId) => {
@@ -292,19 +57,18 @@ const Sidebar = ({ onCloseDrawer }) => {
   const isActive = (path) => location.pathname.startsWith(path);
 
   const filteredModules = isSuperAdmin
-    ? defaultModules
-    : defaultModules
-        .map((module) => ({
-          ...module,
-          categories: module.categories
-            .map((category) => ({
-              ...category,
-              submenus: category.submenus.filter((submenu) =>
-                allowedModules.includes(submenu.key),
-              ),
-            }))
-            .filter((category) => category.submenus.length > 0),
-        }))
+    ? MASTER_PANEL_MODULES
+    : MASTER_PANEL_MODULES.map((module) => ({
+        ...module,
+        categories: module.categories
+          .map((category) => ({
+            ...category,
+            submenus: category.submenus
+              .filter((submenu) => !submenu.superAdminOnly)
+              .filter((submenu) => allowedModules.includes(submenu.key)),
+          }))
+          .filter((category) => category.submenus.length > 0),
+      }))
         .filter((module) => module.categories.length > 0);
 
   return (
@@ -328,6 +92,34 @@ const Sidebar = ({ onCloseDrawer }) => {
           </div>
         ) : null}
 
+        {isSidebarOpen && (
+          <div className="px-4 pt-3">
+            <div className="border-t border-black/10 pt-2">
+              <button
+                type="button"
+                className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left transition-all hover:bg-white ${
+                  location.pathname === "/dashboard" && !location.pathname.includes("/dashboard/")
+                    ? "bg-white text-black shadow-sm"
+                    : "text-black/80"
+                }`}
+                onClick={() => navigateFromSidebar("/dashboard")}
+              >
+                <LuLayoutDashboard
+                  size={18}
+                  className={`shrink-0 ${
+                    location.pathname === "/dashboard" && !location.pathname.includes("/dashboard/")
+                      ? "text-accent"
+                      : "text-black/80"
+                  }`}
+                />
+                <span className="font-['Poppins'] text-xs font-semibold uppercase tracking-wide">
+                  Dashboard
+                </span>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-0">
           {filteredModules.map((module, index) => (
             <div key={module.id} className="px-4 pt-3">
@@ -337,14 +129,14 @@ const Sidebar = ({ onCloseDrawer }) => {
                     <button
                       type="button"
                       className="flex w-full items-center justify-between text-left font-['Poppins'] text-xs font-semibold uppercase tracking-wide text-black/80"
-                      onClick={() => toggleModule(index)}
+                      onClick={() => handleModuleClick(module, index)}
                     >
                       <span className="flex items-center gap-2">
                         <module.icon size={16} className="shrink-0" />
                         <span>{module.title}</span>
                       </span>
                       <span>
-                        {expandedModule === index ? (
+                        {expandedModules.has(index) ? (
                           <ChevronUp size={16} className="shrink-0" />
                         ) : (
                           <ChevronDown size={16} className="shrink-0" />
@@ -354,7 +146,7 @@ const Sidebar = ({ onCloseDrawer }) => {
 
                     <div
                       className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                        expandedModule === index ? "max-h-[3200px]" : "max-h-0"
+                        expandedModules.has(index) ? "max-h-[3200px]" : "max-h-0"
                       }`}
                     >
                       {module.categories?.map((category) => {
