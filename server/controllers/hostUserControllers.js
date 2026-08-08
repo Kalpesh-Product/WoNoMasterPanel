@@ -938,7 +938,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     id: "hr-department",
     name: "HR Department",
     children: [
-      { id: "employee-management", name: "Employee Management" },
+      { id: "employee-management", name: "Company Management" },
       { id: "hr-documents", name: "Documents" },
       { id: "recruitment", name: "Recruitment" },
       { id: "attendance-review", name: "Attendance Review" },
@@ -1023,6 +1023,7 @@ const EXTRA_COMMON_MODULES_BLUEPRINT = {
     { id: "assets", name: "Assets" },
     { id: "inventory", name: "Inventory" },
     { id: "finance-management", name: "Finance Management" },
+    { id: "team-management", name: "Team Management" },
     { id: "reports", name: "Reports" },
   ],
 };

@@ -139,24 +139,25 @@ const EditNomadListing = () => {
   const businessId =
     navState.website?.businessId || sessionStorage.getItem("businessId") || "";
 
-  const { data: serviceOptions = [] } = useQuery({
-    queryKey: ["nomad-field-options", "services"],
-    queryFn: async () => {
-      const res = await axios.get(`${NOMADS_API_BASE_URL}/company/field-options`, {
-        params: { field: "services" },
-      });
-      return Array.isArray(res.data) ? res.data : [];
-    },
-  });
-  const { data: unitOptions = [] } = useQuery({
-    queryKey: ["nomad-field-options", "units"],
-    queryFn: async () => {
-      const res = await axios.get(`${NOMADS_API_BASE_URL}/company/field-options`, {
-        params: { field: "units" },
-      });
-      return Array.isArray(res.data) ? res.data : [];
-    },
-  });
+  // Removed: Services/Units field options no longer needed
+  // const { data: serviceOptions = [] } = useQuery({
+  //   queryKey: ["nomad-field-options", "services"],
+  //   queryFn: async () => {
+  //     const res = await axios.get(`${NOMADS_API_BASE_URL}/company/field-options`, {
+  //       params: { field: "services" },
+  //     });
+  //     return Array.isArray(res.data) ? res.data : [];
+  //   },
+  // });
+  // const { data: unitOptions = [] } = useQuery({
+  //   queryKey: ["nomad-field-options", "units"],
+  //   queryFn: async () => {
+  //     const res = await axios.get(`${NOMADS_API_BASE_URL}/company/field-options`, {
+  //       params: { field: "units" },
+  //     });
+  //     return Array.isArray(res.data) ? res.data : [];
+  //   },
+  // });
   // Fallback preview when the listing has no logo of its own — it then
   // just uses this, the Host Company's own profile logo.
   const { data: hostCompanies = [] } = useQuery({
@@ -184,15 +185,15 @@ const EditNomadListing = () => {
       website: "",
       ratings: "",
       totalReviews: "",
-      totalSeats: "",
+      // totalSeats: "",
       latitude: "",
       longitude: "",
       country: "",
       state: "",
       city: "",
       inclusions: [],
-      services: [],
-      units: [],
+      // services: [],
+      // units: [],
       about: "",
       address: "",
       googleMap: "",
@@ -205,24 +206,23 @@ const EditNomadListing = () => {
     },
   });
 
-  // "Add new" boxes beside the Services/Units dropdowns — typing a value
-  // here and clicking Add both selects it and adds it to the dropdown.
-  const [newServiceText, setNewServiceText] = useState("");
-  const [newUnitText, setNewUnitText] = useState("");
-  const handleAddService = () => {
-    const trimmed = newServiceText.trim();
-    if (!trimmed) return;
-    const current = getValues("services") || [];
-    if (!current.includes(trimmed)) setValue("services", [...current, trimmed]);
-    setNewServiceText("");
-  };
-  const handleAddUnit = () => {
-    const trimmed = newUnitText.trim();
-    if (!trimmed) return;
-    const current = getValues("units") || [];
-    if (!current.includes(trimmed)) setValue("units", [...current, trimmed]);
-    setNewUnitText("");
-  };
+  // Removed: "Add new" boxes beside the Services/Units dropdowns no longer needed
+  // const [newServiceText, setNewServiceText] = useState("");
+  // const [newUnitText, setNewUnitText] = useState("");
+  // const handleAddService = () => {
+  //   const trimmed = newServiceText.trim();
+  //   if (!trimmed) return;
+  //   const current = getValues("services") || [];
+  //   if (!current.includes(trimmed)) setValue("services", [...current, trimmed]);
+  //   setNewServiceText("");
+  // };
+  // const handleAddUnit = () => {
+  //   const trimmed = newUnitText.trim();
+  //   if (!trimmed) return;
+  //   const current = getValues("units") || [];
+  //   if (!current.includes(trimmed)) setValue("units", [...current, trimmed]);
+  //   setNewUnitText("");
+  // };
 
   // ✅ Field Array for reviews
   const {
@@ -324,15 +324,15 @@ const EditNomadListing = () => {
       website: src.website || "",
       ratings: src.ratings ?? "",
       totalReviews: src.totalReviews ?? "",
-      totalSeats: src.totalSeats ?? "",
+      // totalSeats: src.totalSeats ?? "",
       latitude: src.latitude != null ? String(src.latitude) : "",
       longitude: src.longitude != null ? String(src.longitude) : "",
       country: src.country || "",
       state: src.state || "",
       city: src.city || "",
       inclusions: splitCommaList(src.inclusions),
-      services: splitCommaList(src.services),
-      units: splitCommaList(src.units),
+      // services: splitCommaList(src.services),
+      // units: splitCommaList(src.units),
       about: src.about || "",
       address: src.address || "",
       googleMap: src.googleMap || "",
@@ -376,7 +376,7 @@ const EditNomadListing = () => {
     fd.set("website", values.website);
     fd.set("ratings", values.ratings);
     fd.set("totalReviews", values.totalReviews);
-    fd.set("totalSeats", values.totalSeats);
+    // fd.set("totalSeats", values.totalSeats);
     fd.set("latitude", values.latitude);
     fd.set("longitude", values.longitude);
     fd.set("about", values.about);
@@ -403,8 +403,8 @@ const EditNomadListing = () => {
           : []
       ).join(", ");
     fd.set("inclusions", toCommaString(values.inclusions));
-    fd.set("services", toCommaString(values.services));
-    fd.set("units", toCommaString(values.units));
+    // fd.set("services", toCommaString(values.services));
+    // fd.set("units", toCommaString(values.units));
 
     // ✅ reviews: rating → starCount
     const mappedReviews = (values.reviews || []).map((r) => ({
@@ -451,15 +451,15 @@ const EditNomadListing = () => {
       website: "",
       ratings: "",
       totalReviews: "",
-      totalSeats: "",
+      // totalSeats: "",
       latitude: "",
       longitude: "",
       country: "",
       state: "",
       city: "",
       inclusions: [],
-      services: [],
-      units: [],
+      // services: [],
+      // units: [],
       about: "",
       address: "",
       googleMap: "",
@@ -567,8 +567,9 @@ const EditNomadListing = () => {
             }}
           />
 
-          {/* Services — pick from what other hosts have already used, or
-              type a new one below and click Add. */}
+          {/* ===== Services / Units / Total Seats (removed — not needed) =====
+          Services — pick from what other hosts have already used, or
+          type a new one below and click Add.
           <div className="col-span-2 md:col-span-1">
             <Controller
               name="services"
@@ -626,7 +627,7 @@ const EditNomadListing = () => {
             )}
           </div>
 
-          {/* Units — same dropdown + add-new pattern as Services. */}
+          Units — same dropdown + add-new pattern as Services.
           <div className="col-span-2 md:col-span-1">
             <Controller
               name="units"
@@ -684,7 +685,7 @@ const EditNomadListing = () => {
             )}
           </div>
 
-          {/* Total Seats */}
+          Total Seats
           <Controller
             name="totalSeats"
             control={control}
@@ -700,6 +701,7 @@ const EditNomadListing = () => {
               />
             )}
           />
+          */}
 
           <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
             {/* Title */}
@@ -747,16 +749,15 @@ const EditNomadListing = () => {
               )}
             />
 
-            {/* Ratings */}
+            {/* Address */}
             <Controller
-              name="ratings"
+              name="address"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
                   size="small"
-                  label="Ratings"
-                  type="number"
+                  label="Address"
                   className="col-span-2 md:col-span-1"
                   disabled={isViewMode}
                 />
@@ -785,17 +786,18 @@ const EditNomadListing = () => {
           />
           {/* </div> */}
 
-          {/* Address */}
+          {/* Ratings */}
           {/* <div className="col-span-2"> */}
           <div className="grid grid-row-2 gap-2">
             <Controller
-              name="address"
+              name="ratings"
               control={control}
               render={({ field }) => (
                 <TextField
                   {...field}
                   size="small"
-                  label="Address"
+                  label="Ratings"
+                  type="number"
                   className="col-span-2 md:col-span-1"
                   disabled={isViewMode}
                 />
