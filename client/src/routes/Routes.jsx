@@ -169,6 +169,8 @@ import PlacesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/Places
 import RestaurantsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/RestaurantsUpload";
 import AccessTree from "../components/AccessTree";
 import BulkUploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkUploadImages";
+import BulkRestaurantImagesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkRestaurantImagesUpload";
+import RestaurantLogoUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/RestaurantLogoUpload";
 import UploadSingleImage from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadSingleImage";
 import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/BulkReuploadImages";
 import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
@@ -356,6 +358,14 @@ export const routes = createBrowserRouter([
                         element: <RestaurantsUpload />,
                       },
                       {
+                        path: "bulk-restaurant-images-upload",
+                        element: <BulkRestaurantImagesUpload />,
+                      },
+                      {
+                        path: "restaurant-logo-upload",
+                        element: <RestaurantLogoUpload />,
+                      },
+                      {
                         path: "bulk-upload-images",
                         element: <BulkUploadImages />,
                       },
@@ -435,7 +445,7 @@ export const routes = createBrowserRouter([
                     element: <WebsiteCreditsOverview />,
                   },
                   {
-                    path: "company-reviews",
+                    path: "company-reviews/:reviewTab?",
                     element: <CompanyReviews />,
                   },
                   {

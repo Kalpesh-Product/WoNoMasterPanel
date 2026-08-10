@@ -1,14 +1,26 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { TextField, MenuItem } from "@mui/material";
 import PrimaryButton from "../../../../components/PrimaryButton";
 import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
+const KIND_OPTIONS = ["restaurants", "poc", "reviews"];
 const TYPE_MAP = {
-  api: `${NOMADS_API_BASE_URL}/restaurants/bulk-insert`,
-  formKey: "restaurants-file",
+  restaurants: {
+    api: `${NOMADS_API_BASE_URL}/restaurants/bulk-insert`,
+    formKey: "restaurants-file",
+  },
+  poc: {
+    api: `${NOMADS_API_BASE_URL}/restaurantpocs/bulk-insert-poc`,
+    formKey: "poc",
+  },
+  reviews: {
+    api: `${NOMADS_API_BASE_URL}/restaurantreviews/bulk-insert-reviews`,
+    formKey: "reviews",
+  },
 };
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -18,14 +30,15 @@ const RestaurantsUpload = () => {
   const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
+  const [kind, setKind] = useState("restaurants");
 
   const filename = file?.name ?? "No file selected";
   const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
 
   const { mutate, isPending } = useMutation({
     mutationKey: ["restaurants-bulk-upload"],
-    mutationFn: async ({ file }) => {
-      const { api, formKey } = TYPE_MAP;
+    mutationFn: async ({ file, kind }) => {
+      const { api, formKey } = TYPE_MAP[kind];
       const form = new FormData();
       form.append(formKey, file);
 
@@ -79,7 +92,7 @@ const RestaurantsUpload = () => {
 
   function handleUpload() {
     if (!file) return setError("Select a CSV file first.");
-    mutate({ file });
+    mutate({ file, kind });
   }
 
   const handleReset = () => {
@@ -94,9 +107,29 @@ const RestaurantsUpload = () => {
           <div>
             <h4 className="text-2xl font-semibold">Bulk Upload</h4>
             <p className="text-sm text-gray-600">
-              Choose a restaurants CSV and submit it for bulk upload.
+              Choose the restaurant upload type and submit the matching CSV.
             </p>
           </div>
+
+          <TextField
+            select
+            size="small"
+            fullWidth
+            label="Upload Type"
+            value={kind}
+            onChange={(e) => setKind(e.target.value)}
+            disabled={isPending}
+          >
+            {KIND_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </TextField>
+          <p className="text-xs text-gray-500">
+            Endpoint: <code>{TYPE_MAP[kind].api}</code> - File key:{" "}
+            <code>{TYPE_MAP[kind].formKey}</code>
+          </p>
 
           <input
             ref={inputRef}

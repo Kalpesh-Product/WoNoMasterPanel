@@ -351,6 +351,55 @@ const bulkUploadImages = async (req, res) => {
   }
 };
 
+const bulkUploadRestaurantImages = async (req, res) => {
+  try {
+    const files = req.files;
+    const { restaurantId, businessId } = req.body;
+
+    if (!files || !files.length) {
+      return res.status(400).json({ message: "No image files provided" });
+    }
+
+    if (!restaurantId && !businessId) {
+      return res
+        .status(400)
+        .json({ message: "Missing restaurantId or businessId" });
+    }
+
+    const formData = new FormData();
+    if (restaurantId) formData.append("restaurantId", restaurantId);
+    if (businessId) formData.append("businessId", businessId);
+
+    files.forEach((file) => {
+      formData.append("images", file.buffer, {
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+    });
+
+    const response = await axios.post(
+      `${NOMADS_BASE}/restaurants/bulk-add-restaurant-images`,
+      formData,
+      { headers: formData.getHeaders() },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        response.data?.message || "Restaurant images uploaded successfully",
+    });
+  } catch (err) {
+    console.error("[bulkUploadRestaurantImages] error:", err.message);
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Restaurant image upload failed";
+    return res
+      .status(err.response?.status || 500)
+      .json({ success: false, message });
+  }
+};
+
 const bulkReuploadImages = async (req, res) => {
   try {
     const files = req.files;
@@ -455,6 +504,54 @@ const uploadCompanyLogo = async (req, res) => {
   }
 };
 
+const uploadRestaurantLogo = async (req, res) => {
+  try {
+    const file = req.file;
+    const { restaurantId, businessId } = req.body;
+
+    if (!file) {
+      return res.status(400).json({ message: "No image provided" });
+    }
+
+    if (!restaurantId && !businessId) {
+      return res
+        .status(400)
+        .json({ message: "Missing restaurantId or businessId" });
+    }
+
+    const formData = new FormData();
+    if (restaurantId) formData.append("restaurantId", restaurantId);
+    if (businessId) formData.append("businessId", businessId);
+    formData.append("image", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+
+    const response = await axios.post(
+      `${NOMADS_BASE}/restaurants/upload-logo`,
+      formData,
+      { headers: formData.getHeaders() },
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: response.data?.message || "Restaurant logo uploaded successfully",
+    });
+  } catch (err) {
+    console.error(
+      "[uploadRestaurantLogo] error:",
+      err.response?.data || err.message,
+    );
+    const message =
+      err.response?.data?.message ||
+      err.response?.data?.error ||
+      "Restaurant logo upload failed";
+    return res
+      .status(err.response?.status || 500)
+      .json({ success: false, message });
+  }
+};
+
 // ---- Website leads / reviews helpers (mirrors HostPanel's controllers) ----
 
 const sanitizeValue = (value) => String(value || "").trim();
@@ -553,6 +650,49 @@ const parseReviewList = (response) => {
     response?.data?.data ??
     response?.data;
   return Array.isArray(reviews) ? reviews : [];
+};
+
+const parseReviewPagination = (response, fallbackTotal) => {
+  const payload = response?.data || {};
+  const data = payload?.data || {};
+  const total =
+    payload?.total ??
+    payload?.totalReviews ??
+    payload?.totalCount ??
+    payload?.count ??
+    data?.total ??
+    data?.totalReviews ??
+    data?.totalCount ??
+    data?.count ??
+    fallbackTotal;
+
+  return {
+    total: Number.isFinite(Number(total)) ? Number(total) : fallbackTotal,
+  };
+};
+
+const paginateList = (items, page, limit) => {
+  const start = (page - 1) * limit;
+  return items.slice(start, start + limit);
+};
+
+const reviewMatchesSearch = (review, query) => {
+  if (!query) return true;
+  return [
+    review?.name,
+    review?.reviewerName,
+    review?.reviewSource,
+    review?.companyType,
+    review?.description,
+    review?.review,
+  ]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(query));
+};
+
+const reviewMatchesStatus = (review, status) => {
+  if (!status) return true;
+  return String(review?.status || "pending").toLowerCase() === status.toLowerCase();
 };
 
 const parseListingList = (response) => {
@@ -921,6 +1061,14 @@ const getReviewsByCompany = async (req, res, next) => {
   try {
     const { companyType = "", status, reviewScope = "" } = req.query;
     const normalizedReviewScope = sanitizeValue(reviewScope).toLowerCase();
+    const requestedPage = Math.max(Number.parseInt(req.query?.page, 10) || 1, 1);
+    const requestedLimit = Math.min(
+      Math.max(Number.parseInt(req.query?.limit, 10) || 100, 1),
+      200,
+    );
+    const requestedSearch = sanitizeValue(req.query?.search).toLowerCase();
+    const wantsPagination =
+      req.query?.page !== undefined || req.query?.limit !== undefined;
     const includeAllCompanies =
       normalizedReviewScope === "nomads" &&
       String(req.query?.allCompanies || "").toLowerCase() === "true";
@@ -940,7 +1088,8 @@ const getReviewsByCompany = async (req, res, next) => {
           : "pending";
 
     let response;
-    let enrichedReviews = [];
+    let reviews = [];
+    let upstreamTotal = 0;
     try {
       response = await axios.get(`${NOMADS_BASE}/review`, {
         params: {
@@ -948,6 +1097,8 @@ const getReviewsByCompany = async (req, res, next) => {
           companyType,
           ...(normalizedReviewScope === "nomads" ? { source: "nomad" } : {}),
           ...(effectiveStatus ? { status: effectiveStatus } : {}),
+          ...(wantsPagination ? { page: requestedPage, limit: requestedLimit } : {}),
+          ...(requestedSearch ? { search: requestedSearch } : {}),
         },
       });
 
@@ -955,62 +1106,8 @@ const getReviewsByCompany = async (req, res, next) => {
         return res.status(400).json({ message: `Failed to fetch reviews` });
       }
 
-      const reviews = parseReviewList(response);
-
-      const adminIds = new Set();
-      const hostIds = new Set();
-
-      for (const r of reviews) {
-        if (r.approvedBy?.userId) {
-          r.approvedBy.userType === "MASTER"
-            ? adminIds.add(r.approvedBy.userId)
-            : hostIds.add(r.approvedBy.userId);
-        }
-
-        if (r.rejectedBy?.userId) {
-          r.rejectedBy.userType === "MASTER"
-            ? adminIds.add(r.rejectedBy.userId)
-            : hostIds.add(r.rejectedBy.userId);
-        }
-      }
-
-      const [admins, hosts] = await Promise.all([
-        AdminUser.find({ _id: { $in: [...adminIds] } })
-          .select("_id firstName lastName email")
-          .lean(),
-        HostUser.find({ _id: { $in: [...hostIds] } })
-          .select("_id name phone email")
-          .lean(),
-      ]);
-
-      const adminMap = Object.fromEntries(
-        admins.map((a) => [a._id.toString(), a]),
-      );
-      const hostMap = Object.fromEntries(
-        hosts.map((h) => [h._id.toString(), h]),
-      );
-
-      enrichedReviews = reviews.map((r) => ({
-        ...r,
-        approvedBy: r.approvedBy
-          ? {
-              ...r.approvedBy,
-              user:
-                r.approvedBy.userType === "MASTER"
-                  ? adminMap[r.approvedBy.userId]
-                  : hostMap[r.approvedBy.userId],
-            }
-          : null,
-        rejectedBy: r.rejectedBy
-          ? {
-              ...r.rejectedBy,
-              user:
-                r.rejectedBy.userType === "MASTER"
-                  ? adminMap[r.rejectedBy.userId]
-                  : hostMap[r.rejectedBy.userId],
-            }
-          : null,
-      }));
+      reviews = parseReviewList(response);
+      upstreamTotal = parseReviewPagination(response, reviews.length).total;
     } catch (err) {
       return res.status(err.response?.status || 500).json({
         message:
@@ -1023,17 +1120,88 @@ const getReviewsByCompany = async (req, res, next) => {
 
     if (!normalizedReviewScope) {
       return res.status(200).json({
-        reviews: enrichedReviews,
+        reviews,
       });
     }
 
+    let scopedReviews = reviews;
+
     if (normalizedReviewScope === "website") {
-      enrichedReviews = enrichedReviews.filter(isWebsiteReviewRecord);
+      scopedReviews = scopedReviews.filter(isWebsiteReviewRecord);
     } else if (normalizedReviewScope === "nomads") {
-      enrichedReviews = enrichedReviews.filter(
+      scopedReviews = scopedReviews.filter(
         (review) => !isWebsiteReviewRecord(review),
       );
+    }
 
+    const filteredReviews = scopedReviews
+      .filter((review) => reviewMatchesStatus(review, effectiveStatus))
+      .filter((review) => reviewMatchesSearch(review, requestedSearch));
+    const upstreamLooksPaginated =
+      wantsPagination && upstreamTotal > filteredReviews.length;
+    const total = upstreamLooksPaginated
+      ? upstreamTotal
+      : filteredReviews.length;
+    const pageReviews = wantsPagination && !upstreamLooksPaginated
+      ? paginateList(filteredReviews, requestedPage, requestedLimit)
+      : filteredReviews.slice(0, requestedLimit);
+
+    const adminIds = new Set();
+    const hostIds = new Set();
+
+    for (const review of pageReviews) {
+      if (review.approvedBy?.userId) {
+        review.approvedBy.userType === "MASTER"
+          ? adminIds.add(review.approvedBy.userId)
+          : hostIds.add(review.approvedBy.userId);
+      }
+
+      if (review.rejectedBy?.userId) {
+        review.rejectedBy.userType === "MASTER"
+          ? adminIds.add(review.rejectedBy.userId)
+          : hostIds.add(review.rejectedBy.userId);
+      }
+    }
+
+    const [admins, hosts] = await Promise.all([
+      AdminUser.find({ _id: { $in: [...adminIds] } })
+        .select("_id firstName lastName email")
+        .lean(),
+      HostUser.find({ _id: { $in: [...hostIds] } })
+        .select("_id name phone email")
+        .lean(),
+    ]);
+
+    const adminMap = Object.fromEntries(
+      admins.map((admin) => [admin._id.toString(), admin]),
+    );
+    const hostMap = Object.fromEntries(
+      hosts.map((host) => [host._id.toString(), host]),
+    );
+
+    let enrichedReviews = pageReviews.map((review) => ({
+      ...review,
+      approvedBy: review.approvedBy
+        ? {
+            ...review.approvedBy,
+            user:
+              review.approvedBy.userType === "MASTER"
+                ? adminMap[review.approvedBy.userId]
+                : hostMap[review.approvedBy.userId],
+          }
+        : null,
+      rejectedBy: review.rejectedBy
+        ? {
+            ...review.rejectedBy,
+            user:
+              review.rejectedBy.userType === "MASTER"
+                ? adminMap[review.rejectedBy.userId]
+                : hostMap[review.rejectedBy.userId],
+          }
+        : null,
+    }));
+
+    if (normalizedReviewScope === "nomads") {
       if (companyId) {
         try {
           const listingsResponse = await axios.get(
@@ -1062,6 +1230,13 @@ const getReviewsByCompany = async (req, res, next) => {
 
     return res.status(200).json({
       reviews: enrichedReviews,
+      pagination: {
+        page: requestedPage,
+        limit: requestedLimit,
+        total,
+        totalPages: Math.max(Math.ceil(total / requestedLimit), 1),
+        hasNextPage: requestedPage * requestedLimit < total,
+      },
     });
   } catch (error) {
     next(error);
@@ -1111,8 +1286,10 @@ module.exports = {
   changePassword,
   bulkUploadData,
   bulkUploadImages,
+  bulkUploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
+  uploadRestaurantLogo,
   updateReviewStatus,
   updateRegistrationStatus,
   getReviewsByCompany,
