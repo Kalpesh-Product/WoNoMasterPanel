@@ -1,16 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Country, State, City } from "country-state-city";
-import {
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  OutlinedInput,
-  Select,
-  Checkbox,
-  ListItemText,
-} from "@mui/material";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import SecondaryButton from "../../../components/SecondaryButton";
@@ -18,6 +8,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
+import WebsiteFormField from "../../../components/WebsiteFormField";
+import WebsiteMultiSelectField from "../../../components/WebsiteMultiSelectField";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
@@ -497,44 +489,41 @@ const EditNomadListing = () => {
             control={control}
             rules={{ required: "Company Type is required" }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                size="small"
-                label="Company Type"
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-                onChange={(e) => {
-                  field.onChange(e);
-                  // Inclusions are fixed per company type — drop any
-                  // selected ones that don't apply to the new type.
-                  const allowed = new Set(AMENITIES_BY_TYPE[e.target.value] || []);
-                  const current = getValues("inclusions") || [];
-                  setValue("inclusions", current.filter((v) => allowed.has(v)));
-                }}
-              >
-                {companyTypes.map((type) => {
-                  const normalizedType = normalizeCompanyType(type);
-                  const alreadyAdded =
-                    normalizedType !== originalType &&
-                    addedTypes.has(normalizedType);
-                  return (
-                    <MenuItem
-                      key={type}
-                      value={type.toLowerCase().replace(/\s+/g, "")}
-                    >
-                      <span className="flex w-full items-center justify-between gap-4 font-pmedium">
-                        <span>{type}</span>
-                        {alreadyAdded && (
-                          <span className="text-[10px] font-pmedium uppercase tracking-wide text-emerald-600">
-                            Added
-                          </span>
-                        )}
-                      </span>
-                    </MenuItem>
-                  );
-                })}
-              </TextField>
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Company Type"
+                  disabled={isViewMode}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    // Inclusions are fixed per company type — drop any
+                    // selected ones that don't apply to the new type.
+                    const allowed = new Set(AMENITIES_BY_TYPE[e.target.value] || []);
+                    const current = getValues("inclusions") || [];
+                    setValue("inclusions", current.filter((v) => allowed.has(v)));
+                  }}
+                >
+                  <option value="" disabled>
+                    Select Company Type
+                  </option>
+                  {companyTypes.map((type) => {
+                    const normalizedType = normalizeCompanyType(type);
+                    const alreadyAdded =
+                      normalizedType !== originalType &&
+                      addedTypes.has(normalizedType);
+                    return (
+                      <option
+                        key={type}
+                        value={type.toLowerCase().replace(/\s+/g, "")}
+                      >
+                        {type}
+                        {alreadyAdded ? " (Added)" : ""}
+                      </option>
+                    );
+                  })}
+                </WebsiteFormField>
+              </div>
             )}
           />
 
@@ -547,22 +536,16 @@ const EditNomadListing = () => {
               const selectedType = watch("companyType");
               const options = AMENITIES_BY_TYPE[selectedType] || [];
               return (
-                <FormControl size="small" className="col-span-2 md:col-span-1" disabled={isViewMode || !selectedType}>
-                  <InputLabel>Inclusions</InputLabel>
-                  <Select
-                    {...field}
-                    multiple
-                    input={<OutlinedInput label="Inclusions" />}
-                    renderValue={(selected) => selected.join(", ")}
-                  >
-                    {options.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        <Checkbox checked={field.value.indexOf(option) > -1} />
-                        <ListItemText primary={option} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteMultiSelectField
+                    label="Inclusions"
+                    value={Array.isArray(field.value) ? field.value : []}
+                    onChange={field.onChange}
+                    options={options}
+                    disabled={isViewMode || !selectedType}
+                    placeholder="Select inclusions"
+                  />
+                </div>
               );
             }}
           />
@@ -709,13 +692,9 @@ const EditNomadListing = () => {
               name="companyName"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Company Name"
-                  className="col-span-2 md:col-span-1"
-                  disabled
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField field={field} label="Company Name" disabled />
+                </div>
               )}
             />
             {/* Title */}
@@ -723,13 +702,13 @@ const EditNomadListing = () => {
               name="companyTitle"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Company Title"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode}
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    label="Company Title"
+                    disabled={isViewMode}
+                  />
+                </div>
               )}
             />
 
@@ -738,14 +717,14 @@ const EditNomadListing = () => {
               name="website"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Website URL"
-                  helperText="Defaults to the company's registered website if left blank"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode}
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    label="Website URL"
+                    helperText="Defaults to the company's registered website if left blank"
+                    disabled={isViewMode}
+                  />
+                </div>
               )}
             />
 
@@ -754,13 +733,13 @@ const EditNomadListing = () => {
               name="address"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Address"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode}
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    label="Address"
+                    disabled={isViewMode}
+                  />
+                </div>
               )}
             />
 
@@ -772,16 +751,15 @@ const EditNomadListing = () => {
             name="about"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="About"
-                multiline
-                minRows={3}
-                fullWidth
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="About"
+                  multiline
+                  minRows={3}
+                  disabled={isViewMode}
+                />
+              </div>
             )}
           />
           {/* </div> */}
@@ -793,35 +771,35 @@ const EditNomadListing = () => {
               name="ratings"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Ratings"
-                  type="number"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode}
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    label="Ratings"
+                    type="number"
+                    disabled={isViewMode}
+                  />
+                </div>
               )}
             />
             <Controller
               name="googleMap"
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...field}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    const coords = extractLatLngFromMapUrl(e.target.value);
-                    if (coords) {
-                      setValue("latitude", coords.lat);
-                      setValue("longitude", coords.lng);
-                    }
-                  }}
-                  size="small"
-                  label="Google Map Url"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode}
-                />
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      const coords = extractLatLngFromMapUrl(e.target.value);
+                      if (coords) {
+                        setValue("latitude", coords.lat);
+                        setValue("longitude", coords.lng);
+                      }
+                    }}
+                    label="Google Map Url"
+                    disabled={isViewMode}
+                  />
+                </div>
               )}
             />
           </div>
@@ -831,14 +809,14 @@ const EditNomadListing = () => {
             name="totalReviews"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Total Reviews"
-                type="number"
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="Total Reviews"
+                  type="number"
+                  disabled={isViewMode}
+                />
+              </div>
             )}
           />
 
@@ -847,13 +825,9 @@ const EditNomadListing = () => {
             name="latitude"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Latitude"
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Latitude" disabled={isViewMode} />
+              </div>
             )}
           />
 
@@ -862,13 +836,9 @@ const EditNomadListing = () => {
             name="longitude"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Longitude"
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Longitude" disabled={isViewMode} />
+              </div>
             )}
           />
           {/* </div> */}
@@ -880,27 +850,30 @@ const EditNomadListing = () => {
             control={control}
             rules={{ required: "Country is required" }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                size="small"
-                label="Country"
-                className="col-span-2 md:col-span-1"
-                disabled={isViewMode}
-                error={!!errors.country}
-                helperText={errors?.country?.message}
-                onChange={(e) => {
-                  field.onChange(e);
-                  setValue("state", "");
-                  setValue("city", "");
-                }}
-              >
-                {Country.getAllCountries().map((c) => (
-                  <MenuItem key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Country"
+                  disabled={isViewMode}
+                  error={!!errors.country}
+                  helperText={errors?.country?.message}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setValue("state", "");
+                    setValue("city", "");
+                  }}
+                >
+                  <option value="" disabled>
+                    Select Country
+                  </option>
+                  {Country.getAllCountries().map((c) => (
+                    <option key={c.isoCode} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </WebsiteFormField>
+              </div>
             )}
           />
 
@@ -918,26 +891,29 @@ const EditNomadListing = () => {
                 ? State.getStatesOfCountry(countryObj.isoCode)
                 : [];
               return (
-                <TextField
-                  {...field}
-                  select
-                  size="small"
-                  label="State"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode || !countryObj}
-                  error={!!errors.state}
-                  helperText={errors?.state?.message}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    setValue("city", "");
-                  }}
-                >
-                  {states.map((s) => (
-                    <MenuItem key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    select
+                    label="State"
+                    disabled={isViewMode || !countryObj}
+                    error={!!errors.state}
+                    helperText={errors?.state?.message}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setValue("city", "");
+                    }}
+                  >
+                    <option value="" disabled>
+                      Select State
+                    </option>
+                    {states.map((s) => (
+                      <option key={s.isoCode} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </WebsiteFormField>
+                </div>
               );
             }}
           />
@@ -963,22 +939,25 @@ const EditNomadListing = () => {
                   ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode)
                   : [];
               return (
-                <TextField
-                  {...field}
-                  select
-                  size="small"
-                  label="City"
-                  className="col-span-2 md:col-span-1"
-                  disabled={isViewMode || !stateObj}
-                  error={!!errors.city}
-                  helperText={errors?.city?.message}
-                >
-                  {cities.map((c) => (
-                    <MenuItem key={c.name} value={c.name}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    select
+                    label="City"
+                    disabled={isViewMode || !stateObj}
+                    error={!!errors.city}
+                    helperText={errors?.city?.message}
+                  >
+                    <option value="" disabled>
+                      Select City
+                    </option>
+                    {cities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </WebsiteFormField>
+                </div>
               );
             }}
           />
@@ -1101,11 +1080,9 @@ const EditNomadListing = () => {
                     control={control}
                     rules={{ required: "Name is required" }}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
-                        size="small"
+                      <WebsiteFormField
+                        field={field}
                         label="Reviewer Name"
-                        fullWidth
                         disabled={isViewMode}
                         helperText={errors?.reviews?.[index]?.name?.message}
                         error={!!errors?.reviews?.[index]?.name}
@@ -1117,38 +1094,36 @@ const EditNomadListing = () => {
                     name={`reviews.${index}.rating`}
                     control={control}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
+                      <WebsiteFormField
+                        field={field}
                         type="number"
-                        size="small"
                         label="Rating (1-5)"
-                        fullWidth
                         disabled={isViewMode}
-                        inputProps={{ min: 1, max: 5 }}
+                        min={1}
+                        max={5}
                       />
                     )}
                   />
                 </div>
 
-                <Controller
-                  name={`reviews.${index}.review`}
-                  control={control}
-                  // rules={{ required: "Review is required" }}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      size="small"
-                      label="Review"
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      disabled={isViewMode}
-                      helperText={errors?.reviews?.[index]?.review?.message}
-                      error={!!errors?.reviews?.[index]?.review}
-                      sx={{ mt: 2 }}
-                    />
-                  )}
-                />
+                <div className="mt-4">
+                  <Controller
+                    name={`reviews.${index}.review`}
+                    control={control}
+                    // rules={{ required: "Review is required" }}
+                    render={({ field }) => (
+                      <WebsiteFormField
+                        field={field}
+                        label="Review"
+                        multiline
+                        minRows={3}
+                        disabled={isViewMode}
+                        helperText={errors?.reviews?.[index]?.review?.message}
+                        error={!!errors?.reviews?.[index]?.review}
+                      />
+                    )}
+                  />
+                </div>
               </div>
             ))}
 

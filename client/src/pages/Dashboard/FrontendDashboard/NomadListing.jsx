@@ -1,16 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Country, State, City } from "country-state-city";
-import {
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  OutlinedInput,
-  Select,
-  Checkbox,
-  ListItemText,
-} from "@mui/material";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import SecondaryButton from "../../../components/SecondaryButton";
@@ -19,6 +9,8 @@ import { toast } from "sonner";
 import publicAxios from "axios";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
+import WebsiteFormField from "../../../components/WebsiteFormField";
+import WebsiteMultiSelectField from "../../../components/WebsiteMultiSelectField";
 import { useLocation } from "react-router-dom";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
@@ -367,13 +359,13 @@ const NomadListing = () => {
             name="companyTitle"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Company Title"
-                helperText="Defaults to the company name if left blank"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="Company Title"
+                  helperText="Defaults to the company name if left blank"
+                />
+              </div>
             )}
           />
 
@@ -382,13 +374,13 @@ const NomadListing = () => {
             name="website"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Website URL"
-                helperText="Defaults to the company's registered website if left blank"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="Website URL"
+                  helperText="Defaults to the company's registered website if left blank"
+                />
+              </div>
             )}
           />
 
@@ -398,37 +390,34 @@ const NomadListing = () => {
             control={control}
             rules={{ required: "Company Type is required" }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                size="small"
-                label="Company Type"
-                className="col-span-2 md:col-span-1"
-                onChange={(e) => {
-                  field.onChange(e);
-                  // Inclusions are fixed per company type — drop any
-                  // selected ones that don't apply to the new type.
-                  const allowed = new Set(AMENITIES_BY_TYPE[e.target.value] || []);
-                  const current = getValues("inclusions") || [];
-                  setValue("inclusions", current.filter((v) => allowed.has(v)));
-                }}
-              >
-                {companyTypes.map((type) => {
-                  const alreadyAdded = addedTypes.has(normalizeCompanyType(type));
-                  return (
-                    <MenuItem key={type} value={type.toLowerCase()}>
-                      <span className="flex w-full items-center justify-between gap-4 font-pmedium">
-                        <span>{type}</span>
-                        {alreadyAdded && (
-                          <span className="text-[10px] font-pmedium uppercase tracking-wide text-emerald-600">
-                            Added
-                          </span>
-                        )}
-                      </span>
-                    </MenuItem>
-                  );
-                })}
-              </TextField>
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Company Type"
+                  onChange={(e) => {
+                    field.onChange(e);
+                    // Inclusions are fixed per company type — drop any
+                    // selected ones that don't apply to the new type.
+                    const allowed = new Set(AMENITIES_BY_TYPE[e.target.value] || []);
+                    const current = getValues("inclusions") || [];
+                    setValue("inclusions", current.filter((v) => allowed.has(v)));
+                  }}
+                >
+                  <option value="" disabled>
+                    Select Company Type
+                  </option>
+                  {companyTypes.map((type) => {
+                    const alreadyAdded = addedTypes.has(normalizeCompanyType(type));
+                    return (
+                      <option key={type} value={type.toLowerCase()}>
+                        {type}
+                        {alreadyAdded ? " (Added)" : ""}
+                      </option>
+                    );
+                  })}
+                </WebsiteFormField>
+              </div>
             )}
           />
 
@@ -441,11 +430,9 @@ const NomadListing = () => {
               const selectedType = watch("companyType");
               const options = AMENITIES_BY_TYPE[selectedType] || [];
               return (
-                <FormControl size="small" className="col-span-2 md:col-span-1" disabled={!selectedType}>
-                  <InputLabel>Inclusions</InputLabel>
-                  <Select
-                    {...field}
-                    multiple
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteMultiSelectField
+                    label="Inclusions"
                     value={
                       Array.isArray(field.value)
                         ? field.value
@@ -453,24 +440,12 @@ const NomadListing = () => {
                           ? [field.value]
                           : []
                     }
-                    input={<OutlinedInput label="Inclusions" />}
-                    renderValue={(selected) =>
-                      Array.isArray(selected) ? selected.join(", ") : ""
-                    }
-                  >
-                    {options.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        <Checkbox
-                          checked={
-                            Array.isArray(field.value) &&
-                            field.value.includes(option)
-                          }
-                        />
-                        <ListItemText primary={option} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    onChange={field.onChange}
+                    options={options}
+                    disabled={!selectedType}
+                    placeholder="Select inclusions"
+                  />
+                </div>
               );
             }}
           />
@@ -612,15 +587,14 @@ const NomadListing = () => {
             name="address"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Address"
-                multiline
-                minRows={3}
-                fullWidth
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="Address"
+                  multiline
+                  minRows={3}
+                />
+              </div>
             )}
           />
           {/* </div> */}
@@ -631,15 +605,14 @@ const NomadListing = () => {
             name="about"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="About"
-                multiline
-                minRows={3}
-                fullWidth
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="About"
+                  multiline
+                  minRows={3}
+                />
+              </div>
             )}
           />
           {/* </div> */}
@@ -649,13 +622,9 @@ const NomadListing = () => {
             name="ratings"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Ratings"
-                type="number"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Ratings" type="number" />
+              </div>
             )}
           />
 
@@ -664,13 +633,13 @@ const NomadListing = () => {
             name="totalReviews"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Total Reviews"
-                type="number"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  label="Total Reviews"
+                  type="number"
+                />
+              </div>
             )}
           />
 
@@ -681,26 +650,29 @@ const NomadListing = () => {
             control={control}
             rules={{ required: "Country is required" }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
-                size="small"
-                label="Country"
-                className="col-span-2 md:col-span-1"
-                error={!!errors.country}
-                helperText={errors?.country?.message}
-                onChange={(e) => {
-                  field.onChange(e);
-                  setValue("state", "");
-                  setValue("city", "");
-                }}
-              >
-                {Country.getAllCountries().map((c) => (
-                  <MenuItem key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Country"
+                  error={!!errors.country}
+                  helperText={errors?.country?.message}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    setValue("state", "");
+                    setValue("city", "");
+                  }}
+                >
+                  <option value="" disabled>
+                    Select Country
+                  </option>
+                  {Country.getAllCountries().map((c) => (
+                    <option key={c.isoCode} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </WebsiteFormField>
+              </div>
             )}
           />
 
@@ -718,26 +690,29 @@ const NomadListing = () => {
                 ? State.getStatesOfCountry(countryObj.isoCode)
                 : [];
               return (
-                <TextField
-                  {...field}
-                  select
-                  size="small"
-                  label="State"
-                  className="col-span-2 md:col-span-1"
-                  disabled={!countryObj}
-                  error={!!errors.state}
-                  helperText={errors?.state?.message}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    setValue("city", "");
-                  }}
-                >
-                  {states.map((s) => (
-                    <MenuItem key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    select
+                    label="State"
+                    disabled={!countryObj}
+                    error={!!errors.state}
+                    helperText={errors?.state?.message}
+                    onChange={(e) => {
+                      field.onChange(e);
+                      setValue("city", "");
+                    }}
+                  >
+                    <option value="" disabled>
+                      Select State
+                    </option>
+                    {states.map((s) => (
+                      <option key={s.isoCode} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </WebsiteFormField>
+                </div>
               );
             }}
           />
@@ -763,22 +738,25 @@ const NomadListing = () => {
                   ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode)
                   : [];
               return (
-                <TextField
-                  {...field}
-                  select
-                  size="small"
-                  label="City"
-                  className="col-span-2 md:col-span-1"
-                  disabled={!stateObj}
-                  error={!!errors.city}
-                  helperText={errors?.city?.message}
-                >
-                  {cities.map((c) => (
-                    <MenuItem key={c.name} value={c.name}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                <div className="col-span-2 md:col-span-1">
+                  <WebsiteFormField
+                    field={field}
+                    select
+                    label="City"
+                    disabled={!stateObj}
+                    error={!!errors.city}
+                    helperText={errors?.city?.message}
+                  >
+                    <option value="" disabled>
+                      Select City
+                    </option>
+                    {cities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </WebsiteFormField>
+                </div>
               );
             }}
           />
@@ -844,23 +822,22 @@ const NomadListing = () => {
               },
             }}
             render={({ field }) => (
-              <TextField
-                {...field}
-                onChange={(e) => {
-                  field.onChange(e);
-                  const coords = extractLatLngFromMapUrl(e.target.value);
-                  if (coords) {
-                    setValue("latitude", coords.lat);
-                    setValue("longitude", coords.lng);
-                  }
-                }}
-                size="small"
-                label="Google Map URL"
-                fullWidth
-                helperText={errors?.googleMap?.message}
-                error={!!errors.googleMap}
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField
+                  field={field}
+                  onChange={(e) => {
+                    field.onChange(e);
+                    const coords = extractLatLngFromMapUrl(e.target.value);
+                    if (coords) {
+                      setValue("latitude", coords.lat);
+                      setValue("longitude", coords.lng);
+                    }
+                  }}
+                  label="Google Map URL"
+                  helperText={errors?.googleMap?.message}
+                  error={!!errors.googleMap}
+                />
+              </div>
             )}
           />
 
@@ -869,12 +846,9 @@ const NomadListing = () => {
             name="latitude"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Latitude"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Latitude" />
+              </div>
             )}
           />
 
@@ -883,12 +857,9 @@ const NomadListing = () => {
             name="longitude"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Longitude"
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Longitude" />
+              </div>
             )}
           />
 
@@ -921,11 +892,9 @@ const NomadListing = () => {
                     control={control}
                     rules={{ required: "Name is required" }}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
-                        size="small"
+                      <WebsiteFormField
+                        field={field}
                         label="Reviewer Name"
-                        fullWidth
                         helperText={errors?.reviews?.[index]?.name?.message}
                         error={!!errors?.reviews?.[index]?.name}
                       />
@@ -937,38 +906,36 @@ const NomadListing = () => {
                     name={`reviews.${index}.starCount`}
                     control={control}
                     render={({ field }) => (
-                      <TextField
-                        {...field}
+                      <WebsiteFormField
+                        field={field}
                         type="number"
-                        size="small"
                         label="Rating (1-5)"
-                        fullWidth
-                        inputProps={{ min: 1, max: 5 }}
+                        min={1}
+                        max={5}
                       />
                     )}
                   />
                 </div>
 
                 {/* Review text */}
-                <Controller
-                  name={`reviews.${index}.review`}
-                  control={control}
-                  render={({ field }) => (
-                    <TextField
-                      {...field}
-                      size="small"
-                      label="Review"
-                      fullWidth
-                      multiline
-                      minRows={3}
-                      helperText={
-                        errors?.reviews?.[index]?.review?.message
-                      }
-                      error={!!errors?.reviews?.[index]?.review}
-                      sx={{ mt: 2 }} // ✅ adds spacing above this input
-                    />
-                  )}
-                />
+                <div className="mt-4">
+                  <Controller
+                    name={`reviews.${index}.review`}
+                    control={control}
+                    render={({ field }) => (
+                      <WebsiteFormField
+                        field={field}
+                        label="Review"
+                        multiline
+                        minRows={3}
+                        helperText={
+                          errors?.reviews?.[index]?.review?.message
+                        }
+                        error={!!errors?.reviews?.[index]?.review}
+                      />
+                    )}
+                  />
+                </div>
               </div>
             ))}
 

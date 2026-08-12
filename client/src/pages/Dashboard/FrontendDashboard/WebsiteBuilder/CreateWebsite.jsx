@@ -1,8 +1,6 @@
 import { useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import {
-  TextField,
-  MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -10,6 +8,7 @@ import {
   Tooltip
 } from "@mui/material";
 import PageFrame from "../../../../components/Pages/PageFrame";
+import WebsiteFormField from "../../../../components/WebsiteFormField";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
@@ -204,35 +203,30 @@ const AddFieldPanel = ({ onAdd }) => {
   >
           Add Field
         </button> : <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <TextField
+          <WebsiteFormField
     select
-    size="small"
     label="Field Type"
     value={fieldType}
     onChange={(event) => setFieldType(event.target.value)}
-    fullWidth
   >
-            {CAREERS_FORM_FIELD_TYPES.map((fieldTypeOption) => <MenuItem key={fieldTypeOption.value} value={fieldTypeOption.value}>
+            {CAREERS_FORM_FIELD_TYPES.map((fieldTypeOption) => <option key={fieldTypeOption.value} value={fieldTypeOption.value}>
                 {fieldTypeOption.label}
-              </MenuItem>)}
-          </TextField>
-          <TextField
-    size="small"
+              </option>)}
+          </WebsiteFormField>
+          <WebsiteFormField
     label="Field Label"
     value={label}
     onChange={(event) => setLabel(event.target.value)}
     placeholder="Field label"
-    fullWidth
   />
-          {fieldType === "select" ? <TextField
-    size="small"
+          {fieldType === "select" ? <div className="md:col-span-2">
+              <WebsiteFormField
     label="Options"
     value={options}
     onChange={(event) => setOptions(event.target.value)}
     placeholder="Options separated by commas"
-    fullWidth
-    sx={{ gridColumn: { md: "span 2" } }}
-  /> : null}
+  />
+            </div> : null}
           <label className="flex items-center gap-2 text-xs text-slate-600">
             <input
     type="checkbox"
@@ -2354,11 +2348,10 @@ const CreateWebsite = () => {
   />
                     </div> : null}
                   <div className="flex flex-shrink-0 items-center gap-2 flex-wrap">
-                    <TextField
+                    <div className="min-w-[200px]">
+                      <WebsiteFormField
     select
-    size="small"
     label="Select Page"
-    displayEmpty
     value={selectedProductPageOption}
     onChange={(event) => {
       const value = event.target.value;
@@ -2369,18 +2362,16 @@ const CreateWebsite = () => {
       }
       setSelectedProductPageOption("");
     }}
-    sx={{ minWidth: 200 }}
   >
-                      <MenuItem value="" disabled>
-                        Select Page
-                      </MenuItem>
-                      {availableProductPageOptions.map((option) => <MenuItem key={option} value={option}>
+                        <option value="" disabled>
+                          Select Page
+                        </option>
+                        {availableProductPageOptions.map((option) => <option key={option} value={option}>
                           {option}
-                        </MenuItem>)}
-                      <MenuItem value="__new__" className="text-accent font-pmedium">
-                        + Add New Page
-                      </MenuItem>
-                    </TextField>
+                        </option>)}
+                        <option value="__new__">+ Add New Page</option>
+                      </WebsiteFormField>
+                    </div>
                   </div>
                 </div>
                 <p className="mb-3 border-b border-slate-200 pb-2 text-xs text-slate-500">
@@ -2463,12 +2454,12 @@ const CreateWebsite = () => {
                           <Controller
     name={`productDropdownPages.${activeProductPageTab}.name`}
     control={control}
-    render={({ field }) => <TextField {...field} size="small" label="Product Page Name" fullWidth />}
+    render={({ field }) => <WebsiteFormField field={field} label="Product Page Name" />}
   />
                           <Controller
     name={`productDropdownPages.${activeProductPageTab}.slug`}
     control={control}
-    render={({ field }) => <TextField {...field} size="small" label="Product Page Route Slug" fullWidth />}
+    render={({ field }) => <WebsiteFormField field={field} label="Product Page Route Slug" />}
   />
                           </div>
                         </div>
@@ -2482,47 +2473,37 @@ const CreateWebsite = () => {
                             <Controller
     name={`productDropdownPages.${activeProductPageTab}.heroHeading`}
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Hero Heading"
-      fullWidth
     />}
   />
                             <Controller
     name={`productDropdownPages.${activeProductPageTab}.heroSubHeading`}
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Hero Small Text / Sub Heading"
-      fullWidth
     />}
   />
                             <Controller
     name={`productDropdownPages.${activeProductPageTab}.heroMode`}
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      value={field.value || "single"}
-      onChange={(event) => field.onChange(event.target.value)}
+    render={({ field }) => <WebsiteFormField
+      field={{ ...field, value: field.value || "single" }}
       select
-      size="small"
       label="Hero Mode"
-      fullWidth
     >
-                                  <MenuItem value="single">Single Image</MenuItem>
-                                  <MenuItem value="carousel">Carousel</MenuItem>
-                                </TextField>}
+                                  <option value="single">Single Image</option>
+                                  <option value="carousel">Carousel</option>
+                                </WebsiteFormField>}
   />
                             <Controller
     name={`productDropdownPages.${activeProductPageTab}.heroButtonText`}
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Hero Button Text"
-      fullWidth
     />}
   />
                             {String(
@@ -2564,29 +2545,25 @@ const CreateWebsite = () => {
         watch(`productDropdownPages.${activeProductPageTab}.slug`) || ""
       ).trim().toLowerCase();
       const isMenuPage = isMenuPageSlug(currentSlug);
-      return <TextField
+      return <WebsiteFormField
         select
         value={String(isMenuPage ? false : field.value !== false)}
-        size="small"
         label="Enable Lead Form"
-        fullWidth
         onChange={(event) => field.onChange(event.target.value === "true")}
         disabled={isMenuPage}
         helperText={isMenuPage ? "Menu/Cafe pages keep lead form disabled." : "Enabled for all non-menu product pages."}
       >
-                                    <MenuItem value={"true"}>Enabled</MenuItem>
-                                    <MenuItem value={"false"}>Disabled</MenuItem>
-                                  </TextField>;
+                                    <option value={"true"}>Enabled</option>
+                                    <option value={"false"}>Disabled</option>
+                                  </WebsiteFormField>;
     }}
   />
                             <Controller
     name={`productDropdownPages.${activeProductPageTab}.leadFormLabel`}
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="CTA Button Label"
-      fullWidth
     />}
   />
                           </div>
@@ -2646,12 +2623,10 @@ const CreateWebsite = () => {
                                 <Controller
       name="productTitle"
       control={control}
-      render={({ field }) => <TextField
-        {...field}
-        size="small"
+      render={({ field }) => <WebsiteFormField
+        field={field}
         label="Products Section Title"
-        fullWidth
-        inputProps={{ maxLength: CHAR_LIMITS.productTitle }}
+        maxLength={CHAR_LIMITS.productTitle}
       />}
     />
                                 {productFields.map((field, index) => <div
@@ -2675,43 +2650,35 @@ const CreateWebsite = () => {
                                       <Controller
       name={`products.${index}.name`}
       control={control}
-      render={({ field: field2 }) => <TextField
-        {...field2}
-        size="small"
+      render={({ field: field2 }) => <WebsiteFormField
+        field={field2}
         label="Product Name"
-        fullWidth
       />}
     />
                                       <Controller
       name={`products.${index}.type`}
       control={control}
-      render={({ field: field2 }) => <TextField
-        {...field2}
-        size="small"
+      render={({ field: field2 }) => <WebsiteFormField
+        field={field2}
         label="Product Type"
-        fullWidth
       />}
     />
                                       <Controller
       name={`products.${index}.description`}
       control={control}
-      render={({ field: field2 }) => <TextField
-        {...field2}
-        size="small"
+      render={({ field: field2 }) => <WebsiteFormField
+        field={field2}
         label="Product Description"
-        fullWidth
-        inputProps={{ maxLength: 200 }}
+        maxLength={200}
         helperText={`${String(field2.value || "").length}/200`}
       />}
     />
                                       <Controller
       name={`products.${index}.cost`}
       control={control}
-      render={({ field: field2 }) => <TextField
-        {...field2}
-        size="small"
+      render={({ field: field2 }) => <WebsiteFormField
+        field={field2}
         label="Product Cost"
-        fullWidth
       />}
     />
                                     </div>
@@ -2905,11 +2872,9 @@ const CreateWebsite = () => {
                     <Controller
     name="aboutPageIntro"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="About Page Heading / Hero Intro"
-      fullWidth
       placeholder="About {Company Name}"
     />}
   />
@@ -2929,11 +2894,9 @@ const CreateWebsite = () => {
                           <Controller
     name={`about.${index}.text`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label={`Shared About Paragraph ${index + 1}`}
-      fullWidth
       multiline
       minRows={3}
     />}
@@ -2951,11 +2914,9 @@ const CreateWebsite = () => {
                   <Controller
     name="aboutPageStory"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Our Story"
-      fullWidth
       multiline
       minRows={4}
     />}
@@ -2964,11 +2925,9 @@ const CreateWebsite = () => {
                     <Controller
     name="aboutPageMission"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Mission"
-      fullWidth
       multiline
       minRows={3}
     />}
@@ -2976,11 +2935,9 @@ const CreateWebsite = () => {
                     <Controller
     name="aboutPageVision"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Vision"
-      fullWidth
       multiline
       minRows={3}
     />}
@@ -2989,11 +2946,9 @@ const CreateWebsite = () => {
                   <Controller
     name="aboutPageValues"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Values (comma separated)"
-      fullWidth
       placeholder="Community, Trust, Transparency"
     />}
   />
@@ -3029,23 +2984,21 @@ const CreateWebsite = () => {
                             <Controller
     name={`founders.${index}.name`}
     control={control}
-    render={({ field: field2 }) => <TextField {...field2} size="small" label="Name & Title (e.g. John Doe – Founder & CEO)" fullWidth />}
+    render={({ field: field2 }) => <WebsiteFormField field={field2} label="Name & Title (e.g. John Doe – Founder & CEO)" />}
   />
                             <Controller
     name={`founders.${index}.role`}
     control={control}
-    render={({ field: field2 }) => <TextField {...field2} size="small" label="Role / Designation" fullWidth />}
+    render={({ field: field2 }) => <WebsiteFormField field={field2} label="Role / Designation" />}
   />
                           </div>
                           <div className="mt-3">
                             <Controller
     name={`founders.${index}.bio`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Bio / Description"
-      fullWidth
       multiline
       minRows={4}
     />}
@@ -3055,11 +3008,9 @@ const CreateWebsite = () => {
                             <Controller
     name={`founders.${index}.highlights`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Highlights (one per line, e.g. – 20 Years Experience)"
-      fullWidth
       multiline
       minRows={4}
       placeholder={"\u2013 20 Years Experience\n\u2013 15 Years in Startups\n\u2013 4 Startups"}
@@ -3086,12 +3037,10 @@ const CreateWebsite = () => {
                       <Controller
     name="aboutPageTeamHeading"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Our Team Heading"
       placeholder="Our Team"
-      fullWidth
     />}
   />
                     </div>
@@ -3116,16 +3065,14 @@ const CreateWebsite = () => {
                             <Controller
     name={`aboutPageImageCards.${index}.title`}
     control={control}
-    render={({ field: field2 }) => <TextField {...field2} size="small" label="Name / Title" fullWidth />}
+    render={({ field: field2 }) => <WebsiteFormField field={field2} label="Name / Title" />}
   />
                             <Controller
     name={`aboutPageImageCards.${index}.description`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Role / Description"
-      fullWidth
     />}
   />
                           </div>
@@ -3171,12 +3118,10 @@ const CreateWebsite = () => {
                   <Controller
     name="galleryPageHeading"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Gallery Heading Text"
       placeholder="Gallery Images"
-      fullWidth
     />}
   />
                   <div>
@@ -3227,23 +3172,19 @@ const CreateWebsite = () => {
                   <Controller
     name="partnerPageHeading"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Page Heading"
       placeholder="Become A Partner"
-      fullWidth
     />}
   />
                   <Controller
     name="partnerPageContent"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Body Content (left side)"
       placeholder="We are open to partnerships with..."
-      fullWidth
       multiline
       minRows={6}
     />}
@@ -3251,12 +3192,10 @@ const CreateWebsite = () => {
                   <Controller
     name="partnerFormTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Form Title (right side)"
       placeholder={`Partner With ${values?.companyName || "Us"}`}
-      fullWidth
     />}
   />
                   <p className="text-xs text-slate-500">
@@ -3290,25 +3229,21 @@ const CreateWebsite = () => {
                   <Controller
     name="careersPageHeading"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Page Heading"
       placeholder="Join Our Team"
-      fullWidth
     />}
   />
                   <Controller
     name="careersPageIntro"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Introduction Text"
       placeholder="Tell visitors about your company and why they should join..."
       multiline
       minRows={6}
-      fullWidth
     />}
   />
                   <div>
@@ -3378,11 +3313,9 @@ const CreateWebsite = () => {
                           <Controller
     name={`careersFormFields.${index}.label`}
     control={control}
-    render={({ field: labelField }) => <TextField
-      {...labelField}
-      size="small"
+    render={({ field: labelField }) => <WebsiteFormField
+      field={labelField}
       placeholder="Field label"
-      fullWidth
     />}
   />
                           <div className="flex items-center gap-1">
@@ -3455,21 +3388,19 @@ const CreateWebsite = () => {
                       <Controller
     name="websiteEmail"
     control={control}
-    render={({ field }) => <TextField {...field} size="small" label="Email" fullWidth />}
+    render={({ field }) => <WebsiteFormField field={field} label="Email" />}
   />
                       <Controller
     name="phone"
     control={control}
-    render={({ field }) => <TextField {...field} size="small" label="Phone" fullWidth />}
+    render={({ field }) => <WebsiteFormField field={field} label="Phone" />}
   />
                       <Controller
     name="address"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Address"
-      fullWidth
       multiline
       minRows={2}
     />}
@@ -3477,11 +3408,9 @@ const CreateWebsite = () => {
                       <Controller
     name="mapUrl"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Map Embed URL"
-      fullWidth
     />}
   />
                     </div>
@@ -3491,32 +3420,33 @@ const CreateWebsite = () => {
                     <Controller
     name="contactBusinessHours"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Business Hours (Optional)"
       placeholder="Mon-Fri 9:00 AM - 7:00 PM"
-      fullWidth
     />}
   />
                     <Controller
     name="contactEnableInquiryForm"
     control={control}
-    render={({ field }) => <TextField {...field} select size="small" label="Enable Inquiry Form" fullWidth>
-                          <MenuItem value={true}>Enabled</MenuItem>
-                          <MenuItem value={false}>Disabled</MenuItem>
-                        </TextField>}
+    render={({ field }) => <WebsiteFormField
+      select
+      value={String(field.value !== false)}
+      onChange={(event) => field.onChange(event.target.value === "true")}
+      label="Enable Inquiry Form"
+    >
+                          <option value="true">Enabled</option>
+                          <option value="false">Disabled</option>
+                        </WebsiteFormField>}
   />
                   </div>
 
                   <Controller
     name="contactInquirySuccessMessage"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Inquiry Submit Success Message"
-      fullWidth
       multiline
       minRows={2}
     />}
@@ -3543,23 +3473,15 @@ const CreateWebsite = () => {
     control={control}
     rules={{ required: "Company name is required" }}
     render={({ field }) => <Tooltip title="Company name cannot be changed" arrow>
-      <TextField
-        {...field}
-        size="small"
-        label="Company Name"
-        fullWidth
-        disabled
-        sx={{
-          "& .MuiInputBase-input.Mui-disabled": {
-            WebkitTextFillColor: "#94a3b8"
-          },
-          "& .MuiOutlinedInput-notchedOutline": {
-            borderColor: "#e2e8f0"
-          }
-        }}
-        helperText={errors?.companyName?.message}
-        error={!!errors.companyName}
-      />
+      <div>
+        <WebsiteFormField
+          field={field}
+          label="Company Name"
+          disabled
+          helperText={errors?.companyName?.message}
+          error={!!errors.companyName}
+        />
+      </div>
     </Tooltip>}
   />
 
@@ -3596,12 +3518,10 @@ const CreateWebsite = () => {
                 <Controller
     name="title"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Hero Title"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.heroTitle }}
+      maxLength={CHAR_LIMITS.heroTitle}
       helperText={getHelperText(
         errors?.title?.message,
         values?.title,
@@ -3613,12 +3533,10 @@ const CreateWebsite = () => {
                 <Controller
     name="subTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Hero Sub Title"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.heroSubTitle }}
+      maxLength={CHAR_LIMITS.heroSubTitle}
       helperText={getHelperText(
         errors?.subTitle?.message,
         values?.subTitle,
@@ -3630,13 +3548,11 @@ const CreateWebsite = () => {
                 <Controller
     name="CTAButtonText"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Call To Action Button Text"
       placeholder={ctaPlaceholder}
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.ctaButtonText }}
+      maxLength={CHAR_LIMITS.ctaButtonText}
       helperText={getHelperText(
         errors?.CTAButtonText?.message,
         values?.CTAButtonText,
@@ -3689,12 +3605,9 @@ const CreateWebsite = () => {
                 <Controller
     name="aboutTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      value={field.value || ""}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={{ ...field, value: field.value || "" }}
       label="About Section Heading"
-      fullWidth
       placeholder="About Our Vision"
     />}
   />
@@ -3715,14 +3628,12 @@ const CreateWebsite = () => {
                     <Controller
     name={`about.${index}.text`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="About Paragraph"
-      fullWidth
       multiline
       minRows={3}
-      inputProps={{ maxLength: CHAR_LIMITS.aboutText }}
+      maxLength={CHAR_LIMITS.aboutText}
       helperText={getHelperText(
         errors?.about?.[index]?.text?.message,
         values?.about?.[index]?.text,
@@ -3772,13 +3683,11 @@ const CreateWebsite = () => {
                 <Controller
     name="productTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Home Products Section Heading"
-      fullWidth
       placeholder="Our Products"
-      inputProps={{ maxLength: CHAR_LIMITS.productTitle }}
+      maxLength={CHAR_LIMITS.productTitle}
     />}
   />
 
@@ -3801,26 +3710,20 @@ const CreateWebsite = () => {
                           <Controller
       name={`productDropdownPages.${index}.homeCardHeading`}
       control={control}
-      render={({ field }) => <TextField
-        {...field}
-        value={field.value || ""}
-        size="small"
+      render={({ field }) => <WebsiteFormField
+        field={{ ...field, value: field.value || "" }}
         label="Card Heading"
-        fullWidth
         placeholder={pageName}
       />}
     />
                           <Controller
       name={`productDropdownPages.${index}.homeCardSubText`}
       control={control}
-      render={({ field }) => <TextField
-        {...field}
-        value={field.value || ""}
-        size="small"
+      render={({ field }) => <WebsiteFormField
+        field={{ ...field, value: field.value || "" }}
         label="Card Sub Text"
-        fullWidth
         placeholder="Short description for this product page (max 200 chars)"
-        inputProps={{ maxLength: 200 }}
+        maxLength={200}
         helperText={`${String(field.value || "").length}/200`}
       />}
     />
@@ -3991,8 +3894,8 @@ const CreateWebsite = () => {
                               <button type="button" onClick={() => removeFaq(idx)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
                             </div>
                           </div>
-                          <TextField value={faq.question} onChange={(e) => updateFaq(idx, "question", e.target.value)} size="small" label="Question" fullWidth inputProps={{ maxLength: 200 }} />
-                          <TextField value={faq.answer} onChange={(e) => updateFaq(idx, "answer", e.target.value)} size="small" label="Answer" fullWidth multiline minRows={2} inputProps={{ maxLength: 500 }} />
+                          <WebsiteFormField value={faq.question} onChange={(e) => updateFaq(idx, "question", e.target.value)} label="Question" maxLength={200} />
+                          <WebsiteFormField value={faq.answer} onChange={(e) => updateFaq(idx, "answer", e.target.value)} label="Answer" multiline minRows={2} maxLength={500} />
                         </div>)}
                       {faqs.length < 10 ? <button type="button" onClick={addFaq} className="text-[#2563EB] text-sm font-semibold hover:underline inline-flex items-center gap-1 transition-all w-fit">+ Add FAQ</button> : <p className="text-xs text-slate-400">Maximum 10 FAQs reached.</p>}
                     </div>;
@@ -4012,12 +3915,10 @@ const CreateWebsite = () => {
                 <Controller
     name="productTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label={sectionTitles[selectedVertical] || "Products Section Title"}
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.productTitle }}
+      maxLength={CHAR_LIMITS.productTitle}
       helperText={getHelperText(
         errors?.productTitle?.message,
         values?.productTitle,
@@ -4044,12 +3945,10 @@ const CreateWebsite = () => {
                       <Controller
     name={`products.${index}.name`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Product Name"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.productName }}
+      maxLength={CHAR_LIMITS.productName}
       helperText={getHelperText(
         errors?.products?.[index]?.name?.message,
         values?.products?.[index]?.name,
@@ -4061,12 +3960,10 @@ const CreateWebsite = () => {
                       <Controller
     name={`products.${index}.type`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Product Type"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.productType }}
+      maxLength={CHAR_LIMITS.productType}
       helperText={getHelperText(
         errors?.products?.[index]?.type?.message,
         values?.products?.[index]?.type,
@@ -4079,14 +3976,10 @@ const CreateWebsite = () => {
                       <Controller
     name={`products.${index}.description`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Product Description"
-      fullWidth
-      inputProps={{
-        maxLength: CHAR_LIMITS.productDescription
-      }}
+      maxLength={CHAR_LIMITS.productDescription}
       helperText={getHelperText(
         errors?.products?.[index]?.description?.message,
         values?.products?.[index]?.description,
@@ -4099,11 +3992,9 @@ const CreateWebsite = () => {
                       <Controller
     name={`products.${index}.cost`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Product Cost"
-      fullWidth
       helperText={errors?.products?.[index]?.cost?.message}
       error={!!errors?.products?.[index]?.cost}
     />}
@@ -4174,12 +4065,10 @@ const CreateWebsite = () => {
                 <Controller
     name="galleryTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Gallery Section Title"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.galleryTitle }}
+      maxLength={CHAR_LIMITS.galleryTitle}
       helperText={getHelperText(
         errors?.galleryTitle?.message,
         values?.galleryTitle,
@@ -4216,12 +4105,10 @@ const CreateWebsite = () => {
                 <Controller
     name="testimonialTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Testimonials Section Title"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.testimonialTitle }}
+      maxLength={CHAR_LIMITS.testimonialTitle}
       helperText={getHelperText(
         errors?.testimonialTitle?.message,
         values?.testimonialTitle,
@@ -4255,14 +4142,10 @@ const CreateWebsite = () => {
                         <Controller
     name={`testimonials.${index}.name`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Name"
-      fullWidth
-      inputProps={{
-        maxLength: CHAR_LIMITS.testimonialName
-      }}
+      maxLength={CHAR_LIMITS.testimonialName}
       helperText={getHelperText(
         errors?.testimonials?.[index]?.name?.message,
         values?.testimonials?.[index]?.name,
@@ -4274,13 +4157,12 @@ const CreateWebsite = () => {
                         <Controller
     name={`testimonials.${index}.rating`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       type="number"
-      size="small"
       label="Rating (1-5)"
-      fullWidth
-      inputProps={{ min: 1, max: 5 }}
+      min={1}
+      max={5}
       helperText={errors?.testimonials?.[index]?.rating?.message}
       error={!!errors?.testimonials?.[index]?.rating}
     />}
@@ -4289,16 +4171,12 @@ const CreateWebsite = () => {
                       <Controller
     name={`testimonials.${index}.testimony`}
     control={control}
-    render={({ field: field2 }) => <TextField
-      {...field2}
-      size="small"
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
       label="Testimony"
-      fullWidth
       multiline
       minRows={4}
-      inputProps={{
-        maxLength: CHAR_LIMITS.testimonialTestimony
-      }}
+      maxLength={CHAR_LIMITS.testimonialTestimony}
       helperText={getHelperText(
         errors?.testimonials?.[index]?.testimony?.message,
         values?.testimonials?.[index]?.testimony,
@@ -4349,12 +4227,9 @@ const CreateWebsite = () => {
                 <Controller
     name="logoCarousel.title"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      value={field.value || ""}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={{ ...field, value: field.value || "" }}
       label="Section Heading"
-      fullWidth
       placeholder="Trusted by"
     />}
   />
@@ -4387,12 +4262,10 @@ const CreateWebsite = () => {
                 <Controller
     name="contactTitle"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Contact Section Title"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.contactTitle }}
+      maxLength={CHAR_LIMITS.contactTitle}
       helperText={getHelperText(
         errors?.contactTitle?.message,
         values?.contactTitle,
@@ -4403,18 +4276,18 @@ const CreateWebsite = () => {
                 <Controller
     name="mapUrl"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      onChange={(e) => {
-        const extractIframeSrc = (val = "") => val.match(/src=["']([^"']+)["']/i)?.[1] || val;
-        const raw = e.target.value;
-        const cleaned = extractIframeSrc(raw).trim();
-        field.onChange(cleaned);
+    render={({ field }) => <WebsiteFormField
+      field={{
+        ...field,
+        onChange: (e) => {
+          const extractIframeSrc = (val = "") => val.match(/src=["']([^"']+)["']/i)?.[1] || val;
+          const raw = e.target.value;
+          const cleaned = extractIframeSrc(raw).trim();
+          field.onChange(cleaned);
+        }
       }}
-      size="small"
       label="Embed Map URL"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.mapUrl }}
+      maxLength={CHAR_LIMITS.mapUrl}
       helperText={getHelperText(
         errors?.mapUrl?.message,
         values?.mapUrl,
@@ -4426,12 +4299,10 @@ const CreateWebsite = () => {
                 <Controller
     name="websiteEmail"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Email"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.websiteEmail }}
+      maxLength={CHAR_LIMITS.websiteEmail}
       helperText={getHelperText(
         errors?.websiteEmail?.message,
         values?.websiteEmail,
@@ -4443,12 +4314,10 @@ const CreateWebsite = () => {
                 <Controller
     name="phone"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Phone"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.phone }}
+      maxLength={CHAR_LIMITS.phone}
       helperText={getHelperText(
         errors?.phone?.message,
         values?.phone,
@@ -4460,14 +4329,12 @@ const CreateWebsite = () => {
                 <Controller
     name="address"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Address"
-      fullWidth
       multiline
       minRows={2}
-      inputProps={{ maxLength: CHAR_LIMITS.address }}
+      maxLength={CHAR_LIMITS.address}
       helperText={getHelperText(
         errors?.address?.message,
         values?.address,
@@ -4491,14 +4358,10 @@ const CreateWebsite = () => {
                 <Controller
     name="registeredCompanyName"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Registered Company Name"
-      fullWidth
-      inputProps={{
-        maxLength: CHAR_LIMITS.registeredCompanyName
-      }}
+      maxLength={CHAR_LIMITS.registeredCompanyName}
       helperText={getHelperText(
         errors?.registeredCompanyName?.message,
         values?.registeredCompanyName,
@@ -4510,12 +4373,10 @@ const CreateWebsite = () => {
                 <Controller
     name="copyrightText"
     control={control}
-    render={({ field }) => <TextField
-      {...field}
-      size="small"
+    render={({ field }) => <WebsiteFormField
+      field={field}
       label="Copyright Text"
-      fullWidth
-      inputProps={{ maxLength: CHAR_LIMITS.copyrightText }}
+      maxLength={CHAR_LIMITS.copyrightText}
       helperText={getHelperText(
         errors?.copyrightText?.message,
         values?.copyrightText,
@@ -4560,11 +4421,9 @@ const CreateWebsite = () => {
                                   {platform.label}
                                 </span>
                               </label>
-                              <TextField
+                              <WebsiteFormField
         value={current.link || ""}
         onChange={(e) => field.onChange({ ...current, link: e.target.value })}
-        size="small"
-        fullWidth
         disabled={current.enabled !== true}
         label={platform.key === "whatsapp" ? "WhatsApp Number" : `${platform.label} Link`}
         placeholder={platform.placeholder}

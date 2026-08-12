@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { TextField, IconButton, Avatar, Box } from "@mui/material";
+import { IconButton, Avatar, Box } from "@mui/material";
 import { LuImageUp } from "react-icons/lu";
 import { MdDelete } from "react-icons/md";
 import MuiModal from "./MuiModal";
@@ -96,24 +96,31 @@ const UploadFileInput = ({
         onChange={handleFileChange}
       />
 
-      {/* Display TextField Trigger */}
-      <TextField
-        size="small"
-        variant="outlined"
-        fullWidth
-        label={label}
-        disabled={disabled}
-        value={value?.name || ""}
-        placeholder="Choose a file..."
-        InputProps={{
-          readOnly: true,
-          endAdornment: (
-            <IconButton component="label" htmlFor={id ?? "file-upload"} color="primary">
-              <LuImageUp />
-            </IconButton>
-          ),
-        }}
-      />
+      {/* Display Trigger */}
+      <div className="flex flex-col">
+        {label ? (
+          <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">
+            {label}
+          </label>
+        ) : null}
+        <div
+          className={`mt-1 flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-pmedium ${
+            disabled ? "border-slate-200/60 bg-slate-50 text-slate-400" : "border-slate-200/60 bg-white"
+          }`}
+        >
+          <span className={`truncate ${value?.name ? "text-[#0F172A]" : "text-slate-400"}`}>
+            {value?.name || "Choose a file..."}
+          </span>
+          <label
+            htmlFor={id ?? "file-upload"}
+            className={`shrink-0 rounded p-1 text-[#2563EB] hover:bg-[#2563EB]/10 ${
+              disabled ? "pointer-events-none opacity-40" : "cursor-pointer"
+            }`}
+          >
+            <LuImageUp size={16} />
+          </label>
+        </div>
+      </div>
 
       {/* Preview and Delete */}
       {value && previewUrl && (
