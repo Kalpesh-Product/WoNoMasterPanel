@@ -189,6 +189,15 @@ import {
   WorkationTable,
   BecomeAContributorTable,
 } from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
+import ValueAddsPartners from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartners";
+import {
+  VisaSupportPartnersTable,
+  ActivationSupportPartnersTable,
+  CompanySetupPartnersTable,
+  ConsultationPartnersTable,
+  WorkationPartnersTable,
+  BecomeAContributorPartnersTable,
+} from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
@@ -447,6 +456,28 @@ export const routes = createBrowserRouter([
                   {
                     path: "company-reviews/:reviewTab?",
                     element: <CompanyReviews />,
+                  },
+                  {
+                    path: "value-adds-partners",
+                    element: <ValueAddsPartners />,
+                    children: [
+                      { index: true, element: <Navigate to="visa-support" replace /> },
+                      { path: "visa-support", element: <VisaSupportPartnersTable /> },
+                      {
+                        path: "activation-support",
+                        element: <ActivationSupportPartnersTable />,
+                      },
+                      {
+                        path: "company-setup",
+                        element: <CompanySetupPartnersTable />,
+                      },
+                      { path: "consultation", element: <ConsultationPartnersTable /> },
+                      { path: "workation", element: <WorkationPartnersTable /> },
+                      {
+                        path: "become-a-contributor",
+                        element: <BecomeAContributorPartnersTable />,
+                      },
+                    ],
                   },
                   {
                     path: "destinations-data",

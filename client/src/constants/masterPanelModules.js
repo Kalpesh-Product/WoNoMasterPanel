@@ -22,6 +22,7 @@ import {
   LuUserRound,
   LuPanelLeft,
   LuServer,
+  LuHandshake,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -83,6 +84,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Reviews",
             icon: LuMessageSquareText,
             route: "/dashboard/company-reviews",
+          },
+          {
+            id: 26,
+            key: "dashboard.value-adds-partners",
+            title: "Value Adds Partners",
+            icon: LuHandshake,
+            route: "/dashboard/value-adds-partners",
           },
         ],
       },

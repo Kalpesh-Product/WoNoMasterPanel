@@ -15,6 +15,7 @@ const masterPanelModules = [
       { key: "dashboard.profile", label: "Profile" },
       { key: "dashboard.logs", label: "Logs" },
       { key: "dashboard.reviews", label: "Reviews" },
+      { key: "dashboard.value-adds-partners", label: "Value Adds Partners" },
       { key: "dashboard.destinations-data", label: "Destinations Data" },
       { key: "dashboard.world-ranking-weights", label: "World Ranking Weights" },
       { key: "dashboard.visa-countries", label: "Visa Countries" },

@@ -1,0 +1,227 @@
+import { useMemo, useState } from "react";
+import { BriefcaseBusiness, Calendar, Eye, Mail, Phone, Search, Target, Users, X } from "lucide-react";
+import { statusPillClass } from "../../../lib/status-pill";
+
+const formatDateLabel = (value) => {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+};
+
+const initials = (value) =>
+  String(value || "VP")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const ValueAddsPartnersTable = ({ title, rows, columns }) => {
+  const [search, setSearch] = useState("");
+  const [selectedRow, setSelectedRow] = useState(null);
+
+  const filteredRows = useMemo(() => {
+    if (!search.trim()) return rows;
+    const query = search.toLowerCase();
+    return rows.filter((row) =>
+      columns.some((column) =>
+        String(row[column.field] ?? "").toLowerCase().includes(query),
+      ),
+    );
+  }, [columns, rows, search]);
+
+  const activeCount = rows.filter((row) => row.status === "Active").length;
+  const pendingCount = rows.filter((row) => row.status === "Pending").length;
+
+  return (
+    <div className="flex flex-col gap-4 text-slate-700 font-sans">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
+        {[
+          { label: `Total ${title}`, value: rows.length, icon: Target, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
+          { label: "Active", value: activeCount, icon: Users, accent: "border-l-emerald-500", textColor: "text-emerald-600", bgColor: "bg-emerald-50" },
+          { label: "Pending", value: pendingCount, icon: Calendar, accent: "border-l-amber-500", textColor: "text-amber-600", bgColor: "bg-amber-50" },
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.label}
+              className={`bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 shadow-sm flex justify-between items-center transition-all hover:shadow-md ${item.accent}`}
+            >
+              <div className="min-w-0">
+                <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${item.textColor}`}>
+                  {item.label}
+                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{item.value}</p>
+              </div>
+              <div className={`p-2 rounded-2xl ${item.bgColor} ${item.textColor} shrink-0`}>
+                <Icon size={16} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-50/50">
+          <div className="relative flex-1 min-w-[180px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+            <input
+              type="text"
+              placeholder={`Search ${title.toLowerCase()} partners...`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+              <tr>
+                <th className="px-5 py-4">Partner</th>
+                <th className="px-5 py-4">Company</th>
+                <th className="px-5 py-4">Region</th>
+                <th className="px-5 py-4">Contact</th>
+                <th className="px-5 py-4 text-center">Status</th>
+                <th className="px-5 py-4">Last Updated</th>
+                <th className="px-5 py-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100/60">
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">
+                    No matching partners found.
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
+                  <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
+                          {initials(row.partnerName)}
+                        </div>
+                        <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[170px]">
+                          {row.partnerName || "--"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                      {row.companyName || "--"}
+                    </td>
+                    <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                      {row.region || "--"}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="text-[11px] font-pmedium text-slate-600 space-y-0.5">
+                        <p className="flex items-center gap-1">
+                          <Phone size={10} className="text-slate-400" />
+                          {row.phone || "--"}
+                        </p>
+                        <p className="flex items-center gap-1">
+                          <Mail size={10} className="text-slate-400" />
+                          {row.email || "--"}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <span className={statusPillClass(row.status || "Pending")}>
+                        {row.status || "Pending"}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
+                      {formatDateLabel(row.lastUpdated)}
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedRow(row)}
+                        title="View details"
+                        className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                      >
+                        <Eye size={15} strokeWidth={2.5} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selectedRow ? (
+        <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setSelectedRow(null)}>
+          <div
+            className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-[#2563EB] text-white">
+                  {initials(selectedRow.partnerName)}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800 truncate">
+                    {selectedRow.partnerName}
+                  </h2>
+                  <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">{title} Partner</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedRow(null)}
+                className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto bg-white">
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3 flex items-center gap-2">
+                  <BriefcaseBusiness size={14} /> Partner Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  {columns.map((column) => (
+                    <div key={column.field}>
+                      <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">
+                        {column.headerName}
+                      </p>
+                      <p className="text-[12px] font-pmedium text-slate-900 break-words">
+                        {column.field === "lastUpdated"
+                          ? formatDateLabel(selectedRow[column.field])
+                          : String(selectedRow[column.field] ?? "--")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Notes
+                </h3>
+                <div className="bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  <p className="text-[12px] font-pmedium leading-5 text-slate-700">
+                    {selectedRow.notes || "--"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+export default ValueAddsPartnersTable;
