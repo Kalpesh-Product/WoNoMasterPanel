@@ -1,3 +1,7 @@
+import axios from "axios";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { NOMADS_BACKEND_URL } from "../../../constants/api";
 import ValueAddsPartnersTable from "./ValueAddsPartnersTable";
 
 const commonColumns = [
@@ -12,32 +16,6 @@ const commonColumns = [
 ];
 
 const partnerRows = {
-  "visa-support": [
-    {
-      id: "visa-1",
-      partnerName: "Global Visa Desk",
-      companyName: "WONO Mobility",
-      region: "UAE",
-      contactPerson: "Aarav Mehta",
-      email: "visa.desk@example.com",
-      phone: "+971 50 000 1842",
-      status: "Active",
-      lastUpdated: "2026-08-02",
-      notes: "Handles business visa documentation and application guidance.",
-    },
-    {
-      id: "visa-2",
-      partnerName: "Nomad Entry Services",
-      companyName: "Nomad Assist",
-      region: "Portugal",
-      contactPerson: "Sara Collins",
-      email: "entry@example.com",
-      phone: "+351 21 000 0134",
-      status: "Pending",
-      lastUpdated: "2026-07-28",
-      notes: "Pending compliance document verification.",
-    },
-  ],
   "activation-support": [
     {
       id: "activation-1",
@@ -122,13 +100,67 @@ const partnerRows = {
   ],
 };
 
-export const VisaSupportPartnersTable = () => (
-  <ValueAddsPartnersTable
-    title="Visa Support"
-    rows={partnerRows["visa-support"]}
-    columns={commonColumns}
-  />
-);
+const visaSupportColumns = [
+  { field: "partnerName", headerName: "Partner Name" },
+  { field: "country", headerName: "Country" },
+  { field: "city", headerName: "City" },
+  { field: "website", headerName: "Website" },
+  { field: "email", headerName: "Email" },
+  { field: "phone", headerName: "Phone" },
+  { field: "agentNumber", headerName: "Agent No." },
+  { field: "lastUpdated", headerName: "Last Updated" },
+];
+
+const flattenVisaSupportPartners = (records = []) =>
+  records.flatMap((record) =>
+    (record.partners || []).map((partner, index) => ({
+      id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
+      partnerName: partner.name || `Agent ${partner.agentNumber || index + 1}`,
+      companyName: partner.website || "--",
+      region: [record.city, record.country].filter(Boolean).join(", "),
+      contactPerson: `Agent ${partner.agentNumber || index + 1}`,
+      country: record.country || "--",
+      city: record.city || "--",
+      website: partner.website || "",
+      email: partner.email || "",
+      phone: partner.contact || "",
+      agentNumber: partner.agentNumber || index + 1,
+      status: "Active",
+      lastUpdated: record.updatedAt || record.createdAt,
+      notes: `Visa support partner for ${[record.city, record.country].filter(Boolean).join(", ") || "this location"}.`,
+    })),
+  );
+
+export const VisaSupportPartnersTable = () => {
+  const { data = [], isPending, isError, error } = useQuery({
+    queryKey: ["valueAddsPartners", "visa-support"],
+    queryFn: async () => {
+      const response = await axios.get(`${NOMADS_BACKEND_URL}/api/visa-support/partners`);
+      return response?.data?.data || [];
+    },
+  });
+
+  const rows = useMemo(() => flattenVisaSupportPartners(data), [data]);
+
+  return (
+    <ValueAddsPartnersTable
+      title="Visa Support"
+      rows={rows}
+      columns={visaSupportColumns}
+      isLoading={isPending}
+      isError={isError}
+      errorMessage={error?.response?.data?.message || error?.message}
+      emptyMessage="No visa support partners found."
+      tableLabels={{ company: "Website" }}
+      locationColumns={[
+        { field: "country", headerName: "Country" },
+        { field: "city", headerName: "City" },
+      ]}
+      splitContact
+      companyAfterContact
+    />
+  );
+};
 
 export const ActivationSupportPartnersTable = () => (
   <ValueAddsPartnersTable
