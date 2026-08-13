@@ -453,6 +453,43 @@ const extractDraftTextList = (items = []) =>
     })
     .filter(Boolean);
 
+const parseIdList = (value) => {
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.map((id) => String(id || "").trim()).filter(Boolean) : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const deleteImagesFromS3ForDraft = async (images = []) => {
+  await Promise.all(
+    (Array.isArray(images) ? images : []).map(async (img) => {
+      if (img?.url) {
+        try {
+          await deleteFileFromS3ByUrl(img.url);
+        } catch (err) {
+          console.error(`Failed to delete ${img.url}:`, err);
+        }
+      }
+    }),
+  );
+};
+
+// Drops images the builder no longer references (deleted from a gallery/carousel
+// in the UI) and deletes them from S3. `keepIds` is undefined when the client
+// didn't send an id list for this field at all (older client, field not in play)
+// — in that case the array is left untouched rather than being wiped, since an
+// absent list is not the same as an explicit empty list.
+const reconcileImageArrayByKeepIds = async (existingArr, keepIdsField) => {
+  const arr = Array.isArray(existingArr) ? existingArr : [];
+  if (keepIdsField === undefined) return arr;
+  const keepIds = new Set(parseIdList(keepIdsField));
+  const toDelete = arr.filter((img) => !keepIds.has(String(img?.id || "")));
+  if (toDelete.length) await deleteImagesFromS3ForDraft(toDelete);
+  return arr.filter((img) => keepIds.has(String(img?.id || "")));
+};
+
 const ensureNomadsCompanyRecord = async ({
   template,
   hostCompany,
@@ -1063,6 +1100,16 @@ const saveTemplateDraft = async (req, res) => {
       template.careersHeroImage = uploaded[0] || template.careersHeroImage;
     }
 
+    // Images the user removed in the builder (gallery/hero/logo-carousel/about-page
+    // tiles) never reached the DB before this reconciliation existed — the draft
+    // autosave only ever appended new uploads, so a "deleted" image just kept
+    // getting handed back on the next load. The client sends the id list of images
+    // it still wants kept (req.body.*ImageIds); anything persisted but missing from
+    // that list gets removed here and purged from S3.
+    template.heroImages = await reconcileImageArrayByKeepIds(
+      template.heroImages,
+      req.body.heroImageIds,
+    );
     if (filesByField.heroImages?.length) {
       const uploaded = await uploadImagesForDraft(
         filesByField.heroImages,
@@ -1072,6 +1119,10 @@ const saveTemplateDraft = async (req, res) => {
       template.heroImages = [...(template.heroImages || []), ...uploaded];
     }
 
+    template.gallery = await reconcileImageArrayByKeepIds(
+      template.gallery,
+      req.body.galleryImageIds,
+    );
     if (filesByField.gallery?.length) {
       const uploaded = await uploadImagesForDraft(
         filesByField.gallery,
@@ -1081,20 +1132,28 @@ const saveTemplateDraft = async (req, res) => {
       template.gallery = [...(template.gallery || []), ...uploaded];
     }
 
+    if (!template.logoCarousel)
+      template.logoCarousel = { enabled: false, title: "", logos: [] };
+    template.logoCarousel.logos = await reconcileImageArrayByKeepIds(
+      template.logoCarousel.logos,
+      req.body.logoCarouselImageIds,
+    );
     if (filesByField.logoCarouselLogos?.length) {
       const uploaded = await uploadImagesForDraft(
         filesByField.logoCarouselLogos,
         `${baseFolder}/logoCarousel`,
         12,
       );
-      if (!template.logoCarousel)
-        template.logoCarousel = { enabled: false, title: "", logos: [] };
       template.logoCarousel.logos = [
         ...(template.logoCarousel.logos || []),
         ...uploaded,
       ];
     }
 
+    template.aboutPageImages = await reconcileImageArrayByKeepIds(
+      template.aboutPageImages,
+      req.body.aboutPageImageIds,
+    );
     if (filesByField.aboutPageImages?.length) {
       const uploaded = await uploadImagesForDraft(
         filesByField.aboutPageImages,
@@ -3345,6 +3404,51 @@ const editTemplate = async (req, res, next) => {
         40,
       );
       template.gallery.push(...newGallery);
+    }
+
+    // === TRUSTED BY / LOGO CAROUSEL (max 12 total) ===
+    // The Object.assign above only carried forward the enabled/title/logos as
+    // they already were — it never uploaded newly picked logos or deleted ones
+    // the user removed, so publish silently ignored trusted-by logo edits.
+    if (!template.logoCarousel) {
+      template.logoCarousel = { enabled: false, title: "", logos: [] };
+    }
+    const logoCarouselKeepIds = safeParse(req.body.logoCarouselImageIds, []);
+    if (req.body.logoCarouselImageIds !== undefined) {
+      const toDelete = (template.logoCarousel.logos || []).filter(
+        (img) => !logoCarouselKeepIds.includes(img.id),
+      );
+      await deleteImagesFromS3(toDelete);
+      template.logoCarousel.logos = (template.logoCarousel.logos || []).filter(
+        (img) => logoCarouselKeepIds.includes(img.id),
+      );
+    }
+    if (req.body.logoCarouselEnabled !== undefined) {
+      template.logoCarousel.enabled = toBool(
+        req.body.logoCarouselEnabled,
+        template.logoCarousel.enabled,
+      );
+    }
+    if (req.body.logoCarouselTitle !== undefined) {
+      template.logoCarousel.title = String(
+        req.body.logoCarouselTitle || "",
+      ).trim();
+    }
+    const newLogoCarouselFiles = filesByField.logoCarouselLogos || [];
+    const totalLogoCarouselCount =
+      template.logoCarousel.logos.length + newLogoCarouselFiles.length;
+    if (totalLogoCarouselCount > 12) {
+      throw new Error(
+        `Cannot exceed 12 trusted-by logos (currently ${template.logoCarousel.logos.length}).`,
+      );
+    }
+    if (newLogoCarouselFiles.length) {
+      const newLogos = await uploadImages(
+        newLogoCarouselFiles,
+        `${baseFolder}/logoCarousel`,
+        12,
+      );
+      template.logoCarousel.logos.push(...newLogos);
     }
 
     const aboutPageImageKeepIds = safeParse(req.body.aboutPageImageIds, []);

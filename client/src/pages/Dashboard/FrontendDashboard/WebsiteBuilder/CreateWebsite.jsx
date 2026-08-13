@@ -1441,6 +1441,17 @@ const CreateWebsite = () => {
     (values2.heroImages || []).forEach((file) => appendFileIfPresent("heroImages", file));
     fd.delete("gallery");
     (values2.gallery || []).forEach((file) => appendFileIfPresent("gallery", file));
+
+    // Ids of already-saved images the user kept (didn't remove) — without this
+    // the server has no way to know an image was deleted in the UI, so removed
+    // images never actually get deleted server-side; they'd just keep
+    // reappearing on reload. Mirrors the same fix applied to logoCarouselImageIds below.
+    const keptImageIds = (items) =>
+      (Array.isArray(items) ? items : [])
+        .filter((item) => !(item instanceof File) && item?.id)
+        .map((item) => item.id);
+    fd.set("heroImageIds", JSON.stringify(keptImageIds(values2.heroImages)));
+    fd.set("galleryImageIds", JSON.stringify(keptImageIds(values2.gallery)));
     fd.delete("productImages");
     (values2.menuItems || []).forEach((item, i) => {
       if (item?.image instanceof File) {
@@ -1569,6 +1580,7 @@ const CreateWebsite = () => {
     (values2.aboutPageImageCards || []).forEach((card) => {
       appendFileIfPresent("aboutPageImages", card?.image);
     });
+    fd.set("aboutPageImageIds", JSON.stringify(keptImageIds(values2.aboutPageImages)));
     fd.set(
       "aboutPageImageCards",
       JSON.stringify(
@@ -1591,6 +1603,10 @@ const CreateWebsite = () => {
     (values2?.logoCarousel?.logos || []).forEach((file) => {
       if (file instanceof File) fd.append("logoCarouselLogos", file);
     });
+    fd.set(
+      "logoCarouselImageIds",
+      JSON.stringify(keptImageIds(values2?.logoCarousel?.logos)),
+    );
     if (effectiveEditMode) {
       updateWebsite(fd);
       return;
@@ -1814,6 +1830,38 @@ const CreateWebsite = () => {
       setDraftStatus("saved");
       const savedTemplate = data?.template;
       if (savedTemplate) {
+        // Keep File objects if they're newer than saved; otherwise use saved S3
+        // object. Syncing back (rather than only appending) is what lets the next
+        // autosave tick correctly report which persisted images the user still
+        // wants kept — without it, a deleted image never actually gets removed
+        // server-side since the id list would be computed against stale form state.
+        if (Array.isArray(savedTemplate.heroImages)) {
+          const currentHero = getValues("heroImages") || [];
+          const mergedHero = savedTemplate.heroImages.map((saved, idx) => {
+            const current = currentHero[idx];
+            if (current instanceof File) return current;
+            return saved;
+          });
+          setValue("heroImages", mergedHero, { shouldDirty: false });
+        }
+        if (Array.isArray(savedTemplate.gallery)) {
+          const currentGallery = getValues("gallery") || [];
+          const mergedGallery = savedTemplate.gallery.map((saved, idx) => {
+            const current = currentGallery[idx];
+            if (current instanceof File) return current;
+            return saved;
+          });
+          setValue("gallery", mergedGallery, { shouldDirty: false });
+        }
+        if (Array.isArray(savedTemplate.aboutPageImages)) {
+          const currentAboutImages = getValues("aboutPageImages") || [];
+          const mergedAboutImages = savedTemplate.aboutPageImages.map((saved, idx) => {
+            const current = currentAboutImages[idx];
+            if (current instanceof File) return current;
+            return saved;
+          });
+          setValue("aboutPageImages", mergedAboutImages, { shouldDirty: false });
+        }
         if (Array.isArray(savedTemplate.founders) && savedTemplate.founders.length) {
           const currentFounders = getValues("founders") || [];
           const mergedFounders = currentFounders.map((founder, idx) => {
@@ -1825,7 +1873,7 @@ const CreateWebsite = () => {
           });
           setValue("founders", mergedFounders, { shouldDirty: false });
         }
-        if (Array.isArray(savedTemplate.logoCarousel?.logos) && savedTemplate.logoCarousel.logos.length) {
+        if (Array.isArray(savedTemplate.logoCarousel?.logos)) {
           const currentLogos = getValues("logoCarousel.logos") || [];
           const mergedLogos = savedTemplate.logoCarousel.logos.map((saved, idx) => {
             const current = currentLogos[idx];
@@ -1876,14 +1924,30 @@ const CreateWebsite = () => {
         pendingFileKeys.push(key);
       };
       appendDraftFileOnce("companyLogo", values?.companyLogo);
-      (values?.heroImages || []).forEach(
-        (file) => appendDraftFileOnce("heroImages", file)
-      );
-      (values?.gallery || []).forEach(
-        (file) => appendDraftFileOnce("gallery", file)
-      );
-      (values?.aboutPageImages || []).forEach(
-        (file) => appendDraftFileOnce("aboutPageImages", file)
+      (values?.heroImages || [])
+        .filter((item) => item instanceof File)
+        .forEach((file) => appendDraftFileOnce("heroImages", file));
+      (values?.gallery || [])
+        .filter((item) => item instanceof File)
+        .forEach((file) => appendDraftFileOnce("gallery", file));
+      (values?.aboutPageImages || [])
+        .filter((item) => item instanceof File)
+        .forEach((file) => appendDraftFileOnce("aboutPageImages", file));
+
+      // Ids of already-saved images the user kept (didn't remove) for each
+      // media array. Without this the server has no way to know an image was
+      // deleted in the builder, so removed images never actually get deleted —
+      // they just keep reappearing on the next load.
+      const keptIds = (items) =>
+        (Array.isArray(items) ? items : [])
+          .filter((item) => !(item instanceof File) && item?.id)
+          .map((item) => item.id);
+      fd.set("heroImageIds", JSON.stringify(keptIds(values?.heroImages)));
+      fd.set("galleryImageIds", JSON.stringify(keptIds(values?.gallery)));
+      fd.set("aboutPageImageIds", JSON.stringify(keptIds(values?.aboutPageImages)));
+      fd.set(
+        "logoCarouselImageIds",
+        JSON.stringify(keptIds(values?.logoCarousel?.logos)),
       );
       (values?.aboutPageImageCards || []).forEach(
         (card, index) => appendDraftFileOnce(`aboutPageImageCardImage_${index}`, card?.image)
