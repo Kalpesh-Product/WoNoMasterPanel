@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { BriefcaseBusiness, Calendar, Eye, Mail, Phone, Search, Target, Users, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
+import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
 
 const formatDateLabel = (value) => {
   if (!value) return "--";
@@ -22,9 +23,27 @@ const initials = (value) =>
     .join("")
     .toUpperCase();
 
-const ValueAddsPartnersTable = ({ title, rows, columns }) => {
+const ValueAddsPartnersTable = ({
+  title,
+  rows = [],
+  columns = [],
+  isLoading = false,
+  isError = false,
+  errorMessage = "",
+  emptyMessage = "No matching partners found.",
+  tableLabels = {},
+  locationColumns,
+  splitContact = false,
+  companyAfterContact = false,
+}) => {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
+
+  const locationColumnDefs = locationColumns || [
+    { field: "region", headerName: tableLabels.region || "Region" },
+  ];
+  const contactColumnCount = splitContact ? 2 : 1;
+  const tableColumnCount = 5 + locationColumnDefs.length + contactColumnCount;
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows;
@@ -38,6 +57,10 @@ const ValueAddsPartnersTable = ({ title, rows, columns }) => {
 
   const activeCount = rows.filter((row) => row.status === "Active").length;
   const pendingCount = rows.filter((row) => row.status === "Pending").length;
+
+  if (isLoading) {
+    return <ValueAddsLeadsTableSkeleton />;
+  }
 
   return (
     <div className="flex flex-col gap-4 text-slate-700 font-sans">
@@ -81,14 +104,39 @@ const ValueAddsPartnersTable = ({ title, rows, columns }) => {
           </div>
         </div>
 
+        {isError ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+            <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-rose-50 text-rose-400">
+              <Target size={28} />
+            </div>
+            <p className="font-pmedium text-sm text-rose-500">Unable to load {title.toLowerCase()} partners.</p>
+            {errorMessage ? (
+              <p className="mt-1 max-w-xl text-[11px] font-pmedium text-slate-400">{errorMessage}</p>
+            ) : null}
+          </div>
+        ) : (
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
               <tr>
                 <th className="px-5 py-4">Partner</th>
-                <th className="px-5 py-4">Company</th>
-                <th className="px-5 py-4">Region</th>
-                <th className="px-5 py-4">Contact</th>
+                {!companyAfterContact ? (
+                  <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
+                ) : null}
+                {locationColumnDefs.map((column) => (
+                  <th key={column.field} className="px-5 py-4">{column.headerName}</th>
+                ))}
+                {splitContact ? (
+                  <>
+                    <th className="px-5 py-4">Email</th>
+                    <th className="px-5 py-4">Contact</th>
+                  </>
+                ) : (
+                  <th className="px-5 py-4">Contact</th>
+                )}
+                {companyAfterContact ? (
+                  <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
+                ) : null}
                 <th className="px-5 py-4 text-center">Status</th>
                 <th className="px-5 py-4">Last Updated</th>
                 <th className="px-5 py-4 text-center">Action</th>
@@ -97,8 +145,8 @@ const ValueAddsPartnersTable = ({ title, rows, columns }) => {
             <tbody className="divide-y divide-slate-100/60">
               {filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">
-                    No matching partners found.
+                  <td colSpan={tableColumnCount} className="text-center py-20 text-slate-400 font-pmedium">
+                    {emptyMessage}
                   </td>
                 </tr>
               ) : (
@@ -114,24 +162,50 @@ const ValueAddsPartnersTable = ({ title, rows, columns }) => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                      {row.companyName || "--"}
-                    </td>
-                    <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                      {row.region || "--"}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="text-[11px] font-pmedium text-slate-600 space-y-0.5">
-                        <p className="flex items-center gap-1">
-                          <Phone size={10} className="text-slate-400" />
-                          {row.phone || "--"}
-                        </p>
-                        <p className="flex items-center gap-1">
-                          <Mail size={10} className="text-slate-400" />
-                          {row.email || "--"}
-                        </p>
-                      </div>
-                    </td>
+                    {!companyAfterContact ? (
+                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                        {row.companyName || "--"}
+                      </td>
+                    ) : null}
+                    {locationColumnDefs.map((column) => (
+                      <td key={column.field} className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                        {row[column.field] || "--"}
+                      </td>
+                    ))}
+                    {splitContact ? (
+                      <>
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                          <span className="flex items-center gap-1">
+                            <Mail size={10} className="text-slate-400" />
+                            {row.email || "--"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                          <span className="flex items-center gap-1">
+                            <Phone size={10} className="text-slate-400" />
+                            {row.phone || "--"}
+                          </span>
+                        </td>
+                      </>
+                    ) : (
+                      <td className="px-5 py-4">
+                        <div className="text-[11px] font-pmedium text-slate-600 space-y-0.5">
+                          <p className="flex items-center gap-1">
+                            <Phone size={10} className="text-slate-400" />
+                            {row.phone || "--"}
+                          </p>
+                          <p className="flex items-center gap-1">
+                            <Mail size={10} className="text-slate-400" />
+                            {row.email || "--"}
+                          </p>
+                        </div>
+                      </td>
+                    )}
+                    {companyAfterContact ? (
+                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                        {row.companyName || "--"}
+                      </td>
+                    ) : null}
                     <td className="px-5 py-4 text-center">
                       <span className={statusPillClass(row.status || "Pending")}>
                         {row.status || "Pending"}
@@ -156,6 +230,7 @@ const ValueAddsPartnersTable = ({ title, rows, columns }) => {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {selectedRow ? (
