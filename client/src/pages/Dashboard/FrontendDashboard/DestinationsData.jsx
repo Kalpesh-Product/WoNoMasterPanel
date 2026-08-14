@@ -772,8 +772,12 @@ const DestinationsData = () => {
       source = Array.isArray(destinationBlogs) ? destinationBlogs : [];
     else source = Array.isArray(destinationNews) ? destinationNews : [];
 
-    let filtered = source.filter(
-      (item) => normalizeDestination(item) === selectedLocation,
+    const selectedLocationKey = normalizeKey(selectedLocation);
+    let filtered = source.filter((item) =>
+      isSameDestinationKey(
+        normalizeKey(normalizeDestination(item)),
+        selectedLocationKey,
+      ),
     );
 
     if (searchQuery.trim()) {
