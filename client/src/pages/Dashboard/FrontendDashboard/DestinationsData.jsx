@@ -2,10 +2,20 @@ import React, { useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Search, Eye, ArrowLeft, Plus, MapPin, Calendar, Utensils } from "lucide-react";
+import {
+  Search,
+  Eye,
+  ArrowLeft,
+  Plus,
+  MapPin,
+  Calendar,
+  Utensils,
+  Edit3,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import { queryClient } from "../../../main";
 import { NOMADS_BACKEND_URL, NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass } from "../../../lib/status-pill";
@@ -1137,45 +1147,49 @@ const DestinationsData = () => {
                             </span>
                           </td>
                           <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1">
-                              <ThreeDotMenu
-                                rowId={item._id}
-                                menuItems={[
-                                  {
-                                    label: "Edit",
-                                    onClick: () =>
-                                      navigate(
-                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                                        {
-                                          state: {
-                                            item,
-                                            type: detailType,
-                                            destinations: stats.map((s) => s.destination),
-                                          },
-                                        },
-                                      ),
-                                  },
-                                  item.isActive !== false
-                                    ? {
-                                        label: "Mark As Inactive",
-                                        onClick: () =>
-                                          toggleStatus({
-                                            id: item._id,
-                                            currentStatus: item.isActive !== false,
-                                            itemType: detailType,
-                                          }),
-                                      }
-                                    : {
-                                        label: "Mark As Active",
-                                        onClick: () =>
-                                          toggleStatus({
-                                            id: item._id,
-                                            currentStatus: item.isActive !== false,
-                                            itemType: detailType,
-                                          }),
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  navigate(
+                                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                                    {
+                                      state: {
+                                        item,
+                                        type: detailType,
+                                        destinations: stats.map((s) => s.destination),
                                       },
-                                ]}
-                              />
+                                    },
+                                  )
+                                }
+                                title="Edit"
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
+                              >
+                                <Edit3 size={15} strokeWidth={2.5} />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isTogglePending}
+                                onClick={() =>
+                                  toggleStatus({
+                                    id: item._id,
+                                    currentStatus: item.isActive !== false,
+                                    itemType: detailType,
+                                  })
+                                }
+                                title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
+                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
+                                  item.isActive !== false
+                                    ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                }`}
+                              >
+                                {item.isActive !== false ? (
+                                  <XCircle size={15} />
+                                ) : (
+                                  <CheckCircle2 size={15} />
+                                )}
+                              </button>
                             </div>
                           </td>
                         </tr>
