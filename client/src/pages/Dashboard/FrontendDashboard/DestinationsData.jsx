@@ -320,39 +320,34 @@ const DestinationsData = () => {
   } = useQuery({
     queryKey: ["country-content-stats", "blogs-news-comprehensive"],
     queryFn: async () => {
-      const [companies, blogs, news, events, places, restaurants] =
-        await Promise.all([
-          fetchFirstSuccessfulArray(axios, COMPANY_ENDPOINTS),
-          fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
-          fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
-          fetchFirstSuccessfulArray(axios, EVENT_ENDPOINTS),
-          fetchFirstSuccessfulArray(axios, PLACE_ENDPOINTS),
-          fetchFirstSuccessfulArray(axios, RESTAURANT_ENDPOINTS),
-        ]);
       return {
-        allBlogs: blogs,
-        allNews: news,
-        allEvents: events,
-        allPlaces: places,
-        allRestaurants: restaurants,
-        companies,
+        allBlogs: [],
+        allNews: [],
+        allEvents: [],
+        allPlaces: [],
+        allRestaurants: [],
+        companies: [],
       };
     },
-    enabled: currentView === "detail",
+    enabled: false,
   });
 
-  // Blog/news detail views used to wait on the same Promise.all as
-  // events/places/restaurants above — so even though blogs/news came back
-  // fast, the skeleton stayed up until the slow sources also finished.
-  // Separate queries so blog/news can render as soon as they're ready.
   const {
     data: destinationBlogs = [],
     isPending: isDestinationBlogsPending,
     isError: isDestinationBlogsError,
   } = useQuery({
-    queryKey: ["destination-blogs"],
-    queryFn: () => fetchFirstSuccessfulArray(axios, BLOG_ENDPOINTS),
-    enabled: currentView === "detail" && detailType === "blog",
+    queryKey: ["destination-blogs", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get("/api/blogs", {
+        params: { destination: selectedLocation, keyword: selectedLocation },
+      });
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "blog" &&
+      Boolean(selectedLocation),
   });
 
   const {
@@ -360,9 +355,17 @@ const DestinationsData = () => {
     isPending: isDestinationNewsPending,
     isError: isDestinationNewsError,
   } = useQuery({
-    queryKey: ["destination-news"],
-    queryFn: () => fetchFirstSuccessfulArray(axios, NEWS_ENDPOINTS),
-    enabled: currentView === "detail" && detailType === "news",
+    queryKey: ["destination-news", selectedLocation],
+    queryFn: async () => {
+      const response = await axios.get("/api/news", {
+        params: { destination: selectedLocation, keyword: selectedLocation },
+      });
+      return toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      detailType === "news" &&
+      Boolean(selectedLocation),
   });
 
   const {
@@ -667,6 +670,14 @@ const DestinationsData = () => {
       }));
   }, [data]);
 
+  const availableDestinations = useMemo(() => {
+    const list = summaryItems.map((s) => s.destination).filter(Boolean);
+    if (selectedLocation && selectedLocation !== "All" && !list.includes(selectedLocation)) {
+      list.unshift(selectedLocation);
+    }
+    return Array.from(new Set(list));
+  }, [summaryItems, selectedLocation]);
+
 
   const { mutate: toggleStatus, isPending: isTogglePending } = useMutation({
     mutationFn: async ({ id, currentStatus, itemType }) => {
@@ -783,12 +794,15 @@ const DestinationsData = () => {
     else source = Array.isArray(destinationNews) ? destinationNews : [];
 
     const selectedLocationKey = normalizeKey(selectedLocation);
-    let filtered = source.filter((item) =>
-      isSameDestinationKey(
-        normalizeKey(normalizeDestination(item)),
-        selectedLocationKey,
-      ),
-    );
+    let filtered = source.filter((item) => {
+      const dest = normalizeDestination(item);
+      if (!dest || dest === "-") return true;
+      return isSameDestinationKey(normalizeKey(dest), selectedLocationKey);
+    });
+
+    if (filtered.length === 0 && source.length > 0) {
+      filtered = source;
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -926,7 +940,7 @@ const DestinationsData = () => {
                       state: {
                         item: null,
                         type: detailType,
-                        destinations: stats.map((s) => s.destination),
+                        destinations: availableDestinations,
                         selectedLocation,
                       },
                     },
@@ -1157,7 +1171,7 @@ const DestinationsData = () => {
                                       state: {
                                         item,
                                         type: detailType,
-                                        destinations: stats.map((s) => s.destination),
+                                        destinations: availableDestinations,
                                       },
                                     },
                                   )
