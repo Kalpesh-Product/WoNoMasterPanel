@@ -1988,8 +1988,18 @@ const bulkInsertPoc = async (req, res, next) => {
       });
     }
 
-    // Fetch companies
-    const companies = await HostCompany.find().lean();
+    const companyIds = [
+      ...new Set(
+        pocs
+          .map((poc) => poc?.companyId?.trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    // Fetch only companies referenced by this upload.
+    const companies = await HostCompany.find({
+      companyId: { $in: companyIds },
+    }).lean();
     const companyMap = new Map(
       companies.map((item) => [item.companyId?.trim(), item._id]),
     );

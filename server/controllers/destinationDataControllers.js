@@ -140,6 +140,9 @@ const fetchNomadsRows = async (path) => {
   try {
     const response = await axios.get(`${NOMADS_BASE_URL}${path}`, {
       timeout: FETCH_TIMEOUT_MS,
+      headers: process.env.NOMADS_ADMIN_API_KEY
+        ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+        : {},
     });
     return toArray(response.data);
   } catch (error) {
