@@ -133,6 +133,7 @@ import AccessPages from "../pages/Access/AccessPages";
 import AddMasterUser from "../pages/Access/AddMasterUser";
 import ModulePermissions from "../pages/Access/ModulePermissions";
 import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/CreateWebsite";
+import SelectWebsiteTemplate from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/SelectWebsiteTemplate";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
 import CompaniesLayout from "../pages/Dashboard/FrontendDashboard/CompaniesLayout";
@@ -592,6 +593,10 @@ export const routes = createBrowserRouter([
                           { path: "careers", element: <WebsiteBuilderCareers /> },
                           { path: "live-demo", element: <PageDemo /> },
                           {
+                            path: "select-template",
+                            element: <SelectWebsiteTemplate />,
+                          },
+                          {
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
@@ -721,6 +726,7 @@ export const routes = createBrowserRouter([
                           { path: "reviews", element: <WebsiteBuilderReviews /> },
                           { path: "careers", element: <WebsiteBuilderCareers /> },
                           { path: "live-demo", element: <PageDemo /> },
+                          { path: "select-template", element: <SelectWebsiteTemplate /> },
                           { path: "create-website", element: <CreateWebsite /> },
                           { path: "edit-website", element: <EditWebsite /> },
                           {

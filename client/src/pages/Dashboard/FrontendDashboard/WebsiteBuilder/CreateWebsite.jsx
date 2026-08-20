@@ -24,6 +24,7 @@ import PackagesSection from "./PackagesSection";
 import DormsSection from "./DormsSection";
 import MenuSection from "./MenuSection";
 import Skeleton from "../../../../components/ui/Skeleton";
+import { TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_ID } from "./templates/templateRegistry";
 const defaultProduct = {
   type: "",
   name: "",
@@ -93,6 +94,40 @@ const WebsiteBuilderEditorSkeleton = () => {
       <span className="sr-only">Loading website builder</span>
     </div>;
 };
+const PageVisibilityBanner = ({ name, control, pageLabel }) => <Controller
+  name={name}
+  control={control}
+  render={({ field }) => {
+    const isVisible = field.value !== false;
+    return <div
+      className={`flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors ${isVisible ? "border-emerald-300 bg-emerald-50" : "border-amber-300 bg-amber-50"}`}
+    >
+        <div>
+          <p className={`text-sm font-pmedium ${isVisible ? "text-emerald-800" : "text-amber-900"}`}>
+            {isVisible ? "This page is visible on your website" : "This page is hidden from your website"}
+          </p>
+          <p className={`mt-0.5 text-xs ${isVisible ? "text-emerald-700" : "text-amber-800"}`}>
+            {isVisible ? `Shown in your website preview, and will go live when you publish.` : `Hidden from your website preview — visitors won't see this page, even after you publish.`}
+          </p>
+        </div>
+        <label className="flex shrink-0 cursor-pointer items-center gap-2">
+          <span className={`text-xs font-pmedium ${isVisible ? "text-emerald-700" : "text-amber-800"}`}>
+            {isVisible ? "Enabled" : "Disabled"}
+          </span>
+          <span
+      role="switch"
+      aria-checked={isVisible}
+      onClick={() => field.onChange(!isVisible)}
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${isVisible ? "bg-emerald-500" : "bg-slate-300"}`}
+    >
+            <span
+      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${isVisible ? "translate-x-5" : "translate-x-0.5"}`}
+    />
+          </span>
+        </label>
+      </div>;
+  }}
+/>;
 const DEFAULT_PAGE_NAV_ITEMS = [
   "Home",
   "About Us",
@@ -369,7 +404,7 @@ const hasMeaningfulDraftContent = (draftData) => {
     draftData?.mediaSignature?.packages,
     draftData?.mediaSignature?.dorms
   ];
-  const hasMediaSignature = Boolean(draftData?.mediaSignature?.companyLogo) || arrayFields.some(
+  const hasMediaSignature = Boolean(draftData?.mediaSignature?.companyLogo) || Boolean(draftData?.mediaSignature?.mainHeroImage) || arrayFields.some(
     (items) => Array.isArray(items) && items.some((item) => JSON.stringify(item || {}) !== "{}" && String(item || "").trim() !== "")
   );
   if (hasMediaSignature) return true;
@@ -586,6 +621,7 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
   styleConfig: formValues?.styleConfig || {},
   mediaSignature: {
     companyLogo: toMediaToken(formValues?.companyLogo),
+    mainHeroImage: toMediaToken(formValues?.mainHeroImage),
     heroImages: Array.isArray(formValues?.heroImages) ? formValues.heroImages.map((item) => toMediaToken(item)).filter(Boolean) : [],
     gallery: Array.isArray(formValues?.gallery) ? formValues.gallery.map((item) => toMediaToken(item)).filter(Boolean) : [],
     aboutPageImages: Array.isArray(formValues?.aboutPageImages) ? formValues.aboutPageImages.map((item) => toMediaToken(item)).filter(Boolean) : [],
@@ -686,6 +722,7 @@ const CreateWebsite = () => {
   const [creditsLimit, setCreditsLimit] = useState(5);
   const [creditsResetDate, setCreditsResetDate] = useState(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
+  const [showHiddenPagesWarning, setShowHiddenPagesWarning] = useState(false);
   const [showResetConfirmPopup, setShowResetConfirmPopup] = useState(false);
   const [isRedirectingAfterCreate, setIsRedirectingAfterCreate] = useState(false);
   const [publishedWebsiteUrl, setPublishedWebsiteUrl] = useState("");
@@ -702,6 +739,25 @@ const CreateWebsite = () => {
   const hasRedirectedToEditRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
   const isCheckingWebsiteInFlightRef = useRef(false);
+
+  // SelectWebsiteTemplate.jsx writes this before navigating here for a
+  // brand-new website. Edit mode ignores it — the real value comes from the
+  // fetched record's themeVariant during hydration below. Deliberately NOT
+  // cleared here: this component can remount (navigating away and back)
+  // before any DB record exists yet, and clearing on read would drop the
+  // user's choice back to the default on that revisit. It's cleared once a
+  // DB record is actually found during hydration below, since from that
+  // point the record's own themeVariant always takes precedence anyway.
+  const initialThemeVariant = (() => {
+    let stored = "";
+    try {
+      stored = localStorage.getItem("selectedThemeVariant") || "";
+    } catch {
+      stored = "";
+    }
+    return !isEditMode && stored ? stored : DEFAULT_TEMPLATE_ID;
+  })();
+
   const {
     control,
     register,
@@ -718,10 +774,12 @@ const CreateWebsite = () => {
       companyId: "",
       // âœ… change from businessId
       companyName: "",
+      themeVariant: initialThemeVariant,
       title: "",
       subTitle: "",
       CTAButtonText: "",
       companyLogo: null,
+      mainHeroImage: null,
       heroImages: [],
       gallery: [],
       // about
@@ -905,6 +963,12 @@ const CreateWebsite = () => {
   const contactPageNavIndex = pageNavItemsForVisibility.findIndex(
     (item) => String(item?.slug || "").trim().toLowerCase() === "contact-us"
   );
+  const pageNavLabel = (index, fallback) => String(pageNavItemsForVisibility[index]?.name || "").trim() || fallback;
+  const hiddenPageNavEntries = pageNavItemsForVisibility.map((item, index) => ({
+    index,
+    name: String(item?.name || `Page ${index + 1}`),
+    enabled: item?.enabled !== false
+  })).filter((entry) => !entry.enabled);
   const CHAR_LIMITS = {
     heroTitle: 100,
     heroSubTitle: 200,
@@ -1024,6 +1088,13 @@ const CreateWebsite = () => {
           (item) => String(item?.searchKey || "").trim().toLowerCase() === editWebsiteSearchKey
         ) : null) || null;
         if (found) {
+          // A DB record now exists, so its own themeVariant (set below) always
+          // wins from here on — the localStorage hint has served its purpose.
+          try {
+            localStorage.removeItem("selectedThemeVariant");
+          } catch {
+            // ignore
+          }
           setHasExistingWebsite(true);
           if (found?.isPublished === true || found?.deployedUrl || found?.publishedProjectUrl) {
             setPublishedWebsiteUrl(
@@ -1038,10 +1109,23 @@ const CreateWebsite = () => {
           hasHydratedFromDbRef.current = true;
           reset({
             ...getValues(),
+            // Locked in at creation. While still a draft, prefer
+            // draftData.themeVariant: the autosave path only ever wrote the
+            // picker's choice there, leaving the record's top-level
+            // themeVariant stuck at its creation-time default — so trusting
+            // only `found.themeVariant` silently reverted the template on
+            // revisit. Once published/created for real, the top-level field
+            // is authoritative.
+            themeVariant: String(
+              (canResumeDraft ? draftData?.themeVariant : "") ||
+                found?.themeVariant ||
+                DEFAULT_TEMPLATE_ID
+            ).trim(),
             sectionOverrides: draftData?.sectionOverrides || found?.sectionOverrides || {},
             companyId: String(draftData?.companyId || prefillCompanyId || found?.companyId || "").trim(),
             companyName: String(draftData?.companyName || prefillCompanyName || found?.companyName || "").trim(),
             companyLogo: found?.companyLogo || null,
+            mainHeroImage: found?.mainHeroImage || null,
             heroImages: Array.isArray(found?.heroImages) ? found.heroImages : [],
             title: String(draftData?.title || found?.title || "").trim(),
             subTitle: String(draftData?.subTitle || found?.subTitle || "").trim(),
@@ -1437,6 +1521,7 @@ const CreateWebsite = () => {
     }
     fd.set("about", JSON.stringify(values2.about.map((p) => p.text)));
     appendFileIfPresent("companyLogo", values2.companyLogo);
+    appendFileIfPresent("mainHeroImage", values2.mainHeroImage);
     fd.delete("heroImages");
     (values2.heroImages || []).forEach((file) => appendFileIfPresent("heroImages", file));
     fd.delete("gallery");
@@ -1503,6 +1588,12 @@ const CreateWebsite = () => {
     fd.set("inclusions", JSON.stringify(values2.inclusions || []));
     fd.set("faqs", JSON.stringify(values2.faqs || []));
     fd.set("sectionOverrides", JSON.stringify(values2.sectionOverrides || {}));
+    // themeVariant is never bound to a real form input (it's set once by the
+    // template picker and shown read-only afterward), so FormData(formEl)
+    // never picks it up on its own — without this explicit set, the chosen
+    // template is silently never persisted and the site falls back to Classic
+    // on every reload.
+    fd.set("themeVariant", String(values2.themeVariant || DEFAULT_TEMPLATE_ID).trim());
     (values2.productDropdownPages || []).forEach((item, index) => {
       appendFileIfPresent(`productPageHeroImage_${index}`, item?.heroImage);
       (item?.heroImages || []).forEach((file) => {
@@ -1630,6 +1721,7 @@ const CreateWebsite = () => {
       sectionOverrides: formValues?.sectionOverrides || {},
       styleConfig: formValues?.styleConfig || {},
       companyLogo: getMediaUrlForPreview(formValues?.companyLogo),
+      mainHeroImage: getMediaUrlForPreview(formValues?.mainHeroImage),
       heroImages: (formValues?.heroImages || []).map((item) => getMediaUrlForPreview(item)).filter(Boolean),
       about: (formValues?.about || []).map((item) => String(item?.text || "").trim()).filter(Boolean),
       aboutTitle: String(formValues?.aboutTitle || "").trim(),
@@ -1924,6 +2016,7 @@ const CreateWebsite = () => {
         pendingFileKeys.push(key);
       };
       appendDraftFileOnce("companyLogo", values?.companyLogo);
+      appendDraftFileOnce("mainHeroImage", values?.mainHeroImage);
       (values?.heroImages || [])
         .filter((item) => item instanceof File)
         .forEach((file) => appendDraftFileOnce("heroImages", file));
@@ -2173,6 +2266,7 @@ const CreateWebsite = () => {
       subTitle: "",
       CTAButtonText: "",
       companyLogo: null,
+      mainHeroImage: null,
       heroImages: [],
       gallery: [],
       about: [{ text: "" }],
@@ -2347,9 +2441,17 @@ const CreateWebsite = () => {
                 {effectiveEditMode ? "Edit Website" : "Create Website"}
               </h2>
               <div className="flex flex-col items-end gap-1">
-                <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                  {selectedVerticalBadgeText}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
+                    {selectedVerticalBadgeText}
+                  </span>
+                  <span
+                    title="The template was chosen when this website was created and can't be changed here."
+                    className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700"
+                  >
+                    Template: {TEMPLATE_REGISTRY[watch("themeVariant") || DEFAULT_TEMPLATE_ID]?.name || "Classic"}
+                  </span>
+                </div>
                 <p className="text-[11px] text-slate-500">
                   {draftStatus === "saving" ? "Saving draft..." : draftStatus === "saved" ? `Draft saved${draftUpdatedAt ? ` at ${new Date(draftUpdatedAt).toLocaleTimeString()}` : ""}` : draftStatus === "error" ? "Draft save failed. Changes are still in the form." : hasRestoredDraft ? "Draft restored from your last session." : "Draft autosave starts as you build."}
                 </p>
@@ -2394,22 +2496,39 @@ const CreateWebsite = () => {
   })}
             </div>
 
+            <div className="mt-3 max-w-sm">
+              <Controller
+    name={`pageNavItems.${activeMainPageTab}.name`}
+    control={control}
+    render={({ field }) => <WebsiteFormField
+      field={{
+        ...field,
+        onBlur: () => {
+          const trimmed = String(field.value || "").trim();
+          if (!trimmed) {
+            field.onChange(DEFAULT_PAGE_NAV_ITEMS[activeMainPageTab] || `Page ${activeMainPageTab + 1}`);
+          }
+          field.onBlur();
+        }
+      }}
+      label="Page Name (shown in navbar)"
+      placeholder={`Page ${activeMainPageTab + 1}`}
+      maxLength={30}
+      disabled={activeMainPageSlug === "products"}
+      helperText={activeMainPageSlug === "products" ? "The Services page name isn't editable yet." : "Renames this tab here and its label in your website's navbar."}
+    />}
+  />
+            </div>
+
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "products" ? <div className="mt-4 min-w-0 overflow-hidden">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b-default border-borderGray py-4">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Products Page Settings <SectionPreviewInfo section="productsPage" /></span>
-                  {productsPageNavIndex >= 0 ? <div>
-                      <Controller
-    name={`pageNavItems.${productsPageNavIndex}.enabled`}
-    control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                            <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
+                  {productsPageNavIndex >= 0 ? <div className="mt-3">
+                      <PageVisibilityBanner
+      name={`pageNavItems.${productsPageNavIndex}.enabled`}
+      control={control}
+      pageLabel="Services"
     />
-                            Show Products page on website
-                          </label>}
-  />
                     </div> : null}
                   <div className="flex flex-shrink-0 items-center gap-2 flex-wrap">
                     <div className="min-w-[200px]">
@@ -2916,18 +3035,11 @@ const CreateWebsite = () => {
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "about-us" ? <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">About Us Hero Section <SectionPreviewInfo section="aboutPage" /></span>
-                {aboutPageNavIndex >= 0 ? <div>
-                    <Controller
+                {aboutPageNavIndex >= 0 ? <div className="mt-3">
+                    <PageVisibilityBanner
     name={`pageNavItems.${aboutPageNavIndex}.enabled`}
     control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
-    />
-                          Show About Us page on website
-                        </label>}
+    pageLabel="About Us"
   />
                   </div> : null}
                 </div>
@@ -3163,18 +3275,11 @@ const CreateWebsite = () => {
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "gallery" ? <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Gallery Hero Section <SectionPreviewInfo section="galleryPage" /></span>
-                {galleryPageNavIndex >= 0 ? <div>
-                    <Controller
+                {galleryPageNavIndex >= 0 ? <div className="mt-3">
+                    <PageVisibilityBanner
     name={`pageNavItems.${galleryPageNavIndex}.enabled`}
     control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
-    />
-                          Show Gallery page on website
-                        </label>}
+    pageLabel="Gallery"
   />
                   </div> : null}
                 </div>
@@ -3217,18 +3322,11 @@ const CreateWebsite = () => {
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "partner" ? <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Partner Page Section <SectionPreviewInfo section="partnerPage" /></span>
-                {partnerPageNavIndex >= 0 ? <div>
-                    <Controller
+                {partnerPageNavIndex >= 0 ? <div className="mt-3">
+                    <PageVisibilityBanner
     name={`pageNavItems.${partnerPageNavIndex}.enabled`}
     control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
-    />
-                          Show Partner page on website
-                        </label>}
+    pageLabel="Partner"
   />
                   </div> : null}
                 </div>
@@ -3271,18 +3369,11 @@ const CreateWebsite = () => {
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "careers" ? <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Careers Hero Section <SectionPreviewInfo section="careersPage" /></span>
-                {careersPageNavIndex >= 0 ? <div>
-                    <Controller
+                {careersPageNavIndex >= 0 ? <div className="mt-3">
+                    <PageVisibilityBanner
     name={`pageNavItems.${careersPageNavIndex}.enabled`}
     control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
-    />
-                          Show Careers page on website
-                        </label>}
+    pageLabel="Careers"
   />
                   </div> : null}
                 </div>
@@ -3435,17 +3526,10 @@ const CreateWebsite = () => {
                       <span className="text-subtitle font-pmedium">
                         Contact Details (Synced with Home)
                       </span>
-                      {contactPageNavIndex >= 0 ? <Controller
+                      {contactPageNavIndex >= 0 ? <PageVisibilityBanner
     name={`pageNavItems.${contactPageNavIndex}.enabled`}
     control={control}
-    render={({ field }) => <label className="flex items-center gap-2 text-xs font-medium text-slate-700">
-                          <input
-      type="checkbox"
-      checked={field.value !== false}
-      onChange={(event) => field.onChange(event.target.checked)}
-    />
-                          Show Contact Us page on website
-                        </label>}
+    pageLabel="Contact Us"
   /> : null}
                     </div>
                     <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -3578,6 +3662,25 @@ const CreateWebsite = () => {
       id="heroImages"
     />}
   />
+
+                {
+    /* mainHeroImage (single) — only Fresh Studio pairs a rotating
+       background carousel with one fixed foreground shot, so this field
+       is template-specific and hidden for every other template instead
+       of showing a field that would be silently ignored. */
+  }
+                {watch("themeVariant") === "fresh-studio" && (
+    <Controller
+      name="mainHeroImage"
+      control={control}
+      render={({ field }) => <UploadFileInput
+        id="mainHeroImage"
+        value={field.value}
+        label="Main Hero Image"
+        onChange={field.onChange}
+      />}
+    />
+  )}
 
                 <Controller
     name="title"
@@ -4524,7 +4627,13 @@ const CreateWebsite = () => {
                 </button>
                 <button
     type="button"
-    onClick={() => setShowConfirmPopup(true)}
+    onClick={() => {
+      if (hiddenPageNavEntries.length > 0) {
+        setShowHiddenPagesWarning(true);
+      } else {
+        setShowConfirmPopup(true);
+      }
+    }}
     disabled={isWebsiteSubmitting || isRedirectingAfterCreate}
     className="px-8 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center gap-2"
   >
@@ -4543,6 +4652,75 @@ const CreateWebsite = () => {
                   </a>
                 </div> : null}
             </form>
+
+              <Dialog
+    open={showHiddenPagesWarning}
+    onClose={() => setShowHiddenPagesWarning(false)}
+    fullWidth
+    maxWidth="sm"
+    PaperProps={{
+      sx: { borderRadius: 3, overflow: "hidden" }
+    }}
+  >
+                <DialogTitle sx={{ pb: 1 }}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg font-semibold text-slate-900">Some pages are hidden</span>
+                    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                      {hiddenPageNavEntries.length} Hidden
+                    </span>
+                  </div>
+                </DialogTitle>
+                <DialogContent>
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p className="text-sm font-pmedium text-amber-900">
+                      These pages won't appear on your published website:
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {hiddenPageNavEntries.map((entry) => <span
+      key={entry.index}
+      className="rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-pmedium text-amber-800"
+    >
+                          {entry.name}
+                        </span>)}
+                    </div>
+                    <p className="mt-3 text-xs text-amber-800">
+                      Enable them now so visitors can see them, or continue and publish without them — you can turn them back on anytime.
+                    </p>
+                  </div>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+                  <button
+      type="button"
+      onClick={() => setShowHiddenPagesWarning(false)}
+      className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-slate-50 transition-all"
+    >
+                    Cancel
+                  </button>
+                  <button
+      type="button"
+      onClick={() => {
+        setShowHiddenPagesWarning(false);
+        setShowConfirmPopup(true);
+      }}
+      className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-slate-50 transition-all"
+    >
+                    Continue Anyway
+                  </button>
+                  <button
+      type="button"
+      onClick={() => {
+        hiddenPageNavEntries.forEach((entry) => {
+          setValue(`pageNavItems.${entry.index}.enabled`, true, { shouldDirty: true });
+        });
+        setShowHiddenPagesWarning(false);
+        setShowConfirmPopup(true);
+      }}
+      className="px-6 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-all"
+    >
+                    Enable All &amp; Continue
+                  </button>
+                </DialogActions>
+              </Dialog>
 
               <Dialog
     open={showConfirmPopup}

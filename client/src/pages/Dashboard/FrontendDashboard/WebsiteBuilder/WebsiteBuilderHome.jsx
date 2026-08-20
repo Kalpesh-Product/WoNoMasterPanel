@@ -103,7 +103,9 @@ const WebsiteBuilderHome = () => {
       });
       return;
     }
-    navigate("create-website");
+    // Brand-new website: pick a template first, then land in the builder —
+    // mirrors HostPanel's WebsiteBuilderTypeActions selectTemplateRoute flow.
+    navigate("select-template");
   };
 
   return (

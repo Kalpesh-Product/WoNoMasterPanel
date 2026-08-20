@@ -1091,6 +1091,15 @@ const saveTemplateDraft = async (req, res) => {
       template.companyLogo = uploaded[0] || template.companyLogo;
     }
 
+    if (filesByField.mainHeroImage?.[0]) {
+      const uploaded = await uploadImagesForDraft(
+        [filesByField.mainHeroImage[0]],
+        `${baseFolder}/mainHeroImage`,
+        1,
+      );
+      template.mainHeroImage = uploaded[0] || template.mainHeroImage;
+    }
+
     if (filesByField.careersHeroImage?.[0]) {
       const uploaded = await uploadImagesForDraft(
         [filesByField.careersHeroImage[0]],
@@ -2029,6 +2038,13 @@ const createTemplate = async (req, res, next) => {
       };
     }
 
+    if (req.body.mainHeroImage) {
+      template.mainHeroImage = {
+        url: req.body.mainHeroImage.url,
+        id: req.body.mainHeroImage.id,
+      };
+    }
+
     if (req.body.heroImages) {
       template.heroImages = req.body.heroImages.map((img) => ({
         url: img.url,
@@ -2180,6 +2196,15 @@ const createTemplate = async (req, res, next) => {
         mimetype: "image/webp",
       });
       template.companyLogo = { id: data.id, url: data.url };
+    }
+
+    // mainHeroImage (single file)
+    if (filesByField.mainHeroImage && filesByField.mainHeroImage[0]) {
+      const uploaded = await uploadImages(
+        [filesByField.mainHeroImage[0]],
+        `${baseFolder}/mainHeroImage`,
+      );
+      template.mainHeroImage = uploaded[0] || template.mainHeroImage;
     }
 
     // careersHeroImage (single file)
@@ -3331,6 +3356,21 @@ const editTemplate = async (req, res, next) => {
         1,
       );
       template.companyLogo = uploaded[0];
+    }
+
+    // === MAIN HERO IMAGE (limit 1) ===
+    if (filesByField.mainHeroImage?.length) {
+      if (filesByField.mainHeroImage.length > 1) {
+        throw new Error("Only one main hero image is allowed.");
+      }
+      if (template.mainHeroImage?.url)
+        await deleteImagesFromS3([template.mainHeroImage]);
+      const uploaded = await uploadImages(
+        [filesByField.mainHeroImage[0]],
+        `${baseFolder}/mainHeroImage`,
+        1,
+      );
+      template.mainHeroImage = uploaded[0];
     }
 
     // === CAREERS HERO IMAGE (limit 1) ===
