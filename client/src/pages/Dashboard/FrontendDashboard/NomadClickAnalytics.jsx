@@ -22,7 +22,8 @@ const DATE_FILTER_OPTIONS = [
   { key: "custom", label: "Custom Range" },
 ];
 
-const formatNumber = (value) => new Intl.NumberFormat("en-US").format(Number(value) || 0);
+const formatNumber = (value) =>
+  new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -49,14 +50,38 @@ const getDateRange = (mode, customRange) => {
 
   const now = new Date();
   if (mode === "today") {
-    const from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const from = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      0,
+      0,
+      0,
+      0,
+    );
+    const to = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23,
+      59,
+      59,
+      999,
+    );
     return { from, to };
   }
 
   if (mode === "month") {
     const from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const to = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
     return { from, to };
   }
 
@@ -86,13 +111,7 @@ const NomadClickAnalytics = () => {
     [dateMode, customRange],
   );
 
-  const {
-    data,
-    isPending,
-    isFetching,
-    isError,
-    refetch,
-  } = useQuery({
+  const { data, isPending, isFetching, isError, refetch } = useQuery({
     queryKey: [
       "nomadClickAnalytics",
       dateMode,
@@ -100,13 +119,16 @@ const NomadClickAnalytics = () => {
       to?.toISOString?.() || "all",
     ],
     queryFn: async () => {
-      const response = await axiosPrivate.get("/api/nomad-users/popular-destinations", {
-        params: {
-          limit: 50,
-          from: from?.toISOString?.(),
-          to: to?.toISOString?.(),
+      const response = await axiosPrivate.get(
+        "/api/nomad-users/popular-destinations",
+        {
+          params: {
+            limit: 50,
+            from: from?.toISOString?.(),
+            to: to?.toISOString?.(),
+          },
         },
-      });
+      );
       return response.data;
     },
   });
@@ -197,7 +219,11 @@ const NomadClickAnalytics = () => {
               disabled={isFetching}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-pmedium text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isFetching ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {isFetching ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <RefreshCw size={13} />
+              )}
               Refresh
             </button>
           </div>
@@ -230,7 +256,10 @@ const NomadClickAnalytics = () => {
                     value={customRange.from}
                     max={customRange.to}
                     onChange={(event) =>
-                      setCustomRange((prev) => ({ ...prev, from: event.target.value }))
+                      setCustomRange((prev) => ({
+                        ...prev,
+                        from: event.target.value,
+                      }))
                     }
                     className="bg-transparent text-slate-800 outline-none"
                   />
@@ -244,7 +273,10 @@ const NomadClickAnalytics = () => {
                     min={customRange.from}
                     max={today}
                     onChange={(event) =>
-                      setCustomRange((prev) => ({ ...prev, to: event.target.value }))
+                      setCustomRange((prev) => ({
+                        ...prev,
+                        to: event.target.value,
+                      }))
                     }
                     className="bg-transparent text-slate-800 outline-none"
                   />
@@ -262,14 +294,18 @@ const NomadClickAnalytics = () => {
                   className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
                 >
                   <div>
-                    <p className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}>
+                    <p
+                      className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
+                    >
                       {card.label}
                     </p>
                     <p className="text-[15px] font-pmedium text-slate-900">
                       {formatNumber(card.value)}
                     </p>
                   </div>
-                  <div className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}>
+                  <div
+                    className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}
+                  >
                     <Icon size={16} />
                   </div>
                 </div>
@@ -280,7 +316,10 @@ const NomadClickAnalytics = () => {
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
               <div className="relative w-full xl:max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                <Search
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={15}
+                />
                 <input
                   type="text"
                   placeholder="Search destination, country, continent..."
@@ -314,10 +353,10 @@ const NomadClickAnalytics = () => {
                     <col className="w-[24%]" />
                     <col className="w-[12%]" />
                     <col className="w-[16%]" />
-                    <col className="w-[11%]" />
-                    <col className="w-[11%]" />
+                    <col className="w-[10%]" />
+                    <col className="w-[10%]" />
                     <col className="w-[12%]" />
-                    <col className="w-[7%]" />
+                    <col className="w-[9%]" />
                   </colgroup>
                   <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                     <tr>
@@ -333,9 +372,15 @@ const NomadClickAnalytics = () => {
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {filteredItems.map((item, index) => {
-                      const percent = getPercent(item.clicks, totals.totalClicks);
+                      const percent = getPercent(
+                        item.clicks,
+                        totals.totalClicks,
+                      );
                       return (
-                        <tr key={`${item.country}-${item.state}-${item.title || index}`} className="transition-colors hover:bg-slate-50/50">
+                        <tr
+                          key={`${item.country}-${item.state}-${item.title || index}`}
+                          className="transition-colors hover:bg-slate-50/50"
+                        >
                           <td className="px-5 py-4">
                             <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
                               {index + 1}
@@ -347,7 +392,9 @@ const NomadClickAnalytics = () => {
                                 {getDestinationLabel(item)}
                               </p>
                               <p className="truncate text-[10px] font-pmedium text-slate-500">
-                                {[item.state, item.continent].filter(Boolean).join(" - ") || "-"}
+                                {[item.state, item.continent]
+                                  .filter(Boolean)
+                                  .join(" - ") || "-"}
                               </p>
                             </div>
                           </td>
