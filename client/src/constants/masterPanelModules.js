@@ -23,6 +23,7 @@ import {
   LuPanelLeft,
   LuServer,
   LuHandshake,
+  LuMousePointerClick,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -125,6 +126,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Visa Countries",
             icon: LuPlane,
             route: "/dashboard/visa-countries",
+          },
+          {
+            id: 27,
+            key: "dashboard.nomad-click-analytics",
+            title: "Nomad Click Analytics",
+            icon: LuMousePointerClick,
+            route: "/dashboard/nomad-click-analytics",
           },
         ],
       },
