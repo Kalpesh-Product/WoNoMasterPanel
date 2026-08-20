@@ -206,6 +206,7 @@ import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRanki
 import PublishListings from "../pages/Dashboard/FrontendDashboard/PublishListings";
 import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLeads";
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
+import NomadDestinationListingAnalytics from "../pages/Dashboard/FrontendDashboard/NomadDestinationListingAnalytics";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
@@ -400,6 +401,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "nomad-signup-leads",
                     element: <NomadSignupLeads />,
+                  },
+                  {
+                    path: "nomad-click-analytics/listings",
+                    element: <NomadDestinationListingAnalytics />,
                   },
                   {
                     path: "nomad-click-analytics",

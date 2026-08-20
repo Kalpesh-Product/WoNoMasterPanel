@@ -6,6 +6,7 @@ router.use(setLogModule("Nomad Signup Leads"));
 const {
   getNomadUsers,
   getPopularDestinations,
+  getDestinationListingAnalytics,
   getNomadUserDestinationViews,
   getNomadUserListingViews,
   getNomadUserSessionLogs,
@@ -14,6 +15,7 @@ const {
 
 router.get("/", getNomadUsers);
 router.get("/popular-destinations", getPopularDestinations);
+router.get("/popular-destinations/listings", getDestinationListingAnalytics);
 router.get("/:userId/destination-views", getNomadUserDestinationViews);
 router.get("/:userId/listing-views", getNomadUserListingViews);
 router.get("/:userId/sessions", getNomadUserSessionLogs);
