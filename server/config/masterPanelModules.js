@@ -30,6 +30,7 @@ const masterPanelModules = [
       { key: "hostpanel.support-tickets", label: "Support Tickets" },
       { key: "hostpanel.signup-leads", label: "Signup Leads" },
       { key: "hostpanel.website-credits", label: "Website Credits" },
+      { key: "hostpanel.website-templates", label: "Website Templates" },
       { key: "hostpanel.host-companies", label: "Host Companies" },
       { key: "hostpanel.module-access-logs", label: "Module Access Logs" },
       { key: "hostpanel.host-panel-logs", label: "Host Panel Logs" },

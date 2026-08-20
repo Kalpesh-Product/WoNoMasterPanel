@@ -178,6 +178,7 @@ import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
 import ModuleAccessLogs from "../pages/Dashboard/FrontendDashboard/ModuleAccessLogs";
 import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
+import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -453,6 +454,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "website-credits",
                     element: <WebsiteCreditsOverview />,
+                  },
+                  {
+                    path: "website-templates",
+                    element: <WebsiteTemplateRequests />,
                   },
                   {
                     path: "company-reviews/:reviewTab?",

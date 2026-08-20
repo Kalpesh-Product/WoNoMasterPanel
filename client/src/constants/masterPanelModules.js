@@ -22,6 +22,7 @@ import {
   LuUserRound,
   LuPanelLeft,
   LuServer,
+  LuLayoutTemplate,
   LuHandshake,
 } from "react-icons/lu";
 
@@ -228,6 +229,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Website Credits",
             icon: LuTicket,
             route: "/dashboard/website-credits",
+          },
+          {
+            id: 27,
+            key: "hostpanel.website-templates",
+            title: "Website Templates",
+            icon: LuLayoutTemplate,
+            route: "/dashboard/website-templates",
           },
           {
             id: 7,

@@ -59,6 +59,7 @@ const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
+const websiteTemplateChangeRoutes = require("./routes/websiteTemplateChangeRoutes");
 const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
@@ -158,6 +159,7 @@ app.use("/api/finance", verifyJwt, auditLogger, financeRoutes);
 app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
 app.use("/api/website-credits", websiteCreditsRoutes);
+app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 
