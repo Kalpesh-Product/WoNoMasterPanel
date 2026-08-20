@@ -309,7 +309,7 @@ const NomadClickAnalytics = () => {
                       <th className="px-5 py-4">Rank</th>
                       <th className="px-5 py-4">Destination</th>
                       <th className="px-5 py-4">Clicks</th>
-                      <th className="px-5 py-4">Share</th>
+                      <th className="px-5 py-4">Click Percentage</th>
                       <th className="px-5 py-4">Sessions</th>
                       <th className="px-5 py-4">Users</th>
                       <th className="px-5 py-4">Last Click</th>
