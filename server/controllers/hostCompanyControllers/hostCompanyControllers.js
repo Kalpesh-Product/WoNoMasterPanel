@@ -690,7 +690,49 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
 
 const getCompanies = async (req, res, next) => {
   try {
-    const { page, limit, search, status, country, state, city } = req.query;
+    const { page, limit, search, status, country, state, city, lookupKeys } = req.query;
+
+    if (lookupKeys !== undefined) {
+      const keys = String(lookupKeys || "")
+        .split("\n")
+        .map((key) => key.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (!keys.length) return res.status(200).json([]);
+
+      const keySet = new Set(keys);
+      const lookupFilter = {
+        $or: keys
+          .map((key) => {
+            const [name, cityValue, stateValue, countryValue] = key.split("|");
+            if (!name || !cityValue || !stateValue || !countryValue) return null;
+            return {
+              companyName: new RegExp(`^${escapeRegex(name)}$`, "i"),
+              companyCity: new RegExp(`^${escapeRegex(cityValue)}$`, "i"),
+              companyState: new RegExp(`^${escapeRegex(stateValue)}$`, "i"),
+              companyCountry: new RegExp(`^${escapeRegex(countryValue)}$`, "i"),
+            };
+          })
+          .filter(Boolean),
+      };
+
+      if (!lookupFilter.$or.length) return res.status(200).json([]);
+
+      const companies = await HostCompany.find(lookupFilter)
+        .select("companyId companyName companyCity companyState companyCountry")
+        .lean();
+
+      return res.status(200).json(
+        companies.filter((company) => {
+          const key = `${company.companyName?.trim().toLowerCase()}|${company.companyCity
+            ?.trim()
+            .toLowerCase()}|${company.companyState
+            ?.trim()
+            .toLowerCase()}|${company.companyCountry?.trim().toLowerCase()}`;
+          return keySet.has(key);
+        }),
+      );
+    }
 
     // No `page` param: existing full-list behavior, unchanged for the other
     // callers of this endpoint (RequestedServices, DestinationsData,

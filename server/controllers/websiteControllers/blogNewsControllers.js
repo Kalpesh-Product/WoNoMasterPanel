@@ -6,7 +6,19 @@ const toArrayResponse = (res, rows) => res.status(200).json(rows);
 
 const getBlogs = async (req, res) => {
     try {
-        const response = await axios.get(`${NOMADS_BASE_URL}/blogs/blogs`);
+        const queryParams = { ...req.query };
+        if (queryParams.destination && !queryParams.keyword) {
+            queryParams.keyword = queryParams.destination;
+        }
+        if (queryParams.keyword && !queryParams.destination) {
+            queryParams.destination = queryParams.keyword;
+        }
+        const response = await axios.get(`${NOMADS_BASE_URL}/blogs/blogs`, {
+            params: queryParams,
+            headers: process.env.NOMADS_ADMIN_API_KEY
+                ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+                : {},
+        });
         return toArrayResponse(res, response.data);
     } catch (error) {
         return res.status(error.response?.status || 500).json({
@@ -17,7 +29,19 @@ const getBlogs = async (req, res) => {
 
 const getNews = async (req, res) => {
     try {
-        const response = await axios.get(`${NOMADS_BASE_URL}/news/news`);
+        const queryParams = { ...req.query };
+        if (queryParams.destination && !queryParams.keyword) {
+            queryParams.keyword = queryParams.destination;
+        }
+        if (queryParams.keyword && !queryParams.destination) {
+            queryParams.destination = queryParams.keyword;
+        }
+        const response = await axios.get(`${NOMADS_BASE_URL}/news/news`, {
+            params: queryParams,
+            headers: process.env.NOMADS_ADMIN_API_KEY
+                ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+                : {},
+        });
         return toArrayResponse(res, response.data);
     } catch (error) {
         return res.status(error.response?.status || 500).json({

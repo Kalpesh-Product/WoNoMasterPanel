@@ -22,7 +22,9 @@ import {
   LuUserRound,
   LuPanelLeft,
   LuServer,
+  LuLayoutTemplate,
   LuHandshake,
+  LuMousePointerClick,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -126,6 +128,13 @@ export const MASTER_PANEL_MODULES = [
             icon: LuPlane,
             route: "/dashboard/visa-countries",
           },
+          {
+            id: 27,
+            key: "dashboard.nomad-click-analytics",
+            title: "Nomad Click Analytics",
+            icon: LuMousePointerClick,
+            route: "/dashboard/nomad-click-analytics",
+          },
         ],
       },
       {
@@ -228,6 +237,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Website Credits",
             icon: LuTicket,
             route: "/dashboard/website-credits",
+          },
+          {
+            id: 27,
+            key: "hostpanel.website-templates",
+            title: "Website Templates",
+            icon: LuLayoutTemplate,
+            route: "/dashboard/website-templates",
           },
           {
             id: 7,

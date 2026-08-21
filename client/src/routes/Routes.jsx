@@ -133,6 +133,7 @@ import AccessPages from "../pages/Access/AccessPages";
 import AddMasterUser from "../pages/Access/AddMasterUser";
 import ModulePermissions from "../pages/Access/ModulePermissions";
 import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/CreateWebsite";
+import SelectWebsiteTemplate from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/SelectWebsiteTemplate";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
 import CompaniesLayout from "../pages/Dashboard/FrontendDashboard/CompaniesLayout";
@@ -177,6 +178,7 @@ import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
 import ModuleAccessLogs from "../pages/Dashboard/FrontendDashboard/ModuleAccessLogs";
 import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
+import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -205,6 +207,8 @@ import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import PublishListings from "../pages/Dashboard/FrontendDashboard/PublishListings";
 import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLeads";
+import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
+import NomadDestinationListingAnalytics from "../pages/Dashboard/FrontendDashboard/NomadDestinationListingAnalytics";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
@@ -401,6 +405,14 @@ export const routes = createBrowserRouter([
                     element: <NomadSignupLeads />,
                   },
                   {
+                    path: "nomad-click-analytics/listings",
+                    element: <NomadDestinationListingAnalytics />,
+                  },
+                  {
+                    path: "nomad-click-analytics",
+                    element: <NomadClickAnalytics />,
+                  },
+                  {
                     path: "inactive-websites",
                     children: [
                       {
@@ -452,6 +464,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "website-credits",
                     element: <WebsiteCreditsOverview />,
+                  },
+                  {
+                    path: "website-templates",
+                    element: <WebsiteTemplateRequests />,
                   },
                   {
                     path: "company-reviews/:reviewTab?",
@@ -592,6 +608,10 @@ export const routes = createBrowserRouter([
                           { path: "careers", element: <WebsiteBuilderCareers /> },
                           { path: "live-demo", element: <PageDemo /> },
                           {
+                            path: "select-template",
+                            element: <SelectWebsiteTemplate />,
+                          },
+                          {
                             path: "create-website",
                             element: <CreateWebsite />,
                           },
@@ -721,6 +741,7 @@ export const routes = createBrowserRouter([
                           { path: "reviews", element: <WebsiteBuilderReviews /> },
                           { path: "careers", element: <WebsiteBuilderCareers /> },
                           { path: "live-demo", element: <PageDemo /> },
+                          { path: "select-template", element: <SelectWebsiteTemplate /> },
                           { path: "create-website", element: <CreateWebsite /> },
                           { path: "edit-website", element: <EditWebsite /> },
                           {
