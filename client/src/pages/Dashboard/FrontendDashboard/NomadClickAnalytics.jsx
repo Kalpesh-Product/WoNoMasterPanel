@@ -23,6 +23,12 @@ const DATE_FILTER_OPTIONS = [
   { key: "custom", label: "Custom Range" },
 ];
 
+const LISTING_VIEW_TABS = [
+  { key: "all", label: "All" },
+  { key: "list", label: "List View" },
+  { key: "map", label: "Map View" },
+];
+
 const formatNumber = (value) =>
   new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
@@ -129,6 +135,7 @@ const NomadClickAnalytics = () => {
   const [search, setSearch] = useState("");
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [destinationTab, setDestinationTab] = useState("overview");
+  const [listingViewTab, setListingViewTab] = useState("all");
   const [listingSearch, setListingSearch] = useState("");
 
   const { from, to } = useMemo(
@@ -190,14 +197,10 @@ const NomadClickAnalytics = () => {
     return [fromLabel, toLabel].filter(Boolean).join(" - ") || "Custom Range";
   }, [dateMode, from, to]);
 
-  const {
-    data: listingData,
-    isPending: isListingsPending,
-    isFetching: isListingsFetching,
-    isError: isListingsError,
-  } = useQuery({
+  const buildListingQuery = (viewMode) => ({
     queryKey: [
       "nomadDestinationListingAnalyticsModal",
+      viewMode,
       selectedDestination?.country || "",
       selectedDestination?.state || "",
       selectedDestination?.title || "",
@@ -218,6 +221,7 @@ const NomadClickAnalytics = () => {
             from: from?.toISOString?.(),
             to: to?.toISOString?.(),
             limit: 100,
+            viewMode: viewMode === "all" ? undefined : viewMode,
           },
         },
       );
@@ -225,17 +229,75 @@ const NomadClickAnalytics = () => {
     },
   });
 
+  const {
+    data: listingData,
+    isPending: isListingsPending,
+    isFetching: isListingsFetching,
+    isError: isListingsError,
+  } = useQuery(buildListingQuery("all"));
+
+  const {
+    data: listViewListingData,
+    isPending: isListViewListingsPending,
+    isFetching: isListViewListingsFetching,
+    isError: isListViewListingsError,
+  } = useQuery(buildListingQuery("list"));
+
+  const {
+    data: mapViewListingData,
+    isPending: isMapViewListingsPending,
+    isFetching: isMapViewListingsFetching,
+    isError: isMapViewListingsError,
+  } = useQuery(buildListingQuery("map"));
+
+  const listingDataByView = {
+    all: listingData,
+    list: listViewListingData,
+    map: mapViewListingData,
+  };
+
+  const listingPendingByView = {
+    all: isListingsPending,
+    list: isListViewListingsPending,
+    map: isMapViewListingsPending,
+  };
+
+  const listingFetchingByView = {
+    all: isListingsFetching,
+    list: isListViewListingsFetching,
+    map: isMapViewListingsFetching,
+  };
+
+  const listingErrorByView = {
+    all: isListingsError,
+    list: isListViewListingsError,
+    map: isMapViewListingsError,
+  };
+
+  const activeListingData = listingDataByView[listingViewTab];
   const listingItems = useMemo(() => listingData?.items || [], [listingData?.items]);
   const listingTotals = listingData?.totals || {
     totalClicks: 0,
     totalListings: 0,
     uniqueUsers: 0,
   };
+  const activeListingItems = useMemo(
+    () => activeListingData?.items || [],
+    [activeListingData?.items],
+  );
+  const activeListingTotals = activeListingData?.totals || {
+    totalClicks: 0,
+    totalListings: 0,
+    uniqueUsers: 0,
+  };
+  const isActiveListingsPending = listingPendingByView[listingViewTab];
+  const isActiveListingsFetching = listingFetchingByView[listingViewTab];
+  const isActiveListingsError = listingErrorByView[listingViewTab];
 
   const filteredListings = useMemo(() => {
     const query = listingSearch.trim().toLowerCase();
-    if (!query) return listingItems;
-    return listingItems.filter((item) =>
+    if (!query) return activeListingItems;
+    return activeListingItems.filter((item) =>
       [
         item.companyName,
         item.businessId,
@@ -250,7 +312,7 @@ const NomadClickAnalytics = () => {
         .toLowerCase()
         .includes(query),
     );
-  }, [listingItems, listingSearch]);
+  }, [activeListingItems, listingSearch]);
 
   const summaryCards = [
     {
@@ -290,12 +352,14 @@ const NomadClickAnalytics = () => {
   const openDestinationDetails = (item) => {
     setSelectedDestination(item);
     setDestinationTab("overview");
+    setListingViewTab("all");
     setListingSearch("");
   };
 
   const closeDestinationDetails = () => {
     setSelectedDestination(null);
     setDestinationTab("overview");
+    setListingViewTab("all");
     setListingSearch("");
   };
 
@@ -598,6 +662,42 @@ const NomadClickAnalytics = () => {
               ))}
             </div>
 
+            {destinationTab === "listings" && (
+              <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-5 py-2.5 sm:px-6">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {LISTING_VIEW_TABS.map((tab) => {
+                    const isActive = listingViewTab === tab.key;
+                    const listingCount = (listingDataByView[tab.key]?.totals || {})
+                      .totalListings;
+
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setListingViewTab(tab.key)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors ${
+                          isActive
+                            ? "bg-[#2563EB] text-white shadow-sm"
+                            : "border border-slate-200/60 bg-white text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tab.label}
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[9px] ${
+                            isActive
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {formatNumber(listingCount)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto bg-white p-5 sm:p-6">
               {destinationTab === "overview" ? (
                 <div className="space-y-5">
@@ -710,7 +810,7 @@ const NomadClickAnalytics = () => {
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-pmedium text-slate-500">
                       <Building2 size={12} />
-                      {formatNumber(listingTotals.totalListings)} listings
+                      {formatNumber(activeListingTotals.totalListings)} listings
                     </div>
                   </div>
 
@@ -721,11 +821,11 @@ const NomadClickAnalytics = () => {
                         Destination details are missing.
                       </p>
                     </div>
-                  ) : isListingsPending ? (
+                  ) : isActiveListingsPending ? (
                     <div className="flex items-center justify-center py-16 text-slate-400">
                       <Loader2 size={18} className="animate-spin" />
                     </div>
-                  ) : isListingsError ? (
+                  ) : isActiveListingsError ? (
                     <div className="flex items-center justify-center py-16 text-center text-red-500">
                       Failed to load listing analytics.
                     </div>
@@ -741,7 +841,7 @@ const NomadClickAnalytics = () => {
                       {filteredListings.map((listing, index) => {
                         const percent = getPercent(
                           listing.clicks,
-                          listingTotals.totalClicks,
+                          activeListingTotals.totalClicks,
                         );
                         return (
                           <div
@@ -770,6 +870,12 @@ const NomadClickAnalytics = () => {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {isActiveListingsFetching && !isActiveListingsPending && (
+                    <div className="flex items-center justify-center py-2 text-slate-400">
+                      <Loader2 size={14} className="animate-spin" />
                     </div>
                   )}
                 </div>
