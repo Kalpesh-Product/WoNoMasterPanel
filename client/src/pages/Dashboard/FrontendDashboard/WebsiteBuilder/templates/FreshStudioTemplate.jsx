@@ -709,7 +709,7 @@ const FreshStudioTemplate = () => {
                         <img
     src={src}
     alt=""
-    className="h-full w-full scale-110 object-cover blur-sm"
+    className="h-full w-full object-cover blur-sm"
     style={{ opacity: 0.85 }}
   />
                       </div>)}
@@ -1567,7 +1567,7 @@ const FreshStudioTemplate = () => {
                     Apply
                   </button>
                 </div> : null}
-              {t.careersDetailTab === "description" && !t.careersDirectApply ? <div className="mt-8 flex max-w-2xl flex-col gap-6 text-[14px] leading-relaxed">
+              {t.careersDetailTab === "description" && !t.careersDirectApply ? <div className="mt-8 flex flex-col gap-6 text-[14px] leading-relaxed">
                   {t.careersApplyJob?.aboutTheJob ? <div>
                       <p className="font-semibold" style={{ color: HEADING }}>
                         About this role
@@ -1580,20 +1580,44 @@ const FreshStudioTemplate = () => {
                       <p className="font-semibold" style={{ color: HEADING }}>
                         Key responsibilities
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap">
-                        {t.careersApplyJob.keyResponsibilities}
-                      </p>
+                      <ul className="mt-2 list-inside list-disc space-y-1">
+                        {t.careersApplyJob.keyResponsibilities.split(/\.\s+/).map((s) => s.replace(/\.$/, "").trim()).filter(Boolean).map((point, i) => <li key={i}>{point}</li>)}
+                      </ul>
                     </div> : null}
                   {t.careersApplyJob?.requirements ? <div>
                       <p className="font-semibold" style={{ color: HEADING }}>
                         Requirements
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap">
-                        {t.careersApplyJob.requirements}
-                      </p>
+                      <ul className="mt-2 list-inside list-disc space-y-1">
+                        {t.careersApplyJob.requirements.split(/\.\s+/).map((s) => s.replace(/\.$/, "").trim()).filter(Boolean).map((point, i) => <li key={i}>{point}</li>)}
+                      </ul>
                     </div> : null}
+                  {t.careersApplyJob?.softSkills ? <div>
+                      <p className="font-semibold" style={{ color: HEADING }}>
+                        Soft skills
+                      </p>
+                      <ul className="mt-2 list-inside list-disc space-y-1">
+                        {t.careersApplyJob.softSkills.split(/\.\s+/).map((s) => s.replace(/\.$/, "").trim()).filter(Boolean).map((point, i) => <li key={i}>{point}</li>)}
+                      </ul>
+                    </div> : null}
+                  <div className="mt-2 pt-6 text-center" style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+                    {draft?.companyLogo ? <img
+    src={draft.companyLogo}
+    alt={draft.companyName || "Company"}
+    className="mx-auto h-12 w-auto object-contain"
+  /> : draft?.companyName ? <p className="text-[16px] font-semibold" style={{ color: HEADING }}>
+                        {draft.companyName}
+                      </p> : null}
+                    {draft?.email ? <p className="mt-3 text-[14px] leading-7">
+                        Please send in your resume to{" "}
+                        <span className="font-semibold" style={{ color: HEADING }}>
+                          Email: {draft.email}
+                        </span>{" "}
+                        if unable to apply now.
+                      </p> : null}
+                  </div>
                 </div> : null}
-              {t.careersDetailTab === "apply" || t.careersDirectApply ? <div className="mt-8 max-w-2xl">
+              {t.careersDetailTab === "apply" || t.careersDirectApply ? <div className="mt-8">
                   {t.careersApplySubmitted ? <div
     className={`${CARD} border p-6 text-center`}
     style={{ borderColor: "rgba(255,255,255,0.12)" }}
@@ -1609,7 +1633,8 @@ const FreshStudioTemplate = () => {
                       </p>
                     </div> : <form
     onSubmit={t.submitCareersApplication}
-    className="grid grid-cols-1 gap-3 md:grid-cols-2"
+    className={`${CARD} border grid grid-cols-1 gap-3 p-6 md:grid-cols-2 md:p-7`}
+    style={{ borderColor: "rgba(255,255,255,0.12)" }}
   >
                       <input
     type="text"

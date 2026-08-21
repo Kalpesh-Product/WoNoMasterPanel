@@ -23,6 +23,17 @@ const DATE_FILTER_OPTIONS = [
   { key: "custom", label: "Custom Range" },
 ];
 
+const LISTING_VIEW_TABS = [
+  { key: "all", label: "All" },
+  { key: "list", label: "List View" },
+  { key: "map", label: "Map View" },
+];
+
+const USER_VIEW_TABS = [
+  { key: "guest", label: "Guest Users" },
+  { key: "loggedIn", label: "Logged In Users" },
+];
+
 const formatNumber = (value) =>
   new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
@@ -129,6 +140,8 @@ const NomadClickAnalytics = () => {
   const [search, setSearch] = useState("");
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [destinationTab, setDestinationTab] = useState("overview");
+  const [listingViewTab, setListingViewTab] = useState("all");
+  const [userViewTab, setUserViewTab] = useState("guest");
   const [listingSearch, setListingSearch] = useState("");
 
   const { from, to } = useMemo(
@@ -162,6 +175,8 @@ const NomadClickAnalytics = () => {
   const totals = data?.totals || {
     totalClicks: 0,
     totalDestinations: 0,
+    guestClicks: 0,
+    loggedInClicks: 0,
     uniqueUsers: 0,
     uniqueSessions: 0,
   };
@@ -188,14 +203,10 @@ const NomadClickAnalytics = () => {
     return [fromLabel, toLabel].filter(Boolean).join(" - ") || "Custom Range";
   }, [dateMode, from, to]);
 
-  const {
-    data: listingData,
-    isPending: isListingsPending,
-    isFetching: isListingsFetching,
-    isError: isListingsError,
-  } = useQuery({
+  const buildListingQuery = (viewMode) => ({
     queryKey: [
       "nomadDestinationListingAnalyticsModal",
+      viewMode,
       selectedDestination?.country || "",
       selectedDestination?.state || "",
       selectedDestination?.title || "",
@@ -216,6 +227,7 @@ const NomadClickAnalytics = () => {
             from: from?.toISOString?.(),
             to: to?.toISOString?.(),
             limit: 100,
+            viewMode: viewMode === "all" ? undefined : viewMode,
           },
         },
       );
@@ -223,17 +235,113 @@ const NomadClickAnalytics = () => {
     },
   });
 
+  const {
+    data: listingData,
+    isPending: isListingsPending,
+    isFetching: isListingsFetching,
+    isError: isListingsError,
+  } = useQuery(buildListingQuery("all"));
+
+  const {
+    data: listViewListingData,
+    isPending: isListViewListingsPending,
+    isFetching: isListViewListingsFetching,
+    isError: isListViewListingsError,
+  } = useQuery(buildListingQuery("list"));
+
+  const {
+    data: mapViewListingData,
+    isPending: isMapViewListingsPending,
+    isFetching: isMapViewListingsFetching,
+    isError: isMapViewListingsError,
+  } = useQuery(buildListingQuery("map"));
+
+  const {
+    data: destinationUsersData,
+    isPending: isDestinationUsersPending,
+    isFetching: isDestinationUsersFetching,
+    isError: isDestinationUsersError,
+  } = useQuery({
+    queryKey: [
+      "nomadDestinationUsersModal",
+      selectedDestination?.country || "",
+      selectedDestination?.state || "",
+      selectedDestination?.title || "",
+      selectedDestination?.continent || "",
+      from?.toISOString?.() || "all",
+      to?.toISOString?.() || "all",
+    ],
+    enabled: Boolean(selectedDestination?.country && selectedDestination?.state),
+    queryFn: async () => {
+      const response = await axiosPrivate.get(
+        "/api/nomad-users/popular-destinations/users",
+        {
+          params: {
+            country: selectedDestination.country,
+            state: selectedDestination.state,
+            title: selectedDestination.title,
+            continent: selectedDestination.continent,
+            from: from?.toISOString?.(),
+            to: to?.toISOString?.(),
+            limit: 500,
+          },
+        },
+      );
+      return response.data;
+    },
+  });
+
+  const listingDataByView = {
+    all: listingData,
+    list: listViewListingData,
+    map: mapViewListingData,
+  };
+
+  const listingPendingByView = {
+    all: isListingsPending,
+    list: isListViewListingsPending,
+    map: isMapViewListingsPending,
+  };
+
+  const listingFetchingByView = {
+    all: isListingsFetching,
+    list: isListViewListingsFetching,
+    map: isMapViewListingsFetching,
+  };
+
+  const listingErrorByView = {
+    all: isListingsError,
+    list: isListViewListingsError,
+    map: isMapViewListingsError,
+  };
+
+  const activeListingData = listingDataByView[listingViewTab];
   const listingItems = useMemo(() => listingData?.items || [], [listingData?.items]);
   const listingTotals = listingData?.totals || {
     totalClicks: 0,
     totalListings: 0,
     uniqueUsers: 0,
   };
+  const activeListingItems = useMemo(
+    () => activeListingData?.items || [],
+    [activeListingData?.items],
+  );
+  const activeListingTotals = activeListingData?.totals || {
+    totalClicks: 0,
+    totalListings: 0,
+    uniqueUsers: 0,
+  };
+  const isActiveListingsPending = listingPendingByView[listingViewTab];
+  const isActiveListingsFetching = listingFetchingByView[listingViewTab];
+  const isActiveListingsError = listingErrorByView[listingViewTab];
+  const guestUsers = destinationUsersData?.guestUsers || [];
+  const loggedInUsers = destinationUsersData?.loggedInUsers || [];
+  const activeUsers = userViewTab === "guest" ? guestUsers : loggedInUsers;
 
   const filteredListings = useMemo(() => {
     const query = listingSearch.trim().toLowerCase();
-    if (!query) return listingItems;
-    return listingItems.filter((item) =>
+    if (!query) return activeListingItems;
+    return activeListingItems.filter((item) =>
       [
         item.companyName,
         item.businessId,
@@ -248,7 +356,7 @@ const NomadClickAnalytics = () => {
         .toLowerCase()
         .includes(query),
     );
-  }, [listingItems, listingSearch]);
+  }, [activeListingItems, listingSearch]);
 
   const summaryCards = [
     {
@@ -268,16 +376,16 @@ const NomadClickAnalytics = () => {
       bgColor: "bg-emerald-50",
     },
     {
-      label: "Unique Sessions",
-      value: totals.uniqueSessions,
+      label: "Guest User Clicks",
+      value: totals.guestClicks,
       icon: Users,
       accent: "border-l-amber-500",
       textColor: "text-amber-600",
       bgColor: "bg-amber-50",
     },
     {
-      label: "Signed-In Users",
-      value: totals.uniqueUsers,
+      label: "Logged In User Clicks",
+      value: totals.loggedInClicks,
       icon: Clock3,
       accent: "border-l-slate-400",
       textColor: "text-slate-600",
@@ -288,12 +396,16 @@ const NomadClickAnalytics = () => {
   const openDestinationDetails = (item) => {
     setSelectedDestination(item);
     setDestinationTab("overview");
+    setListingViewTab("all");
+    setUserViewTab("guest");
     setListingSearch("");
   };
 
   const closeDestinationDetails = () => {
     setSelectedDestination(null);
     setDestinationTab("overview");
+    setListingViewTab("all");
+    setUserViewTab("guest");
     setListingSearch("");
   };
 
@@ -462,8 +574,8 @@ const NomadClickAnalytics = () => {
                       <th className="px-5 py-4">Destination</th>
                       <th className="px-5 py-4">Clicks</th>
                       <th className="px-5 py-4">Click Percentage</th>
-                      <th className="px-5 py-4">Sessions</th>
-                      <th className="px-5 py-4">Users</th>
+                      <th className="px-5 py-4">Guest User Clicks</th>
+                      <th className="px-5 py-4">Logged In User Clicks</th>
                       <th className="px-5 py-4">Last Click</th>
                       <th className="px-5 py-4 text-center">Action</th>
                     </tr>
@@ -513,10 +625,10 @@ const NomadClickAnalytics = () => {
                             </div>
                           </td>
                           <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {formatNumber(item.uniqueSessions)}
+                            {formatNumber(item.guestClicks)}
                           </td>
                           <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {formatNumber(item.uniqueUsers)}
+                            {formatNumber(item.loggedInClicks)}
                           </td>
                           <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
                             {formatDate(item.lastClickedAt)}
@@ -580,6 +692,7 @@ const NomadClickAnalytics = () => {
               {[
                 { key: "overview", label: "Overview" },
                 { key: "listings", label: "Listings" },
+                { key: "users", label: "Users" },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -596,6 +709,78 @@ const NomadClickAnalytics = () => {
               ))}
             </div>
 
+            {destinationTab === "listings" && (
+              <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-5 py-2.5 sm:px-6">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {LISTING_VIEW_TABS.map((tab) => {
+                    const isActive = listingViewTab === tab.key;
+                    const listingCount = (listingDataByView[tab.key]?.totals || {})
+                      .totalListings;
+
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setListingViewTab(tab.key)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors ${
+                          isActive
+                            ? "bg-[#2563EB] text-white shadow-sm"
+                            : "border border-slate-200/60 bg-white text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tab.label}
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[9px] ${
+                            isActive
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {formatNumber(listingCount)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {destinationTab === "users" && (
+              <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-5 py-2.5 sm:px-6">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {USER_VIEW_TABS.map((tab) => {
+                    const isActive = userViewTab === tab.key;
+                    const userCount =
+                      tab.key === "guest" ? guestUsers.length : loggedInUsers.length;
+
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setUserViewTab(tab.key)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors ${
+                          isActive
+                            ? "bg-[#2563EB] text-white shadow-sm"
+                            : "border border-slate-200/60 bg-white text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tab.label}
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[9px] ${
+                            isActive
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {formatNumber(userCount)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto bg-white p-5 sm:p-6">
               {destinationTab === "overview" ? (
                 <div className="space-y-5">
@@ -608,14 +793,14 @@ const NomadClickAnalytics = () => {
                         tone: "text-blue-600 bg-blue-50 border-l-blue-500",
                       },
                       {
-                        label: "Sessions",
-                        value: selectedDestination.uniqueSessions,
+                        label: "Guest User Clicks",
+                        value: selectedDestination.guestClicks,
                         icon: Users,
                         tone: "text-amber-600 bg-amber-50 border-l-amber-500",
                       },
                       {
-                        label: "Users",
-                        value: selectedDestination.uniqueUsers,
+                        label: "Logged In User Clicks",
+                        value: selectedDestination.loggedInClicks,
                         icon: Clock3,
                         tone: "text-emerald-600 bg-emerald-50 border-l-emerald-500",
                       },
@@ -690,7 +875,7 @@ const NomadClickAnalytics = () => {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : destinationTab === "listings" ? (
                 <div className="space-y-4">
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div className="relative w-full sm:max-w-sm">
@@ -708,7 +893,7 @@ const NomadClickAnalytics = () => {
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-pmedium text-slate-500">
                       <Building2 size={12} />
-                      {formatNumber(listingTotals.totalListings)} listings
+                      {formatNumber(activeListingTotals.totalListings)} listings
                     </div>
                   </div>
 
@@ -719,11 +904,11 @@ const NomadClickAnalytics = () => {
                         Destination details are missing.
                       </p>
                     </div>
-                  ) : isListingsPending ? (
+                  ) : isActiveListingsPending ? (
                     <div className="flex items-center justify-center py-16 text-slate-400">
                       <Loader2 size={18} className="animate-spin" />
                     </div>
-                  ) : isListingsError ? (
+                  ) : isActiveListingsError ? (
                     <div className="flex items-center justify-center py-16 text-center text-red-500">
                       Failed to load listing analytics.
                     </div>
@@ -739,7 +924,7 @@ const NomadClickAnalytics = () => {
                       {filteredListings.map((listing, index) => {
                         const percent = getPercent(
                           listing.clicks,
-                          listingTotals.totalClicks,
+                          activeListingTotals.totalClicks,
                         );
                         return (
                           <div
@@ -762,12 +947,88 @@ const NomadClickAnalytics = () => {
                                 {formatNumber(listing.clicks)} clicks
                               </p>
                               <p className="text-[10px] font-pmedium text-slate-400">
-                                {percent}% · {formatNumber(listing.uniqueUsers)} users · {formatDate(listing.lastClickedAt)}
+                                {percent}% · {formatNumber(listing.guestClicks)} guest · {formatNumber(listing.loggedInClicks)} logged in · {formatDate(listing.lastClickedAt)}
                               </p>
                             </div>
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {isActiveListingsFetching && !isActiveListingsPending && (
+                    <div className="flex items-center justify-center py-2 text-slate-400">
+                      <Loader2 size={14} className="animate-spin" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="text-[12px] font-pmedium text-slate-800">
+                        {userViewTab === "guest" ? "Guest Users" : "Logged In Users"}
+                      </p>
+                      <p className="text-[10px] font-pmedium text-slate-400">
+                        IP addresses captured when the destination click happened.
+                      </p>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-pmedium text-slate-500">
+                      <Users size={12} />
+                      {formatNumber(activeUsers.length)} clicks
+                    </div>
+                  </div>
+
+                  {isDestinationUsersPending ? (
+                    <div className="flex items-center justify-center py-16 text-slate-400">
+                      <Loader2 size={18} className="animate-spin" />
+                    </div>
+                  ) : isDestinationUsersError ? (
+                    <div className="flex items-center justify-center py-16 text-center text-red-500">
+                      Failed to load user IP analytics.
+                    </div>
+                  ) : activeUsers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users size={28} className="mb-2 text-slate-300" />
+                      <p className="text-[12px] font-pmedium text-slate-400">
+                        No {userViewTab === "guest" ? "guest" : "logged in"} user clicks found.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/60">
+                      {activeUsers.map((entry, index) => (
+                        <div
+                          key={entry.id || `${entry.ipAddress}-${entry.clickedAt}-${index}`}
+                          className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3"
+                        >
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-[12px] font-pmedium text-slate-800">
+                              {entry.ipAddress || "IP not captured"}
+                            </p>
+                            <p className="truncate text-[10px] font-pmedium text-slate-500">
+                              {entry.user?.name || "Guest user"}
+                              {entry.user?.email ? ` - ${entry.user.email}` : ""}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[11px] font-pmedium text-slate-500">
+                              {formatDate(entry.clickedAt)}
+                            </p>
+                            <p className="text-[10px] font-pmedium text-slate-400">
+                              {entry.sessionId ? `Session ${entry.sessionId}` : "No session"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {isDestinationUsersFetching && !isDestinationUsersPending && (
+                    <div className="flex items-center justify-center py-2 text-slate-400">
+                      <Loader2 size={14} className="animate-spin" />
                     </div>
                   )}
                 </div>

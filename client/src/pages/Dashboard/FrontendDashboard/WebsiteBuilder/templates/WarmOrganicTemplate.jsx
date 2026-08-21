@@ -1495,7 +1495,8 @@ const WarmOrganicTemplate = () => {
                       </p>
                     </div> : <form
     onSubmit={t.submitCareersApplication}
-    className="grid grid-cols-1 gap-3 md:grid-cols-2"
+    className="grid grid-cols-1 gap-3 rounded-2xl p-6 md:grid-cols-2"
+    style={{ backgroundColor: CREAM }}
   >
                       <input
     type="text"

@@ -42,6 +42,7 @@ const serializeRequest = (request) => {
     websiteId: text(value?.websiteId),
     currentTemplateId: templateId(value?.currentTemplateId) || "default",
     requestedTemplateId: templateId(value?.requestedTemplateId),
+    requestSource: value?.requestSource === "master" ? "master" : "host",
   };
 };
 

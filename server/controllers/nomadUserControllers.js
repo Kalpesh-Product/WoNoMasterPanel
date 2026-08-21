@@ -44,13 +44,25 @@ const getPopularDestinations = async (req, res) => {
 
 const getDestinationListingAnalytics = async (req, res) => {
   try {
-    const { country, state, title, continent, from, to, limit } = req.query;
+    const { country, state, title, continent, from, to, limit, viewMode } = req.query;
     const response = await nomadsAdminClient.get("/popular-destinations/listings", {
-      params: { country, state, title, continent, from, to, limit },
+      params: { country, state, title, continent, from, to, limit, viewMode },
     });
     return res.status(200).json(response.data);
   } catch (error) {
     return forwardNomadsError(res, error, "Failed to fetch destination listing analytics");
+  }
+};
+
+const getDestinationUsers = async (req, res) => {
+  try {
+    const { country, state, title, continent, from, to, limit } = req.query;
+    const response = await nomadsAdminClient.get("/popular-destinations/users", {
+      params: { country, state, title, continent, from, to, limit },
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardNomadsError(res, error, "Failed to fetch destination users");
   }
 };
 
@@ -176,6 +188,7 @@ module.exports = {
   getNomadUsers,
   getPopularDestinations,
   getDestinationListingAnalytics,
+  getDestinationUsers,
   getNomadUserDestinationViews,
   getNomadUserListingViews,
   getNomadUserSessionLogs,
