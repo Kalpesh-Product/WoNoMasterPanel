@@ -29,6 +29,11 @@ const LISTING_VIEW_TABS = [
   { key: "map", label: "Map View" },
 ];
 
+const USER_VIEW_TABS = [
+  { key: "guest", label: "Guest Users" },
+  { key: "loggedIn", label: "Logged In Users" },
+];
+
 const formatNumber = (value) =>
   new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
@@ -136,6 +141,7 @@ const NomadClickAnalytics = () => {
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [destinationTab, setDestinationTab] = useState("overview");
   const [listingViewTab, setListingViewTab] = useState("all");
+  const [userViewTab, setUserViewTab] = useState("guest");
   const [listingSearch, setListingSearch] = useState("");
 
   const { from, to } = useMemo(
@@ -250,6 +256,41 @@ const NomadClickAnalytics = () => {
     isError: isMapViewListingsError,
   } = useQuery(buildListingQuery("map"));
 
+  const {
+    data: destinationUsersData,
+    isPending: isDestinationUsersPending,
+    isFetching: isDestinationUsersFetching,
+    isError: isDestinationUsersError,
+  } = useQuery({
+    queryKey: [
+      "nomadDestinationUsersModal",
+      selectedDestination?.country || "",
+      selectedDestination?.state || "",
+      selectedDestination?.title || "",
+      selectedDestination?.continent || "",
+      from?.toISOString?.() || "all",
+      to?.toISOString?.() || "all",
+    ],
+    enabled: Boolean(selectedDestination?.country && selectedDestination?.state),
+    queryFn: async () => {
+      const response = await axiosPrivate.get(
+        "/api/nomad-users/popular-destinations/users",
+        {
+          params: {
+            country: selectedDestination.country,
+            state: selectedDestination.state,
+            title: selectedDestination.title,
+            continent: selectedDestination.continent,
+            from: from?.toISOString?.(),
+            to: to?.toISOString?.(),
+            limit: 500,
+          },
+        },
+      );
+      return response.data;
+    },
+  });
+
   const listingDataByView = {
     all: listingData,
     list: listViewListingData,
@@ -293,6 +334,9 @@ const NomadClickAnalytics = () => {
   const isActiveListingsPending = listingPendingByView[listingViewTab];
   const isActiveListingsFetching = listingFetchingByView[listingViewTab];
   const isActiveListingsError = listingErrorByView[listingViewTab];
+  const guestUsers = destinationUsersData?.guestUsers || [];
+  const loggedInUsers = destinationUsersData?.loggedInUsers || [];
+  const activeUsers = userViewTab === "guest" ? guestUsers : loggedInUsers;
 
   const filteredListings = useMemo(() => {
     const query = listingSearch.trim().toLowerCase();
@@ -353,6 +397,7 @@ const NomadClickAnalytics = () => {
     setSelectedDestination(item);
     setDestinationTab("overview");
     setListingViewTab("all");
+    setUserViewTab("guest");
     setListingSearch("");
   };
 
@@ -360,6 +405,7 @@ const NomadClickAnalytics = () => {
     setSelectedDestination(null);
     setDestinationTab("overview");
     setListingViewTab("all");
+    setUserViewTab("guest");
     setListingSearch("");
   };
 
@@ -646,6 +692,7 @@ const NomadClickAnalytics = () => {
               {[
                 { key: "overview", label: "Overview" },
                 { key: "listings", label: "Listings" },
+                { key: "users", label: "Users" },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -690,6 +737,42 @@ const NomadClickAnalytics = () => {
                           }`}
                         >
                           {formatNumber(listingCount)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {destinationTab === "users" && (
+              <div className="relative flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-5 py-2.5 sm:px-6">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {USER_VIEW_TABS.map((tab) => {
+                    const isActive = userViewTab === tab.key;
+                    const userCount =
+                      tab.key === "guest" ? guestUsers.length : loggedInUsers.length;
+
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setUserViewTab(tab.key)}
+                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors ${
+                          isActive
+                            ? "bg-[#2563EB] text-white shadow-sm"
+                            : "border border-slate-200/60 bg-white text-slate-500 hover:bg-slate-100"
+                        }`}
+                      >
+                        {tab.label}
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[9px] ${
+                            isActive
+                              ? "bg-white/20 text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {formatNumber(userCount)}
                         </span>
                       </button>
                     );
@@ -792,7 +875,7 @@ const NomadClickAnalytics = () => {
                     </div>
                   )}
                 </div>
-              ) : (
+              ) : destinationTab === "listings" ? (
                 <div className="space-y-4">
                   <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                     <div className="relative w-full sm:max-w-sm">
@@ -874,6 +957,76 @@ const NomadClickAnalytics = () => {
                   )}
 
                   {isActiveListingsFetching && !isActiveListingsPending && (
+                    <div className="flex items-center justify-center py-2 text-slate-400">
+                      <Loader2 size={14} className="animate-spin" />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div>
+                      <p className="text-[12px] font-pmedium text-slate-800">
+                        {userViewTab === "guest" ? "Guest Users" : "Logged In Users"}
+                      </p>
+                      <p className="text-[10px] font-pmedium text-slate-400">
+                        IP addresses captured when the destination click happened.
+                      </p>
+                    </div>
+                    <div className="inline-flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-[10px] font-pmedium text-slate-500">
+                      <Users size={12} />
+                      {formatNumber(activeUsers.length)} clicks
+                    </div>
+                  </div>
+
+                  {isDestinationUsersPending ? (
+                    <div className="flex items-center justify-center py-16 text-slate-400">
+                      <Loader2 size={18} className="animate-spin" />
+                    </div>
+                  ) : isDestinationUsersError ? (
+                    <div className="flex items-center justify-center py-16 text-center text-red-500">
+                      Failed to load user IP analytics.
+                    </div>
+                  ) : activeUsers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                      <Users size={28} className="mb-2 text-slate-300" />
+                      <p className="text-[12px] font-pmedium text-slate-400">
+                        No {userViewTab === "guest" ? "guest" : "logged in"} user clicks found.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-slate-50/60">
+                      {activeUsers.map((entry, index) => (
+                        <div
+                          key={entry.id || `${entry.ipAddress}-${entry.clickedAt}-${index}`}
+                          className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3"
+                        >
+                          <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                            {index + 1}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-[12px] font-pmedium text-slate-800">
+                              {entry.ipAddress || "IP not captured"}
+                            </p>
+                            <p className="truncate text-[10px] font-pmedium text-slate-500">
+                              {entry.user?.name || "Guest user"}
+                              {entry.user?.email ? ` - ${entry.user.email}` : ""}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-[11px] font-pmedium text-slate-500">
+                              {formatDate(entry.clickedAt)}
+                            </p>
+                            <p className="text-[10px] font-pmedium text-slate-400">
+                              {entry.sessionId ? `Session ${entry.sessionId}` : "No session"}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {isDestinationUsersFetching && !isDestinationUsersPending && (
                     <div className="flex items-center justify-center py-2 text-slate-400">
                       <Loader2 size={14} className="animate-spin" />
                     </div>

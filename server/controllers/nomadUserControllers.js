@@ -54,6 +54,18 @@ const getDestinationListingAnalytics = async (req, res) => {
   }
 };
 
+const getDestinationUsers = async (req, res) => {
+  try {
+    const { country, state, title, continent, from, to, limit } = req.query;
+    const response = await nomadsAdminClient.get("/popular-destinations/users", {
+      params: { country, state, title, continent, from, to, limit },
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardNomadsError(res, error, "Failed to fetch destination users");
+  }
+};
+
 // Every per-user sub-resource (destination views, listing views, session
 // logs) is fetched the same way — factor the shared shape once instead of
 // repeating it per endpoint.
@@ -176,6 +188,7 @@ module.exports = {
   getNomadUsers,
   getPopularDestinations,
   getDestinationListingAnalytics,
+  getDestinationUsers,
   getNomadUserDestinationViews,
   getNomadUserListingViews,
   getNomadUserSessionLogs,
