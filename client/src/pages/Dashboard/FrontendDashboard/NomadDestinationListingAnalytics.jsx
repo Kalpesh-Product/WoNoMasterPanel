@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   Building2,
-  CalendarDays,
+  Clock3,
   Loader2,
   MapPin,
   MousePointerClick,
@@ -26,17 +26,6 @@ const formatDate = (value) => {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  });
-};
-
-const formatDateOnly = (value) => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
   });
 };
 
@@ -71,17 +60,7 @@ const NomadDestinationListingAnalytics = () => {
 
   const from = searchParams.get("from") || "";
   const to = searchParams.get("to") || "";
-  const dateMode = searchParams.get("dateMode") || "all";
   const destinationLabel = getDestinationLabel(destination);
-
-  const dateLabel = useMemo(() => {
-    if (dateMode === "today") return "Today";
-    if (dateMode === "month") return "This Month";
-    if (!from && !to) return "All Time";
-    const fromLabel = formatDateOnly(from);
-    const toLabel = formatDateOnly(to);
-    return [fromLabel, toLabel].filter(Boolean).join(" - ") || "Custom Range";
-  }, [dateMode, from, to]);
 
   const {
     data,
@@ -117,6 +96,8 @@ const NomadDestinationListingAnalytics = () => {
   const totals = data?.totals || {
     totalClicks: 0,
     totalListings: 0,
+    guestClicks: 0,
+    loggedInClicks: 0,
     uniqueUsers: 0,
   };
 
@@ -150,17 +131,17 @@ const NomadDestinationListingAnalytics = () => {
       bgColor: "bg-emerald-50",
     },
     {
-      label: "Users",
-      value: totals.uniqueUsers,
+      label: "Guest User Clicks",
+      value: totals.guestClicks,
       icon: Users,
       accent: "border-l-amber-500",
       textColor: "text-amber-600",
       bgColor: "bg-amber-50",
     },
     {
-      label: "Date Range",
-      value: dateLabel,
-      icon: CalendarDays,
+      label: "Logged In User Clicks",
+      value: totals.loggedInClicks,
+      icon: Clock3,
       accent: "border-l-slate-400",
       textColor: "text-slate-600",
       bgColor: "bg-slate-50",
@@ -256,14 +237,15 @@ const NomadDestinationListingAnalytics = () => {
               </div>
             ) : (
               <div className="flex-1 overflow-x-auto">
-                <table className="w-full min-w-[980px] table-fixed text-left">
+                <table className="w-full min-w-[1120px] table-fixed text-left">
                   <colgroup>
                     <col className="w-[8%]" />
-                    <col className="w-[30%]" />
+                    <col className="w-[26%]" />
                     <col className="w-[14%]" />
                     <col className="w-[16%]" />
                     <col className="w-[12%]" />
-                    <col className="w-[20%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[12%]" />
                   </colgroup>
                   <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                     <tr>
@@ -271,7 +253,8 @@ const NomadDestinationListingAnalytics = () => {
                       <th className="px-5 py-4">Listing</th>
                       <th className="px-5 py-4">Clicks</th>
                       <th className="px-5 py-4">Click Percentage</th>
-                      <th className="px-5 py-4">Users</th>
+                      <th className="px-5 py-4">Guest User Clicks</th>
+                      <th className="px-5 py-4">Logged In User Clicks</th>
                       <th className="px-5 py-4">Last Click</th>
                     </tr>
                   </thead>
@@ -315,7 +298,10 @@ const NomadDestinationListingAnalytics = () => {
                             </div>
                           </td>
                           <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {formatNumber(item.uniqueUsers)}
+                            {formatNumber(item.guestClicks)}
+                          </td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {formatNumber(item.loggedInClicks)}
                           </td>
                           <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
                             {formatDate(item.lastClickedAt)}
