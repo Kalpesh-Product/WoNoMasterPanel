@@ -15,6 +15,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../../components/website-builder/UploadMultipleFilesInput";
 import UploadFileInput from "../../../../components/website-builder/UploadFileInput";
 import { useEffect } from "react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import SectionPreviewInfo from "./SectionPreviewInfo";
@@ -129,6 +130,14 @@ const PageVisibilityBanner = ({ name, control, pageLabel }) => <Controller
       </div>;
   }}
 />;
+// Shown as a plain numbered list (no per-step done/not-done tracking — that
+// data isn't reliably knowable from here, see the dialog using this) whenever
+// a company hasn't been transferred into Nomads' Companies collection yet.
+const NOMAD_LISTING_STEPS = [
+  "Add at least one Nomads listing",
+  "Submit a request to be listed",
+  "WoNo Team will review then Leads & Reviews will work",
+];
 const DEFAULT_PAGE_NAV_ITEMS = [
   "Home",
   "About Us",
@@ -724,6 +733,39 @@ const CreateWebsite = () => {
   const [creditsResetDate, setCreditsResetDate] = useState(null);
   const [showConfirmPopup, setShowConfirmPopup] = useState(false);
   const [showHiddenPagesWarning, setShowHiddenPagesWarning] = useState(false);
+  const [showNomadListingWarning, setShowNomadListingWarning] = useState(false);
+  const [isCheckingNomadListing, setIsCheckingNomadListing] = useState(false);
+  // Follows the direction the user is actively scrolling, not just their
+  // absolute position: scrolling up shows an up arrow (jump to top), scrolling
+  // down shows a down arrow (jump to bottom). Pinned to "up" at the very
+  // bottom (nowhere further down to go) and hidden at the very top.
+  const [scrollFabState, setScrollFabState] = useState("hidden");
+  useEffect(() => {
+    const container = document.getElementById("scrollable-content");
+    if (!container) return;
+    let hideTimer = null;
+    let lastScrollTop = container.scrollTop;
+    const handleScroll = () => {
+      const current = container.scrollTop;
+      const atTop = current <= 0;
+      const atBottom = current + container.clientHeight >= container.scrollHeight - 2;
+      if (atTop) {
+        setScrollFabState("hidden");
+      } else if (atBottom) {
+        setScrollFabState("up");
+      } else {
+        setScrollFabState(current < lastScrollTop ? "up" : "down");
+      }
+      lastScrollTop = current;
+      if (hideTimer) clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => setScrollFabState("hidden"), 3000);
+    };
+    container.addEventListener("scroll", handleScroll);
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, []);
   const [showResetConfirmPopup, setShowResetConfirmPopup] = useState(false);
   const [isRedirectingAfterCreate, setIsRedirectingAfterCreate] = useState(false);
   const [publishedWebsiteUrl, setPublishedWebsiteUrl] = useState("");
@@ -970,6 +1012,40 @@ const CreateWebsite = () => {
     name: String(item?.name || `Page ${index + 1}`),
     enabled: item?.enabled !== false
   })).filter((entry) => !entry.enabled);
+  // Publish still succeeds either way — this only warns the host that
+  // contact-form leads on the live site won't work until their Nomads
+  // listing is fully transferred, same "warn but allow" pattern as the
+  // hidden-pages check above. MasterPanel's own backend already hosts
+  // /api/hosts/host-companies/:companyId/nomad-link, so this calls it
+  // directly (no proxy needed, unlike HostPanel).
+  const checkNomadListingThenConfirm = async () => {
+    const companyId = String(values?.companyId || prefillCompanyId || "").trim();
+    if (!companyId) {
+      setShowConfirmPopup(true);
+      return;
+    }
+    setIsCheckingNomadListing(true);
+    try {
+      const { data } = await axios.get(
+        `/api/hosts/host-companies/${encodeURIComponent(companyId)}/nomad-link`
+      );
+      const transferred = Boolean(data?.alreadyInCompanies || data?.linkedNomadsCompanyId);
+      if (transferred) {
+        setShowConfirmPopup(true);
+      } else {
+        setShowNomadListingWarning(true);
+      }
+    } catch (error) {
+      if (error?.response?.status === 404) {
+        // No record at all — definitely not transferred.
+        setShowNomadListingWarning(true);
+      } else {
+        setShowConfirmPopup(true);
+      }
+    } finally {
+      setIsCheckingNomadListing(false);
+    }
+  };
   const CHAR_LIMITS = {
     heroTitle: 100,
     heroSubTitle: 200,
@@ -1096,8 +1172,14 @@ const CreateWebsite = () => {
           } catch {
             // ignore
           }
-          setHasExistingWebsite(true);
-          if (found?.isPublished === true || found?.deployedUrl || found?.publishedProjectUrl) {
+          // An unpublished autosave draft record existing is NOT the same as
+          // the site having actually been published before — hasExistingWebsite
+          // drives whether Publish goes through create-website (free) or
+          // edit-website (deducts a credit), so it must only flip once the
+          // site is genuinely published, not merely once a draft exists.
+          const isActuallyPublished = found?.isPublished === true || Boolean(found?.deployedUrl) || Boolean(found?.publishedProjectUrl);
+          if (isActuallyPublished) {
+            setHasExistingWebsite(true);
             setPublishedWebsiteUrl(
               String(found?.deployedUrl || found?.publishedProjectUrl || "").trim()
             );
@@ -2433,7 +2515,25 @@ const CreateWebsite = () => {
       </div>
     </PageFrame>;
   }
+  const scrollBuilderTo = (position) => {
+    const container = document.getElementById("scrollable-content");
+    if (!container) return;
+    container.scrollTo({
+      top: position === "top" ? 0 : container.scrollHeight,
+      behavior: "smooth",
+    });
+  };
+
   return <div className="pb-2 min-w-0 overflow-x-hidden">
+      {scrollFabState !== "hidden" ? <button
+    type="button"
+    onClick={() => scrollBuilderTo(scrollFabState === "up" ? "top" : "bottom")}
+    aria-label={scrollFabState === "up" ? "Scroll to top" : "Scroll to bottom"}
+    title={scrollFabState === "up" ? "Scroll to top" : "Scroll to bottom"}
+    className="fixed bottom-24 right-8 z-50 flex h-10 w-10 items-center justify-center rounded-full bg-[#2563EB] text-white shadow-md transition-all hover:bg-blue-700"
+  >
+          {scrollFabState === "up" ? <ChevronUp size={18} strokeWidth={2.25} /> : <ChevronDown size={18} strokeWidth={2.25} />}
+        </button> : null}
       <div className="p-4 flex flex-col gap-4 min-w-0">
         <PageFrame>
           <div className="flex flex-col gap-5 min-w-0">
@@ -4639,13 +4739,13 @@ const CreateWebsite = () => {
       if (hiddenPageNavEntries.length > 0) {
         setShowHiddenPagesWarning(true);
       } else {
-        setShowConfirmPopup(true);
+        checkNomadListingThenConfirm();
       }
     }}
-    disabled={isWebsiteSubmitting || isRedirectingAfterCreate}
+    disabled={isWebsiteSubmitting || isRedirectingAfterCreate || isCheckingNomadListing}
     className="px-8 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center gap-2"
   >
-                  {isWebsiteSubmitting ? <>{effectiveEditMode ? "Submitting..." : "Publishing..."}</> : <>{effectiveEditMode ? "Submit" : "Publish"}</>}
+                  {isWebsiteSubmitting ? <>{effectiveEditMode ? "Submitting..." : "Publishing..."}</> : isCheckingNomadListing ? <>Checking...</> : <>{effectiveEditMode ? "Submit" : "Publish"}</>}
                 </button>
               </div>
               {publishedWebsiteUrl ? <div className="mt-3 text-center">
@@ -4708,7 +4808,7 @@ const CreateWebsite = () => {
       type="button"
       onClick={() => {
         setShowHiddenPagesWarning(false);
-        setShowConfirmPopup(true);
+        checkNomadListingThenConfirm();
       }}
       className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-slate-50 transition-all"
     >
@@ -4721,11 +4821,62 @@ const CreateWebsite = () => {
           setValue(`pageNavItems.${entry.index}.enabled`, true, { shouldDirty: true });
         });
         setShowHiddenPagesWarning(false);
-        setShowConfirmPopup(true);
+        checkNomadListingThenConfirm();
       }}
       className="px-6 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-all"
     >
                     Enable All &amp; Continue
+                  </button>
+                </DialogActions>
+              </Dialog>
+
+              <Dialog
+    open={showNomadListingWarning}
+    onClose={() => setShowNomadListingWarning(false)}
+    fullWidth
+    maxWidth="sm"
+    PaperProps={{
+      sx: { borderRadius: 3, overflow: "hidden" }
+    }}
+  >
+                <DialogTitle sx={{ pb: 1 }}>
+                  <span className="text-lg font-semibold text-slate-900">Nomads listing not complete</span>
+                </DialogTitle>
+                <DialogContent>
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+                    <p className="text-sm font-pmedium text-amber-900">
+                      Your website will still publish, but contact-form enquiries won't reach you until this is done:
+                    </p>
+                    <ul className="mt-3 flex flex-col gap-2">
+                      {NOMAD_LISTING_STEPS.map((label, index) => <li key={index} className="flex items-center gap-2 text-xs font-pmedium">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-amber-400 bg-white text-[11px] font-bold text-amber-500">
+                            {index + 1}
+                          </span>
+                          <span className="text-amber-900">{label}</span>
+                        </li>)}
+                    </ul>
+                    <p className="mt-3 text-xs text-amber-800">
+                      You can publish now and complete this later — it doesn't affect the rest of your site.
+                    </p>
+                  </div>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+                  <button
+      type="button"
+      onClick={() => setShowNomadListingWarning(false)}
+      className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-slate-50 transition-all"
+    >
+                    Cancel
+                  </button>
+                  <button
+      type="button"
+      onClick={() => {
+        setShowNomadListingWarning(false);
+        setShowConfirmPopup(true);
+      }}
+      className="px-6 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 transition-all"
+    >
+                    Continue Anyway
                   </button>
                 </DialogActions>
               </Dialog>
