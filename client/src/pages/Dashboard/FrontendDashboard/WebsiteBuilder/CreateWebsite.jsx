@@ -25,6 +25,7 @@ import DormsSection from "./DormsSection";
 import MenuSection from "./MenuSection";
 import Skeleton from "../../../../components/ui/Skeleton";
 import { TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_ID } from "./templates/templateRegistry";
+import TemplateChangeRequestControl from "./TemplateChangeRequestControl";
 const defaultProduct = {
   type: "",
   name: "",
@@ -2465,8 +2466,15 @@ const CreateWebsite = () => {
     className="min-w-0 w-full"
   >
           <div className="mb-4 min-w-0 overflow-hidden">
-            <div className="border-b-default border-borderGray py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b-default border-borderGray py-3">
               <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Website Pages <SectionPreviewInfo section="pages" /></span>
+              {effectiveEditMode && draftTemplateId ? (
+                <TemplateChangeRequestControl
+                  websiteId={draftTemplateId}
+                  companyId={String(companyId || prefillCompanyId || "")}
+                  workspaceId={String(workspaceId || "")}
+                />
+              ) : null}
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
               {pageNavFields.map((item, index) => {

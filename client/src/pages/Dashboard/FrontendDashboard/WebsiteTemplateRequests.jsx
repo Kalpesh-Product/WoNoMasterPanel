@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  Check,
   CheckCircle2,
   Clock3,
   Eye,
@@ -136,8 +135,12 @@ const WebsiteTemplateRequests = () => {
     mutationFn: (requestId) => axiosPrivate.patch(`/api/website-template-changes/requests/${requestId}/approve`),
     onSuccess: async (response) => {
       toast.success(response.data?.message || "Template request approved");
+      const approvedRequest = response.data?.request || null;
+      setSelectedRequest((current) => approvedRequest
+        ? { ...(current || {}), ...approvedRequest }
+        : current);
+      setConfirmingChange(true);
       await invalidateRequests();
-      setSelectedRequest(response.data?.request || null);
     },
     onError: (error) => toast.error(error?.response?.data?.message || "Failed to approve request"),
     onSettled: () => { actionGuardRef.current = false; },
@@ -149,7 +152,10 @@ const WebsiteTemplateRequests = () => {
       toast.success(response.data?.message || "Template request rejected");
       setRejectionTarget(null);
       setRejectionReason("");
-      if (selectedRequest?._id === response.data?.request?._id) setSelectedRequest(response.data.request);
+      if (selectedRequest?._id === response.data?.request?._id) {
+        setSelectedRequest((current) => ({ ...(current || {}), ...response.data.request }));
+      }
+      setConfirmingChange(false);
       await invalidateRequests();
     },
     onError: (error) => toast.error(error?.response?.data?.message || "Failed to reject request"),
@@ -161,7 +167,7 @@ const WebsiteTemplateRequests = () => {
     onSuccess: async (response) => {
       toast.success(response.data?.message || "Website template changed successfully");
       setConfirmingChange(false);
-      setSelectedRequest(response.data?.request || null);
+      setSelectedRequest(null);
       await invalidateRequests();
     },
     onError: (error) => toast.error(error?.response?.data?.message || "Failed to change website template"),
@@ -184,7 +190,7 @@ const WebsiteTemplateRequests = () => {
     return requests.filter((request) => {
       if (statusFilter !== "all" && request.status !== statusFilter) return false;
       if (!query) return true;
-      return [request.companyName, request.companyId, request.workspaceId, request.requestedByName, request.requestedByEmail, request.unitName]
+      return [request.companyName, request.companyId, request.workspaceId, request.requestedByName, request.requestedByEmail, request.unitName, request.requestSource]
         .some((value) => String(value || "").toLowerCase().includes(query));
     });
   }, [requests, searchQuery, statusFilter]);
@@ -301,7 +307,7 @@ const WebsiteTemplateRequests = () => {
             <table className="w-full border-collapse text-left">
               <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                 <tr>
-                  {["Company", "User Name", "Unit Name", "Plan", "Current", "Requested", "Status", "Requested At", "Actions"].map((heading) => (
+                  {["Company", "User Name", "Unit Name", "Source", "Plan", "Status", "Requested At", "Actions"].map((heading) => (
                     <th key={heading} className={`px-5 py-3.5 text-[11px] font-pmedium uppercase tracking-widest text-slate-400 ${heading === "Actions" ? "text-center" : "text-left"}`}>{heading}</th>
                   ))}
                 </tr>
@@ -310,11 +316,11 @@ const WebsiteTemplateRequests = () => {
                 {requestsQuery.isLoading ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <tr key={index} className="border-b border-slate-100">
-                      <td colSpan={9} className="px-5 py-4"><div className="h-8 animate-pulse rounded-lg bg-slate-100" /></td>
+                      <td colSpan={8} className="px-5 py-4"><div className="h-8 animate-pulse rounded-lg bg-slate-100" /></td>
                     </tr>
                   ))
                 ) : filteredRequests.length === 0 ? (
-                  <tr><td colSpan={9} className="py-20 text-center text-sm font-pmedium text-slate-400">No template-change requests found.</td></tr>
+                  <tr><td colSpan={8} className="py-20 text-center text-sm font-pmedium text-slate-400">No template-change requests found.</td></tr>
                 ) : filteredRequests.map((request) => (
                   <tr key={request._id} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50">
                     <td className="px-5 py-4">
@@ -323,30 +329,16 @@ const WebsiteTemplateRequests = () => {
                     </td>
                     <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{request.requestedByName || request.requestedByEmail || "-"}</td>
                     <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{request.unitName || "-"}</td>
+                    <td className="px-5 py-4">
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-pmedium capitalize ${request.requestSource === "master" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>
+                        {request.requestSource === "master" ? "Master" : "Host"}
+                      </span>
+                    </td>
                     <td className="px-5 py-4 text-xs font-pmedium capitalize text-slate-600">{request.planAtRequest || "basic"}</td>
-                    <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{templateName(request.currentTemplateId)}</td>
-                    <td className="px-5 py-4 text-xs font-pmedium text-[#2563EB]">{templateName(request.requestedTemplateId)}</td>
                     <td className="px-5 py-4"><StatusPill status={request.status} /></td>
                     <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">{formatDate(request.createdAt)}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button type="button" title="View request" onClick={() => openRequest(request)} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"><Eye size={15} /></button>
-                        {request.status === "pending" ? (
-                          <>
-                            <button type="button" title="Approve request" disabled={approveMutation.isPending} onClick={() => runGuarded(() => approveMutation.mutate(request._id))} className="rounded-lg bg-emerald-50 p-1.5 text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-50"><Check size={15} /></button>
-                            <button type="button" title="Reject request" onClick={() => { setRejectionTarget(request); setRejectionReason(""); }} className="rounded-lg bg-rose-50 p-1.5 text-rose-700 transition-colors hover:bg-rose-100"><X size={15} /></button>
-                          </>
-                        ) : null}
-                        <button
-                          type="button"
-                          title={request.status === "approved" ? "Change template" : "Approve the request before changing the template"}
-                          disabled={request.status !== "approved"}
-                          onClick={() => openRequest(request, true)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-[#2563EB] px-2.5 py-1.5 text-[10px] font-pmedium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-                        >
-                          Change <ArrowRight size={12} />
-                        </button>
-                      </div>
+                    <td className="px-5 py-4 text-center">
+                      <button type="button" title="View request" onClick={() => openRequest(request)} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"><Eye size={15} /></button>
                     </td>
                   </tr>
                 ))}
@@ -363,14 +355,26 @@ const WebsiteTemplateRequests = () => {
           onClose={() => { if (!completeMutation.isPending) { setSelectedRequest(null); setConfirmingChange(false); } }}
         >
           <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
-              <div>
-                <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Request status</p>
-                <div className="mt-2"><StatusPill status={selectedRequest.status} /></div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Submitted</p>
-                <p className="mt-1 text-xs font-pmedium text-slate-700">{formatDate(selectedRequest.createdAt)}</p>
+            <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+              <p className="mb-4 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Request details</p>
+              <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ["Company", selectedRequest.companyName || "-"],
+                  ["User name", selectedRequest.requestedByName || selectedRequest.requestedByEmail || "-"],
+                  ["Unit name", selectedRequest.unitName || "-"],
+                  ["Source", selectedRequest.requestSource === "master" ? "Master" : "Host"],
+                  ["Plan", selectedRequest.planAtRequest || "basic"],
+                  ["Submitted", formatDate(selectedRequest.createdAt)],
+                ].map(([label, value]) => (
+                  <div key={label} className="min-w-0">
+                    <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">{label}</p>
+                    <p className={`mt-1 truncate text-xs font-pmedium text-slate-800 ${label === "Plan" || label === "Source" ? "capitalize" : ""}`}>{value}</p>
+                  </div>
+                ))}
+                <div>
+                  <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">Status</p>
+                  <div className="mt-1"><StatusPill status={selectedRequest.status} /></div>
+                </div>
               </div>
             </div>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
