@@ -81,7 +81,30 @@ const getTemplateChangeRequests = async (req, res, next) => {
     const requests = await WebsiteTemplateChangeRequest.find(filter)
       .sort({ createdAt: -1 })
       .lean();
-    return res.status(200).json(requests.map(serializeRequest));
+    const workspaceIds = requests
+      .map((request) => text(request.workspaceId))
+      .filter((workspaceId) => mongoose.isValidObjectId(workspaceId));
+    const companyIds = [...new Set(requests.map((request) => text(request.companyId)).filter(Boolean))];
+    const workspaceFilters = [];
+    if (workspaceIds.length) workspaceFilters.push({ _id: { $in: workspaceIds } });
+    if (companyIds.length) workspaceFilters.push({ companyId: { $in: companyIds } });
+    const workspaces = workspaceFilters.length
+      ? await Workspace.find({ $or: workspaceFilters }).select("_id companyId workspaceName").lean()
+      : [];
+    const workspaceNameById = new Map(
+      workspaces.map((workspace) => [text(workspace._id), text(workspace.workspaceName)]),
+    );
+    const workspaceNameByCompanyId = new Map(
+      workspaces.map((workspace) => [text(workspace.companyId), text(workspace.workspaceName)]),
+    );
+
+    return res.status(200).json(requests.map((request) => serializeRequest({
+      ...request,
+      unitName:
+        workspaceNameById.get(text(request.workspaceId)) ||
+        workspaceNameByCompanyId.get(text(request.companyId)) ||
+        "",
+    })));
   } catch (error) {
     next(error);
   }

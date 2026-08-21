@@ -184,7 +184,7 @@ const WebsiteTemplateRequests = () => {
     return requests.filter((request) => {
       if (statusFilter !== "all" && request.status !== statusFilter) return false;
       if (!query) return true;
-      return [request.companyName, request.companyId, request.workspaceId, request.requestedByName]
+      return [request.companyName, request.companyId, request.workspaceId, request.requestedByName, request.requestedByEmail, request.unitName]
         .some((value) => String(value || "").toLowerCase().includes(query));
     });
   }, [requests, searchQuery, statusFilter]);
@@ -301,7 +301,7 @@ const WebsiteTemplateRequests = () => {
             <table className="w-full border-collapse text-left">
               <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                 <tr>
-                  {["Company", "Plan", "Current", "Requested", "Status", "Requested At", "Actions"].map((heading) => (
+                  {["Company", "User Name", "Unit Name", "Plan", "Current", "Requested", "Status", "Requested At", "Actions"].map((heading) => (
                     <th key={heading} className={`px-5 py-3.5 text-[11px] font-pmedium uppercase tracking-widest text-slate-400 ${heading === "Actions" ? "text-center" : "text-left"}`}>{heading}</th>
                   ))}
                 </tr>
@@ -310,17 +310,19 @@ const WebsiteTemplateRequests = () => {
                 {requestsQuery.isLoading ? (
                   Array.from({ length: 6 }).map((_, index) => (
                     <tr key={index} className="border-b border-slate-100">
-                      <td colSpan={7} className="px-5 py-4"><div className="h-8 animate-pulse rounded-lg bg-slate-100" /></td>
+                      <td colSpan={9} className="px-5 py-4"><div className="h-8 animate-pulse rounded-lg bg-slate-100" /></td>
                     </tr>
                   ))
                 ) : filteredRequests.length === 0 ? (
-                  <tr><td colSpan={7} className="py-20 text-center text-sm font-pmedium text-slate-400">No template-change requests found.</td></tr>
+                  <tr><td colSpan={9} className="py-20 text-center text-sm font-pmedium text-slate-400">No template-change requests found.</td></tr>
                 ) : filteredRequests.map((request) => (
                   <tr key={request._id} className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50">
                     <td className="px-5 py-4">
                       <p className="text-xs font-pmedium text-slate-900">{request.companyName || "-"}</p>
                       {/* <p className="mt-1 text-[10px] text-slate-400">{request.companyId || request.workspaceId || "-"}</p> */}
                     </td>
+                    <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{request.requestedByName || request.requestedByEmail || "-"}</td>
+                    <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{request.unitName || "-"}</td>
                     <td className="px-5 py-4 text-xs font-pmedium capitalize text-slate-600">{request.planAtRequest || "basic"}</td>
                     <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{templateName(request.currentTemplateId)}</td>
                     <td className="px-5 py-4 text-xs font-pmedium text-[#2563EB]">{templateName(request.requestedTemplateId)}</td>
