@@ -257,26 +257,118 @@ const getModuleAccessLogs = async (req, res, next) => {
 
 const getHostActivityLogs = async (req, res, next) => {
   try {
-    const { companyId, workspaceId, startDate, endDate } = req.query;
+    const { companyId, workspaceId, startDate, endDate, page, search, month, dateFrom, dateTo } = req.query;
 
-    const filter = {};
-    if (companyId) filter.companyId = String(companyId).trim();
-    if (workspaceId) filter.workspaceId = String(workspaceId).trim();
+    const baseFilter = {};
+    if (companyId) baseFilter.companyId = String(companyId).trim();
+    if (workspaceId) baseFilter.workspaceId = String(workspaceId).trim();
     if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      baseFilter.createdAt = {};
+      if (startDate) baseFilter.createdAt.$gte = new Date(startDate);
+      if (endDate) baseFilter.createdAt.$lte = new Date(endDate);
     }
 
-    // Host panel volume grows fast; cap the response so the table stays usable.
-    const limit = Math.min(Number(req.query.limit) || 5000, 20000);
+    // Preserve the original array response for older callers (e.g. dashboard
+    // overview cards). The Host Panel Logs table sends `page`, which
+    // activates the fast paginated contract below.
+    if (page === undefined) {
+      // Host panel volume grows fast; cap the response so the table stays usable.
+      const limit = Math.min(Number(req.query.limit) || 5000, 20000);
 
-    const logs = await HostActivityLog.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+      const logs = await HostActivityLog.find(baseFilter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
 
-    return res.status(200).json(logs);
+      return res.status(200).json(logs);
+    }
+
+    const filter = { ...baseFilter };
+    const trimmedSearch = String(search || "").trim();
+    if (trimmedSearch) {
+      const searchRegex = new RegExp(escapeRegex(trimmedSearch), "i");
+      filter.$or = [
+        { action: searchRegex },
+        { module: searchRegex },
+        { companyName: searchRegex },
+        { workspaceName: searchRegex },
+        { fullName: searchRegex },
+        { email: searchRegex },
+      ];
+    }
+
+    const normalizedMonth = /^\d{4}-\d{2}$/.test(String(month || ""))
+      ? String(month)
+      : "";
+    if (normalizedMonth) {
+      const monthStart = new Date(`${normalizedMonth}-01T00:00:00.000Z`);
+      const monthEnd = new Date(monthStart);
+      monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+      filter.createdAt = { $gte: monthStart, $lt: monthEnd };
+    }
+
+    // A custom calendar range takes precedence over the month shortcut.
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(`${dateFrom}T00:00:00.000Z`);
+      if (dateTo) filter.createdAt.$lte = new Date(`${dateTo}T23:59:59.999Z`);
+    }
+
+    const pageNumber = Math.max(1, parseInt(page, 10) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 30));
+    const start = (pageNumber - 1) * pageSize;
+
+    const [logs, total, totalLogs, companies, users, modules, monthRows] =
+      await Promise.all([
+        HostActivityLog.find(filter)
+          .sort({ createdAt: -1, _id: -1 })
+          .skip(start)
+          .limit(pageSize)
+          .lean(),
+        HostActivityLog.countDocuments(filter),
+        HostActivityLog.countDocuments(baseFilter),
+        HostActivityLog.distinct("companyName", { ...baseFilter, companyName: { $nin: [null, "", "-"] } }),
+        HostActivityLog.distinct("fullName", { ...baseFilter, fullName: { $nin: [null, "", "-"] } }),
+        HostActivityLog.distinct("module", { ...baseFilter, module: { $nin: [null, "", "-"] } }),
+        HostActivityLog.aggregate([
+          { $match: { ...baseFilter, createdAt: { $type: "date" } } },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m", date: "$createdAt" },
+              },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: -1 } },
+        ]),
+      ]);
+
+    return res.status(200).json({
+      items: logs.map((log, index) => ({
+        ...log,
+        srNo: start + index + 1,
+      })),
+      page: pageNumber,
+      limit: pageSize,
+      total,
+      hasMore: pageNumber * pageSize < total,
+      counts: {
+        total: totalLogs,
+        companies: companies.length,
+        users: users.length,
+        modules: modules.length,
+      },
+      monthOptions: monthRows.map((row) => ({
+        value: row._id,
+        label: new Date(`${row._id}-01T00:00:00.000Z`).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        }),
+        count: row.count,
+      })),
+    });
   } catch (error) {
     next(error);
   }
