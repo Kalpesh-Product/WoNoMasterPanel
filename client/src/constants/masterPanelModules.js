@@ -265,6 +265,13 @@ export const MASTER_PANEL_MODULES = [
             icon: LuFileText,
             route: "/dashboard/host-panel-logs",
           },
+          {
+            id: 28,
+            key: "hostpanel.host-panel-analytics",
+            title: "Host Panel Analytics",
+            icon: LuChartLine,
+            route: "/dashboard/host-panel-analytics",
+          },
         ],
       },
     ],

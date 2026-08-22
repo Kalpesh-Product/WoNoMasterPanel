@@ -177,6 +177,7 @@ import BulkReuploadImages from "../pages/Dashboard/FrontendDashboard/DataUpload/
 import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
 import ModuleAccessLogs from "../pages/Dashboard/FrontendDashboard/ModuleAccessLogs";
 import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
+import HostPanelAnalytics from "../pages/Dashboard/FrontendDashboard/HostPanelAnalytics";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
 import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
@@ -460,6 +461,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "host-panel-logs",
                     element: <HostPanelLogs />,
+                  },
+                  {
+                    path: "host-panel-analytics",
+                    element: <HostPanelAnalytics />,
                   },
                   {
                     path: "website-credits",
