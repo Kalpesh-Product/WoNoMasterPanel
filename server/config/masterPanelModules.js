@@ -35,6 +35,7 @@ const masterPanelModules = [
       { key: "hostpanel.host-companies", label: "Host Companies" },
       { key: "hostpanel.module-access-logs", label: "Module Access Logs" },
       { key: "hostpanel.host-panel-logs", label: "Host Panel Logs" },
+      { key: "hostpanel.host-panel-analytics", label: "Host Panel Analytics" },
     ],
   },
 ];
