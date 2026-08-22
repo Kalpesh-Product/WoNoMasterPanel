@@ -2,7 +2,6 @@ const HostActivityLog = require("../models/HostActivityLog");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const Workspace = require("../models/hostCompany/Workspace");
-const { resolveHostPanelFrontendUrl } = require("./hostUserControllers");
 const {
   getDefaultEnabledModuleIdsForPlan,
   planAvailabilityFor,
@@ -778,12 +777,6 @@ const getHostPanelModuleAnalytics = async (req, res, next) => {
       workspaceId: mode === "single" ? String(activeWorkspaces[0]._id) : "all",
       workspaceName: mode === "single" ? activeWorkspaces[0].workspaceName || "Untitled unit" : "All Units Combined",
       plan: selectedPlan,
-      // Master Panel has no session-sharing/impersonation into a tenant's own
-      // Host Panel, so this can only open the real Host Panel login screen —
-      // same convention already used for invite/credit-request emails
-      // (resolveHostPanelFrontendUrl in hostUserControllers.js) — not a
-      // deep link into the specific module page.
-      hostPanelUrl: `${resolveHostPanelFrontendUrl()}/login`,
       units,
       modules,
       generatedAt: new Date().toISOString(),
