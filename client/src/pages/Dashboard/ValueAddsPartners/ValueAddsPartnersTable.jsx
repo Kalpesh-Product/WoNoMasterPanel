@@ -35,15 +35,19 @@ const ValueAddsPartnersTable = ({
   locationColumns,
   splitContact = false,
   companyAfterContact = false,
+  tableColumns,
 }) => {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
 
+  const exactTableColumns = Array.isArray(tableColumns) && tableColumns.length ? tableColumns : null;
   const locationColumnDefs = locationColumns || [
     { field: "region", headerName: tableLabels.region || "Region" },
   ];
   const contactColumnCount = splitContact ? 2 : 1;
-  const tableColumnCount = 5 + locationColumnDefs.length + contactColumnCount;
+  const tableColumnCount = exactTableColumns
+    ? exactTableColumns.length + 1
+    : 5 + locationColumnDefs.length + contactColumnCount;
 
   const filteredRows = useMemo(() => {
     if (!search.trim()) return rows;
@@ -118,29 +122,38 @@ const ValueAddsPartnersTable = ({
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-              <tr>
-                <th className="px-5 py-4">Partner</th>
-                {!companyAfterContact ? (
-                  <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
-                ) : null}
-                {locationColumnDefs.map((column) => (
-                  <th key={column.field} className="px-5 py-4">{column.headerName}</th>
-                ))}
-                {splitContact ? (
-                  <>
-                    <th className="px-5 py-4">Email</th>
+              {exactTableColumns ? (
+                <tr>
+                  {exactTableColumns.map((column) => (
+                    <th key={column.field} className="px-5 py-4">{column.headerName}</th>
+                  ))}
+                  <th className="px-5 py-4 text-center">Action</th>
+                </tr>
+              ) : (
+                <tr>
+                  <th className="px-5 py-4">Partner</th>
+                  {!companyAfterContact ? (
+                    <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
+                  ) : null}
+                  {locationColumnDefs.map((column) => (
+                    <th key={column.field} className="px-5 py-4">{column.headerName}</th>
+                  ))}
+                  {splitContact ? (
+                    <>
+                      <th className="px-5 py-4">Email</th>
+                      <th className="px-5 py-4">Contact</th>
+                    </>
+                  ) : (
                     <th className="px-5 py-4">Contact</th>
-                  </>
-                ) : (
-                  <th className="px-5 py-4">Contact</th>
-                )}
-                {companyAfterContact ? (
-                  <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
-                ) : null}
-                <th className="px-5 py-4 text-center">Status</th>
-                <th className="px-5 py-4">Last Updated</th>
-                <th className="px-5 py-4 text-center">Action</th>
-              </tr>
+                  )}
+                  {companyAfterContact ? (
+                    <th className="px-5 py-4">{tableLabels.company || "Company"}</th>
+                  ) : null}
+                  <th className="px-5 py-4 text-center">Status</th>
+                  <th className="px-5 py-4">Last Updated</th>
+                  <th className="px-5 py-4 text-center">Action</th>
+                </tr>
+              )}
             </thead>
             <tbody className="divide-y divide-slate-100/60">
               {filteredRows.length === 0 ? (
@@ -152,78 +165,126 @@ const ValueAddsPartnersTable = ({
               ) : (
                 filteredRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
-                          {initials(row.partnerName)}
-                        </div>
-                        <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[170px]">
-                          {row.partnerName || "--"}
-                        </span>
-                      </div>
-                    </td>
-                    {!companyAfterContact ? (
-                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                        {row.companyName || "--"}
-                      </td>
-                    ) : null}
-                    {locationColumnDefs.map((column) => (
-                      <td key={column.field} className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                        {row[column.field] || "--"}
-                      </td>
-                    ))}
-                    {splitContact ? (
+                    {exactTableColumns ? (
                       <>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                          <span className="flex items-center gap-1">
-                            <Mail size={10} className="text-slate-400" />
-                            {row.email || "--"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                          <span className="flex items-center gap-1">
-                            <Phone size={10} className="text-slate-400" />
-                            {row.phone || "--"}
-                          </span>
+                        {exactTableColumns.map((column, index) => (
+                          <td
+                            key={column.field}
+                            className={`px-5 py-4 text-[12px] font-pmedium text-slate-700 ${column.className || ""}`}
+                          >
+                            {index === 0 ? (
+                              <div className="flex items-center gap-2.5">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
+                                  {initials(row[column.field])}
+                                </div>
+                                <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[190px]">
+                                  {row[column.field] || "--"}
+                                </span>
+                              </div>
+                            ) : column.field === "email" ? (
+                              <span className="flex items-center gap-1">
+                                <Mail size={10} className="text-slate-400" />
+                                {row.email || "--"}
+                              </span>
+                            ) : column.field === "contact" || column.field === "phone" ? (
+                              <span className="flex items-center gap-1">
+                                <Phone size={10} className="text-slate-400" />
+                                {row[column.field] || "--"}
+                              </span>
+                            ) : column.field === "lastUpdated" ? (
+                              formatDateLabel(row[column.field])
+                            ) : (
+                              String(row[column.field] ?? "--")
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRow(row)}
+                            title="View details"
+                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                          >
+                            <Eye size={15} strokeWidth={2.5} />
+                          </button>
                         </td>
                       </>
                     ) : (
-                      <td className="px-5 py-4">
-                        <div className="text-[11px] font-pmedium text-slate-600 space-y-0.5">
-                          <p className="flex items-center gap-1">
-                            <Phone size={10} className="text-slate-400" />
-                            {row.phone || "--"}
-                          </p>
-                          <p className="flex items-center gap-1">
-                            <Mail size={10} className="text-slate-400" />
-                            {row.email || "--"}
-                          </p>
-                        </div>
-                      </td>
+                      <>
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
+                              {initials(row.partnerName)}
+                            </div>
+                            <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[170px]">
+                              {row.partnerName || "--"}
+                            </span>
+                          </div>
+                        </td>
+                        {!companyAfterContact ? (
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row.companyName || "--"}
+                          </td>
+                        ) : null}
+                        {locationColumnDefs.map((column) => (
+                          <td key={column.field} className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row[column.field] || "--"}
+                          </td>
+                        ))}
+                        {splitContact ? (
+                          <>
+                            <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                              <span className="flex items-center gap-1">
+                                <Mail size={10} className="text-slate-400" />
+                                {row.email || "--"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                              <span className="flex items-center gap-1">
+                                <Phone size={10} className="text-slate-400" />
+                                {row.phone || "--"}
+                              </span>
+                            </td>
+                          </>
+                        ) : (
+                          <td className="px-5 py-4">
+                            <div className="text-[11px] font-pmedium text-slate-600 space-y-0.5">
+                              <p className="flex items-center gap-1">
+                                <Phone size={10} className="text-slate-400" />
+                                {row.phone || "--"}
+                              </p>
+                              <p className="flex items-center gap-1">
+                                <Mail size={10} className="text-slate-400" />
+                                {row.email || "--"}
+                              </p>
+                            </div>
+                          </td>
+                        )}
+                        {companyAfterContact ? (
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                            {row.companyName || "--"}
+                          </td>
+                        ) : null}
+                        <td className="px-5 py-4 text-center">
+                          <span className={statusPillClass(row.status || "Pending")}>
+                            {row.status || "Pending"}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
+                          {formatDateLabel(row.lastUpdated)}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRow(row)}
+                            title="View details"
+                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                          >
+                            <Eye size={15} strokeWidth={2.5} />
+                          </button>
+                        </td>
+                      </>
                     )}
-                    {companyAfterContact ? (
-                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                        {row.companyName || "--"}
-                      </td>
-                    ) : null}
-                    <td className="px-5 py-4 text-center">
-                      <span className={statusPillClass(row.status || "Pending")}>
-                        {row.status || "Pending"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
-                      {formatDateLabel(row.lastUpdated)}
-                    </td>
-                    <td className="px-5 py-4 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedRow(row)}
-                        title="View details"
-                        className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                      >
-                        <Eye size={15} strokeWidth={2.5} />
-                      </button>
-                    </td>
                   </tr>
                 ))
               )}
