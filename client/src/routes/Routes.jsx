@@ -467,6 +467,10 @@ export const routes = createBrowserRouter([
                     element: <HostPanelAnalytics />,
                   },
                   {
+                    path: "host-panel-analytics/:companyId",
+                    element: <HostPanelAnalytics />,
+                  },
+                  {
                     path: "website-credits",
                     element: <WebsiteCreditsOverview />,
                   },
@@ -1276,3 +1280,5 @@ export const routes = createBrowserRouter([
     element: <NotFoundPage />,
   },
 ]);
+
+

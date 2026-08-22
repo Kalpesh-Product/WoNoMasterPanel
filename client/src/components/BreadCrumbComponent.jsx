@@ -50,6 +50,8 @@ const BreadCrumbComponent = () => {
       index >= 1 &&
       ["host-companies", "companies", "requests"].includes(pathSegments[index - 1]) &&
       resolvedCompanyName;
+    const isHostPanelAnalyticsCompanySegment =
+      index >= 1 && pathSegments[index - 1] === "host-panel-analytics";
 
     // Build the navigation path
     const path = pathSegments.slice(0, index + 1).join("/");
@@ -66,6 +68,10 @@ const BreadCrumbComponent = () => {
       ? companyNameFromState
       : isCompanyDetailsIdSegment
       ? resolvedCompanyName
+      : isHostPanelAnalyticsCompanySegment
+      ? resolvedCompanyName
+        ? `${resolvedCompanyName} Analytics` 
+        : "Company Analytics"
       : isNomadProductFormSegment
       ? segment === "add"
         ? "Add Product"
@@ -152,3 +158,5 @@ const BreadCrumbComponent = () => {
 };
 
 export default BreadCrumbComponent;
+
+

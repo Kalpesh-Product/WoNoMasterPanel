@@ -2,6 +2,26 @@ const HostActivityLog = require("../models/HostActivityLog");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const Workspace = require("../models/hostCompany/Workspace");
+const {
+  getDefaultEnabledModuleIdsForPlan,
+  planAvailabilityFor,
+  buildCatalogIndex,
+} = require("../config/hostWorkspaceModuleCatalog");
+const {
+  MODULE_STAT_PROVIDERS,
+  INSIGHT_SOURCES,
+  DEPT_BREAKDOWN_SOURCES,
+  NON_TRACKABLE_MODULE_IDS,
+  MODULE_DESCRIPTIONS,
+  BREAKDOWN_TITLES,
+  computeActivityScore,
+  usageInsights,
+  mergeInsights,
+  deptBreakdownBy,
+  leadEscalationFilter,
+} = require("../utils/hostModuleAnalytics");
+
+const PLAN_RANK = { basic: 1, professional: 2, custom: 3 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTH_LABELS = [
@@ -576,4 +596,194 @@ const getHostPanelCompanyAnalytics = async (req, res, next) => {
   }
 };
 
-module.exports = { getHostPanelAnalytics, getHostPanelCompanyAnalytics };
+// Real per-module analytics (tickets/assets/tasks/etc.) for a company's
+// workspace(s), computed the same way HostPanel computes them for its own
+// founders (server/controllers/analyticsController.ts over there) — straight
+// from the shared collections, not reconstructed from activity logs. Pass
+// ?workspaceId=<id> for a single unit (mirrors HostPanel's own unit
+// dropdown), or omit it / pass "all" to combine every workspace the company
+// owns into one view.
+const getHostPanelModuleAnalytics = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const trimmed = String(companyId || "").trim();
+    if (!trimmed) return res.status(400).json({ message: "companyId is required" });
+
+    let company = await HostLeadCompany.findOne({ companyId: trimmed })
+      .select("companyId companyName")
+      .lean();
+    if (!company) {
+      company = await HostLeadCompany.findOne({
+        companyId: { $regex: `^${escapeRegex(trimmed)}(-.*)?$` },
+      })
+        .select("companyId companyName")
+        .lean();
+    }
+
+    const matchIds = [...new Set([trimmed, company?.companyId].filter(Boolean))];
+    const workspaces = await Workspace.find({
+      $or: [
+        { companyId: { $in: matchIds } },
+        ...(company?._id ? [{ company: company._id }] : []),
+      ],
+      isDeleted: { $ne: true },
+    })
+      .select("workspaceName selectedPlan enabledModuleIds isActive")
+      .sort({ createdAt: 1 })
+      .lean();
+
+    if (!workspaces.length) {
+      return res.status(200).json({
+        units: [],
+        workspaceId: "all",
+        workspaceName: "All Units",
+        plan: "",
+        modules: [],
+        generatedAt: new Date().toISOString(),
+      });
+    }
+
+    const units = [
+      { id: "all", name: "All Units Combined" },
+      ...workspaces.map((w) => ({ id: String(w._id), name: w.workspaceName || "Untitled unit" })),
+    ];
+
+    const requestedUnit = String(req.query.workspaceId || "all").trim();
+    let activeWorkspaces = workspaces;
+    let mode = "combined";
+    if (requestedUnit && requestedUnit !== "all") {
+      const match = workspaces.find((w) => String(w._id) === requestedUnit);
+      if (!match) {
+        return res.status(404).json({ message: "Selected unit not found for this company." });
+      }
+      activeWorkspaces = [match];
+      mode = "single";
+    }
+
+    const selectedPlan = activeWorkspaces.reduce((best, w) => {
+      const plan = String(w.selectedPlan || "basic").trim().toLowerCase();
+      return (PLAN_RANK[plan] || 0) > (PLAN_RANK[best] || 0) ? plan : best;
+    }, "basic");
+
+    const workspaceEnabledIds = Array.from(
+      new Set(
+        activeWorkspaces.flatMap((w) =>
+          Array.isArray(w.enabledModuleIds) ? w.enabledModuleIds.map((id) => String(id || "").trim()).filter(Boolean) : [],
+        ),
+      ),
+    );
+    const effectiveEnabled = new Set([
+      ...getDefaultEnabledModuleIdsForPlan(selectedPlan),
+      ...workspaceEnabledIds,
+    ]);
+
+    const catalogIndex = buildCatalogIndex();
+    const trackableIds = Array.from(catalogIndex.keys()).filter(
+      (id) => !NON_TRACKABLE_MODULE_IDS.has(id) && Boolean(MODULE_STAT_PROVIDERS[id]),
+    );
+    // `order` already encodes the real Host Panel sidebar flow — Common
+    // Modules, Extra Common Modules, Key Apps, Core Modules, then each
+    // department one by one — so sorting by it directly reproduces that
+    // flow without a separate section-priority step.
+    const orderedTrackableIds = [...trackableIds].sort((a, b) => {
+      const orderA = catalogIndex.get(a)?.order ?? Number.MAX_SAFE_INTEGER;
+      const orderB = catalogIndex.get(b)?.order ?? Number.MAX_SAFE_INTEGER;
+      return orderA - orderB;
+    });
+    const claimedProviders = new Set();
+    const uniqueTrackableIds = orderedTrackableIds.filter((id) => {
+      const provider = MODULE_STAT_PROVIDERS[id];
+      if (!provider || claimedProviders.has(provider)) return false;
+      claimedProviders.add(provider);
+      return true;
+    });
+
+    const objectId = mode === "single" ? activeWorkspaces[0]._id : activeWorkspaces.map((w) => w._id);
+    const stringId = mode === "single" ? String(activeWorkspaces[0]._id) : activeWorkspaces.map((w) => String(w._id));
+    const since30 = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const settledModules = await Promise.all(
+      uniqueTrackableIds.map(async (id) => {
+        const meta = catalogIndex.get(id) || {};
+        try {
+          const stats = await MODULE_STAT_PROVIDERS[id]({ objectId, stringId, since30 });
+          const insightSources = INSIGHT_SOURCES[id] ?? [];
+          const insights = mergeInsights(
+            await Promise.all(
+              insightSources.map(({ model, field, type, escalatedOnly }) =>
+                usageInsights(
+                  model,
+                  field,
+                  type === "string" ? stringId : objectId,
+                  escalatedOnly ? leadEscalationFilter(stringId) : {},
+                ),
+              ),
+            ),
+          );
+          const deptSource = DEPT_BREAKDOWN_SOURCES[id];
+          const deptBreakdown = deptSource
+            ? await deptBreakdownBy(
+                deptSource.model,
+                { [deptSource.match]: Array.isArray(objectId) ? { $in: objectId } : objectId },
+                deptSource.field,
+                Boolean(deptSource.array),
+              )
+            : [];
+          return {
+            id,
+            label: meta.label || id,
+            sectionLabel: meta.sectionLabel || "",
+            description: MODULE_DESCRIPTIONS[id] || "",
+            breakdownTitles: BREAKDOWN_TITLES[id] || ["Distribution", "Breakdown"],
+            trackable: true,
+            enabled: effectiveEnabled.has(id),
+            planAvailability: planAvailabilityFor(id),
+            activityScore: computeActivityScore(stats),
+            stats: {
+              ...stats,
+              completionRate: stats.completionRate ?? null,
+              kpis: stats.kpis ?? [],
+              breakdown: stats.breakdown ?? [],
+              secondaryBreakdown: stats.secondaryBreakdown ?? [],
+              monthly: stats.monthly ?? [],
+              insights,
+              deptBreakdown,
+            },
+          };
+        } catch (error) {
+          return {
+            id,
+            label: meta.label || id,
+            sectionLabel: meta.sectionLabel || "",
+            description: MODULE_DESCRIPTIONS[id] || "",
+            breakdownTitles: BREAKDOWN_TITLES[id] || ["Distribution", "Breakdown"],
+            trackable: false,
+            enabled: effectiveEnabled.has(id),
+            planAvailability: planAvailabilityFor(id),
+            activityScore: 0,
+            stats: null,
+          };
+        }
+      }),
+    );
+
+    // settledModules is already in Host Panel sidebar order (Promise.all
+    // preserves the uniqueTrackableIds order it was mapped from) — keep that
+    // order rather than re-sorting by activity score, so the frontend's
+    // module groups render in the same flow as Host Panel's own sidebar.
+    const modules = settledModules;
+
+    return res.status(200).json({
+      workspaceId: mode === "single" ? String(activeWorkspaces[0]._id) : "all",
+      workspaceName: mode === "single" ? activeWorkspaces[0].workspaceName || "Untitled unit" : "All Units Combined",
+      plan: selectedPlan,
+      units,
+      modules,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getHostPanelAnalytics, getHostPanelCompanyAnalytics, getHostPanelModuleAnalytics };

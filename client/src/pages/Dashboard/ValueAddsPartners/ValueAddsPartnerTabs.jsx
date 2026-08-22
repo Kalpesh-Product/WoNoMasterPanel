@@ -101,35 +101,67 @@ const partnerRows = {
 };
 
 const visaSupportColumns = [
-  { field: "partnerName", headerName: "Partner Name" },
+  { field: "company", headerName: "Company" },
+  { field: "continent", headerName: "Continent" },
   { field: "country", headerName: "Country" },
-  { field: "city", headerName: "City" },
+  { field: "destination", headerName: "Destination" },
+  { field: "visaType", headerName: "Visa Type" },
+  { field: "agentName", headerName: "Agent Name" },
   { field: "website", headerName: "Website" },
+  { field: "contact", headerName: "Contact" },
   { field: "email", headerName: "Email" },
-  { field: "phone", headerName: "Phone" },
-  { field: "agentNumber", headerName: "Agent No." },
+  { field: "address", headerName: "Address" },
+  { field: "rating", headerName: "Rating" },
+  { field: "googleReviews", headerName: "Google Reviews" },
   { field: "lastUpdated", headerName: "Last Updated" },
 ];
 
+const resolveRating = (value) => (value === 0 || value ? value : "--");
+
 const flattenVisaSupportPartners = (records = []) =>
-  records.flatMap((record) =>
-    (record.partners || []).map((partner, index) => ({
-      id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
-      partnerName: partner.name || `Agent ${partner.agentNumber || index + 1}`,
-      companyName: partner.website || "--",
-      region: [record.city, record.country].filter(Boolean).join(", "),
-      contactPerson: `Agent ${partner.agentNumber || index + 1}`,
+  records.flatMap((record) => {
+    if (Array.isArray(record.partners) && record.partners.length) {
+      return record.partners.map((partner, index) => ({
+        id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
+        continent: record.continent || "--",
+        country: record.country || "--",
+        destination: record.destination || record.city || "--",
+        visaType: record.visaType || "--",
+        company: partner.name || record.company || `Agent ${partner.agentNumber || index + 1}`,
+        partnerName: partner.name || record.company || `Agent ${partner.agentNumber || index + 1}`,
+        agentName: record.agentName || "",
+        website: partner.website || record.website || "",
+        contact: partner.contact || record.contact || "",
+        email: partner.email || record.email || "",
+        address: record.address || "--",
+        rating: resolveRating(record.rating),
+        googleReviews: resolveRating(record.googleReviews),
+        status: record.status || "Active",
+        lastUpdated: record.updatedAt || record.createdAt,
+        notes: `Visa support partner for ${[record.destination || record.city, record.country].filter(Boolean).join(", ") || "this location"}.`,
+      }));
+    }
+
+    return {
+      id: record._id || `${record.country}-${record.destination}-${record.company}`,
+      continent: record.continent || "--",
       country: record.country || "--",
-      city: record.city || "--",
-      website: partner.website || "",
-      email: partner.email || "",
-      phone: partner.contact || "",
-      agentNumber: partner.agentNumber || index + 1,
-      status: "Active",
+      destination: record.destination || "--",
+      visaType: record.visaType || "--",
+      company: record.company || "--",
+      partnerName: record.company || record.agentName || "Visa Support Partner",
+      agentName: record.agentName || "--",
+      website: record.website || "",
+      contact: record.contact || "",
+      email: record.email || "",
+      address: record.address || "--",
+      rating: resolveRating(record.rating),
+      googleReviews: resolveRating(record.googleReviews),
+      status: record.status || "Active",
       lastUpdated: record.updatedAt || record.createdAt,
-      notes: `Visa support partner for ${[record.city, record.country].filter(Boolean).join(", ") || "this location"}.`,
-    })),
-  );
+      notes: `Visa support partner for ${[record.destination, record.country].filter(Boolean).join(", ") || "this location"}.`,
+    };
+  });
 
 export const VisaSupportPartnersTable = () => {
   const { data = [], isPending, isError, error } = useQuery({
@@ -151,13 +183,7 @@ export const VisaSupportPartnersTable = () => {
       isError={isError}
       errorMessage={error?.response?.data?.message || error?.message}
       emptyMessage="No visa support partners found."
-      tableLabels={{ company: "Website" }}
-      locationColumns={[
-        { field: "country", headerName: "Country" },
-        { field: "city", headerName: "City" },
-      ]}
-      splitContact
-      companyAfterContact
+      tableColumns={visaSupportColumns}
     />
   );
 };
