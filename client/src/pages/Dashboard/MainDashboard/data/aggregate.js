@@ -181,15 +181,25 @@ export const pickReviews = (res) => {
 
 export const buildOverview = (config, data) => {
   const ctx = { data };
+  // A card/chart builder may reference a source that failed to load (or an
+  // endpoint that returned nothing) — degrade that single card/chart instead
+  // of blanking the whole tab.
+  const safeBuild = (build) => {
+    try {
+      return build(ctx);
+    } catch {
+      return undefined;
+    }
+  };
   return {
     cards: config.cards.map((card, index) => ({
       label: card.label,
-      value: card.value(ctx),
+      value: safeBuild(card.value) ?? 0,
       icon: card.icon,
       tone: card.tone ?? index,
     })),
     charts: config.charts
-      .map((chart) => ({ ...chart, dataset: chart.build(ctx) }))
+      .map((chart) => ({ ...chart, dataset: safeBuild(chart.build) }))
       .filter((chart) => Array.isArray(chart.dataset) && chart.dataset.length > 0),
   };
 };

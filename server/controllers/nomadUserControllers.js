@@ -66,6 +66,20 @@ const getDestinationUsers = async (req, res) => {
   }
 };
 
+// Where do Nomads visitors come from? Groups destination clicks by IP and
+// resolves public IPs to country/city on the Nomads backend (cached there).
+const getDestinationLocationBreakdown = async (req, res) => {
+  try {
+    const { from, to } = req.query;
+    const response = await nomadsAdminClient.get("/popular-destinations/locations", {
+      params: { from, to },
+    });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    return forwardNomadsError(res, error, "Failed to fetch visitor location breakdown");
+  }
+};
+
 // Every per-user sub-resource (destination views, listing views, session
 // logs) is fetched the same way — factor the shared shape once instead of
 // repeating it per endpoint.
@@ -189,6 +203,7 @@ module.exports = {
   getPopularDestinations,
   getDestinationListingAnalytics,
   getDestinationUsers,
+  getDestinationLocationBreakdown,
   getNomadUserDestinationViews,
   getNomadUserListingViews,
   getNomadUserSessionLogs,

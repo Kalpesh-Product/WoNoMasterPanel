@@ -178,6 +178,7 @@ import LogsLayout from "../pages/Dashboard/FrontendDashboard/LogsLayout";
 import ModuleAccessLogs from "../pages/Dashboard/FrontendDashboard/ModuleAccessLogs";
 import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import HostPanelAnalytics from "../pages/Dashboard/FrontendDashboard/HostPanelAnalytics";
+import MasterPanelAnalytics from "../pages/Dashboard/FrontendDashboard/MasterPanelAnalytics";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
 import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
@@ -469,6 +470,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "host-panel-analytics/:companyId",
                     element: <HostPanelAnalytics />,
+                  },
+                  {
+                    path: "master-panel-analytics",
+                    element: <MasterPanelAnalytics />,
                   },
                   {
                     path: "website-credits",
