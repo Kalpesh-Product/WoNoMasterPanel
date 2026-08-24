@@ -116,6 +116,10 @@ const visaSupportColumns = [
   { field: "lastUpdated", headerName: "Last Updated" },
 ];
 
+const visaSupportTableColumns = visaSupportColumns.filter((column) =>
+  ["company", "continent", "country", "destination", "contact", "email"].includes(column.field),
+);
+
 const resolveRating = (value) => (value === 0 || value ? value : "--");
 
 const flattenVisaSupportPartners = (records = []) =>
@@ -183,7 +187,7 @@ export const VisaSupportPartnersTable = () => {
       isError={isError}
       errorMessage={error?.response?.data?.message || error?.message}
       emptyMessage="No visa support partners found."
-      tableColumns={visaSupportColumns}
+      tableColumns={visaSupportTableColumns}
     />
   );
 };
