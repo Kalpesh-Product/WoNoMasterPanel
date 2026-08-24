@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { NOMADS_BACKEND_URL } from "../../../constants/api";
 import ValueAddsPartnersTable from "./ValueAddsPartnersTable";
 
@@ -127,6 +128,7 @@ const flattenVisaSupportPartners = (records = []) =>
     if (Array.isArray(record.partners) && record.partners.length) {
       return record.partners.map((partner, index) => ({
         id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
+        recordId: record._id || "",
         continent: record.continent || "--",
         country: record.country || "--",
         destination: record.destination || record.city || "--",
@@ -148,6 +150,7 @@ const flattenVisaSupportPartners = (records = []) =>
 
     return {
       id: record._id || `${record.country}-${record.destination}-${record.company}`,
+      recordId: record._id || "",
       continent: record.continent || "--",
       country: record.country || "--",
       destination: record.destination || "--",
@@ -168,6 +171,7 @@ const flattenVisaSupportPartners = (records = []) =>
   });
 
 export const VisaSupportPartnersTable = () => {
+  const navigate = useNavigate();
   const { data = [], isPending, isError, error } = useQuery({
     queryKey: ["valueAddsPartners", "visa-support"],
     queryFn: async () => {
@@ -177,6 +181,14 @@ export const VisaSupportPartnersTable = () => {
   });
 
   const rows = useMemo(() => flattenVisaSupportPartners(data), [data]);
+  const openEditPartner = (row) => {
+    const partnerId = row.recordId || row.id;
+    if (!partnerId) return;
+
+    navigate(`/dashboard/value-adds-partners/visa-support/edit/${partnerId}`, {
+      state: { partner: row },
+    });
+  };
 
   return (
     <ValueAddsPartnersTable
@@ -188,6 +200,7 @@ export const VisaSupportPartnersTable = () => {
       errorMessage={error?.response?.data?.message || error?.message}
       emptyMessage="No visa support partners found."
       tableColumns={visaSupportTableColumns}
+      onEditRow={openEditPartner}
     />
   );
 };
