@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Calendar, Eye, Mail, Pencil, Phone, Search, Target, Users, X } from "lucide-react";
+import { BriefcaseBusiness, Eye, Mail, Pencil, Phone, Power, Search, Target, Users, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
 
@@ -23,6 +23,8 @@ const initials = (value) =>
     .join("")
     .toUpperCase();
 
+const isActiveStatus = (value) => String(value || "Active").toLowerCase() === "active";
+
 const ValueAddsPartnersTable = ({
   title,
   rows = [],
@@ -37,6 +39,8 @@ const ValueAddsPartnersTable = ({
   companyAfterContact = false,
   tableColumns,
   onEditRow,
+  onToggleStatus,
+  togglingStatusRowId,
 }) => {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
@@ -60,8 +64,8 @@ const ValueAddsPartnersTable = ({
     );
   }, [columns, rows, search]);
 
-  const activeCount = rows.filter((row) => row.status === "Active").length;
-  const pendingCount = rows.filter((row) => row.status === "Pending").length;
+  const activeCount = rows.filter((row) => isActiveStatus(row.status)).length;
+  const inactiveCount = rows.filter((row) => !isActiveStatus(row.status)).length;
 
   if (isLoading) {
     return <ValueAddsLeadsTableSkeleton />;
@@ -73,7 +77,7 @@ const ValueAddsPartnersTable = ({
         {[
           { label: `Total ${title}`, value: rows.length, icon: Target, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
           { label: "Active", value: activeCount, icon: Users, accent: "border-l-emerald-500", textColor: "text-emerald-600", bgColor: "bg-emerald-50" },
-          { label: "Pending", value: pendingCount, icon: Calendar, accent: "border-l-amber-500", textColor: "text-amber-600", bgColor: "bg-amber-50" },
+          { label: "Inactive", value: inactiveCount, icon: Power, accent: "border-l-rose-500", textColor: "text-rose-600", bgColor: "bg-rose-50" },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -187,6 +191,10 @@ const ValueAddsPartnersTable = ({
                                 <Mail size={10} className="text-slate-400" />
                                 {row.email || "--"}
                               </span>
+                            ) : column.field === "status" ? (
+                              <span className={statusPillClass(isActiveStatus(row.status) ? "Active" : "Inactive")}>
+                                {isActiveStatus(row.status) ? "Active" : "Inactive"}
+                              </span>
                             ) : column.field === "contact" || column.field === "phone" ? (
                               <span className="flex items-center gap-1">
                                 <Phone size={10} className="text-slate-400" />
@@ -217,6 +225,21 @@ const ValueAddsPartnersTable = ({
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                               >
                                 <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                            {onToggleStatus ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleStatus(row)}
+                                disabled={togglingStatusRowId === row.id}
+                                title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
+                                className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  isActiveStatus(row.status)
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                    : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                              >
+                                <Power size={15} strokeWidth={2.5} />
                               </button>
                             ) : null}
                           </div>
@@ -304,6 +327,21 @@ const ValueAddsPartnersTable = ({
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                               >
                                 <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                            {onToggleStatus ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleStatus(row)}
+                                disabled={togglingStatusRowId === row.id}
+                                title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
+                                className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  isActiveStatus(row.status)
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                    : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                              >
+                                <Power size={15} strokeWidth={2.5} />
                               </button>
                             ) : null}
                           </div>

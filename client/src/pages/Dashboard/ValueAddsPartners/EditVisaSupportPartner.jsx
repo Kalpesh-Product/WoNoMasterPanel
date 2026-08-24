@@ -169,7 +169,6 @@ const EditVisaSupportPartner = () => {
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-pmedium text-slate-800 outline-none transition-all focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                 >
                   <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </label>
