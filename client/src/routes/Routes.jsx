@@ -193,6 +193,7 @@ import {
   BecomeAContributorTable,
 } from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
 import ValueAddsPartners from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartners";
+import EditVisaSupportPartner from "../pages/Dashboard/ValueAddsPartners/EditVisaSupportPartner";
 import {
   VisaSupportPartnersTable,
   ActivationSupportPartnersTable,
@@ -488,6 +489,10 @@ export const routes = createBrowserRouter([
                     children: [
                       { index: true, element: <Navigate to="visa-support" replace /> },
                       { path: "visa-support", element: <VisaSupportPartnersTable /> },
+                      {
+                        path: "visa-support/edit/:partnerId",
+                        element: <EditVisaSupportPartner />,
+                      },
                       {
                         path: "activation-support",
                         element: <ActivationSupportPartnersTable />,
