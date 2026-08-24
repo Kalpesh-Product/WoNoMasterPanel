@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Calendar, Eye, Mail, Phone, Search, Target, Users, X } from "lucide-react";
+import { BriefcaseBusiness, Calendar, Eye, Mail, Pencil, Phone, Search, Target, Users, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
 
@@ -36,6 +36,7 @@ const ValueAddsPartnersTable = ({
   splitContact = false,
   companyAfterContact = false,
   tableColumns,
+  onEditRow,
 }) => {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState(null);
@@ -199,14 +200,26 @@ const ValueAddsPartnersTable = ({
                           </td>
                         ))}
                         <td className="px-5 py-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedRow(row)}
-                            title="View details"
-                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                          >
-                            <Eye size={15} strokeWidth={2.5} />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRow(row)}
+                              title="View details"
+                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                            >
+                              <Eye size={15} strokeWidth={2.5} />
+                            </button>
+                            {onEditRow ? (
+                              <button
+                                type="button"
+                                onClick={() => onEditRow(row)}
+                                title="Edit partner"
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                              >
+                                <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                       </>
                     ) : (
@@ -274,14 +287,26 @@ const ValueAddsPartnersTable = ({
                           {formatDateLabel(row.lastUpdated)}
                         </td>
                         <td className="px-5 py-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedRow(row)}
-                            title="View details"
-                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                          >
-                            <Eye size={15} strokeWidth={2.5} />
-                          </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedRow(row)}
+                              title="View details"
+                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                            >
+                              <Eye size={15} strokeWidth={2.5} />
+                            </button>
+                            {onEditRow ? (
+                              <button
+                                type="button"
+                                onClick={() => onEditRow(row)}
+                                title="Edit partner"
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                              >
+                                <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                          </div>
                         </td>
                       </>
                     )}
