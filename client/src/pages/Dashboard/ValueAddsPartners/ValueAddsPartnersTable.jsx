@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Calendar, Eye, Mail, Pencil, Phone, Search, Target, Users, X } from "lucide-react";
+import { BriefcaseBusiness, Eye, Mail, Pencil, Phone, Power, Search, Target, Users, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
 
@@ -23,6 +23,13 @@ const initials = (value) =>
     .join("")
     .toUpperCase();
 
+const isActiveStatus = (value) => String(value || "Active").toLowerCase() === "active";
+
+const normalizeFilterValue = (value) => {
+  if (value === null || value === undefined || value === "--") return "";
+  return String(value).trim();
+};
+
 const ValueAddsPartnersTable = ({
   title,
   rows = [],
@@ -36,12 +43,20 @@ const ValueAddsPartnersTable = ({
   splitContact = false,
   companyAfterContact = false,
   tableColumns,
+  filterControls = [],
   onEditRow,
+  onToggleStatus,
+  togglingStatusRowId,
 }) => {
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({});
   const [selectedRow, setSelectedRow] = useState(null);
 
   const exactTableColumns = Array.isArray(tableColumns) && tableColumns.length ? tableColumns : null;
+  const dropdownFilters = useMemo(
+    () => (Array.isArray(filterControls) ? filterControls : []),
+    [filterControls],
+  );
   const locationColumnDefs = locationColumns || [
     { field: "region", headerName: tableLabels.region || "Region" },
   ];
@@ -50,18 +65,49 @@ const ValueAddsPartnersTable = ({
     ? exactTableColumns.length + 1
     : 5 + locationColumnDefs.length + contactColumnCount;
 
-  const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
-    const query = search.toLowerCase();
-    return rows.filter((row) =>
-      columns.some((column) =>
-        String(row[column.field] ?? "").toLowerCase().includes(query),
-      ),
-    );
-  }, [columns, rows, search]);
+  const filterOptions = useMemo(() => {
+    return dropdownFilters.reduce((optionsByField, filter) => {
+      const options = new Set();
+      rows
+        .filter((row) =>
+          dropdownFilters.every((otherFilter) => {
+            if (otherFilter.field === filter.field || !filters[otherFilter.field]) return true;
+            return normalizeFilterValue(row[otherFilter.field]) === filters[otherFilter.field];
+          }),
+        )
+        .forEach((row) => {
+          const value = normalizeFilterValue(row[filter.field]);
+          if (value) options.add(value);
+        });
 
-  const activeCount = rows.filter((row) => row.status === "Active").length;
-  const pendingCount = rows.filter((row) => row.status === "Pending").length;
+      return {
+        ...optionsByField,
+        [filter.field]: Array.from(options).sort((first, second) =>
+          first.localeCompare(second),
+        ),
+      };
+    }, {});
+  }, [dropdownFilters, filters, rows]);
+
+  const filteredRows = useMemo(() => {
+    const activeFilters = dropdownFilters.filter((filter) => filters[filter.field]);
+    const query = search.toLowerCase();
+    return rows.filter(
+      (row) =>
+        activeFilters.every(
+          (filter) => normalizeFilterValue(row[filter.field]) === filters[filter.field],
+        ) &&
+        (!query.trim() ||
+          columns.some((column) =>
+            String(row[column.field] ?? "").toLowerCase().includes(query),
+          )),
+    );
+  }, [columns, dropdownFilters, filters, rows, search]);
+
+  const activeCount = rows.filter((row) => isActiveStatus(row.status)).length;
+  const inactiveCount = rows.filter((row) => !isActiveStatus(row.status)).length;
+  const hasDropdownFilters = dropdownFilters.some((filter) => filters[filter.field]);
+  const clearDropdownFilters = () => setFilters({});
 
   if (isLoading) {
     return <ValueAddsLeadsTableSkeleton />;
@@ -73,7 +119,7 @@ const ValueAddsPartnersTable = ({
         {[
           { label: `Total ${title}`, value: rows.length, icon: Target, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
           { label: "Active", value: activeCount, icon: Users, accent: "border-l-emerald-500", textColor: "text-emerald-600", bgColor: "bg-emerald-50" },
-          { label: "Pending", value: pendingCount, icon: Calendar, accent: "border-l-amber-500", textColor: "text-amber-600", bgColor: "bg-amber-50" },
+          { label: "Inactive", value: inactiveCount, icon: Power, accent: "border-l-rose-500", textColor: "text-rose-600", bgColor: "bg-rose-50" },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -108,6 +154,42 @@ const ValueAddsPartnersTable = ({
             />
           </div>
         </div>
+
+        {dropdownFilters.length ? (
+          <div className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
+            {dropdownFilters.map((filter) => (
+              <select
+                key={filter.field}
+                value={filters[filter.field] || ""}
+                onChange={(event) =>
+                  setFilters((currentFilters) => ({
+                    ...currentFilters,
+                    [filter.field]: event.target.value,
+                  }))
+                }
+                aria-label={filter.label}
+                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+              >
+                <option value="">{filter.placeholder || `All ${filter.label}`}</option>
+                {(filterOptions[filter.field] || []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ))}
+            {hasDropdownFilters ? (
+              <button
+                type="button"
+                onClick={clearDropdownFilters}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-[11px] font-pmedium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
+              >
+                <X size={13} />
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {isError ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
@@ -187,6 +269,10 @@ const ValueAddsPartnersTable = ({
                                 <Mail size={10} className="text-slate-400" />
                                 {row.email || "--"}
                               </span>
+                            ) : column.field === "status" ? (
+                              <span className={statusPillClass(isActiveStatus(row.status) ? "Active" : "Inactive")}>
+                                {isActiveStatus(row.status) ? "Active" : "Inactive"}
+                              </span>
                             ) : column.field === "contact" || column.field === "phone" ? (
                               <span className="flex items-center gap-1">
                                 <Phone size={10} className="text-slate-400" />
@@ -217,6 +303,21 @@ const ValueAddsPartnersTable = ({
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                               >
                                 <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                            {onToggleStatus ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleStatus(row)}
+                                disabled={togglingStatusRowId === row.id}
+                                title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
+                                className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  isActiveStatus(row.status)
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                    : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                              >
+                                <Power size={15} strokeWidth={2.5} />
                               </button>
                             ) : null}
                           </div>
@@ -304,6 +405,21 @@ const ValueAddsPartnersTable = ({
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                               >
                                 <Pencil size={15} strokeWidth={2.5} />
+                              </button>
+                            ) : null}
+                            {onToggleStatus ? (
+                              <button
+                                type="button"
+                                onClick={() => onToggleStatus(row)}
+                                disabled={togglingStatusRowId === row.id}
+                                title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
+                                className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                  isActiveStatus(row.status)
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                    : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                }`}
+                              >
+                                <Power size={15} strokeWidth={2.5} />
                               </button>
                             ) : null}
                           </div>

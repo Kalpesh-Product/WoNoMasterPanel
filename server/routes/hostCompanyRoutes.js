@@ -55,6 +55,7 @@ const {
 router.post(
   "/bulk-insert-companies",
   upload.single("companies"),
+  setLogModule("Data Upload"),
   bulkInsertCompanies,
 );
 // router.patch("/bulk-insert-logos", upload.single("logos"), bulkInsertLogos);

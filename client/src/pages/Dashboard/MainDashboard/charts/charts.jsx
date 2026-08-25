@@ -54,8 +54,60 @@ const ChartFooter = ({ total, detail }) => (
   </div>
 );
 
-export const BarDiagram = ({ bars, title = "Bar Diagram" }) => {
-  const items = Array.isArray(bars) ? bars : [];
+// Layout pass shared by the chart renderers. Compact charts (donuts and
+// short bar series) pair up two per row; horizontally hungry ones — trend
+// lines and bar series with 6+ columns — take a full row. When a compact
+// chart would trail alone before a full-row chart, the next compact chart
+// is pulled forward so rows stay filled instead of leaving a vacant slot.
+const WIDE_BAR_MIN = 9;
+
+export const isWideChart = (chart) => {
+  if (!chart) return false;
+  if (chart.fullWidth != null) return Boolean(chart.fullWidth);
+  if (chart.type === "line") return true;
+  if (chart.type === "bars") {
+    return (Array.isArray(chart.dataset) ? chart.dataset.length : 0) >= WIDE_BAR_MIN;
+  }
+  return false;
+};
+
+export const layoutChartRows = (charts) => {
+  const list = Array.isArray(charts) ? [...charts] : [];
+  const ordered = [];
+
+  let i = 0;
+  while (i < list.length) {
+    if (isWideChart(list[i])) {
+      ordered.push({ chart: list[i], span: 2 });
+      i += 1;
+      continue;
+    }
+
+    const next = list[i + 1];
+    if (next && !isWideChart(next)) {
+      ordered.push({ chart: list[i], span: 1 }, { chart: next, span: 1 });
+      i += 2;
+      continue;
+    }
+
+    // Lone compact chart ahead of a wide one — borrow the next compact
+    // chart from further down the list to complete this row.
+    const borrowIndex = list.findIndex((entry, j) => j > i + 1 && !isWideChart(entry));
+    if (borrowIndex > -1) {
+      const [borrowed] = list.splice(borrowIndex, 1);
+      ordered.push({ chart: list[i], span: 1 }, { chart: borrowed, span: 1 });
+      i += 1;
+      continue;
+    }
+
+    ordered.push({ chart: list[i], span: 1 });
+    i += 1;
+  }
+
+  return ordered;
+};
+
+export const BarDiagram = ({ bars, title = "Bar Diagram" }) => {  const items = Array.isArray(bars) ? bars : [];
   const total = items.reduce((sum, b) => sum + (Number(b.value) || 0), 0);
   const max = Math.max(...items.map((b) => b.value), 1);
   const [active, setActive] = useState(null);
@@ -72,7 +124,7 @@ export const BarDiagram = ({ bars, title = "Bar Diagram" }) => {
   return (
     <ChartCard title={title}>
       <div className="relative flex-1 min-h-[10rem]" onMouseMove={handleMove} onMouseLeave={() => setActive(null)}>
-        <div className="flex h-full items-end gap-3">
+        <div className="flex h-full items-end justify-center gap-3">
           {items.map((bar, i) => {
             const isActive = active === i;
             const isSelected = selected === i;
@@ -81,7 +133,7 @@ export const BarDiagram = ({ bars, title = "Bar Diagram" }) => {
             return (
               <div
                 key={`${bar.label}-${i}`}
-                className="flex h-full flex-1 flex-col items-center cursor-pointer"
+                className="flex h-full max-w-[72px] flex-1 flex-col items-center cursor-pointer"
                 onMouseEnter={() => setActive(i)}
                 onClick={() => setSelected((prev) => (prev === i ? null : i))}
               >
@@ -95,7 +147,7 @@ export const BarDiagram = ({ bars, title = "Bar Diagram" }) => {
                     {bar.value}
                   </span>
                   <div
-                    className={`w-full rounded-t-md transition-all ${
+                    className={`w-full max-w-[38px] rounded-t-md transition-all ${
                       isActive || isSelected ? "bg-[#2563EB]" : isTop ? "bg-primary" : "bg-[#2563EB]/70"
                     }`}
                     style={{ height: `${heightPct}%` }}

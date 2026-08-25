@@ -197,7 +197,9 @@ const ModuleDeepDiveCard = ({ entry }) => {
             tile.mode === "donut" ? (
               <DistributionDonut key={`${entry.id}-${tile.key}`} data={tile.rows} title={tile.title} />
             ) : (
-              <BarDiagram key={`${entry.id}-${tile.key}`} bars={tile.rows} title={tile.title} />
+              <div key={`${entry.id}-${tile.key}`} className="md:col-span-2">
+                <BarDiagram bars={tile.rows} title={tile.title} />
+              </div>
             ),
           )}
         </div>

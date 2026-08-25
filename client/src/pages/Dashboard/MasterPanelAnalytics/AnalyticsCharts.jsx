@@ -1,3 +1,8 @@
+// Same renderer as the module-wise Dashboard's TabCharts, but feeds from
+// ANALYTICS_OVERVIEWS so every tab shows its extended set of info graphs —
+// compact charts pair two per row, heavy ones take a full line (see
+// layoutChartRows). OverviewContent is exported so other pages can render
+// any overview config inline.
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
@@ -11,8 +16,8 @@ import {
   Star,
 } from "lucide-react";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { TAB_OVERVIEWS } from "./data/tabOverviews";
-import { buildOverview } from "./data/aggregate";
+import { ANALYTICS_OVERVIEWS } from "./data/analyticsOverviews";
+import { buildOverview } from "../MainDashboard/data/aggregate";
 import {
   BarDiagram,
   TrendLine,
@@ -22,7 +27,7 @@ import {
   EmptyOverview,
   NoChartsNote,
   layoutChartRows,
-} from "./charts/charts";
+} from "../MainDashboard/charts/charts";
 
 const CARD_STYLES = [
   { border: "border-l-slate-400", chip: "bg-slate-50 text-slate-600" },
@@ -65,27 +70,33 @@ const renderChart = (chart) => {
   return <DistributionDonut data={chart.dataset} title={chart.title} />;
 };
 
-const TabCharts = ({ tab }) => {
-  const config = TAB_OVERVIEWS[tab.key];
+// Renders one overview config: fetches every source, then stat cards +
+// charts. A failing source degrades to empty instead of blanking the whole
+// section.
+export const OverviewContent = ({ config, storageKey, title }) => {
   const axiosPrivate = useAxiosPrivate();
 
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ["module-dashboard-overview", tab.key],
+    queryKey: ["module-analytics-overview", storageKey],
     enabled: Boolean(config),
     queryFn: async () => {
       if (!config) return null;
       const entries = await Promise.all(
         config.sources.map(async (source) => {
-          const http = source.auth === "public" ? axios : axiosPrivate;
-          const res = await http.get(source.url, { params: source.params });
-          return [source.key, source.pick ? source.pick(res) : res?.data];
+          try {
+            const http = source.auth === "public" ? axios : axiosPrivate;
+            const res = await http.get(source.url, { params: source.params });
+            return [source.key, source.pick ? source.pick(res) : res?.data];
+          } catch {
+            return [source.key, null];
+          }
         }),
       );
       return buildOverview(config, Object.fromEntries(entries));
     },
   });
 
-  if (!config) return <EmptyOverview title={tab.title} />;
+  if (!config) return <EmptyOverview title={title || storageKey} />;
   if (isPending) return <LoadingOverview />;
   if (isError) return <ErrorOverview onRetry={() => refetch()} />;
 
@@ -93,7 +104,7 @@ const TabCharts = ({ tab }) => {
   const isEmpty =
     cards.length > 0 && charts.length === 0 && cards.every((card) => card.value === 0);
 
-  if (isEmpty || !data) return <EmptyOverview title={tab.title} />;
+  if (isEmpty || !data) return <EmptyOverview title={title || storageKey} />;
 
   return (
     <div className="flex flex-col gap-3">
@@ -122,4 +133,12 @@ const TabCharts = ({ tab }) => {
   );
 };
 
-export default TabCharts;
+const AnalyticsCharts = ({ tab }) => {
+  const config = ANALYTICS_OVERVIEWS[tab.key];
+
+  if (!config) return <EmptyOverview title={tab.title} />;
+
+  return <OverviewContent config={config} storageKey={tab.key} title={tab.title} />;
+};
+
+export default AnalyticsCharts;
