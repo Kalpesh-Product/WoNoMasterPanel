@@ -25,10 +25,10 @@ const defaultValues = {
 };
 
 const fields = [
-  { name: "srNo", label: "Sr No", type: "number" },
+  { name: "srNo", label: "Sr No", type: "number", readOnly: true },
   { name: "continent", label: "Continent" },
   { name: "country", label: "Country", required: true },
-  { name: "destination", label: "Destination", required: true },
+  { name: "destination", label: "State", required: true },
   { name: "visaType", label: "Visa Type" },
   { name: "company", label: "Company", required: true },
   { name: "agentName", label: "Agent Name" },
@@ -146,10 +146,12 @@ const EditVisaSupportPartner = () => {
                     type={field.type || "text"}
                     step={field.step}
                     disabled={isFetching || isPending}
+                    readOnly={field.readOnly}
+                    aria-readonly={field.readOnly || undefined}
                     {...register(field.name, {
                       required: field.required ? `${field.label} is required` : false,
                     })}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-pmedium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-pmedium text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 read-only:cursor-not-allowed read-only:bg-slate-50 read-only:text-slate-500 disabled:cursor-not-allowed disabled:bg-slate-50"
                   />
                   {errors[field.name] ? (
                     <span className="text-[10px] font-pmedium text-rose-500">
@@ -169,7 +171,6 @@ const EditVisaSupportPartner = () => {
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-[12px] font-pmedium text-slate-800 outline-none transition-all focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 disabled:cursor-not-allowed disabled:bg-slate-50"
                 >
                   <option value="Active">Active</option>
-                  <option value="Pending">Pending</option>
                   <option value="Inactive">Inactive</option>
                 </select>
               </label>
