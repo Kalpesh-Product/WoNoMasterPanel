@@ -69,7 +69,8 @@ const partnerRows = {
       phone: "+1 415 000 0191",
       status: "Active",
       lastUpdated: "2026-08-05",
-      notes: "General consultation partner for expansion and mobility planning.",
+      notes:
+        "General consultation partner for expansion and mobility planning.",
     },
   ],
   workation: [
@@ -106,7 +107,7 @@ const visaSupportColumns = [
   { field: "company", headerName: "Company" },
   { field: "continent", headerName: "Continent" },
   { field: "country", headerName: "Country" },
-  { field: "destination", headerName: "Destination" },
+  { field: "destination", headerName: "State" },
   { field: "visaType", headerName: "Visa Type" },
   { field: "agentName", headerName: "Agent Name" },
   { field: "website", headerName: "Website" },
@@ -120,15 +121,24 @@ const visaSupportColumns = [
 ];
 
 const visaSupportTableColumns = visaSupportColumns.filter((column) =>
-  ["company", "continent", "country", "destination", "contact", "email", "status"].includes(column.field),
+  [
+    "company",
+    "continent",
+    "country",
+    "destination",
+    "contact",
+    "email",
+    "status",
+  ].includes(column.field),
 );
 
 const resolveRating = (value) => (value === 0 || value ? value : "--");
 
-const emptyDash = (value) => (value === "--" ? "" : value ?? "");
+const emptyDash = (value) => (value === "--" ? "" : (value ?? ""));
 
 const nullableNumber = (value) => {
-  if (value === "--" || value === "" || value === null || value === undefined) return null;
+  if (value === "--" || value === "" || value === null || value === undefined)
+    return null;
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : null;
 };
@@ -159,8 +169,14 @@ const flattenVisaSupportPartners = (records = []) =>
         country: record.country || "--",
         destination: record.destination || record.city || "--",
         visaType: record.visaType || "--",
-        company: partner.name || record.company || `Agent ${partner.agentNumber || index + 1}`,
-        partnerName: partner.name || record.company || `Agent ${partner.agentNumber || index + 1}`,
+        company:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
+        partnerName:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
         agentName: record.agentName || "",
         website: partner.website || record.website || "",
         contact: partner.contact || record.contact || "",
@@ -175,7 +191,9 @@ const flattenVisaSupportPartners = (records = []) =>
     }
 
     return {
-      id: record._id || `${record.country}-${record.destination}-${record.company}`,
+      id:
+        record._id ||
+        `${record.country}-${record.destination}-${record.company}`,
       recordId: record._id || "",
       continent: record.continent || "--",
       country: record.country || "--",
@@ -199,20 +217,34 @@ const flattenVisaSupportPartners = (records = []) =>
 export const VisaSupportPartnersTable = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data = [], isPending, isError, error } = useQuery({
+  const {
+    data = [],
+    isPending,
+    isError,
+    error,
+  } = useQuery({
     queryKey: ["valueAddsPartners", "visa-support"],
     queryFn: async () => {
-      const response = await axios.get(`${NOMADS_BACKEND_URL}/api/visa-support/partners`);
+      const response = await axios.get(
+        `${NOMADS_BACKEND_URL}/api/visa-support/partners`,
+      );
       return response?.data?.data || [];
     },
   });
 
   const rows = useMemo(() => flattenVisaSupportPartners(data), [data]);
 
-  const { mutate: togglePartnerStatus, isPending: isTogglingStatus, variables } = useMutation({
+  const {
+    mutate: togglePartnerStatus,
+    isPending: isTogglingStatus,
+    variables,
+  } = useMutation({
     mutationFn: async (row) => {
       const partnerId = row.recordId || row.id;
-      const nextStatus = String(row.status || "Active").toLowerCase() === "active" ? "Inactive" : "Active";
+      const nextStatus =
+        String(row.status || "Active").toLowerCase() === "active"
+          ? "Inactive"
+          : "Active";
       const response = await axios.patch(
         `${NOMADS_BACKEND_URL}/api/visa-support/partners/${partnerId}`,
         buildVisaSupportStatusPayload(row, nextStatus),
@@ -221,11 +253,15 @@ export const VisaSupportPartnersTable = () => {
     },
     onSuccess: () => {
       toast.success("Visa support partner status updated");
-      queryClient.invalidateQueries({ queryKey: ["valueAddsPartners", "visa-support"] });
+      queryClient.invalidateQueries({
+        queryKey: ["valueAddsPartners", "visa-support"],
+      });
     },
     onError: (err) => {
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to update visa support partner status",
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update visa support partner status",
       );
     },
   });
@@ -249,6 +285,16 @@ export const VisaSupportPartnersTable = () => {
       errorMessage={error?.response?.data?.message || error?.message}
       emptyMessage="No visa support partners found."
       tableColumns={visaSupportTableColumns}
+      filterControls={[
+        {
+          field: "continent",
+          label: "Continent",
+          placeholder: "All Continents",
+        },
+        { field: "country", label: "Country", placeholder: "All Countries" },
+        { field: "destination", label: "State", placeholder: "All States" },
+        // { field: "status", label: "Status", placeholder: "All Statuses" },
+      ]}
       onEditRow={openEditPartner}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}

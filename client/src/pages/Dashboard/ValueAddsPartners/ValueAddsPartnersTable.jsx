@@ -25,6 +25,11 @@ const initials = (value) =>
 
 const isActiveStatus = (value) => String(value || "Active").toLowerCase() === "active";
 
+const normalizeFilterValue = (value) => {
+  if (value === null || value === undefined || value === "--") return "";
+  return String(value).trim();
+};
+
 const ValueAddsPartnersTable = ({
   title,
   rows = [],
@@ -38,14 +43,20 @@ const ValueAddsPartnersTable = ({
   splitContact = false,
   companyAfterContact = false,
   tableColumns,
+  filterControls = [],
   onEditRow,
   onToggleStatus,
   togglingStatusRowId,
 }) => {
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({});
   const [selectedRow, setSelectedRow] = useState(null);
 
   const exactTableColumns = Array.isArray(tableColumns) && tableColumns.length ? tableColumns : null;
+  const dropdownFilters = useMemo(
+    () => (Array.isArray(filterControls) ? filterControls : []),
+    [filterControls],
+  );
   const locationColumnDefs = locationColumns || [
     { field: "region", headerName: tableLabels.region || "Region" },
   ];
@@ -54,18 +65,49 @@ const ValueAddsPartnersTable = ({
     ? exactTableColumns.length + 1
     : 5 + locationColumnDefs.length + contactColumnCount;
 
+  const filterOptions = useMemo(() => {
+    return dropdownFilters.reduce((optionsByField, filter) => {
+      const options = new Set();
+      rows
+        .filter((row) =>
+          dropdownFilters.every((otherFilter) => {
+            if (otherFilter.field === filter.field || !filters[otherFilter.field]) return true;
+            return normalizeFilterValue(row[otherFilter.field]) === filters[otherFilter.field];
+          }),
+        )
+        .forEach((row) => {
+          const value = normalizeFilterValue(row[filter.field]);
+          if (value) options.add(value);
+        });
+
+      return {
+        ...optionsByField,
+        [filter.field]: Array.from(options).sort((first, second) =>
+          first.localeCompare(second),
+        ),
+      };
+    }, {});
+  }, [dropdownFilters, filters, rows]);
+
   const filteredRows = useMemo(() => {
-    if (!search.trim()) return rows;
+    const activeFilters = dropdownFilters.filter((filter) => filters[filter.field]);
     const query = search.toLowerCase();
-    return rows.filter((row) =>
-      columns.some((column) =>
-        String(row[column.field] ?? "").toLowerCase().includes(query),
-      ),
+    return rows.filter(
+      (row) =>
+        activeFilters.every(
+          (filter) => normalizeFilterValue(row[filter.field]) === filters[filter.field],
+        ) &&
+        (!query.trim() ||
+          columns.some((column) =>
+            String(row[column.field] ?? "").toLowerCase().includes(query),
+          )),
     );
-  }, [columns, rows, search]);
+  }, [columns, dropdownFilters, filters, rows, search]);
 
   const activeCount = rows.filter((row) => isActiveStatus(row.status)).length;
   const inactiveCount = rows.filter((row) => !isActiveStatus(row.status)).length;
+  const hasDropdownFilters = dropdownFilters.some((filter) => filters[filter.field]);
+  const clearDropdownFilters = () => setFilters({});
 
   if (isLoading) {
     return <ValueAddsLeadsTableSkeleton />;
@@ -112,6 +154,42 @@ const ValueAddsPartnersTable = ({
             />
           </div>
         </div>
+
+        {dropdownFilters.length ? (
+          <div className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
+            {dropdownFilters.map((filter) => (
+              <select
+                key={filter.field}
+                value={filters[filter.field] || ""}
+                onChange={(event) =>
+                  setFilters((currentFilters) => ({
+                    ...currentFilters,
+                    [filter.field]: event.target.value,
+                  }))
+                }
+                aria-label={filter.label}
+                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+              >
+                <option value="">{filter.placeholder || `All ${filter.label}`}</option>
+                {(filterOptions[filter.field] || []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ))}
+            {hasDropdownFilters ? (
+              <button
+                type="button"
+                onClick={clearDropdownFilters}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg text-[11px] font-pmedium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
+              >
+                <X size={13} />
+                Clear filters
+              </button>
+            ) : null}
+          </div>
+        ) : null}
 
         {isError ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
