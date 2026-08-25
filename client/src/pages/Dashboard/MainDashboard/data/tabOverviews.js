@@ -25,12 +25,19 @@ import {
   PlaneTakeoff,
   UtensilsCrossed,
   Activity,
+  MousePointerClick,
+  MapPin,
+  Upload,
+  KeyRound,
+  LayoutTemplate,
+  Handshake,
 } from "lucide-react";
 import { NOMADS_BACKEND_URL, NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const VALUE_ADDS_API_BASE_URL =
   import.meta.env.VITE_VALUE_ADDS_API_BASE_URL || NOMADS_BACKEND_URL;
 import {
+  asArray,
   countBy,
   topN,
   distinctCount,
@@ -453,7 +460,326 @@ export const TAB_OVERVIEWS = {
 
   "dashboard.reviews": REVIEWS_OVERVIEW,
 
-  "dashboard.data-upload": null,
+  "dashboard.data-upload": {
+    // Data Upload usage analytics — who is uploading, which upload tab they
+    // used, when, and whether it succeeded. Sourced from the audit logs the
+    // server already writes for every upload endpoint.
+    sources: [
+      {
+        key: "uploads",
+        url: "/api/logs/data-upload-analytics",
+        pick: pickData,
+      },
+    ],
+    cards: [
+      {
+        label: "Total Uploads",
+        value: ({ data }) => data.uploads.stats?.totalUploads ?? 0,
+        icon: Upload,
+        tone: 0,
+      },
+      {
+        label: "This Month",
+        value: ({ data }) => data.uploads.stats?.uploadsThisMonth ?? 0,
+        icon: CalendarDays,
+        tone: 1,
+      },
+      {
+        label: "Last 30 Days",
+        value: ({ data }) => data.uploads.stats?.uploadsLast30Days ?? 0,
+        icon: Clock,
+        tone: 2,
+      },
+      {
+        label: "Today",
+        value: ({ data }) => data.uploads.stats?.todayUploads ?? 0,
+        icon: Activity,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Monthly Upload Trend",
+        type: "bars",
+        build: ({ data }) => data.uploads.trend ?? [],
+      },
+      {
+        title: "Upload Tabs Used",
+        type: "donut",
+        build: ({ data }) => (data.uploads.tabBreakdown ?? []).slice(0, 6),
+      },
+      {
+        title: "Top Uploaders",
+        type: "donut",
+        build: ({ data }) => (data.uploads.topUsers ?? []).slice(0, 6),
+      },
+      {
+        title: "Success vs Failed",
+        type: "donut",
+        build: ({ data }) => data.uploads.successBreakdown ?? [],
+      },
+    ],
+  },
+
+  "dashboard.nomad-click-analytics": {
+    // Destination click analytics from the Nomads site — which destinations
+    // get clicked, by guests vs logged-in nomads, and where those visitors
+    // come from (resolved server-side from the IPs captured per click).
+    sources: [
+      {
+        key: "clicks",
+        url: "/api/nomad-users/popular-destinations",
+        params: { limit: 50 },
+        pick: pickData,
+      },
+      {
+        key: "locations",
+        url: "/api/nomad-users/popular-destinations/locations",
+        pick: pickData,
+      },
+    ],
+    cards: [
+      {
+        label: "Total Clicks",
+        value: ({ data }) => data.clicks.totals?.totalClicks ?? 0,
+        icon: MousePointerClick,
+        tone: 0,
+      },
+      {
+        label: "Destinations Clicked",
+        value: ({ data }) => data.clicks.totals?.totalDestinations ?? 0,
+        icon: MapPin,
+        tone: 1,
+      },
+      {
+        label: "Guest User Clicks",
+        value: ({ data }) => data.clicks.totals?.guestClicks ?? 0,
+        icon: Users,
+        tone: 2,
+      },
+      {
+        label: "Logged In Clicks",
+        value: ({ data }) => data.clicks.totals?.loggedInClicks ?? 0,
+        icon: UserRound,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Top Destinations by Clicks",
+        type: "bars",
+        build: ({ data }) =>
+          topN(
+            asArray(data.clicks.items).map((item) => ({
+              label:
+                [item.title || item.state, item.country].filter(Boolean).join(", ") ||
+                item.state ||
+                item.country ||
+                "Unknown",
+              value: Number(item.clicks) || 0,
+            })),
+            8,
+          ),
+      },
+      {
+        title: "Guest vs Logged In",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Guest Users", value: data.clicks.totals?.guestClicks ?? 0 },
+            { label: "Logged In Users", value: data.clicks.totals?.loggedInClicks ?? 0 },
+          ].filter((d) => d.value > 0),
+      },
+      {
+        title: "Visitors by Country",
+        type: "bars",
+        build: ({ data }) =>
+          topN(
+            asArray(data.locations?.countries).map((item) => ({
+              label: item.label || "Unknown",
+              value: Number(item.value) || 0,
+            })),
+            8,
+          ),
+      },
+      {
+        title: "Top Destination Countries",
+        type: "donut",
+        build: ({ data }) =>
+          topN(
+            countBy(asArray(data.clicks.items), (item) =>
+              [item.state, item.country].filter(Boolean).join(", "),
+            ),
+            6,
+          ),
+      },
+    ],
+  },
+
+  "dashboard.value-adds-partners": {
+    sources: [
+      {
+        key: "partners",
+        url: `${VALUE_ADDS_API_BASE_URL}/api/visa-support/partners`,
+        auth: "public",
+        pick: (res) => (Array.isArray(res?.data?.data) ? res.data.data : []),
+      },
+    ],
+    cards: [
+      { label: "Total Partners", value: ({ data }) => data.partners.length, icon: Handshake, tone: 0 },
+      { label: "Countries", value: ({ data }) => distinctCount(data.partners, "country"), icon: Globe, tone: 1 },
+      {
+        label: "Destinations",
+        value: ({ data }) => distinctCount(data.partners, "destination"),
+        icon: MapPin,
+        tone: 2,
+      },
+      {
+        label: "With Website",
+        value: ({ data }) => data.partners.filter((p) => String(p?.website || "").trim()).length,
+        icon: Globe,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Partners per Country",
+        type: "bars",
+        build: ({ data }) => topN(countBy(data.partners, "country"), 8),
+      },
+      {
+        title: "Partners per Destination",
+        type: "bars",
+        build: ({ data }) => topN(countBy(data.partners, "destination"), 8),
+      },
+      {
+        title: "Partner Status",
+        type: "donut",
+        build: ({ data }) => countBy(data.partners, (p) => p?.status || "Active"),
+      },
+    ],
+  },
+
+  "dashboard.add-master-user": {
+    // Master user roster — superadmins only on the API side; other users see
+    // an empty state rather than a broken tab.
+    sources: [
+      {
+        key: "users",
+        url: "/api/admin-access/users",
+        pick: pickGenericArray,
+      },
+    ],
+    cards: [
+      { label: "Master Users", value: ({ data }) => data.users.length, icon: UserRound, tone: 0 },
+      {
+        label: "Super Admins",
+        value: ({ data }) => data.users.filter((u) => u.isSuperAdmin).length,
+        icon: ShieldCheck,
+        tone: 1,
+      },
+      {
+        label: "Active",
+        value: ({ data }) => data.users.filter((u) => u.isActive !== false).length,
+        icon: CheckCircle2,
+        tone: 2,
+      },
+      {
+        label: "Private Listing Access",
+        value: ({ data }) => data.users.filter((u) => u.canViewPrivateNomadListings).length,
+        icon: KeyRound,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Super Admin vs Standard",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Super Admins", value: data.users.filter((u) => u.isSuperAdmin).length },
+            { label: "Standard Users", value: data.users.filter((u) => !u.isSuperAdmin).length },
+          ].filter((d) => d.value > 0),
+      },
+      {
+        title: "Account Status",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Active", value: data.users.filter((u) => u.isActive !== false).length },
+            { label: "Disabled", value: data.users.filter((u) => u.isActive === false).length },
+          ].filter((d) => d.value > 0),
+      },
+    ],
+  },
+
+  "dashboard.user-access": {
+    // Who has access to what across the master panel.
+    sources: [
+      {
+        key: "users",
+        url: "/api/admin-access/users",
+        pick: pickGenericArray,
+      },
+    ],
+    cards: [
+      { label: "Users", value: ({ data }) => data.users.length, icon: Users, tone: 0 },
+      {
+        label: "Super Admins",
+        value: ({ data }) => data.users.filter((u) => u.isSuperAdmin).length,
+        icon: ShieldCheck,
+        tone: 1,
+      },
+      {
+        label: "Disabled Accounts",
+        value: ({ data }) => data.users.filter((u) => u.isActive === false).length,
+        icon: AlertCircle,
+        tone: 2,
+      },
+      {
+        label: "Modules Granted",
+        value: ({ data }) =>
+          sumBy(data.users, (u) => (Array.isArray(u.allowedModules) ? u.allowedModules.length : 0)),
+        icon: KeyRound,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Top Users by Modules Granted",
+        type: "bars",
+        build: ({ data }) =>
+          topN(
+            data.users.map((u) => ({
+              label:
+                [u.firstName, u.lastName].filter(Boolean).join(" ") ||
+                u.email ||
+                "Unknown",
+              value: Array.isArray(u.allowedModules) ? u.allowedModules.length : 0,
+            })),
+            8,
+          ),
+      },
+      {
+        title: "Role Split",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Super Admins", value: data.users.filter((u) => u.isSuperAdmin).length },
+            { label: "Standard Users", value: data.users.filter((u) => !u.isSuperAdmin).length },
+          ].filter((d) => d.value > 0),
+      },
+      {
+        title: "Account Status",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Active", value: data.users.filter((u) => u.isActive !== false).length },
+            { label: "Disabled", value: data.users.filter((u) => u.isActive === false).length },
+          ].filter((d) => d.value > 0),
+      },
+    ],
+  },
 
   "dashboard.destinations-data": {
     sources: [
@@ -600,8 +926,6 @@ export const TAB_OVERVIEWS = {
     charts: [],
   },
 
-  "dashboard.add-master-user": null,
-  "dashboard.user-access": null,
   "dashboard.profile": null,
 
   "dashboard.logs": {
@@ -634,6 +958,39 @@ export const TAB_OVERVIEWS = {
         title: "Top Modules",
         type: "donut",
         build: ({ data }) => topN(countBy(data.logs.items, "module"), 6),
+      },
+    ],
+  },
+
+  "dashboard.master-panel-analytics": {
+    sources: [
+      {
+        key: "analytics",
+        url: "/api/logs/master-panel-analytics",
+        pick: pickData,
+      },
+    ],
+    cards: [
+      { label: "Total Activities", value: ({ data }) => data.analytics.stats?.totalActivities ?? 0, icon: Activity, tone: 0 },
+      { label: "This Month", value: ({ data }) => data.analytics.stats?.activitiesThisMonth ?? 0, icon: CalendarDays, tone: 1 },
+      { label: "Last 30 Days", value: ({ data }) => data.analytics.stats?.activitiesLast30Days ?? 0, icon: Clock, tone: 2 },
+      { label: "Today", value: ({ data }) => data.analytics.stats?.todayActivities ?? 0, icon: TrendingUp, tone: 3 },
+    ],
+    charts: [
+      {
+        title: "Monthly Activity",
+        type: "bars",
+        build: ({ data }) => data.analytics.trend ?? [],
+      },
+      {
+        title: "Top Modules",
+        type: "donut",
+        build: ({ data }) => (data.analytics.topModules ?? []).slice(0, 6),
+      },
+      {
+        title: "Top Actors",
+        type: "donut",
+        build: ({ data }) => (data.analytics.topUsers ?? []).slice(0, 6),
       },
     ],
   },
@@ -950,6 +1307,156 @@ export const TAB_OVERVIEWS = {
         title: "Top Users",
         type: "donut",
         build: ({ data }) => topN(countBy(data.logs, "fullName"), 6),
+      },
+    ],
+  },
+
+  "hostpanel.website-templates": {
+    // Template change requests + global template enablement settings.
+    sources: [
+      {
+        key: "requests",
+        url: "/api/website-template-changes/requests",
+        pick: pickGenericArray,
+      },
+      {
+        key: "settings",
+        url: "/api/website-template-changes/settings",
+        pick: pickData,
+      },
+    ],
+    cards: [
+      {
+        label: "Total Requests",
+        value: ({ data }) => data.requests.length,
+        icon: LayoutTemplate,
+        tone: 0,
+      },
+      {
+        label: "Pending",
+        value: ({ data }) =>
+          data.requests.filter(
+            (r) => String(r?.status || "").toLowerCase() === "pending",
+          ).length,
+        icon: Clock,
+        tone: 1,
+      },
+      {
+        label: "Completed",
+        value: ({ data }) =>
+          data.requests.filter((r) =>
+            ["completed", "approved"].includes(String(r?.status || "").toLowerCase()),
+          ).length,
+        icon: CheckCircle2,
+        tone: 2,
+      },
+      {
+        label: "Templates Enabled",
+        value: ({ data }) =>
+          asArray(data.settings.templates).filter((t) => t.enabled).length,
+        icon: Layers,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Request Status",
+        type: "donut",
+        build: ({ data }) => countBy(data.requests, (r) => r?.status || "pending"),
+      },
+      {
+        title: "Request Source",
+        type: "donut",
+        build: ({ data }) => countBy(data.requests, "requestSource"),
+      },
+      {
+        title: "Monthly Request Trend",
+        type: "bars",
+        build: ({ data }) => monthlyTrend(data.requests),
+      },
+      {
+        title: "Plan Change Limits",
+        type: "bars",
+        build: ({ data }) => {
+          const limits = data.settings.planChangeLimits || {};
+          return Object.entries(limits)
+            .map(([plan, limit]) => ({
+              label: plan.charAt(0).toUpperCase() + plan.slice(1),
+              value: Number(limit) || 0,
+            }))
+            .filter((d) => d.value > 0);
+        },
+      },
+    ],
+  },
+
+  "hostpanel.host-panel-analytics": {
+    // Same overview the Host Panel Analytics page renders — companies,
+    // activities and adoption across the whole host panel.
+    sources: [
+      {
+        key: "analytics",
+        url: "/api/logs/host-panel-analytics",
+        pick: pickData,
+      },
+    ],
+    cards: [
+      {
+        label: "Host Companies",
+        value: ({ data }) => data.analytics.stats?.totalCompanies ?? 0,
+        icon: Building2,
+        tone: 0,
+      },
+      {
+        label: "Active Companies",
+        value: ({ data }) => data.analytics.stats?.activeCompanies ?? 0,
+        icon: CheckCircle2,
+        tone: 1,
+      },
+      {
+        label: "Total Activities",
+        value: ({ data }) => data.analytics.stats?.totalActivities ?? 0,
+        icon: Activity,
+        tone: 2,
+      },
+      {
+        label: "Last 30 Days",
+        value: ({ data }) => data.analytics.stats?.activitiesLast30Days ?? 0,
+        icon: Clock,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Monthly Activity Trend",
+        type: "bars",
+        build: ({ data }) => data.analytics.trend ?? [],
+      },
+      {
+        title: "Top Companies by Activity",
+        type: "donut",
+        build: ({ data }) => (data.analytics.topCompanies ?? []).slice(0, 6),
+      },
+      {
+        title: "Top Modules Used",
+        type: "donut",
+        build: ({ data }) => (data.analytics.modules ?? []).slice(0, 6),
+      },
+      {
+        title: "Top Users",
+        type: "donut",
+        build: ({ data }) => (data.analytics.topUsers ?? []).slice(0, 6),
+      },
+      {
+        title: "Company Health",
+        type: "donut",
+        build: ({ data }) =>
+          countBy(asArray(data.analytics.companies), (c) => c?.health || "none"),
+      },
+      {
+        title: "Plan Distribution",
+        type: "donut",
+        build: ({ data }) => countBy(asArray(data.analytics.companies), "plan"),
       },
     ],
   },

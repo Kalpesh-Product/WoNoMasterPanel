@@ -8,6 +8,7 @@ const {
   getPopularDestinations,
   getDestinationListingAnalytics,
   getDestinationUsers,
+  getDestinationLocationBreakdown,
   getNomadUserDestinationViews,
   getNomadUserListingViews,
   getNomadUserSessionLogs,
@@ -16,6 +17,7 @@ const {
 
 router.get("/", getNomadUsers);
 router.get("/popular-destinations", getPopularDestinations);
+router.get("/popular-destinations/locations", getDestinationLocationBreakdown);
 router.get("/popular-destinations/listings", getDestinationListingAnalytics);
 router.get("/popular-destinations/users", getDestinationUsers);
 router.get("/:userId/destination-views", getNomadUserDestinationViews);

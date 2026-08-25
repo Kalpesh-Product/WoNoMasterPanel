@@ -25,23 +25,42 @@ router.patch("/update-profile/:userId", upload.single("profilePic"), updateProfi
 router.patch("/verify-password/:userId", verifyPassword);
 router.patch("/change-password/:userId", changePassword);
 
-//Bulk Routes
-router.post("/bulk-upload-data", upload.single("file"), bulkUploadData);
-router.post("/bulk-upload-images", upload.array("images"), bulkUploadImages);
+//Bulk Routes — tagged "Data Upload" so every upload is attributable in the
+// Logs table and the Data Upload analytics.
+router.post(
+  "/bulk-upload-data",
+  upload.single("file"),
+  setLogModule("Data Upload"),
+  bulkUploadData,
+);
+router.post(
+  "/bulk-upload-images",
+  upload.array("images"),
+  setLogModule("Data Upload"),
+  bulkUploadImages,
+);
 router.post(
   "/bulk-upload-restaurant-images",
   upload.array("images"),
+  setLogModule("Data Upload"),
   bulkUploadRestaurantImages,
 );
 router.patch(
   "/bulk-reupload-images",
   upload.array("images"),
+  setLogModule("Data Upload"),
   bulkReuploadImages,
 );
-router.post("/upload-single-image", upload.single("image"), uploadCompanyLogo);
+router.post(
+  "/upload-single-image",
+  upload.single("image"),
+  setLogModule("Data Upload"),
+  uploadCompanyLogo,
+);
 router.post(
   "/upload-restaurant-logo",
   upload.single("image"),
+  setLogModule("Data Upload"),
   uploadRestaurantLogo,
 );
 

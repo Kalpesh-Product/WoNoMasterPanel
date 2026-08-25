@@ -176,6 +176,13 @@ export const MASTER_PANEL_MODULES = [
             icon: LuFileText,
             route: "/dashboard/logs-layout",
           },
+          {
+            id: 29,
+            key: "dashboard.master-panel-analytics",
+            title: "Master Panel Analytics",
+            icon: LuChartLine,
+            route: "/dashboard/master-panel-analytics",
+          },
         ],
       },
     ],
