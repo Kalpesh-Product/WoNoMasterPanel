@@ -568,18 +568,22 @@ export const TAB_OVERVIEWS = {
       {
         title: "Top Destinations by Clicks",
         type: "bars",
-        build: ({ data }) =>
-          topN(
-            asArray(data.clicks.items).map((item) => ({
-              label:
-                [item.title || item.state, item.country].filter(Boolean).join(", ") ||
-                item.state ||
-                item.country ||
-                "Unknown",
-              value: Number(item.clicks) || 0,
-            })),
+        fullWidth: true,
+        build: ({ data }) => {
+          const totals = new Map();
+          asArray(data.clicks.items).forEach((item) => {
+            const label =
+              [item.title || item.state, item.country].filter(Boolean).join(", ") ||
+              item.state ||
+              item.country ||
+              "Unknown";
+            totals.set(label, (totals.get(label) || 0) + (Number(item.clicks) || 0));
+          });
+          return topN(
+            [...totals.entries()].map(([label, value]) => ({ label, value })),
             8,
-          ),
+          );
+        },
       },
       {
         title: "Guest vs Logged In",
@@ -593,6 +597,7 @@ export const TAB_OVERVIEWS = {
       {
         title: "Visitors by Country",
         type: "bars",
+        fullWidth: true,
         build: ({ data }) =>
           topN(
             asArray(data.locations?.countries).map((item) => ({
