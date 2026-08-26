@@ -1,3 +1,48 @@
+const RANGE_DAYS = { "7daysAgo": 7, "30daysAgo": 30, "90daysAgo": 90 };
+// Checked in order; the first present field on an item is used as its date.
+const DATE_FIELDS = ["createdAt", "clickedAt", "lastClickedAt", "date", "timestamp", "updatedAt"];
+
+const itemDate = (item) => {
+  for (const field of DATE_FIELDS) {
+    const raw = item?.[field];
+    if (raw != null) return new Date(raw);
+  }
+  return null;
+};
+
+// Applies a days-ago cutoff to every array (including ones nested under
+// items/data/rows/result, matching asArray's shape-unwrapping below) found
+// in a source-data map, so every overview's cards/charts can be filtered by
+// the same page-level range control without each one wiring it up itself.
+// An item with no recognizable date field is kept rather than dropped —
+// better to over-include than silently hide data from a schema we don't
+// recognize.
+export const filterDataByRange = (data, range) => {
+  const days = RANGE_DAYS[range];
+  if (!data || !days) return data;
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  const filterArray = (items) =>
+    items.filter((item) => {
+      const t = itemDate(item);
+      return !t || Number.isNaN(t.getTime()) || t >= cutoff;
+    });
+
+  const filterValue = (value) => {
+    if (Array.isArray(value)) return filterArray(value);
+    if (value && typeof value === "object") {
+      for (const key of ["items", "data", "rows", "result"]) {
+        if (Array.isArray(value[key])) return { ...value, [key]: filterArray(value[key]) };
+      }
+    }
+    return value;
+  };
+
+  return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, filterValue(value)]));
+};
+
 export const asArray = (value) => {
   if (Array.isArray(value)) return value;
   if (Array.isArray(value?.items)) return value.items;
