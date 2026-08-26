@@ -63,6 +63,7 @@ const websiteTemplateChangeRoutes = require("./routes/websiteTemplateChangeRoute
 const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
+const siteAnalyticsRoutes = require("./routes/siteAnalyticsRoutes");
 
 const {
   getTemplate,
@@ -162,6 +163,7 @@ app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
+app.use("/api/site-analytics", verifyJwt, auditLogger, siteAnalyticsRoutes);
 
 app.all("*", (req, res) => {
   if (req.accepts("html")) {

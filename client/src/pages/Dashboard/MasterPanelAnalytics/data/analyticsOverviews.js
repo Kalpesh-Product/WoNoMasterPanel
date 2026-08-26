@@ -517,11 +517,12 @@ const EXTRA_CHARTS = {
         recencyBreakdown(asArray(data.clicks.items), "lastClickedAt"),
     },
     {
-      title: "Visitors by City",
+      title: "Visitors by State",
       type: "bars",
+      fullWidth: true,
       build: ({ data }) =>
         topN(
-          asArray(data.locations?.cities).map((item) => ({
+          asArray(data.locations?.states).map((item) => ({
             label: item.label || "Unknown",
             value: Number(item.value) || 0,
           })),
@@ -529,11 +530,12 @@ const EXTRA_CHARTS = {
         ),
     },
     {
-      title: "Visitors by State",
+      title: "Visitors by City",
       type: "bars",
+      fullWidth: true,
       build: ({ data }) =>
         topN(
-          asArray(data.locations?.states).map((item) => ({
+          asArray(data.locations?.cities).map((item) => ({
             label: item.label || "Unknown",
             value: Number(item.value) || 0,
           })),
@@ -553,10 +555,36 @@ const EXTRA_CHARTS = {
   ],
 };
 
+// Some tabs read cleaner with a specific chart order (e.g. all donuts
+// paired up top, all full-line bar charts below) instead of the default
+// "base charts, then extras" concatenation order.
+const CHART_ORDER_OVERRIDES = {
+  "dashboard.nomad-click-analytics": [
+    "Top Destination Countries",
+    "Guest vs Logged In",
+    "Click Freshness",
+    "Visitor Location Resolution",
+    "Top Destinations by Clicks",
+    "Visitors by Country",
+    "Visitors by State",
+    "Visitors by City",
+  ],
+};
+
+const applyChartOrder = (key, charts) => {
+  const order = CHART_ORDER_OVERRIDES[key];
+  if (!order) return charts;
+  const byTitle = new Map(charts.map((chart) => [chart.title, chart]));
+  const ordered = order.map((title) => byTitle.get(title)).filter(Boolean);
+  const remaining = charts.filter((chart) => !order.includes(chart.title));
+  return [...ordered, ...remaining];
+};
+
 export const ANALYTICS_OVERVIEWS = Object.fromEntries(
   Object.entries(TAB_OVERVIEWS).map(([key, config]) => {
     if (!config) return [key, null];
     const extras = EXTRA_CHARTS[key] || [];
-    return [key, { ...config, charts: [...config.charts, ...extras] }];
+    const charts = applyChartOrder(key, [...config.charts, ...extras]);
+    return [key, { ...config, charts }];
   }),
 );

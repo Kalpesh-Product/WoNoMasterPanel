@@ -351,6 +351,14 @@ export const TrendLine = ({ data, title = "Trend Line" }) => {
 
   const hoveredPoint = hover != null ? points[hover] : null;
 
+  // Labeling every point works fine for a handful of points but overlaps
+  // once a series has dozens (e.g. a 30/90-day daily trend) — thin them out
+  // to roughly 8 evenly-spaced labels, always keeping the last point so the
+  // series doesn't visually trail off unlabeled.
+  const maxLabels = 8;
+  const labelEvery = Math.max(1, Math.ceil(points.length / maxLabels));
+  const showLabel = (i) => i % labelEvery === 0 || i === points.length - 1;
+
   return (
     <ChartCard title={title}>
       <div className="relative flex-1 min-h-[10rem]" onMouseMove={handleMove} onMouseLeave={() => setHover(null)}>
@@ -382,15 +390,17 @@ export const TrendLine = ({ data, title = "Trend Line" }) => {
                 className="cursor-pointer"
                 onMouseEnter={() => setHover(i)}
               />
-              <text
-                x={p.x}
-                y={h - 8}
-                textAnchor="middle"
-                fontSize="9"
-                fill={hover === i ? "#2563EB" : "#94A3B8"}
-              >
-                {p.label}
-              </text>
+              {showLabel(i) && (
+                <text
+                  x={p.x}
+                  y={h - 8}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fill={hover === i ? "#2563EB" : "#94A3B8"}
+                >
+                  {p.label}
+                </text>
+              )}
             </g>
           ))}
         </svg>

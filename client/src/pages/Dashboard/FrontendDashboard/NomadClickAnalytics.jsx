@@ -10,6 +10,7 @@ import {
   MousePointerClick,
   RefreshCw,
   Search,
+  UserCheck,
   Users,
   X,
 } from "lucide-react";
@@ -169,6 +170,21 @@ const NomadClickAnalytics = () => {
       );
       return response.data;
     },
+  });
+
+  // GA4's realtime API itself only refreshes every ~30-60s, so polling this
+  // faster gains nothing. Same property/endpoint as the wono.co widget on
+  // Master Panel Analytics — Nomad and wono.co share one GA4 property.
+  const { data: realtimeData } = useQuery({
+    queryKey: ["wonoRealtimeActiveUsers"],
+    queryFn: async () => {
+      const response = await axiosPrivate.get(
+        "/api/site-analytics/wono/realtime-active-users",
+      );
+      return response.data;
+    },
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
   });
 
   const items = useMemo(() => data?.items || [], [data?.items]);
@@ -360,6 +376,15 @@ const NomadClickAnalytics = () => {
 
   const summaryCards = [
     {
+      label: "Active Users",
+      value: realtimeData?.activeUsers ?? 0,
+      icon: UserCheck,
+      accent: "border-l-purple-500",
+      textColor: "text-purple-600",
+      bgColor: "bg-purple-50",
+      isLive: true,
+    },
+    {
       label: "Total Clicks",
       value: totals.totalClicks,
       icon: MousePointerClick,
@@ -495,7 +520,7 @@ const NomadClickAnalytics = () => {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {summaryCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -505,9 +530,15 @@ const NomadClickAnalytics = () => {
                 >
                   <div>
                     <p
-                      className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
+                      className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
                     >
                       {card.label}
+                      {card.isLive && (
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
+                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
+                        </span>
+                      )}
                     </p>
                     <p className="text-[15px] font-pmedium text-slate-900">
                       {formatNumber(card.value)}
@@ -1007,6 +1038,12 @@ const NomadClickAnalytics = () => {
                           <div className="min-w-0">
                             <p className="truncate text-[12px] font-pmedium text-slate-800">
                               {entry.ipAddress || "IP not captured"}
+                              {[entry.location?.city, entry.location?.state, entry.location?.country]
+                                .filter(Boolean).length > 0
+                                ? ` - ${[entry.location?.city, entry.location?.state, entry.location?.country]
+                                    .filter(Boolean)
+                                    .join(", ")}`
+                                : ""}
                             </p>
                             <p className="truncate text-[10px] font-pmedium text-slate-500">
                               {entry.user?.name || "Guest user"}
