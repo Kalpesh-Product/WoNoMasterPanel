@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { DateRange } from "react-date-range";
 import {
   Building2,
   CalendarDays,
@@ -62,13 +63,6 @@ const formatDateOnly = (value) => {
   });
 };
 
-const formatInputDate = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
-
 const getDateRange = (mode, customRange) => {
   if (mode === "all") return {};
 
@@ -109,8 +103,10 @@ const getDateRange = (mode, customRange) => {
     return { from, to };
   }
 
-  const from = new Date(`${customRange.from}T00:00:00`);
-  const to = new Date(`${customRange.to}T23:59:59`);
+  const from = new Date(customRange.startDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(customRange.endDate);
+  to.setHours(23, 59, 59, 999);
   return { from, to };
 };
 
@@ -135,9 +131,12 @@ const getPercent = (clicks, totalClicks) => {
 
 const NomadClickAnalytics = () => {
   const axiosPrivate = useAxiosPrivate();
-  const today = useMemo(() => formatInputDate(new Date()), []);
   const [dateMode, setDateMode] = useState("today");
-  const [customRange, setCustomRange] = useState({ from: today, to: today });
+  const [customRange, setCustomRange] = useState({
+    startDate: new Date(),
+    endDate: new Date(),
+    key: "selection",
+  });
   const [search, setSearch] = useState("");
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [destinationTab, setDestinationTab] = useState("overview");
@@ -149,6 +148,34 @@ const NomadClickAnalytics = () => {
     () => getDateRange(dateMode, customRange),
     [dateMode, customRange],
   );
+
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
+  // With moveRangeOnFirstSelection={false}, the first click sets start=end
+  // to the same day and the second click sets the real end date — so two
+  // onChange firings means a full range has been picked.
+  const customRangeClicksRef = useRef(0);
+
+  const switchDateMode = (mode) => {
+    if (mode === "custom") {
+      setIsCustomRangeOpen((prev) => {
+        const next = dateMode === "custom" ? !prev : true;
+        if (next) customRangeClicksRef.current = 0;
+        return next;
+      });
+    } else {
+      setIsCustomRangeOpen(false);
+    }
+    if (mode === dateMode) return;
+    setDateMode(mode);
+  };
+
+  const handleCustomRangeChange = (ranges) => {
+    setCustomRange(ranges.selection);
+    customRangeClicksRef.current += 1;
+    if (customRangeClicksRef.current >= 2) {
+      setIsCustomRangeOpen(false);
+    }
+  };
 
   const { data, isPending, isFetching, isError, refetch } = useQuery({
     queryKey: [
@@ -448,7 +475,7 @@ const NomadClickAnalytics = () => {
               </p>
             </div>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => refetch()}
               disabled={isFetching}
@@ -460,64 +487,7 @@ const NomadClickAnalytics = () => {
                 <RefreshCw size={13} />
               )}
               Refresh
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {DATE_FILTER_OPTIONS.map((option) => (
-                <button
-                  key={option.key}
-                  type="button"
-                  onClick={() => setDateMode(option.key)}
-                  className={`rounded-lg px-3 py-2 text-[11px] font-pmedium transition-colors ${
-                    dateMode === option.key
-                      ? "bg-[#2563EB] text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            {dateMode === "custom" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-pmedium text-slate-600">
-                  <CalendarDays size={13} className="text-slate-400" />
-                  From
-                  <input
-                    type="date"
-                    value={customRange.from}
-                    max={customRange.to}
-                    onChange={(event) =>
-                      setCustomRange((prev) => ({
-                        ...prev,
-                        from: event.target.value,
-                      }))
-                    }
-                    className="bg-transparent text-slate-800 outline-none"
-                  />
-                </label>
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-pmedium text-slate-600">
-                  <CalendarDays size={13} className="text-slate-400" />
-                  To
-                  <input
-                    type="date"
-                    value={customRange.to}
-                    min={customRange.from}
-                    max={today}
-                    onChange={(event) =>
-                      setCustomRange((prev) => ({
-                        ...prev,
-                        to: event.target.value,
-                      }))
-                    }
-                    className="bg-transparent text-slate-800 outline-none"
-                  />
-                </label>
-              </div>
-            )}
+            </button> */}
           </div>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
@@ -556,18 +526,66 @@ const NomadClickAnalytics = () => {
 
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
-              <div className="relative w-full xl:max-w-md">
-                <Search
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={15}
-                />
-                <input
-                  type="text"
-                  placeholder="Search destination, country, continent..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative w-full min-w-[220px] flex-1">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search destination, country, continent..."
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+                  />
+                </div>
+
+                <div className="relative flex flex-wrap items-center gap-1.5">
+                  {DATE_FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => switchDateMode(option.key)}
+                      className={`rounded-lg px-3 py-2 text-[11px] font-pmedium transition-colors ${
+                        dateMode === option.key
+                          ? "bg-[#2563EB] text-white shadow-sm"
+                          : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  {dateMode === "custom" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 text-[11px] font-pmedium text-blue-700">
+                      <CalendarDays size={13} />
+                      {formatDateOnly(customRange.startDate)} — {formatDateOnly(customRange.endDate)}
+                    </span>
+                  )}
+
+                  {isCustomRangeOpen && (
+                    <div className="absolute right-0 top-full z-10 mt-2 max-h-[75vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+                        <span className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                          Select Range
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomRangeOpen(false)}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                      <DateRange
+                        ranges={[customRange]}
+                        onChange={handleCustomRangeChange}
+                        moveRangeOnFirstSelection={false}
+                        maxDate={new Date()}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1054,9 +1072,9 @@ const NomadClickAnalytics = () => {
                             <p className="text-[11px] font-pmedium text-slate-500">
                               {formatDate(entry.clickedAt)}
                             </p>
-                            <p className="text-[10px] font-pmedium text-slate-400">
+                            {/* <p className="text-[10px] font-pmedium text-slate-400">
                               {entry.sessionId ? `Session ${entry.sessionId}` : "No session"}
-                            </p>
+                            </p> */}
                           </div>
                         </div>
                       ))}
