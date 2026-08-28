@@ -144,6 +144,11 @@ const getDestinationLabel = (item) => {
   );
 };
 
+const toTitleCase = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
 const getListingLabel = (item = {}) =>
   item.companyName
     ? `${item.companyName}${item.city ? ` - ${item.city}` : ""}`
@@ -152,6 +157,24 @@ const getListingLabel = (item = {}) =>
 const getPercent = (clicks, totalClicks) => {
   if (!totalClicks) return 0;
   return Math.round((Number(clicks || 0) / totalClicks) * 100);
+};
+
+const getTopValueByClicks = (items, key) => {
+  const totalsByValue = new Map();
+
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const label = String(item?.[key] || "").trim();
+    if (!label) return;
+    totalsByValue.set(
+      label,
+      (totalsByValue.get(label) || 0) + (Number(item?.clicks) || 0),
+    );
+  });
+
+  return (
+    Array.from(totalsByValue.entries()).sort((left, right) => right[1] - left[1])[0]?.[0] ||
+    "-"
+  );
 };
 
 const normalizePageItems = (items) =>
@@ -484,7 +507,43 @@ const NomadClickAnalytics = () => {
     );
   }, [activeListingItems, listingSearch]);
 
-  const summaryCards = [
+  const topDestination = items[0];
+  const topSummaryCards = [
+    {
+      label: "Destinations",
+      value: totals.totalDestinations,
+      icon: MapPin,
+      accent: "border-l-emerald-500",
+      textColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+    },
+    {
+      label: "Most Popular Destination",
+      value: toTitleCase(getDestinationLabel(topDestination)),
+      icon: MapPin,
+      accent: "border-l-blue-500",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+    {
+      label: "Most Popular Continent",
+      value: toTitleCase(getTopValueByClicks(items, "continent")),
+      icon: Building2,
+      accent: "border-l-violet-500",
+      textColor: "text-violet-600",
+      bgColor: "bg-violet-50",
+    },
+    {
+      label: "Most Popular Country",
+      value: toTitleCase(getTopValueByClicks(items, "country")),
+      icon: Building2,
+      accent: "border-l-cyan-500",
+      textColor: "text-cyan-600",
+      bgColor: "bg-cyan-50",
+    },
+  ];
+
+  const bottomSummaryCards = [
     {
       label: "Active Users",
       value: realtimeData?.activeUsers ?? 0,
@@ -503,14 +562,6 @@ const NomadClickAnalytics = () => {
       bgColor: "bg-blue-50",
     },
     {
-      label: "Destinations",
-      value: totals.totalDestinations,
-      icon: MapPin,
-      accent: "border-l-emerald-500",
-      textColor: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-    },
-    {
       label: "Guest User Clicks",
       value: totals.guestClicks,
       icon: Users,
@@ -527,6 +578,44 @@ const NomadClickAnalytics = () => {
       bgColor: "bg-slate-50",
     },
   ];
+
+  const renderSummaryCard = (card) => {
+    const Icon = card.icon;
+    const value =
+      card.valueType === "text" || typeof card.value === "string"
+        ? card.value || "-"
+        : formatNumber(card.value);
+
+    return (
+      <div
+        key={card.label}
+        className={`flex min-w-0 items-center justify-between gap-3 rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
+      >
+        <div className="min-w-0">
+          <p
+            className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
+          >
+            {card.label}
+            {card.isLive && (
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
+              </span>
+            )}
+          </p>
+          <p
+            className="truncate text-[15px] font-pmedium text-slate-900"
+            title={String(value)}
+          >
+            {value}
+          </p>
+        </div>
+        <div className={`shrink-0 rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}>
+          <Icon size={16} />
+        </div>
+      </div>
+    );
+  };
 
   const openDestinationDetails = (item) => {
     setSelectedDestination(item);
@@ -594,38 +683,13 @@ const NomadClickAnalytics = () => {
           </div>
 
           {analyticsTableTab === "clicks" && (
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-              {summaryCards.map((card) => {
-                const Icon = card.icon;
-                return (
-                  <div
-                    key={card.label}
-                    className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
-                  >
-                    <div>
-                      <p
-                        className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
-                      >
-                        {card.label}
-                        {card.isLive && (
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
-                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[15px] font-pmedium text-slate-900">
-                        {formatNumber(card.value)}
-                      </p>
-                    </div>
-                    <div
-                      className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}
-                    >
-                      <Icon size={16} />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {topSummaryCards.map(renderSummaryCard)}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {bottomSummaryCards.map(renderSummaryCard)}
+              </div>
             </div>
           )}
 
