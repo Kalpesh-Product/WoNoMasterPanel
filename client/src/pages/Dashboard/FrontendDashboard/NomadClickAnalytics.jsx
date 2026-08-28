@@ -36,6 +36,11 @@ const USER_VIEW_TABS = [
   { key: "loggedIn", label: "Logged In Users" },
 ];
 
+const ANALYTICS_TABLE_TABS = [
+  { key: "clicks", label: "Clicks" },
+  { key: "pages", label: "Pages" },
+];
+
 const formatNumber = (value) =>
   new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
@@ -61,6 +66,13 @@ const formatDateOnly = (value) => {
     day: "2-digit",
     year: "numeric",
   });
+};
+
+const formatGaDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 };
 
 const getDateRange = (mode, customRange) => {
@@ -129,6 +141,13 @@ const getPercent = (clicks, totalClicks) => {
   return Math.round((Number(clicks || 0) / totalClicks) * 100);
 };
 
+const getHistoricalRange = (mode, from) => {
+  if (mode === "all") return "overall";
+  if (mode === "today") return "today";
+  if (mode === "month") return formatGaDate(from);
+  return formatGaDate(from) || "today";
+};
+
 const NomadClickAnalytics = () => {
   const axiosPrivate = useAxiosPrivate();
   const [dateMode, setDateMode] = useState("today");
@@ -143,10 +162,20 @@ const NomadClickAnalytics = () => {
   const [listingViewTab, setListingViewTab] = useState("all");
   const [userViewTab, setUserViewTab] = useState("guest");
   const [listingSearch, setListingSearch] = useState("");
+  const [analyticsTableTab, setAnalyticsTableTab] = useState("clicks");
 
   const { from, to } = useMemo(
     () => getDateRange(dateMode, customRange),
     [dateMode, customRange],
+  );
+
+  const historicalFrom = useMemo(
+    () => getHistoricalRange(dateMode, from),
+    [dateMode, from],
+  );
+  const historicalTo = useMemo(
+    () => (dateMode === "custom" ? formatGaDate(to) || "today" : "today"),
+    [dateMode, to],
   );
 
   const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
@@ -214,7 +243,22 @@ const NomadClickAnalytics = () => {
     refetchIntervalInBackground: true,
   });
 
+  const {
+    data: historicalData,
+    isPending: isPagesPending,
+    isError: isPagesError,
+  } = useQuery({
+    queryKey: ["nomadClickAnalyticsPages", historicalFrom, historicalTo],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/site-analytics/wono/historical", {
+        params: { from: historicalFrom, to: historicalTo },
+      });
+      return response.data;
+    },
+  });
+
   const items = useMemo(() => data?.items || [], [data?.items]);
+  const pageItems = useMemo(() => historicalData?.topPages || [], [historicalData?.topPages]);
   const totals = data?.totals || {
     totalClicks: 0,
     totalDestinations: 0,
@@ -235,6 +279,21 @@ const NomadClickAnalytics = () => {
         .includes(query),
     );
   }, [items, search]);
+
+  const filteredPageItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return pageItems;
+    return pageItems.filter((item) =>
+      String(item.label || "")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [pageItems, search]);
+
+  const totalPageVisitors = useMemo(
+    () => pageItems.reduce((sum, item) => sum + Number(item.value || 0), 0),
+    [pageItems],
+  );
 
   const destinationLabel = getDestinationLabel(selectedDestination);
   const dateLabel = useMemo(() => {
@@ -490,39 +549,61 @@ const NomadClickAnalytics = () => {
             </button> */}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-            {summaryCards.map((card) => {
-              const Icon = card.icon;
+          <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-1 shadow-sm [&::-webkit-scrollbar]:hidden">
+            {ANALYTICS_TABLE_TABS.map((tab) => {
+              const isActive = analyticsTableTab === tab.key;
               return (
-                <div
-                  key={card.label}
-                  className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setAnalyticsTableTab(tab.key)}
+                  className={`flex-1 shrink-0 rounded-xl px-4 py-2 text-center text-[10px] font-pmedium uppercase tracking-widest transition-all whitespace-nowrap ${
+                    isActive
+                      ? "bg-[#2563EB] text-white shadow-sm"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
                 >
-                  <div>
-                    <p
-                      className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
-                    >
-                      {card.label}
-                      {card.isLive && (
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
-                          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[15px] font-pmedium text-slate-900">
-                      {formatNumber(card.value)}
-                    </p>
-                  </div>
-                  <div
-                    className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}
-                  >
-                    <Icon size={16} />
-                  </div>
-                </div>
+                  {tab.label}
+                </button>
               );
             })}
           </div>
+
+          {analyticsTableTab === "clicks" && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+              {summaryCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <div
+                    key={card.label}
+                    className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
+                  >
+                    <div>
+                      <p
+                        className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
+                      >
+                        {card.label}
+                        {card.isLive && (
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-[15px] font-pmedium text-slate-900">
+                        {formatNumber(card.value)}
+                      </p>
+                    </div>
+                    <div
+                      className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}
+                    >
+                      <Icon size={16} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
@@ -534,7 +615,11 @@ const NomadClickAnalytics = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search destination, country, continent..."
+                    placeholder={
+                      analyticsTableTab === "clicks"
+                        ? "Search destination, country, continent..."
+                        : "Search page title..."
+                    }
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
@@ -589,7 +674,84 @@ const NomadClickAnalytics = () => {
               </div>
             </div>
 
-            {isPending ? (
+            {analyticsTableTab === "pages" ? (
+              isPagesPending ? (
+                <div className="flex flex-1 items-center justify-center text-slate-400">
+                  <Loader2 size={18} className="animate-spin" />
+                </div>
+              ) : isPagesError ? (
+                <div className="flex flex-1 items-center justify-center px-6 text-center text-red-500">
+                  Failed to load page analytics.
+                </div>
+              ) : filteredPageItems.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                  <MapPin size={28} className="mb-2 text-slate-300" />
+                  <p className="text-[12px] font-pmedium text-slate-400">
+                    No page traffic found for this filter.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-x-auto">
+                  <table className="w-full min-w-[760px] table-fixed text-left">
+                    <colgroup>
+                      <col className="w-[10%]" />
+                      <col className="w-[52%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[20%]" />
+                    </colgroup>
+                    <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4">Rank</th>
+                        <th className="px-5 py-4">Page</th>
+                        <th className="px-5 py-4">Unique Visitors</th>
+                        <th className="px-5 py-4">Traffic Share</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60">
+                      {filteredPageItems.map((item, index) => {
+                        const percent = getPercent(item.value, totalPageVisitors);
+                        return (
+                          <tr
+                            key={`${item.label}-${index}`}
+                            className="transition-colors hover:bg-slate-50/50"
+                          >
+                            <td className="px-5 py-4">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                                {index + 1}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="truncate text-[12px] font-pmedium text-slate-900">
+                                {item.label || "Unknown"}
+                              </p>
+                              <p className="truncate text-[10px] font-pmedium text-slate-500">
+                                wono.co - Traffic & Audience
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                              {formatNumber(item.value)}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    className="h-full rounded-full bg-[#2563EB]"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-pmedium text-slate-500">
+                                  {percent}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : isPending ? (
               <div className="flex flex-1 items-center justify-center text-slate-400">
                 <Loader2 size={18} className="animate-spin" />
               </div>
