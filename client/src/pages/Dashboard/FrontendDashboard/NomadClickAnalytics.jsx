@@ -227,6 +227,27 @@ const NomadClickAnalytics = () => {
   // to the same day and the second click sets the real end date — so two
   // onChange firings means a full range has been picked.
   const customRangeClicksRef = useRef(0);
+  const analyticsTableRef = useRef(null);
+
+  const scrollAnalyticsTableIntoView = () => {
+    window.requestAnimationFrame(() => {
+      const scrollContainer = document.getElementById("scrollable-content");
+      const tablePanel = analyticsTableRef.current;
+      if (!scrollContainer || !tablePanel) return;
+
+      const scrollContainerRect = scrollContainer.getBoundingClientRect();
+      const tablePanelRect = tablePanel.getBoundingClientRect();
+      if (tablePanelRect.top >= scrollContainerRect.top + 8) return;
+
+      const tablePanelTop =
+        scrollContainer.scrollTop + tablePanelRect.top - scrollContainerRect.top;
+
+      scrollContainer.scrollTo({
+        top: Math.max(tablePanelTop - 8, 0),
+        behavior: "auto",
+      });
+    });
+  };
 
   const switchDateMode = (mode) => {
     if (mode === "custom") {
@@ -238,6 +259,7 @@ const NomadClickAnalytics = () => {
     } else {
       setIsCustomRangeOpen(false);
     }
+    if (mode !== "custom") scrollAnalyticsTableIntoView();
     if (mode === dateMode) return;
     setDateMode(mode);
   };
@@ -247,6 +269,7 @@ const NomadClickAnalytics = () => {
     customRangeClicksRef.current += 1;
     if (customRangeClicksRef.current >= 2) {
       setIsCustomRangeOpen(false);
+      scrollAnalyticsTableIntoView();
     }
   };
 
@@ -669,7 +692,10 @@ const NomadClickAnalytics = () => {
                 <button
                   key={tab.key}
                   type="button"
-                  onClick={() => setAnalyticsTableTab(tab.key)}
+                  onClick={() => {
+                    setAnalyticsTableTab(tab.key);
+                    scrollAnalyticsTableIntoView();
+                  }}
                   className={`flex-1 shrink-0 rounded-xl px-4 py-2 text-center text-[10px] font-pmedium uppercase tracking-widest transition-all whitespace-nowrap ${
                     isActive
                       ? "bg-[#2563EB] text-white shadow-sm"
@@ -693,7 +719,10 @@ const NomadClickAnalytics = () => {
             </div>
           )}
 
-          <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+          <div
+            ref={analyticsTableRef}
+            className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm"
+          >
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="relative w-full min-w-[220px] flex-1">
