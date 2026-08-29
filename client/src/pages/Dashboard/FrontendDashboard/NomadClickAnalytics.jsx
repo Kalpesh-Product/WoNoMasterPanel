@@ -602,6 +602,34 @@ const NomadClickAnalytics = () => {
     },
   ];
 
+  const topPageItem = pageItems[0];
+  const pageSummaryCards = [
+    {
+      label: "Total Unique Visitors",
+      value: totalPageVisitors,
+      icon: Users,
+      accent: "border-l-purple-500",
+      textColor: "text-purple-600",
+      bgColor: "bg-purple-50",
+    },
+    {
+      label: "Pages Tracked",
+      value: pageItems.length,
+      icon: Eye,
+      accent: "border-l-emerald-500",
+      textColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+    },
+    {
+      label: "Top Page",
+      value: topPageItem?.label || "-",
+      icon: Building2,
+      accent: "border-l-blue-500",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+  ];
+
   const renderSummaryCard = (card) => {
     const Icon = card.icon;
     const value =
@@ -716,6 +744,12 @@ const NomadClickAnalytics = () => {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {bottomSummaryCards.map(renderSummaryCard)}
               </div>
+            </div>
+          )}
+
+          {analyticsTableTab === "pages" && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {pageSummaryCards.map(renderSummaryCard)}
             </div>
           )}
 
