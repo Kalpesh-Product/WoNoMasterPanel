@@ -964,6 +964,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     children: [
       { id: "leads-management", name: "Leads Management" },
       { id: "tenant-companies-sales", name: "Tenant Companies" },
+      { id: "virtual-office-sales", name: "Virtual Offices" },
       { id: "resource-pricing", name: "Resource & Pricing" },
       { id: "sales-architecture", name: "Sales Architecture" },
     ],

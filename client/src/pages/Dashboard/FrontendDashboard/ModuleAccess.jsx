@@ -100,6 +100,7 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   // PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
   "leads-management",
   "tenant-companies-sales",
+  "virtual-office-sales",
   "resource-pricing",
   "sales-architecture",
 ];
