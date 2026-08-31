@@ -88,6 +88,7 @@ const MODULE_GROUPS = [
         tabs: [
           { id: "leads-management", label: "Leads Management" },
           { id: "tenant-companies-sales", label: "Tenant Companies" },
+          { id: "virtual-office-sales", label: "Virtual Offices" },
           { id: "resource-pricing", label: "Resource & Pricing" },
           { id: "sales-architecture", label: "Sales Architecture" },
         ],
@@ -159,6 +160,7 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   "workspace-management",
   "leads-management",
   "tenant-companies-sales",
+  "virtual-office-sales",
   "resource-pricing",
   "sales-architecture",
 ]);

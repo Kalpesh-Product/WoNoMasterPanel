@@ -8,6 +8,9 @@ import AnalyticsCharts, {
   OverviewContent,
 } from "../MasterPanelAnalytics/AnalyticsCharts";
 import { ANALYTICS_OVERVIEWS } from "../MasterPanelAnalytics/data/analyticsOverviews";
+import WonoLiveActiveUsers from "../MasterPanelAnalytics/WonoLiveActiveUsers";
+import WonoHistoricalAnalytics from "../MasterPanelAnalytics/WonoHistoricalAnalytics";
+import RangeTabs from "../MasterPanelAnalytics/RangeTabs";
 
 // Panel-wide block shown above the module dropdowns: everything happening
 // across the whole master panel. Nomad clicks live under Data Management, so
@@ -55,6 +58,10 @@ const useFilteredModules = () => {
 const MasterPanelAnalytics = () => {
   const navigate = useNavigate();
   const filteredModules = useFilteredModules();
+  // One shared range control governs every stat card/chart on this page —
+  // the Overall Panel Activity section and every module's every tab —
+  // rather than each section duplicating its own picker.
+  const [range, setRange] = useState("30daysAgo");
   const [expandedModules, setExpandedModules] = useState(
     () => new Set(filteredModules.length > 0 ? [filteredModules[0].key] : []),
   );
@@ -96,16 +103,20 @@ const MasterPanelAnalytics = () => {
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
       <PageFrame>
         <div className="flex flex-col gap-4">
-          <div>
-            <h2 className="text-title font-pmedium text-primary uppercase">
-              Master Panel Analytics
-            </h2>
-            <p className="text-xs font-pmedium text-slate-500 mt-1">
-              Overall panel analytics up top, then a deep-dive for every module.
-              Expand a module, pick a section, then a tab to see its full set
-              of stat cards and info graphs — two graphs per row.
-            </p>
+          <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
+            <div>
+              <h2 className="text-title font-pmedium text-primary uppercase">
+                Master Panel Analytics
+              </h2>
+              <p className="text-xs font-pmedium text-slate-500 mt-1">
+                Panel-wide analytics up top, then a deep-dive per module.
+              </p>
+            </div>
+            <RangeTabs value={range} onChange={setRange} />
           </div>
+
+          <WonoLiveActiveUsers />
+          <WonoHistoricalAnalytics range={range} />
 
           {OVERALL_SECTIONS.map((section) => {
             const SectionIcon = section.icon;
@@ -141,6 +152,7 @@ const MasterPanelAnalytics = () => {
                     config={ANALYTICS_OVERVIEWS[section.configKey]}
                     storageKey={section.storageKey}
                     title={section.title}
+                    range={range}
                   />
                 </div>
               </section>
@@ -268,7 +280,7 @@ const MasterPanelAnalytics = () => {
                                 </button>
                               </div>
 
-                              <AnalyticsCharts tab={activeTab} />
+                              <AnalyticsCharts tab={activeTab} range={range} />
                             </div>
                           )}
                         </div>

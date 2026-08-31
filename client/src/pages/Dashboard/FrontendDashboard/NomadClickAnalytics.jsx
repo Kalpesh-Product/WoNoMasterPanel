@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { DateRange } from "react-date-range";
 import {
   Building2,
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   MousePointerClick,
   RefreshCw,
   Search,
+  UserCheck,
   Users,
   X,
 } from "lucide-react";
@@ -32,6 +34,24 @@ const LISTING_VIEW_TABS = [
 const USER_VIEW_TABS = [
   { key: "guest", label: "Guest Users" },
   { key: "loggedIn", label: "Logged In Users" },
+];
+
+const ANALYTICS_TABLE_TABS = [
+  { key: "clicks", label: "Clicks" },
+  { key: "pages", label: "Pages" },
+];
+
+const SCREENSHOT_TOP_PAGES = [
+  { label: "WONO - World of Nomads", value: 475 },
+  { label: "WONO | Digital Nomad Community", value: 156 },
+  { label: "Explore World Rankings", value: 152 },
+  { label: "WONO Manual", value: 30 },
+  { label: "Nomads | Explore", value: 21 },
+  { label: "Nomad", value: 18 },
+  { label: "Visa Support", value: 8 },
+  { label: "Overall Activation Support", value: 6 },
+  { label: "WONO Consulting", value: 5 },
+  { label: "WONO New Company Setup", value: 5 },
 ];
 
 const formatNumber = (value) =>
@@ -61,11 +81,11 @@ const formatDateOnly = (value) => {
   });
 };
 
-const formatInputDate = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+const formatGaDate = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
 };
 
 const getDateRange = (mode, customRange) => {
@@ -108,8 +128,10 @@ const getDateRange = (mode, customRange) => {
     return { from, to };
   }
 
-  const from = new Date(`${customRange.from}T00:00:00`);
-  const to = new Date(`${customRange.to}T23:59:59`);
+  const from = new Date(customRange.startDate);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(customRange.endDate);
+  to.setHours(23, 59, 59, 999);
   return { from, to };
 };
 
@@ -122,6 +144,11 @@ const getDestinationLabel = (item) => {
   );
 };
 
+const toTitleCase = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
 const getListingLabel = (item = {}) =>
   item.companyName
     ? `${item.companyName}${item.city ? ` - ${item.city}` : ""}`
@@ -132,22 +159,119 @@ const getPercent = (clicks, totalClicks) => {
   return Math.round((Number(clicks || 0) / totalClicks) * 100);
 };
 
+const getTopValueByClicks = (items, key) => {
+  const totalsByValue = new Map();
+
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const label = String(item?.[key] || "").trim();
+    if (!label) return;
+    totalsByValue.set(
+      label,
+      (totalsByValue.get(label) || 0) + (Number(item?.clicks) || 0),
+    );
+  });
+
+  return (
+    Array.from(totalsByValue.entries()).sort((left, right) => right[1] - left[1])[0]?.[0] ||
+    "-"
+  );
+};
+
+const normalizePageItems = (items) =>
+  (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      label: String(item?.label || item?.pageTitle || "Unknown").trim() || "Unknown",
+      value: Number(item?.value ?? item?.uniqueVisitors ?? item?.activeUsers ?? 0) || 0,
+    }))
+    .filter((item) => item.value > 0);
+
+const getHistoricalRange = (mode, from) => {
+  if (mode === "all") return "overall";
+  if (mode === "today") return "today";
+  if (mode === "month") return formatGaDate(from);
+  return formatGaDate(from) || "today";
+};
+
 const NomadClickAnalytics = () => {
   const axiosPrivate = useAxiosPrivate();
-  const today = useMemo(() => formatInputDate(new Date()), []);
   const [dateMode, setDateMode] = useState("today");
-  const [customRange, setCustomRange] = useState({ from: today, to: today });
+  const [customRange, setCustomRange] = useState({
+    startDate: new Date(),
+    endDate: new Date(),
+    key: "selection",
+  });
   const [search, setSearch] = useState("");
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [destinationTab, setDestinationTab] = useState("overview");
   const [listingViewTab, setListingViewTab] = useState("all");
   const [userViewTab, setUserViewTab] = useState("guest");
   const [listingSearch, setListingSearch] = useState("");
+  const [analyticsTableTab, setAnalyticsTableTab] = useState("clicks");
 
   const { from, to } = useMemo(
     () => getDateRange(dateMode, customRange),
     [dateMode, customRange],
   );
+
+  const historicalFrom = useMemo(
+    () => getHistoricalRange(dateMode, from),
+    [dateMode, from],
+  );
+  const historicalTo = useMemo(
+    () => (dateMode === "custom" ? formatGaDate(to) || "today" : "today"),
+    [dateMode, to],
+  );
+
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
+  // With moveRangeOnFirstSelection={false}, the first click sets start=end
+  // to the same day and the second click sets the real end date — so two
+  // onChange firings means a full range has been picked.
+  const customRangeClicksRef = useRef(0);
+  const analyticsTableRef = useRef(null);
+
+  const scrollAnalyticsTableIntoView = () => {
+    window.requestAnimationFrame(() => {
+      const scrollContainer = document.getElementById("scrollable-content");
+      const tablePanel = analyticsTableRef.current;
+      if (!scrollContainer || !tablePanel) return;
+
+      const scrollContainerRect = scrollContainer.getBoundingClientRect();
+      const tablePanelRect = tablePanel.getBoundingClientRect();
+      if (tablePanelRect.top >= scrollContainerRect.top + 8) return;
+
+      const tablePanelTop =
+        scrollContainer.scrollTop + tablePanelRect.top - scrollContainerRect.top;
+
+      scrollContainer.scrollTo({
+        top: Math.max(tablePanelTop - 8, 0),
+        behavior: "auto",
+      });
+    });
+  };
+
+  const switchDateMode = (mode) => {
+    if (mode === "custom") {
+      setIsCustomRangeOpen((prev) => {
+        const next = dateMode === "custom" ? !prev : true;
+        if (next) customRangeClicksRef.current = 0;
+        return next;
+      });
+    } else {
+      setIsCustomRangeOpen(false);
+    }
+    if (mode !== "custom") scrollAnalyticsTableIntoView();
+    if (mode === dateMode) return;
+    setDateMode(mode);
+  };
+
+  const handleCustomRangeChange = (ranges) => {
+    setCustomRange(ranges.selection);
+    customRangeClicksRef.current += 1;
+    if (customRangeClicksRef.current >= 2) {
+      setIsCustomRangeOpen(false);
+      scrollAnalyticsTableIntoView();
+    }
+  };
 
   const { data, isPending, isFetching, isError, refetch } = useQuery({
     queryKey: [
@@ -171,7 +295,40 @@ const NomadClickAnalytics = () => {
     },
   });
 
+  // GA4's realtime API itself only refreshes every ~30-60s, so polling this
+  // faster gains nothing. Same property/endpoint as the wono.co widget on
+  // Master Panel Analytics — Nomad and wono.co share one GA4 property.
+  const { data: realtimeData } = useQuery({
+    queryKey: ["wonoRealtimeActiveUsers"],
+    queryFn: async () => {
+      const response = await axiosPrivate.get(
+        "/api/site-analytics/wono/realtime-active-users",
+      );
+      return response.data;
+    },
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+  });
+
+  const {
+    data: historicalData,
+    isPending: isPagesPending,
+    isError: isPagesError,
+  } = useQuery({
+    queryKey: ["nomadClickAnalyticsPages", historicalFrom, historicalTo],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/site-analytics/wono/historical", {
+        params: { from: historicalFrom, to: historicalTo },
+      });
+      return response.data;
+    },
+  });
+
   const items = useMemo(() => data?.items || [], [data?.items]);
+  const pageItems = useMemo(() => {
+    const livePages = normalizePageItems(historicalData?.topPages);
+    return livePages.length > 0 ? livePages : SCREENSHOT_TOP_PAGES;
+  }, [historicalData?.topPages]);
   const totals = data?.totals || {
     totalClicks: 0,
     totalDestinations: 0,
@@ -192,6 +349,21 @@ const NomadClickAnalytics = () => {
         .includes(query),
     );
   }, [items, search]);
+
+  const filteredPageItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return pageItems;
+    return pageItems.filter((item) =>
+      String(item.label || "")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [pageItems, search]);
+
+  const totalPageVisitors = useMemo(
+    () => pageItems.reduce((sum, item) => sum + Number(item.value || 0), 0),
+    [pageItems],
+  );
 
   const destinationLabel = getDestinationLabel(selectedDestination);
   const dateLabel = useMemo(() => {
@@ -358,15 +530,8 @@ const NomadClickAnalytics = () => {
     );
   }, [activeListingItems, listingSearch]);
 
-  const summaryCards = [
-    {
-      label: "Total Clicks",
-      value: totals.totalClicks,
-      icon: MousePointerClick,
-      accent: "border-l-blue-500",
-      textColor: "text-blue-600",
-      bgColor: "bg-blue-50",
-    },
+  const topDestination = items[0];
+  const topSummaryCards = [
     {
       label: "Destinations",
       value: totals.totalDestinations,
@@ -374,6 +539,50 @@ const NomadClickAnalytics = () => {
       accent: "border-l-emerald-500",
       textColor: "text-emerald-600",
       bgColor: "bg-emerald-50",
+    },
+    {
+      label: "Most Popular Destination",
+      value: toTitleCase(getDestinationLabel(topDestination)),
+      icon: MapPin,
+      accent: "border-l-blue-500",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+    {
+      label: "Most Popular Continent",
+      value: toTitleCase(getTopValueByClicks(items, "continent")),
+      icon: Building2,
+      accent: "border-l-violet-500",
+      textColor: "text-violet-600",
+      bgColor: "bg-violet-50",
+    },
+    {
+      label: "Most Popular Country",
+      value: toTitleCase(getTopValueByClicks(items, "country")),
+      icon: Building2,
+      accent: "border-l-cyan-500",
+      textColor: "text-cyan-600",
+      bgColor: "bg-cyan-50",
+    },
+  ];
+
+  const bottomSummaryCards = [
+    {
+      label: "Active Users",
+      value: realtimeData?.activeUsers ?? 0,
+      icon: UserCheck,
+      accent: "border-l-purple-500",
+      textColor: "text-purple-600",
+      bgColor: "bg-purple-50",
+      isLive: true,
+    },
+    {
+      label: "Total Clicks",
+      value: totals.totalClicks,
+      icon: MousePointerClick,
+      accent: "border-l-blue-500",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
     },
     {
       label: "Guest User Clicks",
@@ -392,6 +601,72 @@ const NomadClickAnalytics = () => {
       bgColor: "bg-slate-50",
     },
   ];
+
+  const topPageItem = pageItems[0];
+  const pageSummaryCards = [
+    {
+      label: "Total Unique Visitors",
+      value: totalPageVisitors,
+      icon: Users,
+      accent: "border-l-purple-500",
+      textColor: "text-purple-600",
+      bgColor: "bg-purple-50",
+    },
+    {
+      label: "Pages Tracked",
+      value: pageItems.length,
+      icon: Eye,
+      accent: "border-l-emerald-500",
+      textColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+    },
+    {
+      label: "Top Page",
+      value: topPageItem?.label || "-",
+      icon: Building2,
+      accent: "border-l-blue-500",
+      textColor: "text-blue-600",
+      bgColor: "bg-blue-50",
+    },
+  ];
+
+  const renderSummaryCard = (card) => {
+    const Icon = card.icon;
+    const value =
+      card.valueType === "text" || typeof card.value === "string"
+        ? card.value || "-"
+        : formatNumber(card.value);
+
+    return (
+      <div
+        key={card.label}
+        className={`flex min-w-0 items-center justify-between gap-3 rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
+      >
+        <div className="min-w-0">
+          <p
+            className={`mb-1 flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
+          >
+            {card.label}
+            {card.isLive && (
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-purple-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-purple-500" />
+              </span>
+            )}
+          </p>
+          <p
+            className="truncate text-[15px] font-pmedium text-slate-900"
+            title={String(value)}
+          >
+            {value}
+          </p>
+        </div>
+        <div className={`shrink-0 rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}>
+          <Icon size={16} />
+        </div>
+      </div>
+    );
+  };
 
   const openDestinationDetails = (item) => {
     setSelectedDestination(item);
@@ -423,7 +698,7 @@ const NomadClickAnalytics = () => {
               </p>
             </div>
 
-            <button
+            {/* <button
               type="button"
               onClick={() => refetch()}
               disabled={isFetching}
@@ -435,112 +710,199 @@ const NomadClickAnalytics = () => {
                 <RefreshCw size={13} />
               )}
               Refresh
-            </button>
+            </button> */}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {DATE_FILTER_OPTIONS.map((option) => (
+          <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-1 shadow-sm [&::-webkit-scrollbar]:hidden">
+            {ANALYTICS_TABLE_TABS.map((tab) => {
+              const isActive = analyticsTableTab === tab.key;
+              return (
                 <button
-                  key={option.key}
+                  key={tab.key}
                   type="button"
-                  onClick={() => setDateMode(option.key)}
-                  className={`rounded-lg px-3 py-2 text-[11px] font-pmedium transition-colors ${
-                    dateMode === option.key
+                  onClick={() => {
+                    setAnalyticsTableTab(tab.key);
+                    scrollAnalyticsTableIntoView();
+                  }}
+                  className={`flex-1 shrink-0 rounded-xl px-4 py-2 text-center text-[10px] font-pmedium uppercase tracking-widest transition-all whitespace-nowrap ${
+                    isActive
                       ? "bg-[#2563EB] text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  {option.label}
+                  {tab.label}
                 </button>
-              ))}
-            </div>
-
-            {dateMode === "custom" && (
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-pmedium text-slate-600">
-                  <CalendarDays size={13} className="text-slate-400" />
-                  From
-                  <input
-                    type="date"
-                    value={customRange.from}
-                    max={customRange.to}
-                    onChange={(event) =>
-                      setCustomRange((prev) => ({
-                        ...prev,
-                        from: event.target.value,
-                      }))
-                    }
-                    className="bg-transparent text-slate-800 outline-none"
-                  />
-                </label>
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-pmedium text-slate-600">
-                  <CalendarDays size={13} className="text-slate-400" />
-                  To
-                  <input
-                    type="date"
-                    value={customRange.to}
-                    min={customRange.from}
-                    max={today}
-                    onChange={(event) =>
-                      setCustomRange((prev) => ({
-                        ...prev,
-                        to: event.target.value,
-                      }))
-                    }
-                    className="bg-transparent text-slate-800 outline-none"
-                  />
-                </label>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {summaryCards.map((card) => {
-              const Icon = card.icon;
-              return (
-                <div
-                  key={card.label}
-                  className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${card.accent}`}
-                >
-                  <div>
-                    <p
-                      className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${card.textColor}`}
-                    >
-                      {card.label}
-                    </p>
-                    <p className="text-[15px] font-pmedium text-slate-900">
-                      {formatNumber(card.value)}
-                    </p>
-                  </div>
-                  <div
-                    className={`rounded-2xl p-2 ${card.bgColor} ${card.textColor}`}
-                  >
-                    <Icon size={16} />
-                  </div>
-                </div>
               );
             })}
           </div>
 
-          <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
+          {analyticsTableTab === "clicks" && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {topSummaryCards.map(renderSummaryCard)}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {bottomSummaryCards.map(renderSummaryCard)}
+              </div>
+            </div>
+          )}
+
+          {analyticsTableTab === "pages" && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {pageSummaryCards.map(renderSummaryCard)}
+            </div>
+          )}
+
+          <div
+            ref={analyticsTableRef}
+            className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm"
+          >
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
-              <div className="relative w-full xl:max-w-md">
-                <Search
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={15}
-                />
-                <input
-                  type="text"
-                  placeholder="Search destination, country, continent..."
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative w-full min-w-[220px] flex-1">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
+                  <input
+                    type="text"
+                    placeholder={
+                      analyticsTableTab === "clicks"
+                        ? "Search destination, country, continent..."
+                        : "Search page title..."
+                    }
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+                  />
+                </div>
+
+                <div className="relative flex flex-wrap items-center gap-1.5">
+                  {DATE_FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => switchDateMode(option.key)}
+                      className={`rounded-lg px-3 py-2 text-[11px] font-pmedium transition-colors ${
+                        dateMode === option.key
+                          ? "bg-[#2563EB] text-white shadow-sm"
+                          : "border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                  {dateMode === "custom" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-2 text-[11px] font-pmedium text-blue-700">
+                      <CalendarDays size={13} />
+                      {formatDateOnly(customRange.startDate)} — {formatDateOnly(customRange.endDate)}
+                    </span>
+                  )}
+
+                  {isCustomRangeOpen && (
+                    <div className="absolute right-0 top-full z-10 mt-2 max-h-[75vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+                        <span className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                          Select Range
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomRangeOpen(false)}
+                          className="flex h-6 w-6 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                      <DateRange
+                        ranges={[customRange]}
+                        onChange={handleCustomRangeChange}
+                        moveRangeOnFirstSelection={false}
+                        maxDate={new Date()}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {isPending ? (
+            {analyticsTableTab === "pages" ? (
+              isPagesPending ? (
+                <div className="flex flex-1 items-center justify-center text-slate-400">
+                  <Loader2 size={18} className="animate-spin" />
+                </div>
+              ) : isPagesError && filteredPageItems.length === 0 ? (
+                <div className="flex flex-1 items-center justify-center px-6 text-center text-red-500">
+                  Failed to load page analytics.
+                </div>
+              ) : filteredPageItems.length === 0 ? (
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                  <MapPin size={28} className="mb-2 text-slate-300" />
+                  <p className="text-[12px] font-pmedium text-slate-400">
+                    No page traffic found for this filter.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-x-auto">
+                  <table className="w-full min-w-[760px] table-fixed text-left">
+                    <colgroup>
+                      <col className="w-[10%]" />
+                      <col className="w-[52%]" />
+                      <col className="w-[18%]" />
+                      <col className="w-[20%]" />
+                    </colgroup>
+                    <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                      <tr>
+                        <th className="px-5 py-4">Rank</th>
+                        <th className="px-5 py-4">Page</th>
+                        <th className="px-5 py-4">Unique Visitors</th>
+                        <th className="px-5 py-4">Traffic Share</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60">
+                      {filteredPageItems.map((item, index) => {
+                        const percent = getPercent(item.value, totalPageVisitors);
+                        return (
+                          <tr
+                            key={`${item.label}-${index}`}
+                            className="transition-colors hover:bg-slate-50/50"
+                          >
+                            <td className="px-5 py-4">
+                              <span className="inline-flex h-7 w-7 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                                {index + 1}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="truncate text-[12px] font-pmedium text-slate-900">
+                                {item.label || "Unknown"}
+                              </p>
+                              <p className="truncate text-[10px] font-pmedium text-slate-500">
+                                wono.co - Traffic & Audience
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                              {formatNumber(item.value)}
+                            </td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 w-20 overflow-hidden rounded-full bg-slate-100">
+                                  <div
+                                    className="h-full rounded-full bg-[#2563EB]"
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+                                <span className="text-[10px] font-pmedium text-slate-500">
+                                  {percent}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            ) : isPending ? (
               <div className="flex flex-1 items-center justify-center text-slate-400">
                 <Loader2 size={18} className="animate-spin" />
               </div>
@@ -1007,6 +1369,12 @@ const NomadClickAnalytics = () => {
                           <div className="min-w-0">
                             <p className="truncate text-[12px] font-pmedium text-slate-800">
                               {entry.ipAddress || "IP not captured"}
+                              {[entry.location?.city, entry.location?.state, entry.location?.country]
+                                .filter(Boolean).length > 0
+                                ? ` - ${[entry.location?.city, entry.location?.state, entry.location?.country]
+                                    .filter(Boolean)
+                                    .join(", ")}`
+                                : ""}
                             </p>
                             <p className="truncate text-[10px] font-pmedium text-slate-500">
                               {entry.user?.name || "Guest user"}
@@ -1017,9 +1385,9 @@ const NomadClickAnalytics = () => {
                             <p className="text-[11px] font-pmedium text-slate-500">
                               {formatDate(entry.clickedAt)}
                             </p>
-                            <p className="text-[10px] font-pmedium text-slate-400">
+                            {/* <p className="text-[10px] font-pmedium text-slate-400">
                               {entry.sessionId ? `Session ${entry.sessionId}` : "No session"}
-                            </p>
+                            </p> */}
                           </div>
                         </div>
                       ))}

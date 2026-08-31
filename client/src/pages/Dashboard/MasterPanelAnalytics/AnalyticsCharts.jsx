@@ -3,6 +3,7 @@
 // compact charts pair two per row, heavy ones take a full line (see
 // layoutChartRows). OverviewContent is exported so other pages can render
 // any overview config inline.
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { ANALYTICS_OVERVIEWS } from "./data/analyticsOverviews";
-import { buildOverview } from "../MainDashboard/data/aggregate";
+import { buildOverview, filterDataByRange } from "../MainDashboard/data/aggregate";
 import {
   BarDiagram,
   TrendLine,
@@ -73,10 +74,13 @@ const renderChart = (chart) => {
 // Renders one overview config: fetches every source, then stat cards +
 // charts. A failing source degrades to empty instead of blanking the whole
 // section.
-export const OverviewContent = ({ config, storageKey, title }) => {
+export const OverviewContent = ({ config, storageKey, title, range = "overall" }) => {
   const axiosPrivate = useAxiosPrivate();
 
-  const { data, isPending, isError, refetch } = useQuery({
+  // Raw per-source data only — kept separate from range filtering so
+  // toggling the range control re-aggregates client-side instead of
+  // re-fetching from the network.
+  const { data: rawData, isPending, isError, refetch } = useQuery({
     queryKey: ["module-analytics-overview", storageKey],
     enabled: Boolean(config),
     queryFn: async () => {
@@ -92,9 +96,14 @@ export const OverviewContent = ({ config, storageKey, title }) => {
           }
         }),
       );
-      return buildOverview(config, Object.fromEntries(entries));
+      return Object.fromEntries(entries);
     },
   });
+
+  const data = useMemo(() => {
+    if (!config || !rawData) return null;
+    return buildOverview(config, filterDataByRange(rawData, range));
+  }, [config, rawData, range]);
 
   if (!config) return <EmptyOverview title={title || storageKey} />;
   if (isPending) return <LoadingOverview />;
@@ -133,12 +142,14 @@ export const OverviewContent = ({ config, storageKey, title }) => {
   );
 };
 
-const AnalyticsCharts = ({ tab }) => {
+const AnalyticsCharts = ({ tab, range }) => {
   const config = ANALYTICS_OVERVIEWS[tab.key];
 
   if (!config) return <EmptyOverview title={tab.title} />;
 
-  return <OverviewContent config={config} storageKey={tab.key} title={tab.title} />;
+  return (
+    <OverviewContent config={config} storageKey={tab.key} title={tab.title} range={range} />
+  );
 };
 
 export default AnalyticsCharts;
