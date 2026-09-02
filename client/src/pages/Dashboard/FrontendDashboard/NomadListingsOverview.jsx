@@ -14,12 +14,15 @@ import {
   CheckCircle2,
   Edit3,
   Eye,
+  EyeOff,
   Globe,
   Layers,
   Plus,
+  RotateCcw,
   Search,
   Tags,
   Target,
+  Trash2,
   XCircle,
 } from "lucide-react";
 import { statusPillClass, STATUS_PILL_BASE } from "../../../lib/status-pill";
@@ -196,6 +199,24 @@ export default function NomadListingsOverview({
     },
   });
 
+  // Undoes a host's soft delete — only meaningful once the host has asked
+  // for it (recoveryRequested), gated the same way in the UI below. Server
+  // re-checks the plan limit at this exact moment: the slot the delete
+  // freed may already be filled by a new listing.
+  const { mutate: recoverListing, isPending: isRecovering } = useMutation({
+    mutationFn: async (data) => {
+      const response = await axios.patch("/api/hosts/recover-product", data);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "Listing recovered");
+      queryClient.invalidateQueries({ queryKey: ["nomad-listings"] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to recover listing");
+    },
+  });
+
   const [publicConfirmTarget, setPublicConfirmTarget] = useState(null);
 
   const handleTogglePublic = (item) => {
@@ -244,11 +265,22 @@ export default function NomadListingsOverview({
     () => (Array.isArray(listings) ? listings : []),
     [listings],
   );
-  const activeListings = listingItems.filter((item) => item.isActive).length;
-  const inactiveListings = listingItems.length - activeListings;
+  // Deleted listings are excluded from every stat below — they're not
+  // "inactive", they're gone until recovered, and don't hold a plan slot.
+  const nonDeletedListingItems = useMemo(
+    () => listingItems.filter((item) => !item.isDeleted),
+    [listingItems],
+  );
+  const deletedListings = listingItems.length - nonDeletedListingItems.length;
+  const activeListings = nonDeletedListingItems.filter((item) => item.isActive).length;
+  const inactiveListings = nonDeletedListingItems.length - activeListings;
   const productTypes = new Set(
-    listingItems.map((item) => item.companyType).filter(Boolean),
+    nonDeletedListingItems.map((item) => item.companyType).filter(Boolean),
   ).size;
+  // Host Status (isPublic) is the host's own on/off switch for whether a
+  // listing shows on the public site — surfaced here so staff can spot
+  // listings the host has turned off without opening each one.
+  const hostInactiveListings = nonDeletedListingItems.filter((item) => !item.isPublic).length;
 
   const filteredListings = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -339,11 +371,13 @@ export default function NomadListingsOverview({
             <NomadListingsSkeleton />
           ) : (
             <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
-              <ListingStat label="Total Listings" value={listingItems.length} icon={Layers} />
-              <ListingStat label="Active" value={activeListings} icon={CheckCircle2} tone="emerald" />
-              <ListingStat label="Inactive" value={inactiveListings} icon={XCircle} tone="rose" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-1 shrink-0">
+              <ListingStat label="Total Listings" value={nonDeletedListingItems.length} icon={Layers} />
+              <ListingStat label="Master Active" value={activeListings} icon={CheckCircle2} tone="emerald" />
+              <ListingStat label="Master Inactive" value={inactiveListings} icon={XCircle} tone="rose" />
+              <ListingStat label="Host Inactive" value={hostInactiveListings} icon={EyeOff} tone="blue" />
               <ListingStat label="Product Types" value={productTypes} icon={Tags} tone="blue" />
+              <ListingStat label="Deleted" value={deletedListings} icon={Trash2} tone="rose" />
             </div>
 
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
@@ -400,24 +434,25 @@ export default function NomadListingsOverview({
               </div>
 
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[1080px]">
+                <table className="w-full text-left min-w-[1280px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
-                      <th className="px-5 py-4">Sr No</th>
-                      <th className="px-5 py-4">Company Name</th>
-                      <th className="px-5 py-4">Product Type</th>
-                      <th className="px-5 py-4">Country</th>
-                      <th className="px-5 py-4">State</th>
-                      <th className="px-5 py-4">City</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4">Visibility</th>
-                      <th className="px-5 py-4 text-center">Action</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Sr No</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Company Name</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Title</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Product Type</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Country</th>
+                      <th className="px-5 py-4 whitespace-nowrap">State</th>
+                      <th className="px-5 py-4 whitespace-nowrap">City</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Master Status</th>
+                      <th className="px-5 py-4 whitespace-nowrap">Visibility</th>
+                      <th className="px-5 py-4 text-center whitespace-nowrap">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {filteredListings.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="px-5 py-16 text-center">
+                        <td colSpan={10} className="px-5 py-16 text-center">
                           <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 mx-auto">
                             <Target size={28} />
                           </div>
@@ -427,8 +462,8 @@ export default function NomadListingsOverview({
                     ) : (
                       filteredListings.map((item, index) => (
                         <tr key={item._id || item.businessId || index} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-400">{index + 1}</td>
-                          <td className="px-5 py-4">
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-400 whitespace-nowrap">{index + 1}</td>
+                          <td className="px-5 py-4 whitespace-nowrap">
                             <div className="flex items-center gap-2.5">
                               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white shadow-sm">
                                 {getInitials(item.companyName)}
@@ -436,55 +471,84 @@ export default function NomadListingsOverview({
                               <p className="text-[12px] font-pmedium text-slate-900">{item.companyName || "—"}</p>
                             </div>
                           </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 capitalize">{item.companyType || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.country || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.state || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.city || "—"}</td>
-                          <td className="px-5 py-4"><span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>{item.isActive ? "Active" : "Inactive"}</span></td>
-                          <td className="px-5 py-4">
-                            <span className={`${STATUS_PILL_BASE} ${item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.companyTitle || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 capitalize whitespace-nowrap">{item.companyType || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.country || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.state || "—"}</td>
+                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.city || "—"}</td>
+                          <td className="px-5 py-4 whitespace-nowrap"><span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>{item.isActive ? "Active" : "Inactive"}</span></td>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            <span
+                              className={`${STATUS_PILL_BASE} ${item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}
+                              title={item.isPublic ? "Public on the Nomads website" : "Hidden by the host"}
+                            >
                               {item.isPublic ? "Public" : "Private"}
                             </span>
                           </td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button type="button" onClick={() => handleView(item)} title="View listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-lg transition-all">
-                                <Eye size={15} strokeWidth={2.5} />
-                              </button>
-                              <button type="button" onClick={() => handleEdit(item)} title="Edit listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
-                                <Edit3 size={15} strokeWidth={2.5} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isToggle || (showTransferToCompanyButton && !item.isActive)}
-                                onClick={() => toggleStatus({ businessId: item.businessId, status: !item.isActive })}
-                                title={
-                                  showTransferToCompanyButton && !item.isActive
-                                    ? "Transfer to Company before activating this listing"
-                                    : item.isActive
-                                      ? "Mark as inactive"
-                                      : "Mark as active"
-                                }
-                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${item.isActive ? "bg-rose-50 text-rose-600 hover:bg-rose-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
-                              >
-                                {item.isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
-                              </button>
-                              <button
-                                type="button"
-                                disabled={isTogglingPublic || !item.isActive}
-                                onClick={() => handleTogglePublic(item)}
-                                title={
-                                  !item.isActive
-                                    ? "Activate this listing before making it public"
-                                    : item.isPublic
-                                      ? "Make private"
-                                      : "Make public"
-                                }
-                                className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${item.isPublic ? "bg-blue-50 text-blue-600 hover:bg-blue-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
-                              >
-                                <Globe size={15} />
-                              </button>
-                            </div>
+                          <td className="px-5 py-4 whitespace-nowrap">
+                            {item.isDeleted ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <span className="text-[11px] font-pmedium text-slate-400 whitespace-nowrap">
+                                  Deleted by host
+                                </span>
+                                {item.recoveryRequested ? (
+                                  <button
+                                    type="button"
+                                    disabled={isRecovering}
+                                    onClick={() =>
+                                      recoverListing({ businessId: item.businessId, companyId })
+                                    }
+                                    title="Restore this listing"
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-pmedium uppercase tracking-wide bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                                  >
+                                    <RotateCcw size={13} strokeWidth={2.5} /> Recover
+                                  </button>
+                                ) : (
+                                  <span className="text-[11px] font-pmedium text-slate-400 whitespace-nowrap">
+                                    {/* No recovery requested */}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button type="button" onClick={() => handleView(item)} title="View listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-lg transition-all">
+                                  <Eye size={15} strokeWidth={2.5} />
+                                </button>
+                                <button type="button" onClick={() => handleEdit(item)} title="Edit listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
+                                  <Edit3 size={15} strokeWidth={2.5} />
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isToggle || (showTransferToCompanyButton && !item.isActive)}
+                                  onClick={() => toggleStatus({ businessId: item.businessId, status: !item.isActive })}
+                                  title={
+                                    showTransferToCompanyButton && !item.isActive
+                                      ? "Transfer to Company before activating this listing"
+                                      : item.isActive
+                                        ? "Mark as inactive"
+                                        : "Mark as active"
+                                  }
+                                  className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${item.isActive ? "bg-rose-50 text-rose-600 hover:bg-rose-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
+                                >
+                                  {item.isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={isTogglingPublic || !item.isActive}
+                                  onClick={() => handleTogglePublic(item)}
+                                  title={
+                                    !item.isActive
+                                      ? "Activate this listing before making it public"
+                                      : item.isPublic
+                                        ? "Make private"
+                                        : "Make public"
+                                  }
+                                  className={`p-1.5 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed ${item.isPublic ? "bg-blue-50 text-blue-600 hover:bg-blue-100" : "bg-slate-100 text-slate-400 hover:bg-slate-200"}`}
+                                >
+                                  <Globe size={15} />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))

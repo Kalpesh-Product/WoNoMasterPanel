@@ -1,8 +1,30 @@
 const { default: axios } = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
+const Workspace = require("../models/hostCompany/Workspace");
 const { uploadFileToS3, deleteFileFromS3ByUrl } = require("../config/s3config");
 const { getContinentForCountry } = require("../utils/countryContinent");
+
+// Kept in lockstep with HostPanel's server/controllers/listingControllers.ts
+// (getNomadListingPlan / listingLimit) — same tiers/caps, so recovering a
+// deleted listing here honors the same plan the host sees on their side.
+const NOMAD_LISTING_LIMIT_BY_PLAN = { basic: 4, professional: 9, custom: null };
+
+// Mirrors the companyId-matching pattern already used in
+// hostCompanyControllers.js to attach a Workspace's selectedPlan to a Host
+// Company record — the two share that field as their join key.
+const resolveNomadListingLimitForCompanyId = async (companyId) => {
+  if (!companyId) return NOMAD_LISTING_LIMIT_BY_PLAN.basic;
+  const workspace = await Workspace.findOne({ companyId, isActive: true })
+    .select("selectedPlan")
+    .sort({ createdAt: 1 })
+    .lean()
+    .exec();
+  const plan = String(workspace?.selectedPlan || "").trim().toLowerCase();
+  return plan in NOMAD_LISTING_LIMIT_BY_PLAN
+    ? NOMAD_LISTING_LIMIT_BY_PLAN[plan]
+    : NOMAD_LISTING_LIMIT_BY_PLAN.basic;
+};
 
 // Placeholder listing website when no website is provided — a generated
 // "companyname.wono.co" subdomain rather than the Host Company's own
@@ -1000,11 +1022,57 @@ const getCompanyListings = async (req, res) => {
   }
 };
 
+// Staff-only: undoes a host's soft delete. A deleted listing frees its plan
+// slot immediately (see listingLimit checks in createCompanyListing above),
+// so recovering it has to re-check that slot is still free at this exact
+// moment — the host may have already filled it with a new listing while
+// the recovery request sat pending.
+const recoverProduct = async (req, res) => {
+  try {
+    const { businessId, companyId } = req.body;
+
+    if (!businessId) {
+      return res.status(400).json({ message: "Business Id missing" });
+    }
+
+    const trimmedCompanyId = String(companyId || "").trim();
+    if (trimmedCompanyId) {
+      const { items } = await fetchListingsForCompany(trimmedCompanyId);
+      const activeCount = items.filter((item) => !item.isDeleted).length;
+      const limit = await resolveNomadListingLimitForCompanyId(trimmedCompanyId);
+
+      if (limit !== null && activeCount >= limit) {
+        return res.status(409).json({
+          code: "NOMAD_LISTING_LIMIT_REACHED",
+          message: `This host's plan allows only ${limit} Nomad listings and they're currently at that limit. Delete or ask them to delete one before recovering this listing.`,
+          limit,
+          used: activeCount,
+        });
+      }
+    }
+
+    try {
+      const response = await axios.patch(
+        "http://localhost:3000/api/company/recover-product",
+        { businessId },
+      );
+      invalidateNomadListingsCache();
+      return res.status(response.status).json(response.data);
+    } catch (err) {
+      const status = err.response?.status || 500;
+      return res.status(status).json(err.response?.data || { message: err.message });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to recover listing" });
+  }
+};
+
 module.exports = {
   getCompanyListings,
   getAllCompanyListings,
   createCompanyListing,
   editCompanyListing,
+  recoverProduct,
   invalidateNomadListingsCache,
   patchNomadListingsCache,
   fetchAllNomadListings,
