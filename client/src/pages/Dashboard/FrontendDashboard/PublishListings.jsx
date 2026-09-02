@@ -605,36 +605,37 @@ const PublishListings = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left min-w-[1000px]">
+              <table className="w-full text-left min-w-[1180px]">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
-                    <th className="px-5 py-4">Sr No</th>
-                    <th className="px-5 py-4">Company Name</th>
-                    <th className="px-5 py-4">Type</th>
-                    <th className="px-5 py-4">Country</th>
-                    <th className="px-5 py-4">State</th>
-                    <th className="px-5 py-4">City</th>
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4">Visibility</th>
-                    <th className="px-5 py-4 text-center">Action</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Sr No</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Company Name</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Title</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Type</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Country</th>
+                    <th className="px-5 py-4 whitespace-nowrap">State</th>
+                    <th className="px-5 py-4 whitespace-nowrap">City</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Status</th>
+                    <th className="px-5 py-4 whitespace-nowrap">Visibility</th>
+                    <th className="px-5 py-4 text-center whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/60">
                   {isLoading ? (
                     <tr>
-                      <td colSpan={9} className="px-5 py-10 text-center text-slate-400 font-pmedium">
+                      <td colSpan={10} className="px-5 py-10 text-center text-slate-400 font-pmedium">
                         Loading listings...
                       </td>
                     </tr>
                   ) : isError ? (
                     <tr>
-                      <td colSpan={9} className="px-5 py-10 text-center text-rose-500 font-pmedium">
+                      <td colSpan={10} className="px-5 py-10 text-center text-rose-500 font-pmedium">
                         Failed to load listings.
                       </td>
                     </tr>
                   ) : listings.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-5 py-16 text-center">
+                      <td colSpan={10} className="px-5 py-16 text-center">
                         <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 mx-auto">
                           <Layers size={28} />
                         </div>
@@ -647,8 +648,8 @@ const PublishListings = () => {
                         key={item._id || item.businessId || index}
                         className="hover:bg-slate-50/50 transition-colors"
                       >
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-400">{index + 1}</td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-400 whitespace-nowrap">{index + 1}</td>
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2.5">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white shadow-sm">
                               {getInitials(item.companyName)}
@@ -656,23 +657,24 @@ const PublishListings = () => {
                             <p className="text-[12px] font-pmedium text-slate-900">{item.companyName || "—"}</p>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.companyTitle || "—"}</td>
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">
                           {formatTypeLabel(item.companyType)}
                         </td>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.country || "—"}</td>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.state || "—"}</td>
-                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600">{item.city || "—"}</td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.country || "—"}</td>
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.state || "—"}</td>
+                        <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.city || "—"}</td>
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>
                             {item.isActive ? "Active" : "Inactive"}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <span className={`${STATUS_PILL_BASE} ${item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}>
                             {item.isPublic ? "Public" : "Private"}
                           </span>
                         </td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
@@ -707,7 +709,7 @@ const PublishListings = () => {
                   )}
                   {hasNextPage ? (
                     <tr ref={loadMoreRef}>
-                      <td colSpan={9} className="py-4 text-center">
+                      <td colSpan={10} className="py-4 text-center">
                         {isFetchingNextPage ? (
                           <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
                             Loading more listings...

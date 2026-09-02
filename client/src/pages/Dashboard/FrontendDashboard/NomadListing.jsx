@@ -206,6 +206,8 @@ const NomadListing = () => {
     },
   });
 
+  const selectedCompanyType = watch("companyType");
+
   // Removed: "Add new" boxes beside the Services/Units dropdowns no longer needed
   // const [newServiceText, setNewServiceText] = useState("");
   // const [newUnitText, setNewUnitText] = useState("");
