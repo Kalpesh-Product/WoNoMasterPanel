@@ -308,7 +308,7 @@ const HostSupportTickets = () => {
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.companyName}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.requestedBy}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.requestedAt}</td>
-                        <td className="px-5 py-4 align-top text-center relative" ref={availableStatuses.length > 0 ? dropdownRef : undefined}>
+                        <td className="px-5 py-4 align-top text-center relative" ref={isDropdownOpen ? dropdownRef : undefined}>
                           <div className="inline-block relative">
                             <button
                               type="button"
