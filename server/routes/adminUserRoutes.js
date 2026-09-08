@@ -15,6 +15,7 @@ const {
   escalateWebsiteLeadToHostPanel,
   updateWebsiteLead,
 } = require("../controllers/adminUserControllers");
+const { getTourProgress, saveTourProgress } = require("../controllers/tourControllers");
 const upload = require("../config/multerConfig");
 const { setLogModule } = require("../middlewares/logContext");
 
@@ -22,6 +23,10 @@ const router = require("express").Router();
 
 //User Routes
 router.patch("/update-profile/:userId", upload.single("profilePic"), updateProfile);
+
+//Page Guide (driver.js tour) Routes
+router.get("/tour-progress", getTourProgress);
+router.patch("/tour-progress/:tourKey", saveTourProgress);
 router.patch("/verify-password/:userId", verifyPassword);
 router.patch("/change-password/:userId", changePassword);
 

@@ -15,9 +15,12 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../hooks/useAxiosPrivate";
 import useAuth from "../hooks/useAuth";
 import { PERMISSIONS } from "../constants/permissions";
+import usePageTour from "../tours/usePageTour";
+import PageGuideButton from "../tours/PageGuideButton";
 
 const MainLayout = () => {
   const { auth } = useAuth();
+  const { isTourAvailable, startCurrentTour } = usePageTour();
   const [showFooter, setShowFooter] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const dummyRef = useRef(null);
@@ -171,6 +174,7 @@ const MainLayout = () => {
             >
               <ScrollToTop />
               {permissionChecked ? <Outlet /> : null}
+              <PageGuideButton available={isTourAvailable} onStart={startCurrentTour} />
 
               <div
                 ref={dummyRef}
