@@ -431,6 +431,7 @@ const BulkReuploadImages = () => {
                 onChange={setImages}
                 label="Re Upload New Images"
                 maxFiles={MAX_FILES}
+                maxFileSize={MAX_BYTES}
                 allowedExtensions={["webp"]}
                 id="bulk-upload-images"
                 previewType="image"

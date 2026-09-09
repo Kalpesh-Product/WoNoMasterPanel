@@ -27,6 +27,7 @@ const UploadSingleImage = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // ✅ cleanup preview
   useEffect(() => {
@@ -171,8 +172,17 @@ const UploadSingleImage = () => {
   });
 
   function onFileChange(e) {
-    const f = e.target.files?.[0] ?? null;
+    selectFile(e.target.files?.[0] ?? null);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function selectFile(f) {
     if (!f) return setFile(null);
+
+    if (!f.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
 
     if (f.size > MAX_BYTES) {
       setError(`File too large. Max allowed: ${humanSize(MAX_BYTES)}`);
@@ -181,6 +191,26 @@ const UploadSingleImage = () => {
 
     setError(null);
     setFile(f);
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isPending) setIsDragging(true);
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragging(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (isPending) return;
+    selectFile(e.dataTransfer.files?.[0] ?? null);
   }
 
   function handleUpload() {
@@ -363,13 +393,20 @@ const UploadSingleImage = () => {
                 id="single-img-input"
               />
               <div
-                className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 ${
+                  isDragging ? "border-[#2563EB] bg-[#2563EB]/5" : ""
+                }`}
                 onClick={() => inputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
                 <p className="font-medium">
-                  {file
+                  {isDragging
+                    ? "Drop image here"
+                    : file
                     ? "Change image"
-                    : "Upload image here (click to browse)"}
+                    : "Upload image here (click to browse or drag & drop)"}
                 </p>
                 {file && (
                   <p className="text-sm text-gray-600">
