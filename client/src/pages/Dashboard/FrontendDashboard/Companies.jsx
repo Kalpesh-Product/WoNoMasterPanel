@@ -230,7 +230,7 @@ const Companies = () => {
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
+        <div data-tour="companies-list-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
@@ -260,7 +260,7 @@ const Companies = () => {
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
               <div className="w-full overflow-x-auto [&::-webkit-scrollbar]:hidden">
-                <div className="flex items-center gap-1.5 overflow-x-auto">
+                <div data-tour="companies-list-status-filter" className="flex items-center gap-1.5 overflow-x-auto">
                   {["all", "active", "inactive"].map((filter) => (
                     <button
                       key={filter}
@@ -294,6 +294,7 @@ const Companies = () => {
                 </div>
                 <button
                   type="button"
+                  data-tour="companies-list-add"
                   onClick={() => navigate("/dashboard/companies/add-company")}
                   className="px-4 py-2.5 rounded-2xl bg-[#2563EB] text-white font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap"
                 >
@@ -302,7 +303,7 @@ const Companies = () => {
               </div>
             </div>
 
-            <div className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
+            <div data-tour="companies-list-location-filters" className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
               <select
                 value={countryFilter}
                 onChange={(event) => handleCountryFilterChange(event.target.value)}
@@ -352,7 +353,7 @@ const Companies = () => {
             </div>
 
             <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left border-collapse">
+              <table data-tour="companies-list-table" className="w-full text-left border-collapse">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
                     <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
@@ -404,6 +405,7 @@ const Companies = () => {
                           </td>
                           <td className="px-5 py-4 align-top">
                             <span
+                              data-tour="companies-list-name-link"
                               className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
                               onClick={() => openCompany(company)}
                             >
@@ -422,7 +424,7 @@ const Companies = () => {
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
                             {company.companyCity || "-"}
                           </td>
-                          <td className="px-5 py-4 align-top text-center">
+                          <td data-tour="companies-list-registration-column" className="px-5 py-4 align-top text-center">
                             <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
                               {company.isRegistered ? "Active" : "Inactive"}
                             </span>
@@ -450,6 +452,7 @@ const Companies = () => {
                               </button>
                               <button
                                 type="button"
+                                data-tour="companies-list-toggle-status"
                                 onClick={() =>
                                   toggleCompanyStatus({
                                     companyId: company.companyId,

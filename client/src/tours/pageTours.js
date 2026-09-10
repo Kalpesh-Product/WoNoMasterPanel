@@ -1320,7 +1320,7 @@ const PAGE_TOURS = [
   },
   {
     id: "companies-list",
-    version: 1,
+    version: 2,
     title: "Companies List",
     description:
       "All onboarded host companies with their websites, listings and plans. Open one to manage everything about it.",
@@ -1329,10 +1329,65 @@ const PAGE_TOURS = [
       "Companies load as searchable cards with their status, plan and quick actions.",
     steps: [
       {
+        selector: '[data-tour="companies-list-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Companies, and how many are currently Active or Inactive.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-list-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Narrow the list to Active or Inactive companies, or All to see everything.",
+      },
+      {
         text: "Search by name, type, city...",
         title: "Find a company",
         description:
           "Search the list by company name, accommodation type or city.",
+      },
+      {
+        selector: '[data-tour="companies-list-add"]',
+        title: "Add a company",
+        description:
+          "Opens the form to onboard a new company directly, without going through the request/invite flow.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="companies-list-location-filters"]',
+        title: "Filter by location",
+        description:
+          "Narrow by Country, then State and City — each dropdown filters the next. Clear location filters resets all three.",
+      },
+      {
+        selector: '[data-tour="companies-list-table"]',
+        title: "The full list",
+        description:
+          "Every company with its vertical, location and registration state.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="companies-list-name-link"]',
+        title: "Open the company overview",
+        description:
+          "Click the company name to reach its full overview — profile, nomads listings, website builder, data, settings and finance in one place.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-list-registration-column"]',
+        title: "Registration",
+        description:
+          "Whether the company is Active or Inactive.",
+        side: "bottom",
+      },
+      {
+        text: "View details",
+        exactText: true,
+        title: "Quick summary",
+        description:
+          "Opens a read-only popup with the company's profile and account details — for the full overview, use the company name instead.",
+        side: "left",
       },
       {
         text: "Edit company",
@@ -1343,11 +1398,10 @@ const PAGE_TOURS = [
         side: "left",
       },
       {
-        text: "View details",
-        exactText: true,
-        title: "Open the company overview",
+        selector: '[data-tour="companies-list-toggle-status"]',
+        title: "Toggle Active / Inactive",
         description:
-          "The overview page gathers the company's profile, nomads listings, website builder, data, settings and finance in one place.",
+          "Flips the company's registration state directly from the row.",
         side: "left",
       },
     ],
