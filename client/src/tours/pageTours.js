@@ -1423,17 +1423,32 @@ const PAGE_TOURS = [
   },
   {
     id: "company-wono-nomads",
-    version: 1,
+    version: 2,
     title: "WoNo Nomads",
     description:
       "This company's presence on the WoNo Nomads site — its home insights, incoming reviews and leads.",
     replayHint: true,
     steps: [
       {
-        textOnly: true,
-        title: "Nomads areas",
+        selector: '[data-tour="wono-nomads-card-nomad-listing"]',
+        title: "Nomad Listings",
         description:
-          "This section has three pages — the nomads home overview, Reviews to moderate guest feedback, and Leads listing traveller enquiries. Use the sidebar to move between them.",
+          "Open the company's listings overview — what is live, pending and unpublished on WoNo Nomads.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="wono-nomads-card-nomad-reviews"]',
+        title: "Nomad Reviews",
+        description:
+          "Moderate the guest reviews travellers leave for this company's properties.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="wono-nomads-card-nomads-leads"]',
+        title: "Nomads Leads",
+        description:
+          "Work the traveller enquiries coming in through the WoNo Nomads site.",
+        side: "bottom",
       },
     ],
     matches: (pathname) => pathname.includes("/wono-nomads"),
@@ -1734,12 +1749,19 @@ const PAGE_TOURS = [
   },
   {
     id: "host-company-module-access",
-    version: 2,
+    version: 3,
     title: "Module Access",
     description:
       "Choose exactly which Host Panel modules this company can use. Changes apply to every user in the company.",
     replayHint: true,
     steps: [
+      {
+        selector: '[data-tour="module-access-stats"]',
+        title: "At a glance",
+        description:
+          "The company's plan, how many workspaces it has, and how many employees are in the currently selected workspace.",
+        side: "bottom",
+      },
       {
         selector: '[data-tour="module-access-workspace-select"]',
         title: "Pick a workspace",
@@ -1755,6 +1777,20 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
+        selector: '[data-tour="module-access-reactivate-all"]',
+        title: "Reactivate all employees",
+        description:
+          "Reactivates every employee account in the selected workspace at once.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="module-access-delete-all"]',
+        title: "Delete all employees",
+        description:
+          "Deletes every employee account in the selected workspace at once and logs them all out immediately — there's no separate confirmation step beyond the browser prompt.",
+        side: "bottom",
+      },
+      {
         selector: '[data-tour="ag-search"]',
         title: "Find an employee",
         description:
@@ -1765,25 +1801,32 @@ const PAGE_TOURS = [
         selector: '[data-tour="module-access-employee-table"]',
         title: "The full list",
         description:
-          "Every employee of the selected workspace. Open a row's menu to edit that person's access individually or manage their account.",
+          "Every employee of the selected workspace, their role, workspaces and account status.",
         side: "top",
       },
       {
-        selector: '[data-tour="module-access-editor-modal"]',
-        textOnly: true,
-        title: "The access editor",
+        selector: '[data-tour="module-access-open-employee"]',
+        title: "Edit one employee's access",
         description:
-          "The editor shows a searchable module tree — expand it and tick what should be accessible. In workspace mode you can also apply a plan's module preset, and Save commits the selection (labelled Save Enabled Modules there). Revoking a module hides it from the whole company immediately.",
+          "Opens the access editor scoped to just this person, starting from their role's default access or whatever was individually saved for them before.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="module-access-row-menu"]',
+        title: "Manage the account",
+        description:
+          "Reactivate or delete this one employee's account.",
+        side: "left",
       },
     ],
     matches: (pathname) => pathname.includes("/module-access"),
   },
   {
     id: "host-company-units",
-    version: 2,
+    version: 3,
     title: "Units Management",
     description:
-      "Manage the bookable units (rooms, beds, desks) owned by this company across its properties.",
+      "The separate workspaces this founder has created under their account — each one its own business with its own plan.",
     replayHint: true,
     recordsDescription:
       "Units are listed with their state; enable, disable, delete or recover them with the row actions.",

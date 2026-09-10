@@ -843,7 +843,7 @@ const AccessEditorModal = ({
               )}
 
               {isWorkspaceMode && (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div data-tour="module-access-plan-tier" className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                     Plan Module Set
                   </p>
@@ -922,7 +922,7 @@ const AccessEditorModal = ({
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div data-tour="module-access-tree" className="flex-1 overflow-y-auto px-5 py-4">
                 {mainDropdownGroups.map((group) => (
                   <div
                     key={group.name}
@@ -1518,6 +1518,7 @@ const ModuleAccess = () => {
           return (
             <div className="flex items-center gap-1">
               <IconButton
+                data-tour="module-access-open-employee"
                 onClick={(event) => {
                   event.stopPropagation();
                   openEmployeeAccess(member);
@@ -1526,6 +1527,7 @@ const ModuleAccess = () => {
               >
                 <VisibilityIcon fontSize="small" />
               </IconButton>
+              <span data-tour="module-access-row-menu" className="inline-flex">
               <ThreeDotMenu
                 rowId={member._id}
                 menuItems={[
@@ -1548,6 +1550,7 @@ const ModuleAccess = () => {
                       },
                 ]}
               />
+              </span>
             </div>
           );
         }
@@ -1572,7 +1575,7 @@ const ModuleAccess = () => {
                 Select a workspace, pick an employee, and edit page access from the same screen.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div data-tour="module-access-stats" className="flex flex-wrap items-center gap-3">
               <Chip
                 label={normalizedPlan}
                 size="small"
@@ -1642,6 +1645,7 @@ const ModuleAccess = () => {
             <Button
               variant="outlined"
               color="success"
+              data-tour="module-access-reactivate-all"
               onClick={() => handleBulkAccountStatus(false)}
               disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
               sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
@@ -1651,6 +1655,7 @@ const ModuleAccess = () => {
             <Button
               variant="outlined"
               color="error"
+              data-tour="module-access-delete-all"
               onClick={() => handleBulkAccountStatus(true)}
               disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
               sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
