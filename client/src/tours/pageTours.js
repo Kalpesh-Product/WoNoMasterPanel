@@ -751,7 +751,7 @@ const PAGE_TOURS = [
   },
   {
     id: "logs",
-    version: 1,
+    version: 2,
     title: "Logs",
     description:
       "The audit trail of everything happening across the panel — who did what, where and when.",
@@ -760,17 +760,45 @@ const PAGE_TOURS = [
       "Log entries load in a table with the actor, action, module and timestamp for every recorded event.",
     steps: [
       {
-        text: "Search action, module, company, user...",
+        selector: '[data-tour="logs-stats"]',
+        title: "Quick stats",
+        description:
+          "Total logs recorded, and how many distinct companies, users and modules appear in what the current filters match.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="logs-month-filter"]',
+        title: "Jump to a month",
+        description:
+          "Pick a month to see just that period, newest first. Choosing a month clears any custom date range.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="logs-search"]',
         title: "Search the log",
         description:
           "Search across actions, modules, companies and users to find the events you care about.",
+        side: "bottom",
       },
       {
-        text: "View log",
-        exactText: true,
+        selector: '[data-tour="logs-date-filter"]',
+        title: "Custom date range",
+        description:
+          "Pick a From and To date to isolate a window. Clear removes the range.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="logs-table"]',
+        title: "The full list",
+        description:
+          "Every recorded event with its action, module, company, who performed it and when, grouped under month headings. Keep scrolling and older logs load automatically.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="logs-action-view"]',
         title: "Inspect an entry",
         description:
-          "Opens the full detail of a log entry — the request payload, actor and outcome.",
+          "Open the full detail of a log entry — the action, actor, outcome and any submitted data or changes. Clicking the action name in blue opens the same detail.",
         side: "left",
       },
     ],
@@ -1087,7 +1115,7 @@ const PAGE_TOURS = [
   },
   {
     id: "world-ranking-weights",
-    version: 1,
+    version: 2,
     title: "World Ranking Weights",
     description:
       "Tune the weights that drive WoNo's destination ranking algorithm — how much each factor matters.",
@@ -1096,17 +1124,60 @@ const PAGE_TOURS = [
       "Factors are listed with their current weights; add or edit entries to rebalance the ranking.",
     steps: [
       {
-        textOnly: true,
-        title: "Adjust ranking weights",
+        selector: '[data-tour="world-ranking-weights-stats"]',
+        title: "Quick stats",
         description:
-          "Open Add to create a new weighted factor, or edit an existing row. Changes feed the destination ranking calculations.",
+          "Total weight entries, how many are active versus inactive, and the average rank across them.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-search"]',
+        title: "Find an entry",
+        description:
+          "Search the list by state, country or title.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-add"]',
+        title: "Add a weight",
+        description:
+          "Create a new weight entry here — it starts at the next rank available and feeds straight into the ranking calculations.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-table"]',
+        title: "The full list",
+        description:
+          "Every weight entry with its rank, the state and country it applies to, its title and whether it is currently active in the ranking.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-action-view"]',
+        title: "View an entry",
+        description:
+          "The eye icon opens the entry read-only — all factor weights, the score and its images.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-action-edit"]',
+        title: "Edit an entry",
+        description:
+          "The pencil opens the same popup with editing unlocked, so you can adjust the weights that drive the ranking.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="world-ranking-weights-action-toggle"]',
+        title: "Enable or disable",
+        description:
+          "This icon switches an entry in or out of the ranking without deleting it — Active entries are counted, Inactive ones are ignored.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/world-ranking-weights"),
   },
   {
     id: "visa-countries",
-    version: 1,
+    version: 3,
     title: "Visa Countries",
     description:
       "The destination countries behind the visa-assistance service and the visa rules for each passport.",
@@ -1115,18 +1186,25 @@ const PAGE_TOURS = [
       "Destination countries are listed with search; open one to review its visa rules.",
     steps: [
       {
-        textOnly: true,
-        title: "Review a country's rules",
+        selector: '[data-tour="visa-countries-search"]',
+        title: "Find a country",
         description:
-          "Select a country to open its visa rules popup — requirement (e-visa, visa free, visa on arrival, visa required and more) and duration for each destination passport.",
+          "Type to filter the list of destination countries by name.",
+        side: "bottom",
       },
       {
-        text: "Edit",
-        exactText: true,
-        textOnly: true,
-        title: "Update the rules",
+        selector: '[data-tour="visa-countries-table"]',
+        title: "The full list",
         description:
-          "Edit unlocks the rows in the popup so you can adjust requirements and durations, then save your changes.",
+          "Every destination country available for visa assistance, one row per passport country.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="visa-countries-action-view"]',
+        title: "Open the visa rules",
+        description:
+          "The eye icon on a row opens that passport country's visa rules — the requirement (e-visa, visa free, visa on arrival, visa required and more) and duration for each destination. Select Edit in the popup to unlock the rows for adjustment, then Save.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/visa-countries"),
