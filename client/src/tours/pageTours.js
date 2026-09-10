@@ -1089,7 +1089,7 @@ const PAGE_TOURS = [
   },
   {
     id: "destinations-data",
-    version: 1,
+    version: 2,
     title: "Destinations Data",
     description:
       "The content overview for every destination — blogs, news, places, restaurants and events grouped by location.",
@@ -1098,17 +1098,46 @@ const PAGE_TOURS = [
       "The summary table lists destinations with clickable counts per content type; counts open that content's detail view.",
     steps: [
       {
-        text: "Add",
-        textOnly: true,
-        title: "Add content in a detail view",
+        selector: '[data-tour="destinations-data-stats"]',
+        title: "Content at a glance",
         description:
-          "Opening a destination's count drills into that content type for the location, where the Add button launches the editor for a new entry.",
+          "Totals across every destination — how many blogs, news posts, events, places and restaurants exist, plus the destination count.",
+        side: "bottom",
       },
       {
-        textOnly: true,
-        title: "Move back to the summary",
+        selector: '[data-tour="destinations-data-filters"]',
+        title: "Narrow by location",
         description:
-          "The back arrow beside the heading returns you to the all-destinations overview at any time.",
+          "Filter by country first, then state and city unlock based on your choice.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destinations-data-search"]',
+        title: "Find a destination",
+        description:
+          "Search the list by destination name.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destinations-data-table"]',
+        title: "The full list",
+        description:
+          "Every destination with its continent and country, and how much content exists for it. Scroll and more destinations load automatically.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destinations-data-count-button"]',
+        title: "Open a content type",
+        description:
+          "Each count is clickable — select it to open that content type for the destination, where you can add new entries or edit existing ones.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="destinations-data-detail-table"]',
+        textOnly: true,
+        title: "Inside a content type",
+        description:
+          "The detail view lists that content for the destination with an Add button up top, an edit pencil and an active/inactive toggle per row. The back arrow beside the heading returns to this overview.",
       },
     ],
     matches: startsWith("/dashboard/destinations-data"),
@@ -1657,7 +1686,7 @@ const PAGE_TOURS = [
   },
   {
     id: "host-company-upgrade-plan",
-    version: 1,
+    version: 2,
     title: "Upgrade Plan",
     description:
       "Move a host company to a different plan and record the upgrade details.",
@@ -1666,11 +1695,38 @@ const PAGE_TOURS = [
       "Review the current plan and fill in the upgrade details before confirming the change.",
     steps: [
       {
-        text: "View details",
-        exactText: true,
-        title: "Review a company",
+        selector: '[data-tour="upgrade-plan-stats"]',
+        title: "Quick stats",
         description:
-          "Opens the Upgrade Plan Details panel with the company and upgrade information before you commit.",
+          "Total upgrade requests for this company, how many are still pending, paid, and fully upgraded.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="upgrade-plan-search"]',
+        title: "Find a request",
+        description:
+          "Search by company name, vertical or plan.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="upgrade-plan-table"]',
+        title: "The full list",
+        description:
+          "Every upgrade request with the current and requested plan, plus where it stands — payment link sent, payment received and upgrade status.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="upgrade-plan-action-view"]',
+        title: "Review the request",
+        description:
+          "The eye icon opens the Upgrade Plan Details panel with the company and upgrade information before you commit anything.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="upgrade-plan-row-menu"]',
+        title: "Next step",
+        description:
+          "The three-dot menu offers the next action for the request's state — Send Payment Link, Mark As Paid, or Send Success Email once the payment is confirmed.",
         side: "left",
       },
     ],
@@ -1678,31 +1734,53 @@ const PAGE_TOURS = [
   },
   {
     id: "host-company-module-access",
-    version: 1,
+    version: 2,
     title: "Module Access",
     description:
       "Choose exactly which Host Panel modules this company can use. Changes apply to every user in the company.",
     replayHint: true,
     steps: [
       {
-        textOnly: true,
-        title: "Grant or revoke modules",
+        selector: '[data-tour="module-access-workspace-select"]',
+        title: "Pick a workspace",
         description:
-          "Expand the module tree and tick what the company should access. Revoking a module hides it from the whole company immediately.",
+          "Choose the workspace whose modules you want to configure — the employee list below follows this choice.",
+        side: "bottom",
       },
       {
-        text: "Save Access",
-        textOnly: true,
-        title: "Commit the changes",
+        selector: '[data-tour="module-access-configure-modules"]',
+        title: "Edit the workspace's modules",
         description:
-          "Save your selection with the Save Access button (labelled Save Enabled Modules when working in workspace mode). Unsaved changes are lost when you leave.",
+          "Opens the access editor for the whole workspace — grant or revoke modules for every user in it at once.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="ag-search"]',
+        title: "Find an employee",
+        description:
+          "Search the company's employees by name, role or email.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="module-access-employee-table"]',
+        title: "The full list",
+        description:
+          "Every employee of the selected workspace. Open a row's menu to edit that person's access individually or manage their account.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="module-access-editor-modal"]',
+        textOnly: true,
+        title: "The access editor",
+        description:
+          "The editor shows a searchable module tree — expand it and tick what should be accessible. In workspace mode you can also apply a plan's module preset, and Save commits the selection (labelled Save Enabled Modules there). Revoking a module hides it from the whole company immediately.",
       },
     ],
     matches: (pathname) => pathname.includes("/module-access"),
   },
   {
     id: "host-company-units",
-    version: 1,
+    version: 2,
     title: "Units Management",
     description:
       "Manage the bookable units (rooms, beds, desks) owned by this company across its properties.",
@@ -1711,11 +1789,52 @@ const PAGE_TOURS = [
       "Units are listed with their state; enable, disable, delete or recover them with the row actions.",
     steps: [
       {
-        text: "Enable unit",
-        exactText: true,
-        title: "Unit actions",
+        selector: '[data-tour="units-stats"]',
+        title: "Quick stats",
         description:
-          "Enable or disable units to control their availability, and delete or recover them as the property changes.",
+          "The company's plan, how many units it keeps against its limit, and how many are active, disabled or deleted.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="units-recovery-queue"]',
+        title: "Pending recovery requests",
+        description:
+          "Deleted units that staff asked to restore show up here — Recover brings them back with one select.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="units-table"]',
+        title: "The full list",
+        description:
+          "Every unit with its business name, plan and current state — Active, Disabled or Deleted.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="units-action-enable"]',
+        title: "Enable a unit",
+        description:
+          "Turn a disabled unit back on so it counts as active again. This icon only appears on units you can enable.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="units-action-disable"]',
+        title: "Disable a unit",
+        description:
+          "Switch a unit off without deleting it — it stops counting against active limits and can be re-enabled any time.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="units-action-delete"]',
+        title: "Delete a unit",
+        description:
+          "Soft-deletes the unit after a confirmation — it stays listed as Deleted and remains recoverable.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="units-action-recover"]',
+        title: "Recover a unit",
+        description:
+          "Restores a deleted unit to its previous working state.",
         side: "left",
       },
     ],
