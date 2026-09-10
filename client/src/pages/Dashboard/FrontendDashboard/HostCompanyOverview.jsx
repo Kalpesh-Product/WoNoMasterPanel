@@ -46,10 +46,14 @@ const HostCompanyOverview = () => {
                         </span>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <div
+                        data-tour="host-company-overview-cards"
+                        className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
+                    >
                         {cards.map((card) => (
                             <div
                                 key={card.title}
+                                data-tour={`host-company-overview-card-${card.path}`}
                                 className="cursor-pointer rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                                 onClick={() =>
                                     navigate(`/dashboard/host-companies/${companySlug}/${card.path}`, {

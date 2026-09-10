@@ -84,7 +84,7 @@ const PAGE_TOURS = [
   },
   {
     id: "signup-leads",
-    version: 1,
+    version: 2,
     title: "Signup Leads",
     description:
       "Companies that signed up interest on the WoNo website land here. Review each lead, invite them to the Host Panel and track payments.",
@@ -93,10 +93,74 @@ const PAGE_TOURS = [
       "Every signup lead appears as a row with contact details, chosen plan, status and invite progress.",
     steps: [
       {
-        selector: '[data-tour="ag-search"]',
+        selector: '[data-tour="signup-leads-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Leads, and how many sit in Pending, Contacted and Closed right now.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="signup-leads-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Narrow the list to Pending, Contacted, Closed or Rejected leads, or pick All to see everything.",
+      },
+      {
+        selector: '[data-tour="signup-leads-search"]',
         title: "Find a lead",
         description:
           "Type a name, email or company to narrow the list as you type.",
+      },
+      {
+        selector: '[data-tour="signup-leads-table"]',
+        title: "The full list",
+        description:
+          "Every signup lead with its plan, workflow status, invite progress and payment state, newest submissions mixed in as they come.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="signup-leads-plan-column"]',
+        title: "Plan",
+        description:
+          "The plan the lead chose or requested. Change it here if the company wants a different plan before you invite them.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="signup-leads-status-column"]',
+        title: "Status",
+        description:
+          "Move a lead through Pending, Contacted, Closed or Rejected as you work it. A lead must be Closed before it can be invited.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="signup-leads-invite-status-column"]',
+        title: "Invite Status",
+        description:
+          "Shows Not Invited until you send the Host Panel invite, then moves to Invite Sent, Registered and finally Joined as the company completes registration.",
+        side: "bottom",
+      },
+      {
+        text: "Invite",
+        exactText: true,
+        textOnly: true,
+        title: "Invite the company",
+        description:
+          "The Invite action on a row emails the company an invitation to the Host Panel. The Invite Status column moves from Not Invited to Invite Sent, Registered and finally Joined.",
+      },
+      {
+        selector: '[data-tour="signup-leads-payment-status-column"]',
+        title: "Payment Status",
+        description:
+          "Shows whether a payment link has been sent and whether the lead has paid — Free Plan for Basic leads, which never need payment.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="signup-leads-payment-link-column"]',
+        textOnly: true,
+        title: "Payment Link",
+        description:
+          "Paid plans get a payment action on the row — Send Payment Link for custom plans, or Send $199 Link for the fixed Professional plan. The amount, currency and an optional description go into the popup before sending.",
+        side: "left",
       },
       {
         text: "View details",
@@ -113,21 +177,6 @@ const PAGE_TOURS = [
         description:
           "Opens the comment popup for that lead. Notes keep the whole team aligned on where the conversation stands.",
         side: "left",
-      },
-      {
-        text: "Invite",
-        exactText: true,
-        textOnly: true,
-        title: "Invite the company",
-        description:
-          "The Invite action on a row emails the company an invitation to the Host Panel. The Invite Status column moves from Not Invited to Invite Sent, Registered and finally Joined.",
-      },
-      {
-        text: "Send Payment Link",
-        textOnly: true,
-        title: "Collect payment",
-        description:
-          "Paid plans get a payment action on the row — Send Payment Link for custom plans, or Send $199 Link for the fixed Professional plan. The amount, currency and an optional description go into the popup before sending.",
       },
     ],
     matches: exact("/dashboard/signup-leads"),
@@ -357,7 +406,7 @@ const PAGE_TOURS = [
   },
   {
     id: "value-adds-leads",
-    version: 1,
+    version: 2,
     title: "Value-Adds Leads",
     description:
       "Requests for the services WoNo adds on top of hosting — visa support, activation help, company setup, consultations, workations and contributors.",
@@ -379,16 +428,30 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
-        selector: '[data-tour="ag-search"]',
-        title: "Search requests",
+        selector: '[data-tour="value-adds-leads-stats"]',
+        title: "Quick stats",
         description:
-          "Find a request quickly by the company or person who raised it.",
+          "Total requests for this tab, how many came in during the last week, and how many currently pass the search below.",
+        side: "bottom",
       },
       {
-        selector: '[data-tour="ag-filter"]',
-        title: "Filter the queue",
+        selector: '[data-tour="value-adds-leads-search"]',
+        title: "Find a request",
         description:
-          "Open the filter icon to narrow requests by column values, then Apply or Clear.",
+          "Type a name, email, phone or any other column value to narrow the list as you type — the Showing card updates with it.",
+      },
+      {
+        selector: '[data-tour="value-adds-leads-table"]',
+        title: "The full list",
+        description:
+          "Every request for the active tab renders here with who raised it, their contact details, request specifics and when it was submitted, mixed in as they come.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="value-adds-leads-action-view"]',
+        title: "Open the request",
+        description:
+          "The eye icon on a row shows everything the person submitted — contact information, request details and their message. Leads are reviewed here, not edited.",
         side: "left",
       },
     ],
@@ -715,7 +778,7 @@ const PAGE_TOURS = [
   },
   {
     id: "module-access-logs",
-    version: 1,
+    version: 2,
     title: "Module Access Logs",
     description:
       "Every change made to module access — grants, revocations and permission updates across companies and users.",
@@ -724,23 +787,45 @@ const PAGE_TOURS = [
       "Access changes appear in a searchable list; open an entry to review exactly what changed.",
     steps: [
       {
+        selector: '[data-tour="module-access-logs-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Changes, Companies, and the running Enabled/Disabled module counts, for whatever the current search and date filters match.",
+        side: "bottom",
+      },
+      {
         text: "Search panel, company, target, workspace...",
         title: "Search the log",
         description:
-          "Search across panels, companies, targets and workspaces, and use the date filters to isolate a window.",
+          "Search across panels, companies, targets and workspaces to find the change you're after.",
       },
       {
+        selector: '[data-tour="module-access-logs-date-filter"]',
+        title: "Custom date range",
+        description:
+          "Pick a From and To date to isolate a window. Clear removes the range.",
+      },
+      {
+        selector: '[data-tour="module-access-logs-table"]',
+        title: "The full list",
+        description:
+          "Every access change with the panel, host company, who made it, the target and workspace, and how many modules were enabled or disabled.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="module-access-logs-view-button"]',
         textOnly: true,
         title: "Inspect an entry",
         description:
-          "The eye icon on a row opens the full change record — who changed access, when, and for which module.",
+          "The eye icon on a row opens the full change record — who changed access, when, and exactly which modules were enabled or disabled.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/module-access-logs"),
   },
   {
     id: "host-panel-logs",
-    version: 1,
+    version: 2,
     title: "Host Panel Logs",
     description:
       "Activity recorded inside the Host Panel by host companies — logins, listing changes, website updates and more.",
@@ -749,16 +834,44 @@ const PAGE_TOURS = [
       "Host activity loads in a searchable table; open an entry to see the full recorded action.",
     steps: [
       {
+        selector: '[data-tour="host-panel-logs-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Logs, and the distinct Companies, Users and Modules behind them, for whatever the current search and date filters match.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-panel-logs-month-filter"]',
+        title: "Filter by month",
+        description:
+          "Jump straight to a month's activity, newest first — this resets any custom date range you've set.",
+      },
+      {
         text: "Search action, module, company, workspace, user...",
         title: "Search the log",
         description:
           "Search across actions, modules, companies, workspaces and users to follow what a specific company or account did.",
       },
       {
+        selector: '[data-tour="host-panel-logs-date-filter"]',
+        title: "Custom date range",
+        description:
+          "Pick a From and To date to narrow the log to a specific window — this clears the month filter above. Clear removes the range.",
+      },
+      {
+        selector: '[data-tour="host-panel-logs-table"]',
+        title: "The full list",
+        description:
+          "Entries are grouped by month, newest first, and load more automatically as you scroll.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="host-panel-logs-view-button"]',
         textOnly: true,
         title: "Inspect an entry",
         description:
-          "Open a log entry for the full recorded action — the actor, the target and the outcome.",
+          "Click the action text or the eye icon to open the full recorded event — the actor, the target, the outcome and any submitted data.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/host-panel-logs"),
@@ -809,7 +922,7 @@ const PAGE_TOURS = [
   },
   {
     id: "website-credits",
-    version: 1,
+    version: 2,
     title: "Website Credits",
     description:
       "Track the website build credits each company owns. Top up credits and review how they were spent.",
@@ -818,9 +931,29 @@ const PAGE_TOURS = [
       "Companies are listed with their credit balance; use the row actions to add credits or inspect usage.",
     steps: [
       {
+        selector: '[data-tour="website-credits-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Companies, their combined credit Limit, how much has been Used, and Add-ons purchased for the selected month.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="website-credits-month-filter"]',
+        title: "Pick a month",
+        description:
+          "Switch the month and year to see that period's Used and Add-on totals per company — the current month also shows live Remaining balances.",
+      },
+      {
         text: "Search companies...",
         title: "Find a company",
         description: "Search the credit list by company name.",
+      },
+      {
+        selector: '[data-tour="website-credits-table"]',
+        title: "The full list",
+        description:
+          "Each company's plan, total limit, add-ons, usage and remaining balance for the selected month.",
+        side: "top",
       },
       {
         text: "Add Credits",
@@ -1331,7 +1464,7 @@ const PAGE_TOURS = [
   },
   {
     id: "host-companies",
-    version: 1,
+    version: 2,
     title: "Host Companies",
     description:
       "The registered Host Panel companies. Open one to manage its plan, units, module access, listings and website.",
@@ -1340,16 +1473,58 @@ const PAGE_TOURS = [
       "Host companies load as searchable cards; open one to reach all its management areas.",
     steps: [
       {
+        selector: '[data-tour="host-companies-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Companies, and how many are currently Active or Inactive.",
+        side: "bottom",
+      },
+      {
         text: "Search companies...",
         title: "Find a host company",
         description: "Search the registered companies by name.",
       },
       {
+        selector: '[data-tour="host-companies-table"]',
+        title: "The full list",
+        description:
+          "Every registered company with its vertical, location, registration state and subscription.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="host-companies-name-link"]',
+        title: "Open the full company overview",
+        description:
+          "Click the company name to reach its full management hub — plan, units, module access, nomads listings and website builder.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-companies-registration-column"]',
+        title: "Registration",
+        description:
+          "Whether the company is Active or Inactive. Toggle it from the row menu, not here directly.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-companies-subscription-column"]',
+        title: "Subscription",
+        description:
+          "The company's current plan or trial state.",
+        side: "bottom",
+      },
+      {
         text: "View details",
         exactText: true,
-        title: "Open the company",
+        title: "Quick summary",
         description:
-          "Opens the full host company overview with its plan, units and access management.",
+          "Opens a read-only popup with the company's profile and account details — for the full management hub, use the company name instead.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="host-companies-row-menu"]',
+        title: "More actions",
+        description:
+          "Mark the company Active or Inactive, or edit its registration details.",
         side: "left",
       },
     ],
@@ -1357,17 +1532,46 @@ const PAGE_TOURS = [
   },
   {
     id: "host-company-overview",
-    version: 1,
+    version: 3,
     title: "Host Company Overview",
     description:
       "Everything about one Host Panel company — profile, plan, units, module access, nomads listings and website builder.",
     replayHint: true,
     steps: [
       {
-        textOnly: true,
-        title: "Company management hub",
+        selector: '[data-tour="host-company-overview-card-upgrade-plan"]',
+        title: "Upgrade Plan",
         description:
-          "Jump into upgrade plan, module access, units management, nomads listings or the website builder for this company from here.",
+          "Change the company's plan or review its requested upgrade.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-company-overview-card-module-access"]',
+        title: "Module Access",
+        description:
+          "Grant or revoke which Host Panel modules this company's workspace can use.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-company-overview-card-units"]',
+        title: "Units",
+        description:
+          "Manage the company's units — its individual spaces or locations.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-company-overview-card-wono-nomads"]',
+        title: "Wono Nomads",
+        description:
+          "Manage this company's public listing and reviews on the Nomads marketplace.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-company-overview-card-website-builder"]',
+        title: "Website Builder",
+        description:
+          "Build or edit the company's public website template.",
+        side: "bottom",
       },
     ],
     matches: (pathname) =>
@@ -1481,7 +1685,7 @@ const PAGE_TOURS = [
   },
   {
     id: "host-support-tickets",
-    version: 1,
+    version: 2,
     title: "Host Support Tickets",
     description:
       "Support tickets raised by host companies. Triage, respond and resolve them, or inspect the company's panel as them.",
@@ -1490,9 +1694,36 @@ const PAGE_TOURS = [
       "Tickets are listed with priority, company and status; open one to read the full conversation.",
     steps: [
       {
+        selector: '[data-tour="support-tickets-stats"]',
+        title: "Quick stats",
+        description:
+          "Total Tickets, and how many sit Open, In Progress (includes Accepted) or Resolved/Closed.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="support-tickets-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Jump straight to Open, Accepted, In Progress, Pending, Closed or Rejected tickets, or pick All to see everything.",
+      },
+      {
         text: "Search tickets...",
         title: "Find a ticket",
         description: "Search tickets by title, company or status.",
+      },
+      {
+        selector: '[data-tour="support-tickets-table"]',
+        title: "The full list",
+        description:
+          "Every ticket with its company, who raised it, when, and its current status.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="support-tickets-status-column"]',
+        title: "Move a ticket forward",
+        description:
+          "Click the status pill to advance it — Open leads to Accepted or Rejected, then In Progress, then Pending or Closed. Only the statuses that make sense from here are offered; Pending requires a resolution message for the user.",
+        side: "bottom",
       },
       {
         text: "View details",
@@ -1505,9 +1736,10 @@ const PAGE_TOURS = [
       {
         text: "View As",
         exactText: true,
+        textOnly: true,
         title: "Inspect as the company",
         description:
-          "Opens the Host Panel from the company's perspective to reproduce what they reported.",
+          "Opens the Host Panel from the company's perspective to reproduce what they reported. Only available when the ticket has a linked user and workspace.",
         side: "left",
       },
     ],

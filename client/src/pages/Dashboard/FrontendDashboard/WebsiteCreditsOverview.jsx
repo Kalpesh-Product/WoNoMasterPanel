@@ -168,7 +168,7 @@ const WebsiteCreditsOverview = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+        <div data-tour="website-credits-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
             <div className="min-w-0">
               <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Companies</p>
@@ -197,7 +197,7 @@ const WebsiteCreditsOverview = () => {
 
         <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
           <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-            <div className="flex items-center gap-2">
+            <div data-tour="website-credits-month-filter" className="flex items-center gap-2">
               <select
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
@@ -230,7 +230,7 @@ const WebsiteCreditsOverview = () => {
           </div>
 
           <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse">
+            <table data-tour="website-credits-table" className="w-full text-left border-collapse">
               <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                 <tr>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company</th>

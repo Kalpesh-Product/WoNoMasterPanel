@@ -66,7 +66,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
 
   return (
     <div className="flex flex-col gap-4 text-slate-700 font-sans">
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 shrink-0">
+      <div data-tour="value-adds-leads-stats" className="grid grid-cols-2 md:grid-cols-3 gap-3 shrink-0">
         {[
           { label: `Total ${title}`, value: data.length, icon: Target, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
           { label: "This Week", value: thisWeek, icon: Clock, accent: "border-l-amber-500", textColor: "text-amber-600", bgColor: "bg-amber-50" },
@@ -94,7 +94,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
 
       <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
         <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-50/50">
-          <div className="relative flex-1 min-w-[180px]">
+          <div className="relative flex-1 min-w-[180px]" data-tour="value-adds-leads-search">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
               type="text"
@@ -115,7 +115,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
           </div>
         ) : (
           <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left">
+            <table data-tour="value-adds-leads-table" className="w-full text-left">
               <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                 <tr>
                   <th className="px-5 py-4">Name</th>
@@ -157,6 +157,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
                         type="button"
                         onClick={() => setSelectedRow(row)}
                         title="View details"
+                        data-tour={ri === 0 ? "value-adds-leads-action-view" : undefined}
                         className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                       >
                         <Eye size={15} strokeWidth={2.5} />
@@ -173,6 +174,7 @@ const ValueAddsLeadsTable = ({ endpoint, queryKey, columns }) => {
       {selectedRow && (
         <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setSelectedRow(null)}>
           <div
+            data-tour={selectedRow ? "value-adds-leads-details-modal" : undefined}
             className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
             onClick={(e) => e.stopPropagation()}
           >

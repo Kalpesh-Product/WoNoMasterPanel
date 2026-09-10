@@ -211,7 +211,7 @@ const HostSupportTickets = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 shrink-0">
+          <div data-tour="support-tickets-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 shrink-0">
             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
               <div className="min-w-0">
                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Tickets</p>
@@ -244,7 +244,7 @@ const HostSupportTickets = () => {
 
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-              <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+              <div data-tour="support-tickets-status-filter" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                 {["All", "Open", "Accepted", "In Progress", "Pending", "Closed", "Rejected"].map((status) => (
                   <button
                     key={status}
@@ -274,7 +274,7 @@ const HostSupportTickets = () => {
               </div>
             </div>
             <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left border-collapse">
+              <table data-tour="support-tickets-table" className="w-full text-left border-collapse">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
                     <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
@@ -308,7 +308,7 @@ const HostSupportTickets = () => {
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.companyName}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.requestedBy}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">{ticket.requestedAt}</td>
-                        <td className="px-5 py-4 align-top text-center relative" ref={isDropdownOpen ? dropdownRef : undefined}>
+                        <td data-tour="support-tickets-status-column" className="px-5 py-4 align-top text-center relative" ref={isDropdownOpen ? dropdownRef : undefined}>
                           <div className="inline-block relative">
                             <button
                               type="button"

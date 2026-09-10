@@ -237,6 +237,22 @@ export default function usePageTour() {
         smoothScroll: false,
         allowClose: true,
         disableActiveInteraction: true,
+        // Driver's own auto-scroll skips scrolling whenever it thinks the
+        // target is already inside the raw viewport bounds — it has no idea
+        // the app's sticky top nav visually covers that space, so a target
+        // sitting under the nav (e.g. the Guide button next to a page
+        // heading) never gets scrolled into real view. Force a scroll on
+        // every step instead of trusting Driver's visibility check.
+        onHighlightStarted: (element) => {
+          if (!element) return;
+          // "center" on an element wider/taller than the viewport (e.g. a
+          // full data table) scrolls past its start edge, cropping it —
+          // fall back to "nearest"/"start" so the element's own edge, not
+          // its middle, is what ends up on screen.
+          const block = element.offsetHeight > window.innerHeight ? "start" : "center";
+          const inline = element.offsetWidth > window.innerWidth ? "nearest" : "center";
+          element.scrollIntoView({ behavior: "auto", block, inline });
+        },
         onNextClick: (_element, _step, { driver: activeDriver }) => {
           if (activeDriver.hasNextStep()) {
             activeDriver.moveNext();
