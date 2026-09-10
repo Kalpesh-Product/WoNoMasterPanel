@@ -24,7 +24,10 @@ const ProfileLayout = () => {
   return (
     <div className="p-4">
       {showTabs && (
-        <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+        <div
+          data-tour="tab-layout-tabs"
+          className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm"
+        >
           {tabs.map((tab) => (
             <NavLink
               key={tab.path}

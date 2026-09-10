@@ -77,7 +77,10 @@ const MainDashboard = () => {
             <h2 className="text-title font-pmedium text-primary uppercase">
               Dashboard
             </h2>
-            <p className="text-xs font-pmedium text-slate-500 mt-1">
+            <p
+              data-tour="dashboard-intro"
+              className="text-xs font-pmedium text-slate-500 mt-1"
+            >
               Module-wise overview with live data. Expand a module, pick a
               section, then a tab to see cumulative stat cards and charts.
             </p>
@@ -94,6 +97,7 @@ const MainDashboard = () => {
               >
                 <button
                   type="button"
+                  data-tour="dashboard-module-toggle"
                   onClick={() => toggleModule(module.key)}
                   className={`w-full flex items-center justify-between px-5 py-4 text-left transition-colors hover:bg-slate-50/50 ${
                     isModuleOpen ? "border-b border-slate-100 bg-slate-50/50" : ""
@@ -134,6 +138,7 @@ const MainDashboard = () => {
                         >
                           <button
                             type="button"
+                            data-tour="dashboard-category-toggle"
                             onClick={() =>
                               toggleCategory(module.key, category.id)
                             }
@@ -160,7 +165,10 @@ const MainDashboard = () => {
 
                           {isCategoryOpen && (
                             <div className="p-4 flex flex-col gap-4 bg-white">
-                              <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                              <div
+                                data-tour="dashboard-tab-bar"
+                                className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden"
+                              >
                                 {tabs.map((tab) => {
                                   const isTabActive = activeTab.key === tab.key;
                                   return (
@@ -204,7 +212,9 @@ const MainDashboard = () => {
                                 </button>
                               </div>
 
-                              <TabCharts tab={activeTab} />
+                              <div data-tour="dashboard-charts">
+                                <TabCharts tab={activeTab} />
+                              </div>
                             </div>
                           )}
                         </div>

@@ -173,7 +173,13 @@ const MainLayout = () => {
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
             >
               <ScrollToTop />
-              {permissionChecked ? <Outlet /> : null}
+              {/* data-tour="page-content" scopes the driver.js page guides: every
+                  routed page renders inside it, so the Guide button can attach to
+                  the page heading and tours can find their steps. See
+                  src/tours/pageTours.js and src/tours/usePageTour.js. */}
+              <div data-tour="page-content" className="min-h-full">
+                {permissionChecked ? <Outlet /> : null}
+              </div>
               <PageGuideButton available={isTourAvailable} onStart={startCurrentTour} />
 
               <div

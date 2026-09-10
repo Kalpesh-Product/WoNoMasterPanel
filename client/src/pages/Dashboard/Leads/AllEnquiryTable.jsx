@@ -253,7 +253,7 @@ export default function AllEnquiryTable() {
 
   return (
     <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div data-tour="lead-quick-stats" className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {statCards.map(({ label, value, icon: Icon, cardClass, labelClass, iconClass }) => (
               <div key={label} className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${cardClass}`}>
                 <div>
@@ -267,7 +267,7 @@ export default function AllEnquiryTable() {
 
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex gap-1.5 overflow-x-auto">
+              <div data-tour="lead-status-filter" className="flex gap-1.5 overflow-x-auto">
                 {["All", ...MASTER_STATUSES].map((status) => (
                   <button key={status} type="button" onClick={() => setStatusFilter(status)}
                     className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${statusFilter === status ? "bg-[#2563EB] text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
@@ -275,7 +275,7 @@ export default function AllEnquiryTable() {
                   </button>
                 ))}
               </div>
-              <div className="relative w-full xl:w-[320px]">
+              <div data-tour="lead-search" className="relative w-full xl:w-[320px]">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                 <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search name, company, email, phone..."
@@ -297,9 +297,9 @@ export default function AllEnquiryTable() {
                       <th className="w-[12%] px-3 py-4">Company</th>
                       <th className="w-[7%] px-3 py-4">Source</th>
                       <th className="w-[10%] px-3 py-4">Product</th>
-                      <th className="w-[11%] px-3 py-4">Master Status</th>
-                      <th className="w-[12%] px-3 py-4">Host Status</th>
-                      <th className="w-[9%] px-3 py-4">Payment Status</th>
+                      <th data-tour="lead-master-status-column" className="w-[11%] px-3 py-4">Master Status</th>
+                      <th data-tour="lead-host-status-column" className="w-[12%] px-3 py-4">Host Status</th>
+                      <th data-tour="lead-payment-status-column" className="w-[9%] px-3 py-4">Payment Status</th>
                       <th className="w-[9%] px-3 py-4">Submitted</th>
                       <th className="w-[16%] px-3 py-4 text-center">Actions</th>
                     </tr>

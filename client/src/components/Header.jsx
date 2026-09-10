@@ -123,6 +123,7 @@ const Header = ({
               />
               {!isMobile && (
                 <button
+                  data-tour="header-sidebar-toggle"
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                   className="p-2 text-gray-500 text-xl">
                   {isSidebarOpen ? <GiHamburgerMenu /> : <IoIosArrowForward />}
@@ -177,7 +178,7 @@ const Header = ({
         )}
         {/* <div className="flex items-center gap-4 w-[40%]"> */}
         <div className="flex items-center gap-4 md:w-fit w-fit">
-          <Avatar onClick={handleAvatarClick} className="cursor-pointer">
+          <Avatar data-tour="header-avatar" onClick={handleAvatarClick} className="cursor-pointer">
             {/* {auth.user.email === "abrar@biznest.co.in" ? ( */}
             {auth?.user?.profilePicture?.url ? (
               // <img src={Abrar} alt="" />

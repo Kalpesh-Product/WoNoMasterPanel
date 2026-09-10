@@ -73,6 +73,7 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   return (
     <div
+      data-tour="sidebar-nav"
       className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
