@@ -183,7 +183,8 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads",
-    version: 4,
+    version: 7,
+    skipIntro: true,
     title: "All Leads",
     description:
       "Four lead queues in one place — product enquiries, partner contacts, collaboration requests and job applications. All Enquiry carries the full Master workflow, from status tracking through to escalating closed leads to the Host Panel; the other tabs are for review.",
@@ -216,16 +217,16 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
-        selector: '[data-tour="lead-search"]',
-        title: "Search the list",
-        description:
-          "Filter the visible leads by name, company, email or phone.",
-      },
-      {
         selector: '[data-tour="lead-status-filter"]',
         title: "Filter by Master status",
         description:
           "On the All Enquiry tab, these chips narrow the list to Pending, Contacted or Closed leads.",
+      },
+      {
+        selector: '[data-tour="lead-search"]',
+        title: "Search the list",
+        description:
+          "Filter the visible leads by name, company, email or phone.",
       },
       {
         selector: '[data-tour="lead-master-status-column"]',
@@ -249,6 +250,13 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
+        selector: '[data-tour="lead-action-view"]',
+        title: "View details",
+        description:
+          "Opens the lead's full details — contact info, master/host/payment status and every field submitted with the enquiry.",
+        side: "left",
+      },
+      {
         text: "Send payment link",
         title: "Collect payment",
         description:
@@ -269,7 +277,8 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads-poc-contact",
-    version: 1,
+    version: 2,
+    skipIntro: true,
     title: "All POC Contact",
     description:
       "Point-of-contact submissions from partner and business enquiries — the people to reach out to at each company.",
@@ -312,7 +321,8 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads-connect-with-us",
-    version: 1,
+    version: 2,
+    skipIntro: true,
     title: "Connect With Us",
     description:
       "Partnership and collaboration enquiries submitted through the site.",
@@ -355,7 +365,8 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads-job-applications",
-    version: 1,
+    version: 3,
+    skipIntro: true,
     title: "Job Applications",
     description:
       "Applications submitted for open roles, with resumes and experience at a glance.",
@@ -393,20 +404,13 @@ const PAGE_TOURS = [
           "Here you see all data for this lead source — every applicant, one row per application, with their position, contact details, experience and resume.",
         side: "top",
       },
-      {
-        text: "View",
-        exactText: true,
-        textOnly: true,
-        title: "Review a resume",
-        description:
-          "Applications with an attached resume show a View link that opens it in a new tab.",
-      },
     ],
     matches: startsWith("/dashboard/all-leads/job-applications"),
   },
   {
     id: "value-adds-leads",
-    version: 2,
+    version: 3,
+    skipIntro: true,
     title: "Value-Adds Leads",
     description:
       "Requests for the services WoNo adds on top of hosting — visa support, activation help, company setup, consultations, workations and contributors.",
@@ -706,7 +710,7 @@ const PAGE_TOURS = [
   },
   {
     id: "change-password",
-    version: 1,
+    version: 3,
     title: "Change Password",
     description:
       "Replace your account password. Verify the current one first, then set and confirm the new password.",
@@ -730,13 +734,13 @@ const PAGE_TOURS = [
           "This badge confirms the current password was accepted; the current-password field locks to prevent accidental edits.",
       },
       {
-        textOnly: true,
+        selector: '[data-tour="change-password-requirements"]',
         title: "Password requirements",
         description:
           "The new password needs at least 8 characters with upper and lower case letters, plus at least one number and one special character.",
       },
       {
-        text: "Update Password",
+        selector: '[data-tour="change-password-submit"]',
         title: "Apply the change",
         description:
           "Validates the rules and confirmation match, then replaces your account password.",
@@ -1089,7 +1093,7 @@ const PAGE_TOURS = [
   },
   {
     id: "destinations-data",
-    version: 2,
+    version: 3,
     title: "Destinations Data",
     description:
       "The content overview for every destination — blogs, news, places, restaurants and events grouped by location.",
@@ -1131,13 +1135,6 @@ const PAGE_TOURS = [
         description:
           "Each count is clickable — select it to open that content type for the destination, where you can add new entries or edit existing ones.",
         side: "left",
-      },
-      {
-        selector: '[data-tour="destinations-data-detail-table"]',
-        textOnly: true,
-        title: "Inside a content type",
-        description:
-          "The detail view lists that content for the destination with an Add button up top, an edit pencil and an active/inactive toggle per row. The back arrow beside the heading returns to this overview.",
       },
     ],
     matches: startsWith("/dashboard/destinations-data"),

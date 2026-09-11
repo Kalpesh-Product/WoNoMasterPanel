@@ -61,17 +61,19 @@ const buildSteps = (tour) => {
   );
   const guideButton = findVisible('[data-tour="page-guide-button"]');
 
-  const steps = [
-    {
-      element: pageHeading || pageContent || undefined,
-      popover: {
-        title: tour.title,
-        description: tour.description,
-        side: "bottom",
-        align: "start",
-      },
-    },
-  ];
+  const steps = tour.skipIntro
+    ? []
+    : [
+        {
+          element: pageHeading || pageContent || undefined,
+          popover: {
+            title: tour.title,
+            description: tour.description,
+            side: "bottom",
+            align: "start",
+          },
+        },
+      ];
 
   if (tour.steps?.length) {
     tour.steps.forEach((tourStep) => {

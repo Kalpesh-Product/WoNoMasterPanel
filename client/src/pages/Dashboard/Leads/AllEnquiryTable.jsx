@@ -297,15 +297,15 @@ export default function AllEnquiryTable() {
                       <th className="w-[12%] px-3 py-4">Company</th>
                       <th className="w-[7%] px-3 py-4">Source</th>
                       <th className="w-[10%] px-3 py-4">Product</th>
-                      <th data-tour="lead-master-status-column" className="w-[11%] px-3 py-4">Master Status</th>
-                      <th data-tour="lead-host-status-column" className="w-[12%] px-3 py-4">Host Status</th>
-                      <th data-tour="lead-payment-status-column" className="w-[9%] px-3 py-4">Payment Status</th>
+                      <th className="w-[11%] px-3 py-4">Master Status</th>
+                      <th className="w-[12%] px-3 py-4">Host Status</th>
+                      <th className="w-[9%] px-3 py-4">Payment Status</th>
                       <th className="w-[9%] px-3 py-4">Submitted</th>
                       <th className="w-[16%] px-3 py-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {visibleLeads.map((lead) => {
+                    {visibleLeads.map((lead, leadIndex) => {
                       const masterStatus = getMasterStatus(lead.status);
                       const hostStatus = lead.isEscalated === true ? (lead.hostPanelStatus || "Pending") : "Not Escalated";
                       const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
@@ -323,20 +323,21 @@ export default function AllEnquiryTable() {
                           <td className="truncate px-3 py-4 font-pmedium text-slate-700" title={lead.companyName}>{lead.companyName || "--"}</td>
                           <td className="px-3 py-4 font-pmedium capitalize text-slate-700">{lead.source || "--"}</td>
                           <td className="truncate px-3 py-4 text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
-                          <td className="px-3 py-4">
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-master-status-column" : undefined}>
                             <select value={masterStatus} onChange={(event) => updateLeadMutation.mutate({ leadId: lead._id, status: event.target.value })}
                               disabled={updateLeadMutation.isPending}
                               className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(masterStatus)}`}>
                               {MASTER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                             </select>
                           </td>
-                          <td className="px-3 py-4"><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
-                          <td className="px-3 py-4"><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-host-status-column" : undefined}><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-payment-status-column" : undefined}><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
                           <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
                           <td className="px-3 py-4">
                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                               <button type="button" onClick={() => setSelectedLeadId(lead._id)}
                                 title="View lead details" aria-label={`View details for ${lead.fullName || "lead"}`}
+                                data-tour={leadIndex === 0 ? "lead-action-view" : undefined}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                                 <Eye size={13} />
                               </button>
