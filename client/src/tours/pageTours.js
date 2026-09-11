@@ -1037,7 +1037,7 @@ const PAGE_TOURS = [
   },
   {
     id: "company-reviews",
-    version: 1,
+    version: 2,
     title: "Company Reviews",
     description:
       "Reviews submitted about host companies across sources. Moderate them before they appear publicly.",
@@ -1046,16 +1046,46 @@ const PAGE_TOURS = [
       "Reviews are grouped in tabs by review source with search over name, source and description.",
     steps: [
       {
-        text: "Search by name, source, description...",
+        selector: '[data-tour="company-reviews-tabs"]',
+        title: "Four review sources",
+        description:
+          "Nomad listing, event, place and restaurant reviews are moderated separately — switch tabs to work one source at a time.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-reviews-stats"]',
+        title: "Quick stats",
+        description:
+          "Where this source's reviews stand — total and how many are still pending versus already moderated.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-reviews-stage-filter"]',
+        title: "Filter by status",
+        description:
+          "Jump between All, Pending, Approved and Rejected reviews.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-reviews-search"]',
         title: "Find a review",
         description:
           "Search across reviewer names, sources and review text to locate a specific review.",
+        side: "bottom",
       },
       {
-        textOnly: true,
-        title: "Moderate reviews",
+        selector: '[data-tour="company-reviews-table"]',
+        title: "The full list",
         description:
-          "Open a review to read it fully and approve or reject it. Approved reviews surface on the public site.",
+          "Every review for the selected source and filter, with its rating, status and when it came in.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="company-reviews-action-view"]',
+        title: "Moderate a review",
+        description:
+          "The eye icon opens the full review — approve or reject it from the popup. Approving queues it for the public site; both actions ask for a confirmation first.",
+        side: "left",
       },
     ],
     matches: startsWith("/dashboard/company-reviews"),
