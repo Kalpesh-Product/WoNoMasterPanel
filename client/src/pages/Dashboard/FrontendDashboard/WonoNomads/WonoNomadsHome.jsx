@@ -20,22 +20,28 @@ const WonoNomadsHome = () => {
             Wono Nomads
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card
-              icon={<RiHotelLine />}
-              title="Nomad Listings"
-              route={listingsRoute}
-            />
-            <Card
-              icon={<MdOutlineRateReview />}
-              title="Nomad Reviews"
-              route="nomad-reviews"
-            />
-            <Card
-              icon={<MdOutlineContactPhone />}
-              title="Nomads Leads"
-              route="nomads-leads"
-            />
+          <div data-tour="wono-nomads-cards" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div data-tour="wono-nomads-card-nomad-listing">
+              <Card
+                icon={<RiHotelLine />}
+                title="Nomad Listings"
+                route={listingsRoute}
+              />
+            </div>
+            <div data-tour="wono-nomads-card-nomad-reviews">
+              <Card
+                icon={<MdOutlineRateReview />}
+                title="Nomad Reviews"
+                route="nomad-reviews"
+              />
+            </div>
+            <div data-tour="wono-nomads-card-nomads-leads">
+              <Card
+                icon={<MdOutlineContactPhone />}
+                title="Nomads Leads"
+                route="nomads-leads"
+              />
+            </div>
           </div>
         </div>
       </PageFrame>

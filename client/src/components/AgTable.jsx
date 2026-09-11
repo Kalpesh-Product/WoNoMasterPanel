@@ -273,6 +273,7 @@ const AgTableComponent = React.memo(
         >
           {search ? (
             <TextField
+              data-tour="ag-search"
               label="Search"
               variant="outlined"
               size="small"
@@ -311,6 +312,7 @@ const AgTableComponent = React.memo(
               <div className="flex items-center gap-4">
                 <div className="flex justify-end items-center w-full">
                   <div
+                    data-tour="ag-filter"
                     className="p-2 hover:bg-slate-100 cursor-pointer rounded-full border border-slate-200 text-slate-600 transition-colors"
                     onClick={(event) => setFilterAnchorEl(event.currentTarget)}
                   >

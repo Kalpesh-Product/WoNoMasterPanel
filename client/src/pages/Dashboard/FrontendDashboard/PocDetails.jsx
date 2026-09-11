@@ -248,9 +248,9 @@ const PocDetails = () => {
     <div className="p-4">
       <PageFrame>
         <div className="flex items-center justify-between pb-4">
-          <span className="text-title font-pmedium text-primary uppercase">
+          <h2 className="text-title font-pmedium text-primary uppercase">
             POC Details
-          </span>
+          </h2>
           {/* {pocList.length > 1 && (
             <TextField
               select
@@ -286,7 +286,10 @@ const PocDetails = () => {
 
         <div className="bg-white ">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center gap-6 border border-gray-200 rounded-xl p-4">
+          <div
+            data-tour="poc-details-header"
+            className="flex flex-col md:flex-row md:items-center gap-6 border border-gray-200 rounded-xl p-4"
+          >
             <Avatar
               src={view.avatarUrl}
               sx={{ width: 96, height: 96, fontSize: "2rem" }}
@@ -310,7 +313,10 @@ const PocDetails = () => {
           </div>
 
           {/* Two-column form */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 mt-6">
+          <div
+            data-tour="poc-details-fields"
+            className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 mt-6"
+          >
             {isEditMode ? (
               <>
                 <TextField
@@ -412,7 +418,7 @@ const PocDetails = () => {
               </>
             )}
           </div>
-                    <div className="mt-8 flex justify-center gap-3">
+                    <div data-tour="poc-details-actions" className="mt-8 flex justify-center gap-3">
             {isEditMode ? (
               <>
                 <Button

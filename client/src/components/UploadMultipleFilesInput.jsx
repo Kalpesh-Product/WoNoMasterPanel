@@ -16,6 +16,7 @@ const UploadMultipleFilesInput = ({
   id, // input id for htmlFor
   maxFiles = 10,
   maxFileSize,
+  dataTour, // optional data-tour anchor for the drag/drop-and-browse row
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
@@ -209,6 +210,7 @@ const UploadMultipleFilesInput = ({
           {label} (max {maxFiles})
         </label>
         <div
+          data-tour={dataTour}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}

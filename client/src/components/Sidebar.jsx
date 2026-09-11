@@ -94,6 +94,7 @@ const Sidebar = ({ onCloseDrawer }) => {
 
   return (
     <div
+      data-tour="sidebar-nav"
       className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
@@ -103,7 +104,7 @@ const Sidebar = ({ onCloseDrawer }) => {
       </div>
 
       {isSidebarOpen && (
-        <div className="px-4 pb-2">
+        <div data-tour="sidebar-search" className="px-4 pb-2">
           <div className="relative">
             <Search
               aria-hidden="true"
@@ -148,6 +149,7 @@ const Sidebar = ({ onCloseDrawer }) => {
             <div className="border-t border-black/10 pt-2">
               <button
                 type="button"
+                data-tour="sidebar-open-page"
                 className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left transition-all hover:bg-white ${
                   location.pathname === "/dashboard" && !location.pathname.includes("/dashboard/")
                     ? "bg-white text-black shadow-sm"

@@ -260,7 +260,8 @@ const UploadSingleImage = () => {
             <p>Loading companies...</p>
           ) : (
             <>
-              {/* Country */}
+              {/* Country / Company Type / Company */}
+              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
               <TextField
                 select
                 size="small"
@@ -364,24 +365,27 @@ const UploadSingleImage = () => {
                     </MenuItem>
                   ))}
               </TextField>
+              </div>
 
               {/* Image Type */}
-              <TextField
-                select
-                size="small"
-                fullWidth
-                label="Image Type"
-                value={imageType}
-                onChange={(e) => setImageType(e.target.value)}
-                disabled={!companyId}
-              >
-                {/* {["image", "logo"].map((opt) => ( */}
-                {["logo"].map((opt) => (
-                  <MenuItem key={opt} value={opt}>
-                    {opt}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <div data-tour="data-upload-image-type">
+                <TextField
+                  select
+                  size="small"
+                  fullWidth
+                  label="Image Type"
+                  value={imageType}
+                  onChange={(e) => setImageType(e.target.value)}
+                  disabled={!companyId}
+                >
+                  {/* {["image", "logo"].map((opt) => ( */}
+                  {["logo"].map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </div>
 
               {/* File input */}
               <input
@@ -393,6 +397,7 @@ const UploadSingleImage = () => {
                 id="single-img-input"
               />
               <div
+                data-tour="data-upload-dropzone"
                 className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 ${
                   isDragging ? "border-[#2563EB] bg-[#2563EB]/5" : ""
                 }`}
@@ -434,7 +439,7 @@ const UploadSingleImage = () => {
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
                 <PrimaryButton
                   type="button"
                   title={isPending ? "Uploading…" : "Upload"}

@@ -49,6 +49,7 @@ const BreadCrumbComponent = () => {
     const isCompanyDetailsIdSegment =
       index >= 1 &&
       ["host-companies", "companies", "requests"].includes(pathSegments[index - 1]) &&
+      segment !== "requests" &&
       resolvedCompanyName;
     const isHostPanelAnalyticsCompanySegment =
       index >= 1 && pathSegments[index - 1] === "host-panel-analytics";
@@ -98,10 +99,15 @@ const BreadCrumbComponent = () => {
     );
   });
 
+  // Only true for "/companies/:id/nomad-listings" and
+  // "/host-companies/:id/nomad-listing" — both have a real Wono Nomads hub
+  // page as their sibling/parent. "/companies/requests/:id/nomad-listing"
+  // (nomad-listing nested one level deeper, under the static "requests"
+  // segment) has no such hub in its chain, so it must not get this crumb.
   const nomadListingsIndex = pathSegments.findIndex((segment) =>
     ["nomad-listing", "nomad-listings"].includes(segment),
   );
-  if (nomadListingsIndex >= 0) {
+  if (nomadListingsIndex === 2) {
     const wonoNomadsPath = `/dashboard/${pathSegments
       .slice(0, nomadListingsIndex)
       .join("/")}/wono-nomads`;

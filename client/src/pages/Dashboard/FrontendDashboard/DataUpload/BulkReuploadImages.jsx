@@ -284,7 +284,8 @@ const BulkReuploadImages = () => {
             <p>Loading companies...</p>
           ) : (
             <>
-              {/* Country */}
+              {/* Country / Company Type / Company */}
+              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
               <TextField
                 select
                 size="small"
@@ -390,6 +391,7 @@ const BulkReuploadImages = () => {
                     </MenuItem>
                   ))}
               </TextField>
+              </div>
 
               {/* File Input */}
               {/* <UploadMultipleFilesInput
@@ -435,6 +437,7 @@ const BulkReuploadImages = () => {
                 allowedExtensions={["webp"]}
                 id="bulk-upload-images"
                 previewType="image"
+                dataTour="data-upload-dropzone"
               />
 
               <p className="text-xs text-gray-500">
@@ -445,7 +448,7 @@ const BulkReuploadImages = () => {
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
                 <PrimaryButton
                   type="button"
                   title={isPending ? "Uploading…" : "Upload"}

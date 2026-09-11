@@ -342,7 +342,7 @@ const UpgradePlan = () => {
         </div>
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+        <div data-tour="upgrade-plan-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
             <div className="min-w-0">
               <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Requests</p>
@@ -373,7 +373,7 @@ const UpgradePlan = () => {
         <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
           <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
             <div />
-            <div className="relative flex-1 min-w-[180px] max-w-md">
+            <div className="relative flex-1 min-w-[180px] max-w-md" data-tour="upgrade-plan-search">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <input
                 type="text"
@@ -386,7 +386,7 @@ const UpgradePlan = () => {
           </div>
 
           <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left border-collapse">
+            <table data-tour="upgrade-plan-table" className="w-full text-left border-collapse">
               <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                 <tr>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company</th>
@@ -405,7 +405,7 @@ const UpgradePlan = () => {
                     <td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">No upgrade requests found.</td>
                   </tr>
                 ) : (
-                  filteredCompanies.map((row) => {
+                  filteredCompanies.map((row, index) => {
                     const isSent = Boolean(row.paymentLinkSentAt);
                     const isPaid = row.paymentStatus === true;
                     const upgradeStatus = String(row.upgradeStatus || "requested").trim().toLowerCase();
@@ -444,15 +444,21 @@ const UpgradePlan = () => {
                               type="button"
                               onClick={() => handleViewCompany(row)}
                               title="View details"
+                              data-tour={index === 0 ? "upgrade-plan-action-view" : undefined}
                               className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
                             >
                               <Eye size={15} strokeWidth={2.5} />
                             </button>
-                            <ThreeDotMenu
-                              rowId={row.companyId}
-                              disabled={!getActionMenuItems(row).length}
-                              menuItems={getActionMenuItems(row)}
-                            />
+                            <span
+                              className="inline-flex"
+                              data-tour={index === 0 ? "upgrade-plan-row-menu" : undefined}
+                            >
+                              <ThreeDotMenu
+                                rowId={row.companyId}
+                                disabled={!getActionMenuItems(row).length}
+                                menuItems={getActionMenuItems(row)}
+                              />
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -472,6 +478,7 @@ const UpgradePlan = () => {
           onClick={() => { setIsViewModalOpen(false); setSelectedCompany(null); }}
         >
           <div
+            data-tour="upgrade-plan-details-modal"
             className="rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] w-[min(650px,92vw)] max-h-[84vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >

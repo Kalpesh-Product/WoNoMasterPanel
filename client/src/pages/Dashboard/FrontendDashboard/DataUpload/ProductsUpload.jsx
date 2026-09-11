@@ -169,21 +169,23 @@ const ProductsUpload = () => {
           </div>
 
           {/* Upload Type */}
-          <TextField
-            select
-            size="small"
-            fullWidth
-            label="Upload Type"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            disabled={isPending}
-          >
-            {KIND_OPTIONS.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
+          <div data-tour="data-upload-type">
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label="Upload Type"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+              disabled={isPending}
+            >
+              {KIND_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
 
           {/* <p className="text-xs text-gray-500">
             Endpoint: <code>{TYPE_MAP[kind].api}</code> • File key:{" "}
@@ -202,6 +204,7 @@ const ProductsUpload = () => {
 
           {/* Dropzone */}
           <div
+            data-tour="data-upload-dropzone"
             className={[
               "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition",
               dragActive
@@ -233,7 +236,7 @@ const ProductsUpload = () => {
           {error && <div className="text-sm text-red-600">{error}</div>}
 
           {/* Actions */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
             <PrimaryButton
               type="button"
               title={isPending ? "Uploading…" : "Upload"}

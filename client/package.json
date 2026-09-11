@@ -36,6 +36,7 @@
     "dayjs": "^1.11.13",
     "dayjs-plugin-utc": "^0.1.2",
     "docx-preview": "^0.3.4",
+    "driver.js": "^1.8.0",
     "grapesjs": "^0.19.5",
     "grapesjs-blocks-basic": "^1.0.2",
     "grapesjs-preset-webpage": "^1.0.3",

@@ -284,7 +284,10 @@ const ChangePassword = () => {
           </div>
         )}
 
-        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+        <div
+          data-tour="change-password-requirements"
+          className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+        >
           <div className="flex items-center gap-2">
             <Lock size={14} className="text-blue-600" />
             <span className="text-xs font-pmedium uppercase tracking-wider text-slate-600">
@@ -298,7 +301,10 @@ const ChangePassword = () => {
           </ul>
         </div>
 
-        <div className="flex items-center justify-center">
+        <div
+          data-tour="change-password-submit"
+          className="flex items-center justify-center"
+        >
           <PrimaryButton
             title={isChanging ? "Updating..." : "Update Password"}
             type="button"

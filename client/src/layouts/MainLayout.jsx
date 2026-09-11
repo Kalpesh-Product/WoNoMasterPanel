@@ -15,9 +15,12 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../hooks/useAxiosPrivate";
 import useAuth from "../hooks/useAuth";
 import { PERMISSIONS } from "../constants/permissions";
+import usePageTour from "../tours/usePageTour";
+import PageGuideButton from "../tours/PageGuideButton";
 
 const MainLayout = () => {
   const { auth } = useAuth();
+  const { isTourAvailable, startCurrentTour } = usePageTour();
   const [showFooter, setShowFooter] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const dummyRef = useRef(null);
@@ -170,7 +173,14 @@ const MainLayout = () => {
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
             >
               <ScrollToTop />
-              {permissionChecked ? <Outlet /> : null}
+              {/* data-tour="page-content" scopes the driver.js page guides: every
+                  routed page renders inside it, so the Guide button can attach to
+                  the page heading and tours can find their steps. See
+                  src/tours/pageTours.js and src/tours/usePageTour.js. */}
+              <div data-tour="page-content" className="min-h-full">
+                {permissionChecked ? <Outlet /> : null}
+              </div>
+              <PageGuideButton available={isTourAvailable} onStart={startCurrentTour} />
 
               <div
                 ref={dummyRef}

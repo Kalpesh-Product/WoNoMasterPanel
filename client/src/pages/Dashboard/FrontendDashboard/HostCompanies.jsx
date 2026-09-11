@@ -192,7 +192,7 @@ const HostCompanies = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
+                    <div data-tour="host-companies-stats" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
                         <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
                             <div className="min-w-0">
                                 <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Companies</p>
@@ -229,7 +229,7 @@ const HostCompanies = () => {
                             </div>
                         </div>
                         <div className="overflow-x-auto flex-1">
-                            <table className="w-full text-left border-collapse">
+                            <table data-tour="host-companies-table" className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                                     <tr>
                                         <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
@@ -262,6 +262,7 @@ const HostCompanies = () => {
                                                     </td>
                                                     <td className="px-5 py-4 align-top">
                                                         <span
+                                                            data-tour="host-companies-name-link"
                                                             className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
                                                             onClick={() => {
                                                                 dispatch(setSelectedCompany(company));
@@ -289,12 +290,12 @@ const HostCompanies = () => {
                                                     <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCountry || "-"}</td>
                                                     <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyState || "-"}</td>
                                                     <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCity || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-center">
+                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center">
                                                         <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
                                                             {company.isRegistered ? "Active" : "Inactive"}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4 align-top">
+                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top">
                                                         <span className={statusPillClass(getCurrentSubscriptionLabel(company))}>
                                                             {getCurrentSubscriptionLabel(company)}
                                                         </span>
@@ -309,6 +310,7 @@ const HostCompanies = () => {
                                                             >
                                                                 <Eye size={15} strokeWidth={2.5} />
                                                             </button>
+                                                            <span data-tour="host-companies-row-menu" className="inline-flex">
                                                             <ThreeDotMenu
                                                                 rowId={company.companyId || company._id || company.companyName}
                                                                 menuItems={[
@@ -344,6 +346,7 @@ const HostCompanies = () => {
                                                                     },
                                                                 ]}
                                                             />
+                                                            </span>
                                                         </div>
                                                     </td>
                                                 </tr>

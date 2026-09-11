@@ -253,7 +253,7 @@ export default function AllEnquiryTable() {
 
   return (
     <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div data-tour="lead-quick-stats" className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {statCards.map(({ label, value, icon: Icon, cardClass, labelClass, iconClass }) => (
               <div key={label} className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${cardClass}`}>
                 <div>
@@ -267,7 +267,7 @@ export default function AllEnquiryTable() {
 
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
             <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex gap-1.5 overflow-x-auto">
+              <div data-tour="lead-status-filter" className="flex gap-1.5 overflow-x-auto">
                 {["All", ...MASTER_STATUSES].map((status) => (
                   <button key={status} type="button" onClick={() => setStatusFilter(status)}
                     className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${statusFilter === status ? "bg-[#2563EB] text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
@@ -275,7 +275,7 @@ export default function AllEnquiryTable() {
                   </button>
                 ))}
               </div>
-              <div className="relative w-full xl:w-[320px]">
+              <div data-tour="lead-search" className="relative w-full xl:w-[320px]">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                 <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search name, company, email, phone..."
@@ -305,7 +305,7 @@ export default function AllEnquiryTable() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {visibleLeads.map((lead) => {
+                    {visibleLeads.map((lead, leadIndex) => {
                       const masterStatus = getMasterStatus(lead.status);
                       const hostStatus = lead.isEscalated === true ? (lead.hostPanelStatus || "Pending") : "Not Escalated";
                       const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
@@ -323,20 +323,21 @@ export default function AllEnquiryTable() {
                           <td className="truncate px-3 py-4 font-pmedium text-slate-700" title={lead.companyName}>{lead.companyName || "--"}</td>
                           <td className="px-3 py-4 font-pmedium capitalize text-slate-700">{lead.source || "--"}</td>
                           <td className="truncate px-3 py-4 text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
-                          <td className="px-3 py-4">
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-master-status-column" : undefined}>
                             <select value={masterStatus} onChange={(event) => updateLeadMutation.mutate({ leadId: lead._id, status: event.target.value })}
                               disabled={updateLeadMutation.isPending}
                               className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(masterStatus)}`}>
                               {MASTER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                             </select>
                           </td>
-                          <td className="px-3 py-4"><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
-                          <td className="px-3 py-4"><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-host-status-column" : undefined}><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
+                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-payment-status-column" : undefined}><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
                           <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
                           <td className="px-3 py-4">
                             <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                               <button type="button" onClick={() => setSelectedLeadId(lead._id)}
                                 title="View lead details" aria-label={`View details for ${lead.fullName || "lead"}`}
+                                data-tour={leadIndex === 0 ? "lead-action-view" : undefined}
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
                                 <Eye size={13} />
                               </button>

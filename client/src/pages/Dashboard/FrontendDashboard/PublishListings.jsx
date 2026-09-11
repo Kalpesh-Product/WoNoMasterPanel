@@ -480,7 +480,10 @@ const PublishListings = () => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div
+                data-tour="publish-bulk-actions"
+                className="flex flex-wrap gap-2"
+              >
                 <button
                   type="button"
                   disabled={!canSubmit || !(locationCounts.inactive > 0)}

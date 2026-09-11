@@ -163,6 +163,7 @@ const VisaCountries = () => {
                   <input
                     type="text"
                     placeholder="Search countries..."
+                    data-tour="visa-countries-search"
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -182,7 +183,7 @@ const VisaCountries = () => {
                   ))}
                 </div>
               ) : (
-              <table className="w-full text-left border-collapse">
+              <table data-tour="visa-countries-table" className="w-full text-left border-collapse">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
                     <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
@@ -206,6 +207,7 @@ const VisaCountries = () => {
                               type="button"
                               onClick={() => handleOpenVisaDetails(row.country)}
                               title="View visa details"
+                              data-tour={row.srNo === 1 ? "visa-countries-action-view" : undefined}
                               className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                             >
                               <Eye size={15} strokeWidth={2.5} />
@@ -226,6 +228,7 @@ const VisaCountries = () => {
       {isModalOpen ? (
         <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={handleCloseModal}>
           <div
+            data-tour="visa-countries-modal"
             className="bg-white rounded-[2rem] max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-white/70 max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
