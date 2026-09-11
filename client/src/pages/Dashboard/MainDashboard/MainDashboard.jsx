@@ -205,6 +205,7 @@ const MainDashboard = () => {
                                 </div>
                                 <button
                                   type="button"
+                                  data-tour="dashboard-open-page"
                                   onClick={() => navigate(activeTab.route)}
                                   className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2563EB] text-white text-[10px] font-pmedium uppercase tracking-widest shadow-sm shadow-blue-200 transition-all hover:opacity-90 shrink-0"
                                 >

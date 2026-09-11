@@ -18,12 +18,19 @@ const startsWith = (path) => (pathname) =>
 const PAGE_TOURS = [
   {
     id: "dashboard-overview",
-    version: 2,
+    version: 4,
     title: "Dashboard",
     description:
       "This is the Master Panel landing page. It rolls every module up into one screen so you can watch the numbers before diving into a section.",
     replayHint: true,
     steps: [
+      {
+        selector: '[data-tour="header-sidebar-toggle"]',
+        title: "Collapse the sidebar",
+        description:
+          "Select this icon to collapse the sidebar down to icons only and free up screen space. Select it again to expand it back.",
+        side: "bottom",
+      },
       {
         selector: '[data-tour="sidebar-nav"]',
         title: "Your navigation",
@@ -32,11 +39,18 @@ const PAGE_TOURS = [
         side: "right",
       },
       {
-        selector: '[data-tour="header-sidebar-toggle"]',
-        title: "Collapse the sidebar",
+        selector: '[data-tour="sidebar-search"]',
+        title: "Search modules",
         description:
-          "Select this icon to collapse the sidebar down to icons only and free up screen space. Select it again to expand it back.",
-        side: "bottom",
+          "Type here to filter the sidebar down to matching modules and pages instead of scrolling through every category.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="sidebar-open-page"]',
+        title: "Open a page",
+        description:
+          "Select any item in the sidebar to navigate straight to that page — this Dashboard link is always one click away.",
+        side: "right",
       },
       {
         selector: '[data-tour="header-avatar"]',
@@ -71,6 +85,13 @@ const PAGE_TOURS = [
         description:
           "Use these tabs to flip between the available views for the selected section. The active tab is highlighted in blue.",
         side: "bottom",
+      },
+      {
+        selector: '[data-tour="dashboard-open-page"]',
+        title: "Open the full page",
+        description:
+          "Jumps straight to this tab's real page instead of just the summary shown here.",
+        side: "left",
       },
       {
         selector: '[data-tour="dashboard-charts"]',
@@ -1383,7 +1404,7 @@ const PAGE_TOURS = [
   },
   {
     id: "companies-list",
-    version: 2,
+    version: 3,
     title: "Companies List",
     description:
       "All onboarded host companies with their websites, listings and plans. Open one to manage everything about it.",
@@ -1391,6 +1412,13 @@ const PAGE_TOURS = [
     recordsDescription:
       "Companies load as searchable cards with their status, plan and quick actions.",
     steps: [
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch tabs",
+        description:
+          "Move to Requests to review companies that applied to join WoNo but haven't been onboarded yet.",
+        side: "bottom",
+      },
       {
         selector: '[data-tour="companies-list-stats"]',
         title: "Quick stats",
@@ -1472,7 +1500,7 @@ const PAGE_TOURS = [
   },
   {
     id: "companies-requests",
-    version: 1,
+    version: 3,
     title: "Company Requests",
     description:
       "Companies that applied to join WoNo. Review each application, check their nomad listing draft and create the company.",
@@ -1480,6 +1508,13 @@ const PAGE_TOURS = [
     recordsDescription:
       "Pending applications are listed with their submitted details and review actions.",
     steps: [
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch tabs",
+        description:
+          "Move to Companies to see the full registry of already-onboarded host companies.",
+        side: "bottom",
+      },
       {
         text: "Search requests...",
         title: "Find a request",
@@ -1491,6 +1526,13 @@ const PAGE_TOURS = [
         title: "Review and create",
         description:
           "Walks through the submitted details and, once approved, creates the live company record.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="companies-requests-more-actions"]',
+        title: "More actions",
+        description:
+          "The same Review & Create option, plus Reject to dismiss the application without creating a company.",
         side: "left",
       },
     ],
