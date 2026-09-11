@@ -19,6 +19,7 @@ const MODULE_GROUPS = [
       { id: "tickets", label: "Tickets" },
       { id: "leave-requests", label: "Leave Requests" },
       { id: "meeting-room-system", label: "Meeting Room Booking" },
+      { id: "printout-management", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
     ],
   },
@@ -80,6 +81,7 @@ const MODULE_GROUPS = [
           { id: "visitors-management", label: "Visitors Management" },
           { id: "resource-management", label: "Resource Management" },
           { id: "house-keeping", label: "House Keeping" },
+          { id: "printout-management", label: "Printout Management" },
         ],
       },
       {
@@ -155,6 +157,7 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   ...Array.from(BASIC_DEFAULT_IDS),
   "tickets",
   "meeting-room-system",
+  "printout-management",
   "calendar",
   "workspace-settings",
   "workspace-management",

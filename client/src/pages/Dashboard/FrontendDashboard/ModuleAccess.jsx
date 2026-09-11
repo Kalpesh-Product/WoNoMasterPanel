@@ -91,6 +91,7 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   "visitors_standard_type_tenant",
   "tickets",
   "meeting-room-system",
+  "printout-management",
   "calendar",
   "workspace-settings",
   "workspace-management",
