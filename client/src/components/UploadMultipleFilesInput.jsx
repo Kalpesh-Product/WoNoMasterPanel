@@ -15,10 +15,12 @@ const UploadMultipleFilesInput = ({
   name, // optional: set to include in FormData (e.g., "heroImages")
   id, // input id for htmlFor
   maxFiles = 10,
+  maxFileSize,
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
   const [modalIndex, setModalIndex] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const getExtension = (fileName = "") =>
     fileName.includes(".") ? fileName.split(".").pop().toLowerCase() : "";
@@ -46,6 +48,7 @@ const UploadMultipleFilesInput = ({
   }, [previews]);
 
   const acceptAttr = allowedExtensions.map((ext) => `.${ext}`).join(",");
+  const reachedLimit = (value?.length || 0) >= maxFiles;
 
   const dedupe = (filesArr) => {
     const seen = new Set();
@@ -61,7 +64,14 @@ const UploadMultipleFilesInput = ({
   };
 
   const handleFileChange = (e) => {
-    const chosen = Array.from(e.target.files || []);
+    addFiles(e.target.files);
+
+    // reset input so same file can be picked again later
+    if (fileInputRef.current) fileInputRef.current.value = null;
+  };
+
+  const addFiles = (fileList) => {
+    const chosen = Array.from(fileList || []);
     if (!chosen.length) return;
 
     // filter by allowed extensions
@@ -73,17 +83,43 @@ const UploadMultipleFilesInput = ({
       alert(`Only ${allowedExtensions.join(", ")} files are allowed.`);
     }
 
+    const sizeFiltered =
+      maxFileSize == null
+        ? filtered
+        : filtered.filter((f) => f.size <= maxFileSize);
+    const oversized = filtered.length - sizeFiltered.length;
+    if (oversized > 0) {
+      alert(`Each file must be ${humanSize(maxFileSize)} or smaller.`);
+    }
+
     // merge with existing, dedupe, then enforce max
-    const merged = dedupe([...(value || []), ...filtered]);
+    const merged = dedupe([...(value || []), ...sizeFiltered]);
     if (merged.length > maxFiles) {
       alert(`You can upload up to ${maxFiles} files.`);
     }
     const limited = merged.slice(0, maxFiles);
 
     onChange?.(limited);
+  };
 
-    // reset input so same file can be picked again later
-    if (fileInputRef.current) fileInputRef.current.value = null;
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!disabled && !reachedLimit) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (disabled || reachedLimit) return;
+    addFiles(e.dataTransfer.files);
   };
 
   const handleRemoveAt = (index) => {
@@ -152,8 +188,6 @@ const UploadMultipleFilesInput = ({
       ? value[0].name
       : `${value.length} files selected`;
 
-  const reachedLimit = (value?.length || 0) >= maxFiles;
-
   return (
     <Box className="flex flex-col gap-2">
       {/* Hidden File Input */}
@@ -175,12 +209,22 @@ const UploadMultipleFilesInput = ({
           {label} (max {maxFiles})
         </label>
         <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           className={`mt-1 flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-pmedium ${
-            disabled ? "border-slate-200/60 bg-slate-50 text-slate-400" : "border-slate-200/60 bg-white"
+            disabled
+              ? "border-slate-200/60 bg-slate-50 text-slate-400"
+              : isDragging
+              ? "border-[#2563EB] bg-[#2563EB]/5"
+              : "border-slate-200/60 bg-white"
           }`}
         >
           <span className={`truncate ${displayValue ? "text-[#0F172A]" : "text-slate-400"}`}>
-            {displayValue || `Choose up to ${maxFiles} files...`}
+            {displayValue ||
+              (isDragging
+                ? "Drop files here..."
+                : `Choose or drop up to ${maxFiles} files...`)}
           </span>
           <label
             htmlFor={id ?? "multiple-file-upload"}
@@ -327,3 +371,9 @@ const UploadMultipleFilesInput = ({
 };
 
 export default UploadMultipleFilesInput;
+
+function humanSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
