@@ -371,7 +371,7 @@ export default function NomadListingsOverview({
             <NomadListingsSkeleton />
           ) : (
             <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-1 shrink-0">
+            <div data-tour="nomad-listings-stats" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-1 shrink-0">
               <ListingStat label="Total Listings" value={nonDeletedListingItems.length} icon={Layers} />
               <ListingStat label="Master Active" value={activeListings} icon={CheckCircle2} tone="emerald" />
               <ListingStat label="Master Inactive" value={inactiveListings} icon={XCircle} tone="rose" />
@@ -382,7 +382,7 @@ export default function NomadListingsOverview({
 
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
               <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 bg-slate-50/50">
-                <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                <div data-tour="nomad-listings-status-filter" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                   {["all", "active", "inactive"].map((filter) => (
                     <button
                       key={filter}
@@ -403,7 +403,7 @@ export default function NomadListingsOverview({
                   <div className="text-[11px] font-pmedium text-slate-500 whitespace-nowrap">
                     {listingItems.length} listings
                   </div>
-                  <div className="relative flex-1 min-w-[180px]">
+                  <div data-tour="nomad-listings-search" className="relative flex-1 min-w-[180px]">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                     <input
                       type="text"
@@ -416,6 +416,7 @@ export default function NomadListingsOverview({
                   {secondaryActionTitle && (
                     <button
                       type="button"
+                      data-tour="nomad-listings-transfer"
                       onClick={handleSecondaryAction}
                       disabled={!listingItems.length}
                       className="px-4 py-2.5 rounded-2xl border border-blue-200 bg-white text-blue-700 font-pmedium text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
@@ -425,6 +426,7 @@ export default function NomadListingsOverview({
                   )}
                   <button
                     type="button"
+                    data-tour="nomad-listings-add"
                     onClick={handleAddClick}
                     className="px-4 py-2.5 rounded-2xl bg-[#2563EB] text-white font-pmedium text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap"
                   >
@@ -434,7 +436,7 @@ export default function NomadListingsOverview({
               </div>
 
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[1280px]">
+                <table data-tour="nomad-listings-table" className="w-full text-left min-w-[1280px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-4 whitespace-nowrap">Sr No</th>
@@ -511,16 +513,17 @@ export default function NomadListingsOverview({
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-1.5">
-                                <button type="button" onClick={() => handleView(item)} title="View listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-lg transition-all">
+                                <button type="button" onClick={() => handleView(item)} title="View listing" data-tour={index === 0 ? "nomad-listings-view" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800 rounded-lg transition-all">
                                   <Eye size={15} strokeWidth={2.5} />
                                 </button>
-                                <button type="button" onClick={() => handleEdit(item)} title="Edit listing" className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
+                                <button type="button" onClick={() => handleEdit(item)} title="Edit listing" data-tour={index === 0 ? "nomad-listings-edit" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
                                   <Edit3 size={15} strokeWidth={2.5} />
                                 </button>
                                 <button
                                   type="button"
                                   disabled={isToggle || (showTransferToCompanyButton && !item.isActive)}
                                   onClick={() => toggleStatus({ businessId: item.businessId, status: !item.isActive })}
+                                  data-tour={index === 0 ? "nomad-listings-toggle-active" : undefined}
                                   title={
                                     showTransferToCompanyButton && !item.isActive
                                       ? "Transfer to Company before activating this listing"
@@ -536,6 +539,7 @@ export default function NomadListingsOverview({
                                   type="button"
                                   disabled={isTogglingPublic || !item.isActive}
                                   onClick={() => handleTogglePublic(item)}
+                                  data-tour={index === 0 ? "nomad-listings-toggle-public" : undefined}
                                   title={
                                     !item.isActive
                                       ? "Activate this listing before making it public"

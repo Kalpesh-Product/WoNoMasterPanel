@@ -1562,17 +1562,39 @@ const PAGE_TOURS = [
   },
   {
     id: "company-overview",
-    version: 1,
+    version: 2,
     title: "Company Overview",
     description:
       "The control room for one host company — profile, listings, website, data, settings and finance all in one place.",
     replayHint: true,
     steps: [
       {
-        textOnly: true,
-        title: "Everything about this company",
+        selector: '[data-tour="company-overview-card-website-builder"]',
+        title: "Website Builder",
         description:
-          "Use the cards and sections here to jump into the company's nomads listings, website builder, uploaded data, settings and finance.",
+          "Build and manage the company's website — themes, pages, leads and website reviews live here.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-overview-card-wono-nomads"]',
+        title: "Wono Nomads",
+        description:
+          "The company's presence on the WoNo Nomads site — its listings, incoming reviews and leads.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-overview-card-nomad-listings"]',
+        title: "Nomad Listings",
+        description:
+          "Publish and manage the workspaces this company lists on WoNo Nomads — dorms, rooms, cafes and more.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="company-overview-card-poc-details"]',
+        title: "POC Details",
+        description:
+          "The company's points of contact — who to reach for coordination and follow-ups.",
+        side: "bottom",
       },
     ],
     matches: (pathname) =>
@@ -1614,22 +1636,78 @@ const PAGE_TOURS = [
   },
   {
     id: "company-nomad-listings",
-    version: 1,
+    version: 2,
     title: "Nomad Listings",
     description:
       "The workspaces this company publishes on WoNo Nomads — dorms, rooms, cafes and more.",
     replayHint: true,
-    recordsDescription:
-      "Listings are listed with their type, status and visibility; add or edit them from here.",
     steps: [
       {
-        textOnly: true,
-        title: "Manage listings",
+        selector: '[data-tour="nomad-listings-stats"]',
+        title: "Quick stats",
         description:
-          "Open a listing to edit every visitor-facing detail, or use Add to publish a new one. Changes apply to the public site once saved.",
+          "Total listings, how many are Master Active/Inactive, how many the host has hidden (Host Inactive), how many product types exist, and how many are deleted.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="nomad-listings-status-filter"]',
+        title: "Filter by status",
+        description: "Narrow the table to Active or Inactive listings, or All to see everything.",
+      },
+      {
+        selector: '[data-tour="nomad-listings-search"]',
+        title: "Find a listing",
+        description: "Search by name, type or city.",
+      },
+      {
+        selector: '[data-tour="nomad-listings-transfer"]',
+        title: "Transfer",
+        description:
+          "Links every one of this company's Nomads listings to a Host Company you pick — it connects the two without moving or duplicating data.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-add"]',
+        title: "Add a listing",
+        description: "Opens the form to publish a new listing for this company.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-table"]',
+        title: "The full list",
+        description:
+          "Every listing with its type, location, Master Status and Visibility. Deleted listings show a Recover action instead of the usual row actions, once the host has requested recovery.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="nomad-listings-view"]',
+        title: "View a listing",
+        description: "Opens the listing read-only, exactly as it appears to the public.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-edit"]',
+        title: "Edit a listing",
+        description: "Opens the same form in edit mode to change any visitor-facing detail.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-toggle-active"]',
+        title: "Master Status",
+        description:
+          "Marks the listing Active or Inactive on the Master side — this is separate from the host's own Visibility toggle next to it.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-toggle-public"]',
+        title: "Visibility",
+        description:
+          "Makes an already-Active listing Public or Private on the site. Locked until the listing is Active.",
+        side: "left",
       },
     ],
-    matches: (pathname) => pathname.includes("/nomad-listings"),
+    matches: (pathname) =>
+      /^\/dashboard\/companies\/[^/]+\/nomad-listings\/?$/.test(pathname),
   },
   {
     id: "company-website-builder",
@@ -1725,19 +1803,32 @@ const PAGE_TOURS = [
   },
   {
     id: "company-poc-details",
-    version: 1,
+    version: 3,
     title: "POC Details",
     description:
-      "The points of contact for this company — who to reach for operations, billing and escalations.",
+      "The point of contact for this company — who to reach for operations, billing and escalations.",
     replayHint: true,
-    recordsDescription:
-      "Contacts are listed with their role and channels; keep them current so escalations reach the right person.",
     steps: [
       {
-        textOnly: true,
-        title: "Contact points",
+        selector: '[data-tour="poc-details-header"]',
+        title: "Contact overview",
         description:
-          "Review each contact's role and details. Outdated POCs are the most common cause of missed escalations.",
+          "The photo, name and designation of this company's point of contact.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="poc-details-fields"]',
+        title: "Contact details",
+        description:
+          "Email, phone, LinkedIn, languages, address, profile image and availability — all read-only until you select Edit.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="poc-details-actions"]',
+        title: "Edit the contact",
+        description:
+          "Edit unlocks every field above for changes; Save Changes or Cancel then appear here to confirm or discard them.",
+        side: "top",
       },
     ],
     matches: (pathname) =>
