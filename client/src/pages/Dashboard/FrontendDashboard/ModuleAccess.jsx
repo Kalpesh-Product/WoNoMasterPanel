@@ -91,6 +91,7 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   "visitors_standard_type_tenant",
   "tickets",
   "meeting-room-system",
+  "printout-management",
   "calendar",
   "workspace-settings",
   "workspace-management",
@@ -100,6 +101,7 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   // PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
   "leads-management",
   "tenant-companies-sales",
+  "virtual-office-sales",
   "resource-pricing",
   "sales-architecture",
 ];
@@ -765,6 +767,7 @@ const AccessEditorModal = ({
   return (
     <Modal open={open} onClose={onClose}>
       <Box
+        data-tour="module-access-editor-modal"
         className="max-h-[84vh] w-[min(980px,94vw)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_52px_rgba(15,23,42,0.18)]"
         sx={{
           position: "absolute",
@@ -841,7 +844,7 @@ const AccessEditorModal = ({
               )}
 
               {isWorkspaceMode && (
-                <div className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                <div data-tour="module-access-plan-tier" className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                     Plan Module Set
                   </p>
@@ -880,6 +883,7 @@ const AccessEditorModal = ({
                 fullWidth
                 size="small"
                 placeholder="Search access nodes"
+                data-tour="module-access-tree-search"
                 className="!mt-3"
               />
 
@@ -904,6 +908,7 @@ const AccessEditorModal = ({
                 <Button
                   onClick={onSave}
                   variant="contained"
+                  data-tour="module-access-save"
                   startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon fontSize="small" />}
                   disabled={isSaving || isFounderReadOnly}
                   sx={{
@@ -918,7 +923,7 @@ const AccessEditorModal = ({
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-5 py-4">
+              <div data-tour="module-access-tree" className="flex-1 overflow-y-auto px-5 py-4">
                 {mainDropdownGroups.map((group) => (
                   <div
                     key={group.name}
@@ -1514,6 +1519,7 @@ const ModuleAccess = () => {
           return (
             <div className="flex items-center gap-1">
               <IconButton
+                data-tour="module-access-open-employee"
                 onClick={(event) => {
                   event.stopPropagation();
                   openEmployeeAccess(member);
@@ -1522,6 +1528,7 @@ const ModuleAccess = () => {
               >
                 <VisibilityIcon fontSize="small" />
               </IconButton>
+              <span data-tour="module-access-row-menu" className="inline-flex">
               <ThreeDotMenu
                 rowId={member._id}
                 menuItems={[
@@ -1544,6 +1551,7 @@ const ModuleAccess = () => {
                       },
                 ]}
               />
+              </span>
             </div>
           );
         }
@@ -1568,7 +1576,7 @@ const ModuleAccess = () => {
                 Select a workspace, pick an employee, and edit page access from the same screen.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div data-tour="module-access-stats" className="flex flex-wrap items-center gap-3">
               <Chip
                 label={normalizedPlan}
                 size="small"
@@ -1601,27 +1609,30 @@ const ModuleAccess = () => {
           </div>
 
           <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <TextField
-              select
-              label="Workspace"
-              value={selectedWorkspace?.workspaceId || ""}
-              onChange={(event) => {
-                setSelectedWorkspaceId(event.target.value);
-                setSelectedEmployee(null);
-                setIsModalOpen(false);
-                setTreeState(workspaceEnabledPlanState);
-              }}
-              fullWidth
-              size="small"
-            >
-              {workspaces.map((workspace) => (
-                <MenuItem key={workspace.workspaceId} value={workspace.workspaceId}>
-                  {workspace.workspaceName}
-                </MenuItem>
-              ))}
-            </TextField>
+            <div data-tour="module-access-workspace-select">
+              <TextField
+                select
+                label="Workspace"
+                value={selectedWorkspace?.workspaceId || ""}
+                onChange={(event) => {
+                  setSelectedWorkspaceId(event.target.value);
+                  setSelectedEmployee(null);
+                  setIsModalOpen(false);
+                  setTreeState(workspaceEnabledPlanState);
+                }}
+                fullWidth
+                size="small"
+              >
+                {workspaces.map((workspace) => (
+                  <MenuItem key={workspace.workspaceId} value={workspace.workspaceId}>
+                    {workspace.workspaceName}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </div>
             <Button
               variant="outlined"
+              data-tour="module-access-configure-modules"
               onClick={() => {
                 setIsWorkspaceMode(true);
                 setSelectedEmployee(null);
@@ -1635,6 +1646,7 @@ const ModuleAccess = () => {
             <Button
               variant="outlined"
               color="success"
+              data-tour="module-access-reactivate-all"
               onClick={() => handleBulkAccountStatus(false)}
               disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
               sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
@@ -1644,6 +1656,7 @@ const ModuleAccess = () => {
             <Button
               variant="outlined"
               color="error"
+              data-tour="module-access-delete-all"
               onClick={() => handleBulkAccountStatus(true)}
               disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
               sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
@@ -1780,14 +1793,16 @@ const ModuleAccess = () => {
           </TableContainer>
         </div> */}
 
-        <AgTable
-          data={filteredMembers}
-          columns={Columns}
-          search
-          tableTitle="Employee List"
-          tableHeight={500}
-          loading={isLoading}
-        />
+        <div data-tour="module-access-employee-table">
+          <AgTable
+            data={filteredMembers}
+            columns={Columns}
+            search
+            tableTitle="Employee List"
+            tableHeight={500}
+            loading={isLoading}
+          />
+        </div>
       </div>
 
       <AccessEditorModal

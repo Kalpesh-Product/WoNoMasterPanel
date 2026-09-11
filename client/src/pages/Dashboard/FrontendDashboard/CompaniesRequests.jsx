@@ -154,7 +154,7 @@ const CompaniesRequests = () => {
                   <td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">No requests found.</td>
                 </tr>
               ) : (
-                filteredRequests.map((request) => {
+                filteredRequests.map((request, requestIndex) => {
                   const logoUrl = typeof request.logo === "string" ? request.logo : request.logo?.url;
                   return (
                     <tr key={request.companyId} className="hover:bg-slate-50/50 transition-colors group">
@@ -216,6 +216,7 @@ const CompaniesRequests = () => {
                           </button>
                           <ThreeDotMenu
                             rowId={request.companyId}
+                            dataTour={requestIndex === 0 ? "companies-requests-more-actions" : undefined}
                             menuItems={[
                               {
                                 label: "Review & Create",

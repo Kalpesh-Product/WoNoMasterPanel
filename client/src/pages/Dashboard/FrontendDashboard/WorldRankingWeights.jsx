@@ -1701,7 +1701,7 @@ const WorldRankingWeights = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+          <div data-tour="world-ranking-weights-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
             {[
               {
                 label: "Total Entries",
@@ -1765,7 +1765,7 @@ const WorldRankingWeights = () => {
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 max-w-sm">
+                <div className="relative flex-1 max-w-sm" data-tour="world-ranking-weights-search">
                   <Search
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     size={15}
@@ -1780,6 +1780,7 @@ const WorldRankingWeights = () => {
                 </div>
                 <button
                   onClick={handleOpenAddModal}
+                  data-tour="world-ranking-weights-add"
                   className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-3xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   <Plus size={14} /> Add Entry
@@ -1810,7 +1811,7 @@ const WorldRankingWeights = () => {
               </div>
             ) : (
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[900px]">
+                <table data-tour="world-ranking-weights-table" className="w-full text-left min-w-[900px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-4">#</th>
@@ -1823,7 +1824,7 @@ const WorldRankingWeights = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
-                    {filteredRows.map((row) => {
+                    {filteredRows.map((row, index) => {
                       const isActive =
                         row.isActive === true || row.isActive === "true";
                       return (
@@ -1860,6 +1861,7 @@ const WorldRankingWeights = () => {
                                 onClick={() => handleOpenEdit(row)}
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
                                 title="View"
+                                data-tour={index === 0 ? "world-ranking-weights-action-view" : undefined}
                               >
                                 <Eye size={15} strokeWidth={2.5} />
                               </button>
@@ -1868,6 +1870,7 @@ const WorldRankingWeights = () => {
                                 onClick={() => handleOpenEdit(row, true)}
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
                                 title="Edit"
+                                data-tour={index === 0 ? "world-ranking-weights-action-edit" : undefined}
                               >
                                 <Edit size={15} strokeWidth={2.5} />
                               </button>
@@ -1884,6 +1887,7 @@ const WorldRankingWeights = () => {
                                     : "bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700"
                                 }`}
                                 title={isActive ? "Disable" : "Enable"}
+                                data-tour={index === 0 ? "world-ranking-weights-action-toggle" : undefined}
                               >
                                 {isActive ? (
                                   <XCircle size={15} strokeWidth={2.5} />
@@ -1910,6 +1914,7 @@ const WorldRankingWeights = () => {
           onClick={handleCloseEditModal}
         >
           <div
+            data-tour="world-ranking-weights-edit-modal"
             className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2235,6 +2240,7 @@ const WorldRankingWeights = () => {
           onClick={handleCloseAddModal}
         >
           <div
+            data-tour="world-ranking-weights-add-modal"
             className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
             onClick={(e) => e.stopPropagation()}
           >

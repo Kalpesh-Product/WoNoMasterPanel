@@ -49,6 +49,24 @@ const adminUserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // Per-user progress for driver.js page guides, keyed by tour id.
+  // See client/src/tours/usePageTour.js.
+  tourProgress: {
+    type: Map,
+    of: new mongoose.Schema(
+      {
+        version: { type: Number, required: true, min: 1 },
+        status: {
+          type: String,
+          enum: ["completed", "skipped"],
+          required: true,
+        },
+        updatedAt: { type: Date, default: Date.now },
+      },
+      { _id: false },
+    ),
+    default: {},
+  },
 });
 
 const AdminUser = mongoose.model("AdminUser", adminUserSchema);

@@ -111,7 +111,7 @@ const ModuleAccessLogs = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+          <div data-tour="module-access-logs-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
             {[
               { label: "Total Changes", value: stats.total, icon: Shield, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
               { label: "Companies", value: stats.companies, icon: Building2, accent: "border-l-blue-500", textColor: "text-blue-600", bgColor: "bg-blue-50" },
@@ -139,7 +139,7 @@ const ModuleAccessLogs = () => {
                   <input type="text" placeholder="Search panel, company, target, workspace..." value={search} onChange={(e) => setSearch(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400" />
                 </div>
-                <div className="flex items-center gap-2">
+                <div data-tour="module-access-logs-date-filter" className="flex items-center gap-2">
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                     <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
@@ -166,7 +166,7 @@ const ModuleAccessLogs = () => {
               </div>
             ) : (
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[1100px]">
+                <table data-tour="module-access-logs-table" className="w-full text-left min-w-[1100px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-4">#</th>
@@ -202,7 +202,7 @@ const ModuleAccessLogs = () => {
                         </td>
                         <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500 whitespace-nowrap">{row.date}</td>
                         <td className="px-5 py-4 text-center">
-                          <button type="button" onClick={() => setSelectedRow(row)}
+                          <button type="button" data-tour="module-access-logs-view-button" onClick={() => setSelectedRow(row)}
                             className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all">
                             <Eye size={15} strokeWidth={2.5} />
                           </button>

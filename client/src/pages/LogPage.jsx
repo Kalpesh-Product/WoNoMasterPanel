@@ -230,7 +230,7 @@ const LogPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+          <div data-tour="logs-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
             {[
               { label: "Total Logs", value: stats.total, icon: Activity, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
               { label: "Companies", value: stats.companies, icon: Building2, accent: "border-l-blue-500", textColor: "text-blue-600", bgColor: "bg-blue-50" },
@@ -254,6 +254,7 @@ const LogPage = () => {
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
               <div className="flex flex-col xl:flex-row items-stretch gap-2.5">
                 <select
+                  data-tour="logs-month-filter"
                   value={selectedMonth}
                   onChange={(event) => handleMonthChange(event.target.value)}
                   className="min-w-[180px] px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
@@ -265,7 +266,7 @@ const LogPage = () => {
                     </option>
                   ))}
                 </select>
-                <div className="relative min-w-[240px] flex-1">
+                <div className="relative min-w-[240px] flex-1" data-tour="logs-search">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
                     type="text"
@@ -275,7 +276,7 @@ const LogPage = () => {
                     className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
                   />
                 </div>
-                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2" data-tour="logs-date-filter">
                   <div className="relative flex-1 sm:flex-none">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
                     <input
@@ -322,7 +323,7 @@ const LogPage = () => {
               </div>
             ) : (
               <div className="overflow-x-auto flex-1">
-                <table className="w-full text-left min-w-[900px]">
+                <table data-tour="logs-table" className="w-full text-left min-w-[900px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-4">#</th>
@@ -371,6 +372,7 @@ const LogPage = () => {
                                 type="button"
                                 title="View log"
                                 onClick={() => handleViewLog(row)}
+                                data-tour={index === 0 ? "logs-action-view" : undefined}
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
                               >
                                 <Eye size={15} strokeWidth={2.5} />

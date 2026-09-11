@@ -27,6 +27,7 @@ const UploadSingleImage = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // ✅ cleanup preview
   useEffect(() => {
@@ -171,8 +172,17 @@ const UploadSingleImage = () => {
   });
 
   function onFileChange(e) {
-    const f = e.target.files?.[0] ?? null;
+    selectFile(e.target.files?.[0] ?? null);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  function selectFile(f) {
     if (!f) return setFile(null);
+
+    if (!f.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
 
     if (f.size > MAX_BYTES) {
       setError(`File too large. Max allowed: ${humanSize(MAX_BYTES)}`);
@@ -181,6 +191,26 @@ const UploadSingleImage = () => {
 
     setError(null);
     setFile(f);
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isPending) setIsDragging(true);
+  }
+
+  function handleDragLeave(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget)) setIsDragging(false);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (isPending) return;
+    selectFile(e.dataTransfer.files?.[0] ?? null);
   }
 
   function handleUpload() {
@@ -230,7 +260,8 @@ const UploadSingleImage = () => {
             <p>Loading companies...</p>
           ) : (
             <>
-              {/* Country */}
+              {/* Country / Company Type / Company */}
+              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
               <TextField
                 select
                 size="small"
@@ -334,24 +365,27 @@ const UploadSingleImage = () => {
                     </MenuItem>
                   ))}
               </TextField>
+              </div>
 
               {/* Image Type */}
-              <TextField
-                select
-                size="small"
-                fullWidth
-                label="Image Type"
-                value={imageType}
-                onChange={(e) => setImageType(e.target.value)}
-                disabled={!companyId}
-              >
-                {/* {["image", "logo"].map((opt) => ( */}
-                {["logo"].map((opt) => (
-                  <MenuItem key={opt} value={opt}>
-                    {opt}
-                  </MenuItem>
-                ))}
-              </TextField>
+              <div data-tour="data-upload-image-type">
+                <TextField
+                  select
+                  size="small"
+                  fullWidth
+                  label="Image Type"
+                  value={imageType}
+                  onChange={(e) => setImageType(e.target.value)}
+                  disabled={!companyId}
+                >
+                  {/* {["image", "logo"].map((opt) => ( */}
+                  {["logo"].map((opt) => (
+                    <MenuItem key={opt} value={opt}>
+                      {opt}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </div>
 
               {/* File input */}
               <input
@@ -363,13 +397,21 @@ const UploadSingleImage = () => {
                 id="single-img-input"
               />
               <div
-                className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
+                data-tour="data-upload-dropzone"
+                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 ${
+                  isDragging ? "border-[#2563EB] bg-[#2563EB]/5" : ""
+                }`}
                 onClick={() => inputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
               >
                 <p className="font-medium">
-                  {file
+                  {isDragging
+                    ? "Drop image here"
+                    : file
                     ? "Change image"
-                    : "Upload image here (click to browse)"}
+                    : "Upload image here (click to browse or drag & drop)"}
                 </p>
                 {file && (
                   <p className="text-sm text-gray-600">
@@ -397,7 +439,7 @@ const UploadSingleImage = () => {
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
                 <PrimaryButton
                   type="button"
                   title={isPending ? "Uploading…" : "Upload"}

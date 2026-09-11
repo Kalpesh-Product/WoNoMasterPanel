@@ -39,6 +39,7 @@ const {
   createCompanyListings,
   createCompanyListing,
   editCompanyListing,
+  recoverProduct,
 } = require("../controllers/hostListingControllers");
 const {
   getDestinationsData,
@@ -63,6 +64,7 @@ router.post("/onboard-company", createCompany);
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/set-public-status", setListingPublicStatus);
+router.patch("/recover-product", recoverProduct);
 router.get("/public-location-tree", getPublicLocationTree);
 router.patch("/bulk-set-public-status", bulkSetListingPublicStatus);
 router.patch("/bulk-set-active-status", bulkSetListingActiveStatus);

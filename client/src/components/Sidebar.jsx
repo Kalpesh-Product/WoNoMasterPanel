@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
 import { MASTER_PANEL_MODULES } from "../constants/masterPanelModules";
@@ -12,6 +12,7 @@ const Sidebar = ({ onCloseDrawer }) => {
   const location = useLocation();
   const [expandedModules, setExpandedModules] = useState(new Set([0]));
   const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [moduleSearch, setModuleSearch] = useState("");
   const { auth } = useAuth();
 
   const isSuperAdmin = auth?.user?.isSuperAdmin;
@@ -71,8 +72,29 @@ const Sidebar = ({ onCloseDrawer }) => {
       }))
         .filter((module) => module.categories.length > 0);
 
+  const searchQuery = moduleSearch.trim().toLocaleLowerCase();
+
+  const displayModules = useMemo(() => {
+    if (!searchQuery) return filteredModules;
+
+    return filteredModules
+      .map((module) => ({
+        ...module,
+        categories: module.categories
+          .map((category) => ({
+            ...category,
+            submenus: category.submenus.filter((submenu) =>
+              submenu.title.toLocaleLowerCase().includes(searchQuery)
+            ),
+          }))
+          .filter((category) => category.submenus.length > 0),
+      }))
+      .filter((module) => module.categories.length > 0);
+  }, [filteredModules, searchQuery]);
+
   return (
     <div
+      data-tour="sidebar-nav"
       className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
@@ -80,6 +102,36 @@ const Sidebar = ({ onCloseDrawer }) => {
           {isSidebarOpen ? "Master Panel" : "MP"}
         </span>
       </div>
+
+      {isSidebarOpen && (
+        <div data-tour="sidebar-search" className="px-4 pb-2">
+          <div className="relative">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
+            />
+            <input
+              type="text"
+              value={moduleSearch}
+              onChange={(e) => setModuleSearch(e.target.value)}
+              placeholder="Search modules"
+              aria-label="Search modules"
+              autoComplete="off"
+              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-pmedium text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            />
+            {moduleSearch ? (
+              <button
+                type="button"
+                onClick={() => setModuleSearch("")}
+                aria-label="Clear module search"
+                className="absolute right-1 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto pb-3 space-y-0 hideScrollBar">
         {!isSidebarOpen ? (
@@ -97,6 +149,7 @@ const Sidebar = ({ onCloseDrawer }) => {
             <div className="border-t border-black/10 pt-2">
               <button
                 type="button"
+                data-tour="sidebar-open-page"
                 className={`flex w-full items-center gap-2 rounded-md px-3 py-2.5 text-left transition-all hover:bg-white ${
                   location.pathname === "/dashboard" && !location.pathname.includes("/dashboard/")
                     ? "bg-white text-black shadow-sm"
@@ -121,7 +174,7 @@ const Sidebar = ({ onCloseDrawer }) => {
         )}
 
         <div className="space-y-0">
-          {filteredModules.map((module, index) => (
+          {displayModules.map((module, index) => (
             <div key={module.id} className="px-4 pt-3">
               <div className="border-t border-black/10 pt-2">
                 {isSidebarOpen ? (
@@ -136,7 +189,7 @@ const Sidebar = ({ onCloseDrawer }) => {
                         <span>{module.title}</span>
                       </span>
                       <span>
-                        {expandedModules.has(index) ? (
+                        {Boolean(searchQuery) || expandedModules.has(index) ? (
                           <ChevronUp size={16} className="shrink-0" />
                         ) : (
                           <ChevronDown size={16} className="shrink-0" />
@@ -146,11 +199,11 @@ const Sidebar = ({ onCloseDrawer }) => {
 
                     <div
                       className={`overflow-hidden transition-[max-height] duration-300 ease-in-out ${
-                        expandedModules.has(index) ? "max-h-[3200px]" : "max-h-0"
+                        Boolean(searchQuery) || expandedModules.has(index) ? "max-h-[3200px]" : "max-h-0"
                       }`}
                     >
                       {module.categories?.map((category) => {
-                        const isCategoryOpen = !collapsedCategories[category.id];
+                        const isCategoryOpen = Boolean(searchQuery) || !collapsedCategories[category.id];
                         return (
                           <div key={category.id}>
                             <button

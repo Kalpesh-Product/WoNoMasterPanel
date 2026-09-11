@@ -150,7 +150,7 @@ const UnitsManagement = () => {
                     </div>
 
                     {primaryAccount ? (
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-1 shrink-0">
+                        <div data-tour="units-stats" className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-1 shrink-0">
                             <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
                                 <div className="min-w-0">
                                     <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
@@ -209,7 +209,7 @@ const UnitsManagement = () => {
                     ) : null}
 
                     {recoveryQueue.length ? (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                        <div data-tour="units-recovery-queue" className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
                             <p className="text-[11px] font-pmedium text-amber-800 uppercase tracking-widest mb-2">
                                 Pending recovery requests ({recoveryQueue.length})
                             </p>
@@ -224,6 +224,7 @@ const UnitsManagement = () => {
                                         </span>
                                         <button
                                             type="button"
+                                            data-tour="units-action-recover"
                                             className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-600 text-white text-[10px] font-pmedium uppercase tracking-wider hover:bg-amber-700 disabled:opacity-50 transition-all"
                                             onClick={() => recoverUnitMutation(unit.id)}
                                             disabled={isRecovering}
@@ -239,7 +240,7 @@ const UnitsManagement = () => {
 
                     <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
                         <div className="overflow-x-auto flex-1">
-                            <table className="w-full text-left border-collapse">
+                            <table data-tour="units-table" className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                                     <tr>
                                         <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">
@@ -318,6 +319,7 @@ const UnitsManagement = () => {
                                                                     }
                                                                     disabled={isTogglingStatus}
                                                                     title="Enable unit"
+                                                                    data-tour="units-action-enable"
                                                                     className="p-1.5 bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                                                                 >
                                                                     <Power size={15} strokeWidth={2.5} />
@@ -331,6 +333,7 @@ const UnitsManagement = () => {
                                                                     }
                                                                     disabled={isTogglingStatus}
                                                                     title="Disable unit"
+                                                                    data-tour="units-action-disable"
                                                                     className="p-1.5 bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700 rounded-lg transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                                                                 >
                                                                     <Power size={15} strokeWidth={2.5} />
@@ -341,6 +344,7 @@ const UnitsManagement = () => {
                                                                     type="button"
                                                                     onClick={() => setConfirmDelete(unit)}
                                                                     title="Delete unit"
+                                                                    data-tour="units-action-delete"
                                                                     className="p-1.5 bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                                                                 >
                                                                     <Trash2 size={15} strokeWidth={2.5} />
@@ -352,6 +356,7 @@ const UnitsManagement = () => {
                                                                     onClick={() => recoverUnitMutation(unit.id)}
                                                                     disabled={isRecovering}
                                                                     title="Recover unit"
+                                                                    data-tour="units-action-recover"
                                                                     className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                                                                 >
                                                                     <RotateCcw size={15} strokeWidth={2.5} />
@@ -382,6 +387,7 @@ const UnitsManagement = () => {
                     onClick={() => setConfirmDelete(null)}
                 >
                     <div
+                        data-tour="units-delete-modal"
                         className="bg-white rounded-[2rem] max-w-md w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-white/70"
                         onClick={(event) => event.stopPropagation()}
                     >

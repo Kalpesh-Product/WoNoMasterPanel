@@ -956,6 +956,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
       { id: "visitors-management", name: "Visitors Management" },
       { id: "resource-management", name: "Resource Management" },
       { id: "house-keeping", name: "House Keeping" },
+      { id: "printout-management", name: "Printout Management" },
     ],
   },
   {
@@ -964,6 +965,7 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
     children: [
       { id: "leads-management", name: "Leads Management" },
       { id: "tenant-companies-sales", name: "Tenant Companies" },
+      { id: "virtual-office-sales", name: "Virtual Offices" },
       { id: "resource-pricing", name: "Resource & Pricing" },
       { id: "sales-architecture", name: "Sales Architecture" },
     ],
@@ -1013,6 +1015,7 @@ const COMMON_MODULES_BLUEPRINT = {
     { id: "tickets", name: "Tickets" },
     { id: "leave-requests", name: "Leave Requests" },
     { id: "meeting-room-system", name: "Meeting Room Booking" },
+    { id: "printout-management", name: "Printouts" },
     { id: "calendar", name: "Calendar" },
   ],
 };

@@ -19,6 +19,7 @@ const MODULE_GROUPS = [
       { id: "tickets", label: "Tickets" },
       { id: "leave-requests", label: "Leave Requests" },
       { id: "meeting-room-system", label: "Meeting Room Booking" },
+      { id: "printout-management", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
     ],
   },
@@ -80,6 +81,7 @@ const MODULE_GROUPS = [
           { id: "visitors-management", label: "Visitors Management" },
           { id: "resource-management", label: "Resource Management" },
           { id: "house-keeping", label: "House Keeping" },
+          { id: "printout-management", label: "Printout Management" },
         ],
       },
       {
@@ -88,6 +90,7 @@ const MODULE_GROUPS = [
         tabs: [
           { id: "leads-management", label: "Leads Management" },
           { id: "tenant-companies-sales", label: "Tenant Companies" },
+          { id: "virtual-office-sales", label: "Virtual Offices" },
           { id: "resource-pricing", label: "Resource & Pricing" },
           { id: "sales-architecture", label: "Sales Architecture" },
         ],
@@ -154,11 +157,13 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   ...Array.from(BASIC_DEFAULT_IDS),
   "tickets",
   "meeting-room-system",
+  "printout-management",
   "calendar",
   "workspace-settings",
   "workspace-management",
   "leads-management",
   "tenant-companies-sales",
+  "virtual-office-sales",
   "resource-pricing",
   "sales-architecture",
 ]);

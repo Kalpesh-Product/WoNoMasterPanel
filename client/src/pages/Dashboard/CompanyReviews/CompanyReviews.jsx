@@ -486,7 +486,7 @@ const CompanyReviews = () => {
             </div>
           </div>
 
-          <div role="tablist" aria-label="Review type"
+          <div role="tablist" aria-label="Review type" data-tour="company-reviews-tabs"
             className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
             {REVIEW_TAB_ITEMS.map(({ key, slug, label }) => (
               <NavLink key={slug} role="tab"
@@ -528,7 +528,7 @@ const CompanyReviews = () => {
             <div className="py-12 text-center text-red-500 text-sm font-semibold">Failed to load reviews. Please try again.</div>
           ) : (
             <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+              <div data-tour="company-reviews-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
                 {activeStats.map(({ label, value, icon: Icon }, idx) => {
                   const tones = [
                     { border: "border-l-4 border-l-slate-400", labelClass: "text-slate-500", iconBg: "bg-slate-50 text-slate-600" },
@@ -550,7 +550,7 @@ const CompanyReviews = () => {
 
               <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
                 <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-                  <div className="w-full overflow-x-auto mb-3 [&::-webkit-scrollbar]:hidden">
+                  <div data-tour="company-reviews-stage-filter" className="w-full overflow-x-auto mb-3 [&::-webkit-scrollbar]:hidden">
                     <div className="flex items-center gap-1.5 overflow-x-auto">
                       <button onClick={() => setStageFilter("all")}
                         className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${stageFilter === "all" ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"}`}
@@ -564,7 +564,7 @@ const CompanyReviews = () => {
                   </div>
                   <div />
                   <div className="flex items-center gap-3 w-full xl:w-auto flex-wrap sm:flex-nowrap">
-                    <div className="relative flex-1 min-w-[180px]">
+                    <div className="relative flex-1 min-w-[180px]" data-tour="company-reviews-search">
                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                       <input type="text" placeholder="Search by name, source, description..."
                         value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -580,7 +580,7 @@ const CompanyReviews = () => {
                   </div>
                 ) : (
                   <div className="overflow-x-auto flex-1">
-                    <table className="w-full text-left min-w-[920px]">
+                    <table data-tour="company-reviews-table" className="w-full text-left min-w-[920px]">
                       <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                         <tr>
                           {activeTab === REVIEW_TABS.nomadListings ? (
@@ -628,7 +628,7 @@ const CompanyReviews = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100/60">
-                        {activeReviews.map((review) => {
+                        {activeReviews.map((review, index) => {
                           const reviewId = review._id || review.id;
                           const status = (review.status || "pending").toLowerCase();
                           return (
@@ -650,6 +650,7 @@ const CompanyReviews = () => {
                                   <td className="px-5 py-4">
                                     <div className="flex items-center justify-center gap-1.5">
                                       <button type="button" onClick={() => setSelectedReviewId(reviewId)}
+                                        data-tour={index === 0 ? "company-reviews-action-view" : undefined}
                                         className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button>
                                     </div>
                                   </td>
@@ -670,6 +671,7 @@ const CompanyReviews = () => {
                                   <td className="px-5 py-4">
                                     <div className="flex items-center justify-center gap-1.5">
                                       <button type="button" onClick={() => setSelectedReviewId(reviewId)}
+                                        data-tour={index === 0 ? "company-reviews-action-view" : undefined}
                                         className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button>
                                     </div>
                                   </td>
@@ -690,6 +692,7 @@ const CompanyReviews = () => {
                                   <td className="px-5 py-4">
                                     <div className="flex items-center justify-center gap-1.5">
                                       <button type="button" onClick={() => setSelectedReviewId(reviewId)}
+                                        data-tour={index === 0 ? "company-reviews-action-view" : undefined}
                                         className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button>
                                     </div>
                                   </td>
@@ -710,6 +713,7 @@ const CompanyReviews = () => {
                                   <td className="px-5 py-4">
                                     <div className="flex items-center justify-center gap-1.5">
                                       <button type="button" onClick={() => setSelectedReviewId(reviewId)}
+                                        data-tour={index === 0 ? "company-reviews-action-view" : undefined}
                                         className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button>
                                     </div>
                                   </td>
@@ -742,6 +746,7 @@ const CompanyReviews = () => {
       {selectedReview && (
         <div className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3" onClick={() => setSelectedReviewId(null)}>
           <div className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-white/70 max-h-[90vh]"
+            data-tour="company-reviews-details-modal"
             onClick={(e) => e.stopPropagation()}>
             <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -831,7 +836,7 @@ const CompanyReviews = () => {
       {confirmAction && (
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#0F172A]/60 backdrop-blur-md p-3 sm:p-4 flex items-center justify-center">
           <div className="absolute inset-0 bg-[#0F172A]/60 backdrop-blur-sm" onClick={() => setConfirmAction(null)} />
-          <div className="relative z-10 flex flex-col w-full max-w-[420px] overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl p-6 text-center">
+          <div className="relative z-10 flex flex-col w-full max-w-[420px] overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl p-6 text-center" data-tour="company-reviews-confirm-modal">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 mb-4">
               <AlertTriangle size={28} className="text-amber-500" />
             </div>

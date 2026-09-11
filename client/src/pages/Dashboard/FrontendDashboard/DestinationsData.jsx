@@ -917,6 +917,7 @@ const DestinationsData = () => {
                   <button
                     type="button"
                     onClick={handleBackToSummary}
+                    data-tour="destinations-data-back"
                     className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all mr-1"
                   >
                     <ArrowLeft size={15} />
@@ -946,6 +947,7 @@ const DestinationsData = () => {
                     },
                   )
                 }
+                data-tour="destinations-data-add"
                 className="bg-[#2563EB] text-white px-4 py-2.5 rounded-2xl font-pmedium text-[10px] flex items-center gap-1.5 shadow-sm hover:bg-primary/95 active:scale-95 transition-all whitespace-nowrap"
               >
                 <Plus size={13} strokeWidth={3} /> ADD {addLabel.toUpperCase()}
@@ -954,7 +956,7 @@ const DestinationsData = () => {
           </div>
 
           {currentView === "summary" && (
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
+            <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
               <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
                 <div className="min-w-0">
                   <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Destinations</p>
@@ -998,7 +1000,7 @@ const DestinationsData = () => {
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
               <div className="flex flex-col lg:flex-row items-stretch gap-2.5">
                 {currentView === "summary" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-1 gap-2.5">
+                  <div data-tour="destinations-data-filters" className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-1 gap-2.5">
                     <select
                       value={countryFilter}
                       onChange={(event) => handleCountryFilterChange(event.target.value)}
@@ -1033,7 +1035,7 @@ const DestinationsData = () => {
                     </select>
                   </div>
                 ) : null}
-                <div className="relative min-w-[220px] flex-[2]">
+                <div className="relative min-w-[220px] flex-[2]" data-tour="destinations-data-search">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
                     type="text"
@@ -1068,7 +1070,7 @@ const DestinationsData = () => {
                   ))}
                 </div>
               ) : currentView === "summary" ? (
-                <table className="w-full text-left border-collapse">
+                <table data-tour="destinations-data-table" className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
@@ -1088,14 +1090,14 @@ const DestinationsData = () => {
                         <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
                       </tr>
                     ) : (
-                      summaryItems.map((row) => (
+                      summaryItems.map((row, index) => (
                         <tr key={`${row.country}-${row.destination}`} className="hover:bg-slate-50/50 transition-colors group">
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.srNo}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.continent}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.country}</td>
                           <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px]">{row.destination}</td>
                           <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "blog")}>{row.blogCount}</button>
+                            <button className="text-blue-600 hover:underline font-pmedium" data-tour={index === 0 ? "destinations-data-count-button" : undefined} onClick={() => handleViewDetail(row.destination, "blog")}>{row.blogCount}</button>
                           </td>
                           <td className="px-5 py-4 align-top text-center">
                             <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "news")}>{row.newsCount}</button>
@@ -1126,7 +1128,7 @@ const DestinationsData = () => {
                   </tbody>
                 </table>
               ) : (
-                <table className="w-full text-left border-collapse">
+                <table data-tour="destinations-data-detail-table" className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
@@ -1177,6 +1179,7 @@ const DestinationsData = () => {
                                   )
                                 }
                                 title="Edit"
+                                data-tour={index === 0 ? "destinations-data-action-edit" : undefined}
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
                               >
                                 <Edit3 size={15} strokeWidth={2.5} />
@@ -1192,6 +1195,7 @@ const DestinationsData = () => {
                                   })
                                 }
                                 title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
+                                data-tour={index === 0 ? "destinations-data-action-toggle" : undefined}
                                 className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
                                   item.isActive !== false
                                     ? "bg-rose-50 text-rose-600 hover:bg-rose-100"

@@ -131,7 +131,7 @@ const ProductUpload = () => {
           id="csv-input"
         />
         <div
-          className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
+          data-tour="data-upload-dropzone" className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
           onClick={() => inputRef.current?.click()}>
           <p className="font-medium">
             {file ? "Change file" : "Upload your CSV here (click to browse)"}
@@ -148,7 +148,7 @@ const ProductUpload = () => {
         </p>
         {error && <div className="text-sm text-red-600">{error}</div>}
 
-        <div className="flex gap-4 justify-center">
+        <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
           <PrimaryButton
             type="button"
             title={isPending ? "Uploading…" : "Upload"}

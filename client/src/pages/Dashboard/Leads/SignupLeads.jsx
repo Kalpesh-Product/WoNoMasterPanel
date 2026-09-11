@@ -453,7 +453,7 @@ const SignupLeads = () => {
         <PageFrame>
           <div className="flex flex-col gap-4">
             {pageHeading}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+            <div data-tour="signup-leads-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
               {[
                 {
                   label: "Total Leads",
@@ -515,7 +515,7 @@ const SignupLeads = () => {
             </div>
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
               <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
-                <div className="flex flex-wrap gap-1.5 overflow-x-auto">
+                <div data-tour="signup-leads-status-filter" className="flex flex-wrap gap-1.5 overflow-x-auto">
                   {["All", ...STATUSES].map((s) => (
                     <button
                       key={s}
@@ -527,7 +527,7 @@ const SignupLeads = () => {
                     </button>
                   ))}
                 </div>
-                <div className="relative max-w-sm">
+                <div data-tour="signup-leads-search" className="relative max-w-sm">
                   <Search
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     size={15}
@@ -552,7 +552,10 @@ const SignupLeads = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto flex-1">
-                  <table className="w-full text-left min-w-[1400px]">
+                  <table
+                    data-tour="signup-leads-table"
+                    className="w-full text-left min-w-[1400px]"
+                  >
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
                         <th className="px-5 py-4">Lead</th>
@@ -606,7 +609,10 @@ const SignupLeads = () => {
                             >
                               {lead.companyName || "--"}
                             </td>
-                            <td className="px-5 py-4">
+                            <td
+                              data-tour="signup-leads-plan-column"
+                              className="px-5 py-4"
+                            >
                               <select
                                 value={planVal}
                                 onChange={(e) =>
@@ -621,7 +627,10 @@ const SignupLeads = () => {
                                 ))}
                               </select>
                             </td>
-                            <td className="px-5 py-4">
+                            <td
+                              data-tour="signup-leads-status-column"
+                              className="px-5 py-4"
+                            >
                               <select
                                 value={statusVal}
                                 onChange={(e) =>
@@ -636,7 +645,10 @@ const SignupLeads = () => {
                                 ))}
                               </select>
                             </td>
-                            <td className="px-5 py-4">
+                            <td
+                              data-tour="signup-leads-invite-status-column"
+                              className="px-5 py-4"
+                            >
                               <span
                                 className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${inviteTones[inviteStatus] || inviteTones.not_invited}`}
                               >
@@ -657,7 +669,10 @@ const SignupLeads = () => {
                                 {isSending ? "Sending..." : "Invite"}
                               </button>
                             </td>
-                            <td className="px-5 py-4">
+                            <td
+                              data-tour="signup-leads-payment-status-column"
+                              className="px-5 py-4"
+                            >
                               {planVal === "basic" ? (
                                 <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan
@@ -670,7 +685,10 @@ const SignupLeads = () => {
                                 </span>
                               )}
                             </td>
-                            <td className="px-5 py-4 text-center">
+                            <td
+                              data-tour="signup-leads-payment-link-column"
+                              className="px-5 py-4 text-center"
+                            >
                               {planVal === "basic" ? (
                                 <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan

@@ -481,7 +481,7 @@ export default function WebsiteBuilderCareers() {
           {!workspaceId && <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-700">Select a company with a workspace to view Careers.</div>}
           {isError && <div className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-rose-700">Failed to load recruitment data.</div>}
 
-          <div className="mb-3 flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+          <div data-tour="careers-tabs" className="mb-3 flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
             {[{ key: "jobs", label: "JOB OPENINGS" }, { key: "applications", label: "APPLICATIONS" }].map((tab) => (
               <button key={tab.key} type="button" onClick={() => { setActiveTab(tab.key); setSearchQuery(""); setStatusFilter("all"); }} className={`flex-1 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all ${activeTab === tab.key ? "bg-[#2563EB] text-white shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"}`}>
                 {tab.label}
@@ -489,7 +489,7 @@ export default function WebsiteBuilderCareers() {
             ))}
           </div>
 
-          <div className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div data-tour="careers-stats" className="mb-3 grid grid-cols-2 gap-3 md:grid-cols-4">
             {statCards.map((card) => {
               const Icon = card.icon;
               return (
@@ -503,18 +503,18 @@ export default function WebsiteBuilderCareers() {
 
           <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur-md">
             <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5 xl:flex-row xl:items-center">
-              <div className="flex items-center gap-1.5 overflow-x-auto">
+              <div data-tour="careers-status-filter" className="flex items-center gap-1.5 overflow-x-auto">
                 {(activeTab === "jobs" ? [{ key: "all", label: "All" }, { key: "active", label: "Active" }, { key: "inactive", label: "Inactive" }] : [{ key: "all", label: "All" }, { key: "screening", label: "Screening" }, { key: "selected", label: "Selected" }]).map((filter) => (
                   <button key={filter.key} type="button" onClick={() => setStatusFilter(filter.key)} className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition-all ${statusFilter === filter.key ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70"}`}>{filter.label}</button>
                 ))}
               </div>
               <div className="flex w-full flex-wrap items-center gap-3 xl:w-auto sm:flex-nowrap">
-                <div className="relative min-w-[180px] flex-1 xl:w-72">
+                <div data-tour="careers-search" className="relative min-w-[180px] flex-1 xl:w-72">
                   <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input type="text" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={activeTab === "jobs" ? "Search by title, department..." : "Search by name, position..."} className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20" />
                 </div>
                 {activeTab === "jobs" && (
-                  <button type="button" onClick={openCreateJobModal} className="flex items-center gap-1.5 whitespace-nowrap rounded-2xl bg-[#2563EB] px-4 py-2.5 text-[10px] font-pmedium uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95">
+                  <button type="button" data-tour="careers-publish-job" onClick={openCreateJobModal} className="flex items-center gap-1.5 whitespace-nowrap rounded-2xl bg-[#2563EB] px-4 py-2.5 text-[10px] font-pmedium uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95">
                     <Plus size={13} strokeWidth={3} /> Publish Job
                   </button>
                 )}
@@ -523,12 +523,12 @@ export default function WebsiteBuilderCareers() {
 
             {activeTab === "applications" ? (
               <div className="overflow-x-auto flex-1">
-                <table className="w-full min-w-[880px] border-collapse">
+                <table data-tour="careers-table" className="w-full min-w-[880px] border-collapse">
                   <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4 text-left">Candidate Info</th><th className="px-5 py-4 text-left">Position Applied</th><th className="px-5 py-4 text-center">Source</th><th className="px-5 py-4 text-center">Applied On</th><th className="px-5 py-4 text-center">Pipeline Status</th><th className="px-5 py-4 text-center">Actions</th></tr></thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {displayedCandidates.length === 0 ? (
                       <tr><td colSpan={6} className="px-8 py-16 text-center text-slate-400"><div className="flex flex-col items-center gap-3"><FileText size={28} className="text-slate-300" /><p className="text-sm font-semibold">{isCandidatesError ? "Failed to load applications." : "No applications found for this workspace yet."}</p></div></td></tr>
-                    ) : displayedCandidates.map((candidate) => (
+                    ) : displayedCandidates.map((candidate, candidateIndex) => (
                       <tr key={candidate._id || candidate.candidateCode} className="transition-colors hover:bg-slate-50/50">
                         <td className="px-5 py-4"><p className="text-[12px] font-semibold text-slate-800">{candidate.fullName || "--"}</p><p className="mt-0.5 text-[10px] text-slate-400">{candidate.email || "--"}{candidate.phone ? ` | ${candidate.phone}` : ""}</p><p className="mt-0.5 text-[9px] font-medium uppercase tracking-wider text-slate-400">{candidate.candidateCode || "--"}</p></td>
                         <td className="px-5 py-4"><p className="text-[11px] font-semibold text-slate-700">{candidate.positionApplied || "--"}</p><p className="mt-0.5 text-[9px] uppercase tracking-wider text-slate-400">{candidate.jobCode || "General"}</p></td>
@@ -536,7 +536,7 @@ export default function WebsiteBuilderCareers() {
                         <td className="px-5 py-4 text-center"><p className="text-[11px] font-pmedium text-slate-600">{candidate.appliedAt ? new Date(candidate.appliedAt).toLocaleDateString() : "--"}</p></td>
                         <td className="px-5 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${candidateStatusClass(candidate.status)}`}>{candidate.status || "New"}</span></td>
                         <td className="px-5 py-4 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div data-tour={candidateIndex === 0 ? "careers-application-actions" : undefined} className="flex items-center justify-center gap-1.5">
                             <button type="button" onClick={() => setViewingCandidate(candidate)} title="View application" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Eye size={15} strokeWidth={2.5} /></button>
                             {candidate.resume?.url && (
                               <a href={candidate.resume.url} target="_blank" rel="noreferrer" title="Open resume" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><FileText size={15} strokeWidth={2.5} /></a>
@@ -550,10 +550,10 @@ export default function WebsiteBuilderCareers() {
               </div>
             ) : (
               <div className="overflow-x-auto flex-1">
-                <table className="w-full min-w-[980px] border-collapse">
+                <table data-tour="careers-table" className="w-full min-w-[980px] border-collapse">
                   <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500"><tr><th className="px-5 py-4 text-left">Job Title & ID</th><th className="px-5 py-4 text-left">Department</th><th className="px-5 py-4 text-center">Application Stats</th><th className="px-5 py-4 text-center">Status</th><th className="px-5 py-4 text-center">Website Status</th><th className="px-5 py-4 text-center">Actions</th></tr></thead>
                   <tbody className="divide-y divide-slate-100/60">
-                    {displayedJobs.length === 0 ? <tr><td colSpan={6} className="px-8 py-16 text-center text-slate-400"><div className="flex flex-col items-center gap-3"><Briefcase size={28} className="text-slate-300" /><p className="text-sm font-semibold">No job openings found.</p></div></td></tr> : displayedJobs.map((job) => {
+                    {displayedJobs.length === 0 ? <tr><td colSpan={6} className="px-8 py-16 text-center text-slate-400"><div className="flex flex-col items-center gap-3"><Briefcase size={28} className="text-slate-300" /><p className="text-sm font-semibold">No job openings found.</p></div></td></tr> : displayedJobs.map((job, jobIndex) => {
                       const remaining = Math.max(0, Number(job.vacancyTotal || 0) - Number(job.vacancyFilled || 0));
                       return (
                         <tr key={job._id || job.jobCode} className="transition-colors hover:bg-slate-50/50">
@@ -561,7 +561,7 @@ export default function WebsiteBuilderCareers() {
                           <td className="px-5 py-4"><p className="text-[11px] font-semibold text-slate-700">{job.department || "--"}</p><p className="mt-0.5 text-[9px] text-slate-400">{job.isPaid === false ? "Unpaid internship" : "Paid role"}</p></td>
                           <td className="px-5 py-4 text-center"><p className="text-xl font-bold text-blue-600">{remaining}</p><p className="text-[9px] uppercase tracking-wider text-slate-400">Open Slots</p><p className="text-[8px] uppercase tracking-wider text-slate-500">Filled {job.vacancyFilled || 0} / {job.vacancyTotal || 0}</p></td>
                           <td className="px-5 py-4 text-center"><span className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${job.isActive === false ? "border-slate-200 bg-slate-100 text-slate-500" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`}><CheckCircle2 size={12} />{job.isActive === false ? "Inactive" : "Active"}</span></td>
-                          <td className="px-5 py-4 text-center">
+                          <td className="px-5 py-4 text-center" data-tour={jobIndex === 0 ? "careers-job-website-status" : undefined}>
                             <button
                               type="button"
                               onClick={() => togglePostedMutation.mutate(job)}
@@ -573,7 +573,7 @@ export default function WebsiteBuilderCareers() {
                             </button>
                           </td>
                           <td className="px-5 py-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div data-tour={jobIndex === 0 ? "careers-job-actions" : undefined} className="flex items-center justify-center gap-1.5">
                               <button type="button" onClick={() => setViewingJob(job)} title="View job opening" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Eye size={15} strokeWidth={2.5} /></button>
                               <button type="button" onClick={() => openEditJobModal(job)} title="Edit job opening" className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"><Pencil size={15} strokeWidth={2.5} /></button>
                               <button

@@ -128,6 +128,7 @@ const WebsiteBuilderHome = () => {
               <div
                 role="button"
                 tabIndex={0}
+                data-tour="website-builder-create-edit"
                 onClick={handleCreateOrEditClick}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
@@ -144,9 +145,9 @@ const WebsiteBuilderHome = () => {
                 />
               </div>
             )}
-            <Card icon={<SiGoogleadsense />} title="Website Leads" route="leads" />
-            <Card icon={<MdOutlineRateReview />} title="Website Review" route="reviews" />
-            <Card icon={<MdOutlineWorkHistory />} title="Careers" route="careers" />
+            <Card dataTour="website-builder-leads" icon={<SiGoogleadsense />} title="Website Leads" route="leads" />
+            <Card dataTour="website-builder-reviews" icon={<MdOutlineRateReview />} title="Website Review" route="reviews" />
+            <Card dataTour="website-builder-careers-card" icon={<MdOutlineWorkHistory />} title="Careers" route="careers" />
           </div>
         </div>
       </PageFrame>

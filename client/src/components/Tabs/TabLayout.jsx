@@ -44,7 +44,7 @@ const TabLayout = ({
       <PageFrame>
         <div className="flex flex-col gap-4">
           {showTabs && activeTab?.heading && (
-            <div>
+            <div data-tour="tab-layout-heading">
               <h2 className="text-title font-pmedium text-primary uppercase">
                 {activeTab.heading}
               </h2>
@@ -57,7 +57,10 @@ const TabLayout = ({
           )}
 
           {showTabs && (
-            <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            <div
+              data-tour="tab-layout-tabs"
+              className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden"
+            >
               {filteredTabs.map((tab, index) => (
                 <NavLink
                   key={`${tab.path}-${index}`}

@@ -44,10 +44,11 @@ const CompanyOverview = () => {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div data-tour="company-overview-cards" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {cards.map((card) => (
               <div
                 key={card.title}
+                data-tour={`company-overview-card-${card.path}`}
                 className="cursor-pointer rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 onClick={() =>
                   navigate(`/dashboard/companies/${companySlug}/${card.path}`, {
