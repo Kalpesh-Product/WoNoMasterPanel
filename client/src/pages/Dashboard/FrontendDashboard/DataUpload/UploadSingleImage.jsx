@@ -393,6 +393,7 @@ const UploadSingleImage = () => {
                 id="single-img-input"
               />
               <div
+                data-tour="data-upload-dropzone"
                 className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 ${
                   isDragging ? "border-[#2563EB] bg-[#2563EB]/5" : ""
                 }`}
@@ -434,7 +435,7 @@ const UploadSingleImage = () => {
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
                 <PrimaryButton
                   type="button"
                   title={isPending ? "Uploading…" : "Upload"}

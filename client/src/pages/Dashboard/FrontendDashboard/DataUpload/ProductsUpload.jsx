@@ -202,6 +202,7 @@ const ProductsUpload = () => {
 
           {/* Dropzone */}
           <div
+            data-tour="data-upload-dropzone"
             className={[
               "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition",
               dragActive
@@ -233,7 +234,7 @@ const ProductsUpload = () => {
           {error && <div className="text-sm text-red-600">{error}</div>}
 
           {/* Actions */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
             <PrimaryButton
               type="button"
               title={isPending ? "Uploading…" : "Upload"}

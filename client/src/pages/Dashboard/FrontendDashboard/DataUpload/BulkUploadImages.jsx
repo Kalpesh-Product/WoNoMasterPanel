@@ -404,7 +404,7 @@ const BulkUploadImages = () => {
               {error && <div className="text-sm text-red-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center">
+              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
                 <PrimaryButton
                   type="button"
                   title={isPending ? "Uploading…" : "Upload"}

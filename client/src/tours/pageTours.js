@@ -521,7 +521,7 @@ const PAGE_TOURS = [
   },
   {
     id: "data-upload",
-    version: 1,
+    version: 2,
     title: "Data Upload",
     description:
       "Bulk-import the content that powers the WoNo websites — companies, products, news, blogs, events, places, restaurants and their images.",
@@ -536,11 +536,18 @@ const PAGE_TOURS = [
           "Each tab uploads a different content type. Companies and products take CSV files with the expected header row; image tabs accept image files.",
       },
       {
-        selector: '[data-tour="tab-layout-tabs"]',
-        title: "Choose an importer",
+        selector: '[data-tour="data-upload-dropzone"]',
+        title: "Pick your file",
         description:
-          "Switch tabs to move between uploaders. Bulk Reupload handles files that failed earlier; Upload Single Image adds one image at a time.",
+          "Select the drop zone to browse for the file this importer expects — CSV tabs take .csv files up to 5 MB, image tabs take image files. It is validated before upload, and any problem shows as a red message under the box.",
         side: "bottom",
+      },
+      {
+        selector: '[data-tour="data-upload-actions"]',
+        title: "Upload or reset",
+        description:
+          "Upload imports the file and confirms the result in a toast. Reset clears the selection without uploading.",
+        side: "top",
       },
     ],
     matches: startsWith("/dashboard/data-upload"),

@@ -180,7 +180,7 @@ const ProductImageUpload = () => {
           )}
 
           {/* Buttons */}
-          <div className="flex gap-4 justify-center">
+          <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
             <PrimaryButton
               type="submit"
               title={isPending ? "Uploading..." : "Submit"}
