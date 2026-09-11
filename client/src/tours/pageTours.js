@@ -1536,7 +1536,101 @@ const PAGE_TOURS = [
         side: "left",
       },
     ],
-    matches: startsWith("/dashboard/companies/requests"),
+    matches: exact("/dashboard/companies/requests"),
+  },
+  {
+    id: "companies-request-overview",
+    version: 2,
+    title: "Request Overview",
+    description:
+      "The entry point for one company's onboarding request — from here you drill into its request steps.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="company-request-nomad-listing-card"]',
+        title: "Nomad Listing",
+        description:
+          "Opens a preview of this request's existing Nomads listing(s) — the actual review-and-approve step for this request.",
+      },
+    ],
+    matches: (pathname) =>
+      /^\/dashboard\/companies\/requests\/[^/]+\/?$/.test(pathname),
+  },
+  {
+    id: "companies-request-nomad-listing",
+    version: 2,
+    title: "Request's Nomad Listing",
+    description:
+      "A preview of this pending request's already-existing Nomads listing(s) — review them before deciding whether to create the matching Companies entry.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="nomad-listings-stats"]',
+        title: "Quick stats",
+        description:
+          "Total listings, how many are Master Active/Inactive, how many the host has hidden (Host Inactive), how many product types exist, and how many are deleted.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="nomad-listings-status-filter"]',
+        title: "Filter by status",
+        description: "Narrow the table to Active or Inactive listings, or All to see everything.",
+      },
+      {
+        selector: '[data-tour="nomad-listings-search"]',
+        title: "Find a listing",
+        description: "Search by name, type or city.",
+      },
+      {
+        selector: '[data-tour="nomad-listings-transfer"]',
+        title: "Transfer to Company",
+        description:
+          "Creates the live Companies entry for this request and shows these listing(s) on the Nomads website — this is the actual approval action for this pending request.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-add"]',
+        title: "Add Product",
+        description:
+          "Opens the form to add another listing here — note this navigates to a company page by name, so it only works cleanly once this request has already been approved into a real Company.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-table"]',
+        title: "The full list",
+        description:
+          "Every existing listing with its type, location, Master Status and Visibility, exactly as it will appear once this request is approved.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="nomad-listings-view"]',
+        title: "View a listing",
+        description: "Opens the listing read-only, exactly as it appears to the public.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-edit"]',
+        title: "Edit a listing",
+        description: "Opens the same form in edit mode to change any visitor-facing detail before approving.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-toggle-active"]',
+        title: "Master Status",
+        description:
+          "Marks the listing Active or Inactive on the Master side — separate from the host's own Visibility toggle next to it.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="nomad-listings-toggle-public"]',
+        title: "Visibility",
+        description:
+          "Makes an already-Active listing Public or Private on the site. Locked until the listing is Active.",
+        side: "left",
+      },
+    ],
+    matches: (pathname) =>
+      /^\/dashboard\/companies\/requests\/[^/]+\/nomad-listing\/?$/.test(pathname),
   },
   {
     id: "company-forms",
@@ -1711,26 +1805,107 @@ const PAGE_TOURS = [
   },
   {
     id: "company-website-builder",
-    version: 1,
+    version: 2,
     title: "Website Builder",
     description:
       "Build and publish this company's public website — themes, pages, menus, packages and content sections.",
     replayHint: true,
     steps: [
       {
-        textOnly: true,
-        title: "Create and edit the website",
+        selector: '[data-tour="website-builder-create-edit"]',
+        title: "Create or edit the website",
         description:
-          "Pick a theme, then use Create/Edit Website to arrange sections like rooms, dorms, menus and packages. Publish when the preview looks right.",
+          "No website yet? Pick a theme and build one. Already have one? This opens it in the editor to arrange sections like rooms, dorms, menus and packages — publish when the preview looks right.",
       },
       {
-        textOnly: true,
-        title: "Website leads and reviews",
-        description:
-          "The Leads and Reviews tabs collect enquiries and feedback submitted through this company's website.",
+        selector: '[data-tour="website-builder-leads"]',
+        title: "Website Leads",
+        description: "Enquiries submitted through this company's public website.",
+      },
+      {
+        selector: '[data-tour="website-builder-reviews"]',
+        title: "Website Review",
+        description: "Feedback and ratings submitted through this company's public website.",
+      },
+      {
+        selector: '[data-tour="website-builder-careers-card"]',
+        title: "Careers",
+        description: "Manage job openings and review applications submitted through the website.",
       },
     ],
-    matches: (pathname) => pathname.includes("/website-builder"),
+    matches: (pathname) =>
+      pathname.includes("/website-builder") && !pathname.includes("/careers"),
+  },
+  {
+    id: "company-website-builder-careers",
+    version: 1,
+    title: "Careers",
+    description:
+      "Job openings and applications submitted through this company's website.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="careers-tabs"]',
+        title: "Job Openings and Applications",
+        description:
+          "Switch between the published job openings and the applications submitted against them.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="careers-stats"]',
+        title: "Quick stats",
+        description:
+          "Totals for the active tab — job counts and vacancies on Job Openings, pipeline counts on Applications.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="careers-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Job Openings filters by Active/Inactive; Applications filters by pipeline stage (Screening, Selected).",
+      },
+      {
+        selector: '[data-tour="careers-search"]',
+        title: "Search",
+        description:
+          "Search jobs by title/department, or candidates by name/position, depending on the active tab.",
+      },
+      {
+        selector: '[data-tour="careers-publish-job"]',
+        title: "Publish a job",
+        description: "Opens the form to create a new job opening for this company's careers page.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="careers-table"]',
+        title: "The full list",
+        description:
+          "Job Openings lists each role with its vacancy count and status; Applications lists each candidate with their pipeline stage.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="careers-job-website-status"]',
+        title: "Website status",
+        description:
+          "Toggles whether this job opening is actually posted on the public careers page — a job can be Active internally but still not posted.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="careers-job-actions"]',
+        title: "Manage a job",
+        description:
+          "View the full opening, edit its details, or toggle its website status again from here.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="careers-application-actions"]',
+        title: "Review an application",
+        description:
+          "View shows everything the candidate submitted; the file icon (when present) opens their resume in a new tab.",
+        side: "left",
+      },
+    ],
+    matches: (pathname) => pathname.includes("/website-builder/careers"),
   },
   {
     id: "company-data",

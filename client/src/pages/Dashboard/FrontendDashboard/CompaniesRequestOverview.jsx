@@ -40,7 +40,7 @@ const CompaniesRequestOverview = () => {
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
+            {/* <div className="rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm">
               <p className="text-[10px] font-pmedium uppercase tracking-[0.24em] text-slate-400">
                 Location
               </p>
@@ -50,11 +50,12 @@ const CompaniesRequestOverview = () => {
                 <p>{companyCountry || "-"}</p>
                 <p>{companyContinent || "-"}</p>
               </div>
-            </div>
+            </div> */}
 
             {cards.map((card) => (
               <div
                 key={card.title}
+                data-tour="company-request-nomad-listing-card"
                 className="cursor-pointer rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 onClick={() =>
                   navigate(`/dashboard/companies/requests/${companySlug}/${card.path}`, {

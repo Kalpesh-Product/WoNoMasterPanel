@@ -11,6 +11,7 @@ const Card = ({
   titleColor,
   fullHeight,
   route,
+  dataTour,
 }) => {
   const navigate = useNavigate();
 
@@ -24,6 +25,7 @@ const Card = ({
 
   return (
     <motion.div
+      data-tour={dataTour}
       variants={cardVariants}
       initial="rest"
       whileHover="hover"
