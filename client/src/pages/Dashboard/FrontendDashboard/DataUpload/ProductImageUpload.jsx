@@ -79,6 +79,7 @@ const ProductImageUpload = () => {
           <p>Loading companies...</p>
         ) : ( */}
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+          <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
           {/* Country */}
           <Controller
             name="country"
@@ -158,6 +159,7 @@ const ProductImageUpload = () => {
               </TextField>
             )}
           />
+          </div>
 
           {/* Image Upload */}
           <Controller
@@ -170,6 +172,7 @@ const ProductImageUpload = () => {
                 maxFiles={12}
                 allowedExtensions={["jpg", "jpeg", "png", "webp", "pdf"]}
                 disabled={!selectedCompany}
+                dataTour="data-upload-dropzone"
               />
             )}
           />

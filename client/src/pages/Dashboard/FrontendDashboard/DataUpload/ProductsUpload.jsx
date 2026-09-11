@@ -169,21 +169,23 @@ const ProductsUpload = () => {
           </div>
 
           {/* Upload Type */}
-          <TextField
-            select
-            size="small"
-            fullWidth
-            label="Upload Type"
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            disabled={isPending}
-          >
-            {KIND_OPTIONS.map((option) => (
-              <MenuItem key={option} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </TextField>
+          <div data-tour="data-upload-type">
+            <TextField
+              select
+              size="small"
+              fullWidth
+              label="Upload Type"
+              value={kind}
+              onChange={(e) => setKind(e.target.value)}
+              disabled={isPending}
+            >
+              {KIND_OPTIONS.map((option) => (
+                <MenuItem key={option} value={option}>
+                  {option}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
 
           {/* <p className="text-xs text-gray-500">
             Endpoint: <code>{TYPE_MAP[kind].api}</code> • File key:{" "}

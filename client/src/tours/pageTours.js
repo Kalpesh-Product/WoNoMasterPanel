@@ -521,7 +521,8 @@ const PAGE_TOURS = [
   },
   {
     id: "data-upload",
-    version: 2,
+    version: 8,
+    skipIntro: true,
     title: "Data Upload",
     description:
       "Bulk-import the content that powers the WoNo websites — companies, products, news, blogs, events, places, restaurants and their images.",
@@ -534,6 +535,34 @@ const PAGE_TOURS = [
         title: "One importer per content type",
         description:
           "Each tab uploads a different content type. Companies and products take CSV files with the expected header row; image tabs accept image files.",
+      },
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch importers",
+        description:
+          "Move between Company, Products, News, Blogs, Events, Places, Restaurants and the bulk/single image uploaders from here.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="data-upload-type"]',
+        title: "Pick what you're uploading",
+        description:
+          "On tabs with an Upload Type dropdown, choose which kind of record this CSV holds (e.g. products/POC/reviews, or restaurants/POC/reviews) — each option routes to a different import.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="data-upload-target-picker"]',
+        title: "Pick the target",
+        description:
+          "On tabs with location filters, narrow down step by step to find the exact company or restaurant this upload applies to — the upload stays locked until one is selected.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="data-upload-image-type"]',
+        title: "Pick the image type",
+        description:
+          "On Upload Single Image, choose what this image is for (e.g. logo) once a company is selected — the file picker stays locked until you do.",
+        side: "bottom",
       },
       {
         selector: '[data-tour="data-upload-dropzone"]',

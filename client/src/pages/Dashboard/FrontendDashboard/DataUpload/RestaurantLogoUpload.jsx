@@ -178,6 +178,7 @@ const RestaurantLogoUpload = () => {
           <p>Loading restaurants...</p>
         ) : (
           <>
+            <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
             <TextField
               select
               size="small"
@@ -265,6 +266,7 @@ const RestaurantLogoUpload = () => {
                   </MenuItem>
                 ))}
             </TextField>
+            </div>
 
             <input
               ref={inputRef}

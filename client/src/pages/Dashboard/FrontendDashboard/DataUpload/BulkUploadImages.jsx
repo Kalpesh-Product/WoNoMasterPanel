@@ -277,7 +277,8 @@ const BulkUploadImages = () => {
             <p>Loading companies...</p>
           ) : (
             <>
-              {/* Country */}
+              {/* Country / Company Type / Company */}
+              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
               <TextField
                 select
                 size="small"
@@ -383,6 +384,7 @@ const BulkUploadImages = () => {
                     </MenuItem>
                   ))}
               </TextField>
+              </div>
 
               {/* File Input */}
               <UploadMultipleFilesInput
@@ -394,6 +396,7 @@ const BulkUploadImages = () => {
                 allowedExtensions={["webp"]}
                 id="bulk-upload-images"
                 previewType="image"
+                dataTour="data-upload-dropzone"
               />
 
               <p className="text-xs text-gray-500">
