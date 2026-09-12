@@ -2537,11 +2537,11 @@ const CreateWebsite = () => {
       <div className="p-4 flex flex-col gap-4 min-w-0">
         <PageFrame>
           <div className="flex flex-col gap-5 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2" data-tour="wb-editor-header">
               <h2 className="text-title font-pmedium text-primary uppercase">
                 {effectiveEditMode ? "Edit Website" : "Create Website"}
               </h2>
-              <div className="flex flex-col items-end gap-1">
+              <div className="flex flex-col items-end gap-1" data-tour="wb-editor-draft-status">
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                     {selectedVerticalBadgeText}
@@ -2576,7 +2576,7 @@ const CreateWebsite = () => {
                 />
               ) : null}
             </div>
-            <div className="mt-2 flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+            <div className="mt-2 flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm" data-tour="wb-editor-page-tabs" data-editor-page={activeMainPageSlug}>
               {pageNavFields.map((item, index) => {
     const tabSlug = String(watch(`pageNavItems.${index}.slug`) || "").trim().toLowerCase();
     const isCareersTab = tabSlug === "careers";
@@ -2629,7 +2629,7 @@ const CreateWebsite = () => {
             </div>
 
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "products" ? <div className="mt-4 min-w-0 overflow-hidden">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b-default border-borderGray py-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b-default border-borderGray py-4" data-tour="wb-editor-products-page-settings">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Products Page Settings <SectionPreviewInfo section="productsPage" /></span>
                   {productsPageNavIndex >= 0 ? <div className="mt-3">
                       <PageVisibilityBanner
@@ -2669,7 +2669,7 @@ const CreateWebsite = () => {
                   Pick a preset from the dropdown to add it instantly, or choose "+ Add New Page" for a custom one. Use the × on a tab to remove a page.
                 </p>
                 {productPageFields.length > 0 ? <>
-                    <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+                    <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm" data-tour="wb-editor-products-page-tabs">
                       {productPageFields.map((item, index) => <div
     key={item.id}
     role="button"
@@ -2737,7 +2737,7 @@ const CreateWebsite = () => {
 
                     {productPageFields[activeProductPageTab] ? <div className="mt-3 grid grid-cols-1 gap-3">
                         <div>
-                          <div className="border-b-default border-borderGray py-4 flex items-center justify-between">
+                          <div className="border-b-default border-borderGray py-4 flex items-center justify-between" data-tour="wb-editor-products-page-details">
                             <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Product Page Details <SectionPreviewInfo section="productDetails" /></span>
                             <SectionToggle name={`productDropdownPages.${activeProductPageTab}.enabled`} control={control} />
                           </div>
@@ -2756,7 +2756,7 @@ const CreateWebsite = () => {
                         </div>
 
                         <div>
-                          <div className="py-2 border-b-default border-borderGray flex items-center justify-between">
+                          <div className="py-2 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-products-page-hero">
                             <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Product Page Hero <SectionPreviewInfo section="heroBanner" /></span>
                             <SectionToggle name={`productDropdownPages.${activeProductPageTab}.heroEnabled`} control={control} />
                           </div>
@@ -2823,7 +2823,7 @@ const CreateWebsite = () => {
                           </div>
                         </div>
 
-                        <div>
+                        <div data-tour="wb-editor-products-page-lead-form">
                           <div className="py-2 border-b-default border-borderGray">
                             <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Lead Form Behavior <SectionPreviewInfo section="leadForm" /></span>
                           </div>
@@ -2860,7 +2860,7 @@ const CreateWebsite = () => {
                           </div>
                         </div>
 
-                        <div>
+                        <div data-tour="wb-editor-products-page-content">
                           <div className="py-2 border-b-default border-borderGray">
                             <span className="text-subtitle font-pmedium">
                               Page Content Template (Synced with Home)
@@ -3007,7 +3007,7 @@ const CreateWebsite = () => {
                         {
     /* FAQ is now global — edit from the Home/Products section */
   }
-                        <div>
+                        <div data-tour="wb-editor-products-page-faq">
                           <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
                             <span className="text-subtitle font-pmedium inline-flex items-center gap-2">FAQ Section <SectionPreviewInfo section="faq" /></span>
                             <SectionToggle name={`productDropdownPages.${activeProductPageTab}.faqEnabled`} control={control} />
@@ -3025,7 +3025,7 @@ const CreateWebsite = () => {
                         {
     /* Inclusions for this product page */
   }
-                        <div>
+                        <div data-tour="wb-editor-products-page-inclusions">
                           <div className="py-4 border-b-default border-borderGray flex items-center justify-between mb-3">
                             <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Inclusions Section <SectionPreviewInfo section="inclusions" /></span>
                             <div className="flex items-center gap-3">
@@ -3141,7 +3141,7 @@ const CreateWebsite = () => {
               </div> : null}
 
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "about-us" ? <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
+                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4" data-tour="wb-editor-about-page-hero">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">About Us Hero Section <SectionPreviewInfo section="aboutPage" /></span>
                 {aboutPageNavIndex >= 0 ? <div className="mt-3">
                     <PageVisibilityBanner
@@ -3165,7 +3165,7 @@ const CreateWebsite = () => {
                   </div>
 
                   <div>
-                    <div className="border-b-default border-borderGray py-4">
+                    <div className="border-b-default border-borderGray py-4" data-tour="wb-editor-about-page-shared">
                     <span className="text-subtitle font-pmedium">
                       About Us (Synced From Home About)
                     </span>
@@ -3195,6 +3195,7 @@ const CreateWebsite = () => {
                       </button>
                     </div>
                   </div>
+                  <div data-tour="wb-editor-about-page-story">
                   <Controller
     name="aboutPageStory"
     control={control}
@@ -3205,7 +3206,8 @@ const CreateWebsite = () => {
       minRows={4}
     />}
   />
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2" data-tour="wb-editor-about-page-mission-vision">
                     <Controller
     name="aboutPageMission"
     control={control}
@@ -3227,6 +3229,7 @@ const CreateWebsite = () => {
     />}
   />
                   </div>
+                  <div data-tour="wb-editor-about-page-values">
                   <Controller
     name="aboutPageValues"
     control={control}
@@ -3236,8 +3239,9 @@ const CreateWebsite = () => {
       placeholder="Community, Trust, Transparency"
     />}
   />
+                  </div>
                   <div>
-                    <div className="py-2 border-b-default border-borderGray flex items-center justify-between">
+                    <div className="py-2 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-about-page-founders">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Founders Section <SectionPreviewInfo section="founders" /></span>
                       <SectionToggle sectionKey="about_founders" control={control} />
                     </div>
@@ -3313,7 +3317,7 @@ const CreateWebsite = () => {
                   </div>
 
                   <div>
-                    <div className="py-2 border-b-default border-borderGray flex items-center justify-between">
+                    <div className="py-2 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-about-page-team">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Our Team Section <SectionPreviewInfo section="team" /></span>
                       <SectionToggle sectionKey="about_team" control={control} />
                     </div>
@@ -3381,7 +3385,7 @@ const CreateWebsite = () => {
               </div> : null}
 
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "gallery" ? <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
+                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4" data-tour="wb-editor-gallery-page-hero">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Gallery Hero Section <SectionPreviewInfo section="galleryPage" /></span>
                 {galleryPageNavIndex >= 0 ? <div className="mt-3">
                     <PageVisibilityBanner
@@ -3401,7 +3405,7 @@ const CreateWebsite = () => {
       placeholder="Gallery Images"
     />}
   />
-                  <div>
+                  <div data-tour="wb-editor-gallery-page-images">
                     <div className="py-2 border-b-default border-borderGray">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Gallery Images (Synced)</span>
                     </div>
@@ -3428,7 +3432,7 @@ const CreateWebsite = () => {
               </div> : null}
 
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "partner" ? <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
+                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4" data-tour="wb-editor-partner-page-header">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Partner Page Section <SectionPreviewInfo section="partnerPage" /></span>
                 {partnerPageNavIndex >= 0 ? <div className="mt-3">
                     <PageVisibilityBanner
@@ -3438,7 +3442,7 @@ const CreateWebsite = () => {
   />
                   </div> : null}
                 </div>
-                <div className="mt-3 grid grid-cols-1 gap-3">
+                <div className="mt-3 grid grid-cols-1 gap-3" data-tour="wb-editor-partner-page-content">
                   <Controller
     name="partnerPageHeading"
     control={control}
@@ -3475,7 +3479,7 @@ const CreateWebsite = () => {
               </div> : null}
 
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "careers" ? <div className="mt-4">
-                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4">
+                <div className="flex items-center justify-between gap-3 border-b-default border-borderGray py-4" data-tour="wb-editor-careers-page-hero">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Careers Hero Section <SectionPreviewInfo section="careersPage" /></span>
                 {careersPageNavIndex >= 0 ? <div className="mt-3">
                     <PageVisibilityBanner
@@ -3509,7 +3513,7 @@ const CreateWebsite = () => {
       minRows={6}
     />}
   />
-                  <div>
+                  <div data-tour="wb-editor-careers-page-form-layout">
                     <div className="border-b-default border-borderGray py-4">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Apply Now Form Layout <SectionPreviewInfo section="applyForm" /></span>
                     </div>
@@ -3540,7 +3544,7 @@ const CreateWebsite = () => {
                       </div>
                     </div>
                   </div>
-                  <div>
+                  <div data-tour="wb-editor-careers-page-custom-fields">
                     <div className="border-b-default border-borderGray py-4">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Additional Form Fields</span>
                     </div>
@@ -3630,7 +3634,7 @@ const CreateWebsite = () => {
             {String(watch(`pageNavItems.${activeMainPageTab}.slug`) || "").trim().toLowerCase() === "contact-us" ? <div className="mt-4">
                 <div className="mt-3 grid grid-cols-1 gap-3">
                   <div>
-                    <div className="flex items-center justify-between gap-3 py-2 border-b-default border-borderGray">
+                    <div className="flex items-center justify-between gap-3 py-2 border-b-default border-borderGray" data-tour="wb-editor-contact-page-details">
                       <span className="text-subtitle font-pmedium">
                         Contact Details (Synced with Home)
                       </span>
@@ -3672,7 +3676,7 @@ const CreateWebsite = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2" data-tour="wb-editor-contact-page-inquiry">
                     <Controller
     name="contactBusinessHours"
     control={control}
@@ -3714,12 +3718,12 @@ const CreateWebsite = () => {
                 </div>
               </div> : null}
           </div>
-          {activeMainPageSlug === "home" ? <div className="md:grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4">
+          {activeMainPageSlug === "home" ? <div className="md:grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4" data-tour="wb-editor-home-content">
             {
     /* HERO / COMPANY */
   }
             {activeSections.includes("hero") && <div>
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-hero-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Hero Section <SectionPreviewInfo section="hero" /></span>
                 <SectionToggle sectionKey="home_hero" control={control} />
               </div>
@@ -3872,7 +3876,7 @@ const CreateWebsite = () => {
     /* ABOUT */
   }
             {activeSections.includes("about") && <div>
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-about-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">About Section <SectionPreviewInfo section="about" /></span>
                 <SectionToggle sectionKey="home_about" control={control} />
               </div>
@@ -3934,7 +3938,7 @@ const CreateWebsite = () => {
     /* PRODUCTS */
   }
             {activeSections.includes("products") && <div className="col-span-2">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-products-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Our Products Section <SectionPreviewInfo section="products" /></span>
                 <div className="flex items-center gap-3">
                   <button
@@ -4026,7 +4030,7 @@ const CreateWebsite = () => {
     /* Home Inclusions â€" toggle amenities shown below Our Products on home page */
   }
             {productPageFields.length > 0 ? <div className="col-span-2">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-inclusions-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Home Inclusions Section <SectionPreviewInfo section="inclusions" /></span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-slate-400">Shown below Our Products on home page</span>
@@ -4129,7 +4133,7 @@ const CreateWebsite = () => {
     /* Global FAQ â€" shown on all product pages and product detail pages */
   }
             {productPageFields.length > 0 ? <div className="col-span-2" id="home-faq-section">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-faq-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">FAQ Section <SectionPreviewInfo section="faq" /></span>
                 <span className="text-xs text-slate-400">Shared list — each product page decides for itself whether to show it. Max 10</span>
               </div>
@@ -4332,7 +4336,7 @@ const CreateWebsite = () => {
     /* GALLERY */
   }
             {activeSections.includes("gallery") && <div className="col-span-2">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-gallery-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Gallery Section <SectionPreviewInfo section="gallery" /></span>
                 <SectionToggle sectionKey="home_gallery" control={control} />
               </div>
@@ -4372,7 +4376,7 @@ const CreateWebsite = () => {
     /* TESTIMONIALS */
   }
             {activeSections.includes("testimonials") && <div className="col-span-2">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-testimonials-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Testimonials Section <SectionPreviewInfo section="testimonials" /></span>
                 <SectionToggle sectionKey="home_testimonials" control={control} />
               </div>
@@ -4479,7 +4483,7 @@ const CreateWebsite = () => {
     /* Logo Carousel — shown just before Contact & Footer on home page */
   }
             {activeSections.includes("contact") && <div className="col-span-2">
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-trusted-by-section">
                 <div className="flex items-center gap-3">
                   <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Trusted By Section <SectionPreviewInfo section="logoCarousel" /></span>
                   <span className="text-xs text-slate-400">Shown just before Contact &amp; Footer on home page</span>
@@ -4529,7 +4533,7 @@ const CreateWebsite = () => {
     /* CONTACT */
   }
             {activeSections.includes("contact") && <div>
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-contact-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Contact Section <SectionPreviewInfo section="contact" /></span>
                 <SectionToggle sectionKey="home_contact" control={control} />
               </div>
@@ -4625,7 +4629,7 @@ const CreateWebsite = () => {
     /* FOOTER */
   }
             {activeSections.includes("footer") && <div>
-              <div className="py-4 border-b-default border-borderGray flex items-center justify-between">
+              <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-footer-section">
                 <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Footer Section <SectionPreviewInfo section="footer" /></span>
                 <SectionToggle sectionKey="home_footer" control={control} />
               </div>
@@ -4715,7 +4719,7 @@ const CreateWebsite = () => {
               {
     /* Publish / Preview / Reset */
   }
-              <div className="flex justify-center mb-3">
+              <div className="flex justify-center mb-3" data-tour="wb-editor-credits">
                 {workspaceId || companyId ? <CreditsIndicator workspaceId={workspaceId} companyId={companyId} /> : null}
               </div>
               <div className="flex items-center justify-center gap-4">
@@ -4723,6 +4727,7 @@ const CreateWebsite = () => {
     type="button"
     onClick={openPreview}
     className="px-8 py-2.5 bg-green-500 border border-slate-200 text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-green-600 transition-all"
+    data-tour="wb-editor-preview"
   >
                   Preview
                 </button>
@@ -4730,6 +4735,7 @@ const CreateWebsite = () => {
     type="button"
     onClick={() => setShowResetConfirmPopup(true)}
     className="px-8 py-2.5 bg-red-500 border border-slate-200 text-slate-100 rounded-xl font-pmedium text-[10px] uppercase tracking-wider hover:bg-red-600 transition-all"
+    data-tour="wb-editor-reset"
   >
                   Reset
                 </button>
@@ -4744,6 +4750,7 @@ const CreateWebsite = () => {
     }}
     disabled={isWebsiteSubmitting || isRedirectingAfterCreate || isCheckingNomadListing}
     className="px-8 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[10px] uppercase tracking-wider shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all inline-flex items-center justify-center gap-2"
+    data-tour="wb-editor-publish"
   >
                   {isWebsiteSubmitting ? <>{effectiveEditMode ? "Submitting..." : "Publishing..."}</> : isCheckingNomadListing ? <>Checking...</> : <>{effectiveEditMode ? "Submit" : "Publish"}</>}
                 </button>
