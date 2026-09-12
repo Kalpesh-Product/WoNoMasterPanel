@@ -15,6 +15,8 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { IoCloseSharp } from "react-icons/io5";
 import logo from "../../assets/WONO_LOGO_Black_TP.svg";
 
+const LOGIN_HEADING = "Login";
+
 const LoginPage = () => {
   const { auth, setAuth } = useAuth();
   const user = auth.user;
@@ -24,6 +26,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [typedHeading, setTypedHeading] = useState("");
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const refresh = useRefresh();
   const defaultModules = [
     {
@@ -115,6 +119,24 @@ const LoginPage = () => {
       refresh();
     }
   }, [auth.accessToken]);
+
+  React.useEffect(() => {
+    setTypedHeading("");
+    setIsFormVisible(false);
+
+    let headingIndex = 0;
+    const headingInterval = setInterval(() => {
+      headingIndex += 1;
+      setTypedHeading(LOGIN_HEADING.slice(0, headingIndex));
+
+      if (headingIndex >= LOGIN_HEADING.length) {
+        clearInterval(headingInterval);
+        setIsFormVisible(true);
+      }
+    }, 7);
+
+    return () => clearInterval(headingInterval);
+  }, []);
 
   // Validation function
   const handleLogin = async (e) => {
@@ -272,7 +294,7 @@ const LoginPage = () => {
       </Drawer>
       {/* Header */}
       <div className="login-section loginTopPadding loginBottomPadding poppinsRegular heightPadding h-screen">
-        <h1 className="text-center text-4xl font-bold">SIGN IN</h1>
+        <h1 className="text-center text-4xl font-play min-h-[3rem]">{typedHeading}</h1>
         <div className="loginDividingContainer shrink-container">
           <div className="loginLeftContainer">
             <Container
@@ -286,6 +308,7 @@ const LoginPage = () => {
                 onSubmit={handleLogin}
                 noValidate
                 autoComplete="off"
+                className={isFormVisible ? "visible" : "invisible"}
               >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Grid item xs={12}>
@@ -337,6 +360,14 @@ const LoginPage = () => {
                     Forgot Password?
                   </Link>
                 </div> */}
+                <div className="mt-2 col-span-2 text-end">
+                  <Link
+                    to="/forgot-password"
+                    className="hover:underline text-black"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
                 <div className="flex">
                   <div className="flex flex-col justify-center w-full items-center gap-4 mt-4">
                     <Grid item xs={12}>
@@ -350,7 +381,7 @@ const LoginPage = () => {
                           {loading ? (
                             <CircularProgress size={20} color="white" />
                           ) : (
-                            "SIGN IN"
+                            "LOGIN"
                           )}
                         </button>
                         {/* <button

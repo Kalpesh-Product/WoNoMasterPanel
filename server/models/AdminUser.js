@@ -24,6 +24,13 @@ const adminUserSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
   },
+  // Last 2 password hashes, used to reject password reuse on reset.
+  passwordHistory: [
+    {
+      hash: { type: String, required: true },
+      changedAt: { type: Date, default: Date.now },
+    },
+  ],
   isSuperAdmin: {
     type: Boolean,
     default: false,
