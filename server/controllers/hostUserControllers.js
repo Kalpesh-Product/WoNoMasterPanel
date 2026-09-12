@@ -1015,7 +1015,7 @@ const COMMON_MODULES_BLUEPRINT = {
     { id: "tickets", name: "Tickets" },
     { id: "leave-requests", name: "Leave Requests" },
     { id: "meeting-room-system", name: "Meeting Room Booking" },
-    { id: "printout-management", name: "Printouts" },
+    { id: "printouts", name: "Printouts" },
     { id: "calendar", name: "Calendar" },
   ],
 };

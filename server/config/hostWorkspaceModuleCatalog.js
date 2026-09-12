@@ -19,7 +19,7 @@ const MODULE_GROUPS = [
       { id: "tickets", label: "Tickets" },
       { id: "leave-requests", label: "Leave Requests" },
       { id: "meeting-room-system", label: "Meeting Room Booking" },
-      { id: "printout-management", label: "Printouts" },
+      { id: "printouts", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
     ],
   },
@@ -157,6 +157,10 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   ...Array.from(BASIC_DEFAULT_IDS),
   "tickets",
   "meeting-room-system",
+  "printouts",
+  // "printout-management" (Administration Department admin console) is a
+  // separate id from "printouts" (common self-service module) so this list
+  // can toggle them independently — kept in sync with HostPanel's.
   "printout-management",
   "calendar",
   "workspace-settings",

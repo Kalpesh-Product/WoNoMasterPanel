@@ -91,6 +91,10 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   "visitors_standard_type_tenant",
   "tickets",
   "meeting-room-system",
+  "printouts",
+  // "printout-management" (Administration Department admin console) is a
+  // separate id from "printouts" (common self-service module) so it can be
+  // toggled independently — kept in sync with HostPanel's.
   "printout-management",
   "calendar",
   "workspace-settings",
