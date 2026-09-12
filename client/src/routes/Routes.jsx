@@ -2,6 +2,9 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import LoginPage from "../pages/LoginPage/LoginPage";
+import ForgotPassword from "../pages/LoginPage/ForgotPassword";
+import ForgotPasswordOtpVerification from "../pages/LoginPage/ForgotPasswordOtpVerification";
+import ResetPassword from "../pages/LoginPage/ResetPassword";
 import PersistLogin from "../layouts/PersistLogin";
 
 // Import main pages
@@ -230,6 +233,18 @@ export const routes = createBrowserRouter([
   {
     path: "/",
     element: <LoginPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
+  },
+  {
+    path: "/forgot-password/verify",
+    element: <ForgotPasswordOtpVerification />,
+  },
+  {
+    path: "/forgot-password/reset",
+    element: <ResetPassword />,
   },
 
   // Live preview window opened by the website builder's Preview button —
