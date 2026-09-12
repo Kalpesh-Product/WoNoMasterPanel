@@ -687,13 +687,13 @@ const isSameCompanyTemplate = ({
 // Pass either `sectionKey` (stored under sectionOverrides.<key>, for singleton
 // pages like Home/About) or a full `name` (for per-item fields like a specific
 // product page's own enabled/heroEnabled/inclusionsEnabled).
-const SectionToggle = ({ sectionKey, name, control }) => (
+const SectionToggle = ({ sectionKey, name, control, dataTour }) => (
   <Controller
     name={name || `sectionOverrides.${sectionKey}`}
     control={control}
     defaultValue={true}
     render={({ field }) => (
-      <label className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-slate-500">
+      <label data-tour={dataTour} className="ml-auto flex shrink-0 cursor-pointer items-center gap-2 text-xs font-medium text-slate-500">
         <span>{field.value !== false ? "Enabled" : "Disabled"}</span>
         <span
           role="switch"
@@ -3724,8 +3724,8 @@ const CreateWebsite = () => {
   }
             {activeSections.includes("hero") && <div>
               <div className="py-4 border-b-default border-borderGray flex items-center justify-between" data-tour="wb-editor-hero-section">
-                <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Hero Section <SectionPreviewInfo section="hero" /></span>
-                <SectionToggle sectionKey="home_hero" control={control} />
+                <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Hero Section <SectionPreviewInfo section="hero" dataTour="wb-editor-hero-preview" /></span>
+                <SectionToggle sectionKey="home_hero" control={control} dataTour="wb-editor-hero-toggle" />
               </div>
               <div className="grid grid-cols sm:grid-cols-1 md:grid-cols-1 gap-4 p-4 ">
                 <Controller

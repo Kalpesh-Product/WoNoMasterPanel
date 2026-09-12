@@ -1805,15 +1805,17 @@ const PAGE_TOURS = [
   },
   {
     id: "company-website-builder-editor",
-    version: 1,
+    version: 3,
     title: "Website editor",
     description:
       "Build and update your website. Each tab controls a different page. Your work is autosaved as a draft while you build.",
     steps: [
       // --- Home tab ---
-      { editorPage: "home", selector: '[data-tour="wb-editor-header"]', title: "Editor header", description: "The heading shows whether you are creating a new website or editing an existing one. The badge on the right confirms the active editor mode." },
       { editorPage: "home", selector: '[data-tour="wb-editor-draft-status"]', title: "Draft autosave", description: "Your progress is automatically saved as a draft while you work. If you leave and return later, your previous work is restored so you can continue where you left off." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-change-template"]', title: "Change template", description: "The template was chosen when this website was created and can't be edited directly. Use this to preview other templates and submit a request to switch — you can track its approval status here once submitted.", side: "bottom", align: "end" },
       { editorPage: "home", selector: '[data-tour="wb-editor-page-tabs"]', title: "Website page tabs", description: "Each tab represents a page on your website. Click a tab to edit that page's content. The Home tab is always first. Other tabs like About Us, Products, Gallery, Testimonials, Contact, Partner, and Careers can be enabled or disabled from here." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-hero-preview"]', title: "Preview a section", description: "Most sections show a small Preview button next to their title — click it to see a sample mockup of how that section will look, using placeholder content." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-hero-toggle"]', title: "Show or hide a section", description: "The switch beside a section's title turns that section on or off for the published Home page.", side: "left" },
       { editorPage: "home", selector: '[data-tour="wb-editor-hero-section"]', title: "Hero section", description: "The Hero section is the first thing visitors see. Set your company name, tagline, CTA button text, logo, and hero images here. Upload multiple images for a carousel or one image for a static banner." },
       { editorPage: "home", selector: '[data-tour="wb-editor-about-section"]', title: "About section", description: "Introduce your business with a section heading and one or more paragraphs. Use the section toggle to control whether this introduction appears on the Home page." },
       { editorPage: "home", selector: '[data-tour="wb-editor-products-section"]', title: "Our Products section", description: "Set the Home-page products heading and presentation cards. Product pages are created in the Products tab; this section controls how those pages are introduced from Home." },
