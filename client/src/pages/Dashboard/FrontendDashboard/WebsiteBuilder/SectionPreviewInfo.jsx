@@ -407,7 +407,7 @@ const SECTION_MOCKUPS = {
   contact: { title: "Contact Section", node: <ContactMock /> },
   footer: { title: "Footer Section", node: <FooterMock /> }
 };
-const SectionPreviewInfo = ({ section }) => {
+const SectionPreviewInfo = ({ section, dataTour }) => {
   const [open, setOpen] = useState(false);
   const mock = SECTION_MOCKUPS[section];
   if (!mock) return null;
@@ -416,6 +416,7 @@ const SectionPreviewInfo = ({ section }) => {
     type="button"
     title="See how this section looks on the website"
     onClick={() => setOpen(true)}
+    data-tour={dataTour}
     className="inline-flex h-6 shrink-0 items-center justify-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2 align-middle text-[10px] font-pmedium leading-none text-[#2563EB] shadow-sm transition-all hover:border-blue-300 hover:bg-[#2563EB] hover:text-white"
   >
         <CircleAlert aria-hidden="true" size={12} strokeWidth={2} />

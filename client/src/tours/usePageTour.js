@@ -61,7 +61,15 @@ const buildSteps = (tour) => {
   );
   const guideButton = findVisible('[data-tour="page-guide-button"]');
 
-  const steps = tour.skipIntro
+  // Tab-aware website-editor tours expose their open editor page on the tabs
+  // container (data-editor-page), so the guide only walks through the controls
+  // of the visible editor tab, and skips the intro popover on non-Home tabs.
+  const activeEditorPage = document
+    .querySelector('[data-tour="wb-editor-page-tabs"]')
+    ?.getAttribute("data-editor-page") || "";
+  const isEditorTour = tour.id === "company-website-builder-editor";
+
+  const steps = tour.skipIntro || (isEditorTour && activeEditorPage !== "home")
     ? []
     : [
         {
@@ -76,7 +84,9 @@ const buildSteps = (tour) => {
       ];
 
   if (tour.steps?.length) {
-    tour.steps.forEach((tourStep) => {
+    tour.steps
+      .filter((tourStep) => !tourStep.editorPage || tourStep.editorPage === activeEditorPage)
+      .forEach((tourStep) => {
       const target = findStepTarget(tourStep);
       if (!target && !tourStep.textOnly) return;
       steps.push({

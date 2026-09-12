@@ -1804,6 +1804,68 @@ const PAGE_TOURS = [
       /^\/dashboard\/companies\/[^/]+\/nomad-listings\/?$/.test(pathname),
   },
   {
+    id: "company-website-builder-editor",
+    version: 3,
+    title: "Website editor",
+    description:
+      "Build and update your website. Each tab controls a different page. Your work is autosaved as a draft while you build.",
+    steps: [
+      // --- Home tab ---
+      { editorPage: "home", selector: '[data-tour="wb-editor-draft-status"]', title: "Draft autosave", description: "Your progress is automatically saved as a draft while you work. If you leave and return later, your previous work is restored so you can continue where you left off." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-change-template"]', title: "Change template", description: "The template was chosen when this website was created and can't be edited directly. Use this to preview other templates and submit a request to switch — you can track its approval status here once submitted.", side: "bottom", align: "end" },
+      { editorPage: "home", selector: '[data-tour="wb-editor-page-tabs"]', title: "Website page tabs", description: "Each tab represents a page on your website. Click a tab to edit that page's content. The Home tab is always first. Other tabs like About Us, Products, Gallery, Testimonials, Contact, Partner, and Careers can be enabled or disabled from here." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-hero-section"]', title: "Hero section", description: "The Hero section is the first thing visitors see. Set your company name, tagline, CTA button text, logo, and hero images here. Upload multiple images for a carousel or one image for a static banner." },
+       { editorPage: "home", selector: '[data-tour="wb-editor-hero-preview"]', title: "Preview a section", description: "Most sections show a small Preview button next to their title — click it to see a sample mockup of how that section will look, using placeholder content." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-hero-toggle"]', title: "Show or hide a section", description: "The switch beside a section's title turns that section on or off for the published Home page.", side: "left" },
+      { editorPage: "home", selector: '[data-tour="wb-editor-about-section"]', title: "About section", description: "Introduce your business with a section heading and one or more paragraphs. Use the section toggle to control whether this introduction appears on the Home page." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-products-section"]', title: "Our Products section", description: "Set the Home-page products heading and presentation cards. Product pages are created in the Products tab; this section controls how those pages are introduced from Home." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-inclusions-section"]', title: "Home Inclusions section", description: "Choose the amenities and facilities displayed below Our Products. Enable only the inclusions that visitors should see on the Home page." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-faq-section"]', title: "FAQ section", description: "Create the shared questions and answers used by your product pages. Individual FAQ entries can be enabled or disabled, and each product page controls whether the shared FAQ list is shown." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-offerings-section"]', title: "Business offerings", description: "Manage the offering specific to your website type, such as rooms, meeting rooms, packages, dorms, or menu items. Add the details, images, pricing, and enabled state visitors should see." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-gallery-section"]', title: "Gallery section", description: "Set the Gallery heading and upload the images that showcase your workspace, property, products, or experience. The section toggle controls whether it appears on Home." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-testimonials-section"]', title: "Testimonials section", description: "Add customer names, ratings, and testimonial text to build trust on the Home page. Remove outdated entries and disable the section when it should not be shown." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-trusted-by-section"]', title: "Trusted By section", description: "Add the heading and partner or customer logos shown before Contact and Footer. Use transparent logo images where possible and enable the section when the logos are ready." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-contact-section"]', title: "Contact section", description: "Provide the Home-page contact heading, embedded map URL, email, phone number, and address so visitors know how to reach or locate your business." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-footer-section"]', title: "Footer section", description: "Set the registered company name, copyright text, and social links displayed at the bottom of the website. Only enabled social platforms with valid links are shown." },
+      { editorPage: "home", selector: '[data-tour="wb-editor-credits"]', title: "Credit balance", description: "Shows how many publish credits you have remaining. The first publish is free. Each subsequent update uses one credit from your monthly balance.", side: "top", align: "center" },
+      { editorPage: "home", selector: '[data-tour="wb-editor-preview"]', title: "Preview your website", description: "Opens a live preview of your website so you can check the layout, content, and images before making changes public. Always preview before publishing.", side: "top" },
+      { editorPage: "home", selector: '[data-tour="wb-editor-reset"]', title: "Reset the form", description: "Clears everything you have entered and starts fresh. This cannot be undone. Use it only when you want to rebuild the entire website from scratch.", side: "top" },
+      { editorPage: "home", selector: '[data-tour="wb-editor-publish"]', title: "Publish or submit", description: "When you are satisfied with your website, click this button to publish it live. A confirmation dialog will appear to prevent accidental publishes. After publishing, your website is live at its public URL.", side: "top" },
+      // --- About Us tab ---
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-hero"]', title: "About Us page", description: "Set the heading shown at the top of the About Us page and use the visibility control to show or hide this page on your published website." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-shared"]', title: "About text shared with Home", description: "These paragraphs are shared with the Home About section. Updating them here also updates the Home page, so keep the company introduction consistent." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-story"]', title: "Our Story", description: "Explain how the business started, what shaped it, and the journey visitors should understand about your company." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-mission-vision"]', title: "Mission and Vision", description: "Use Mission to explain what the company does today and Vision to describe the future it is working toward." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-values"]', title: "Company values", description: "Enter the values as a comma-separated list. These values communicate the principles that guide the company." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-founders"]', title: "Founders section", description: "Add each founder's photo, name, role, biography, and key highlights. The published page alternates founder profiles for a clear story-led layout." },
+      { editorPage: "about-us", selector: '[data-tour="wb-editor-about-page-team"]', title: "Our Team section", description: "Set the team heading and add team-member cards with an image, name or title, role, and individual visibility control." },
+      // --- Products tab ---
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-settings"]', title: "Products page settings", description: "Add a preset product page or create a custom page, then control whether the main Products page appears on the published website." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-tabs"]', title: "Product page tabs", description: "Each tab is an individual product or service page. Select a tab to edit it, or use its remove button when that page is no longer required." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-details"]', title: "Product page identity", description: "Set the page name visitors see and its route slug. The visibility switch controls whether this individual product page is available." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-hero"]', title: "Product page hero", description: "Configure the page heading, supporting text, CTA label, and either one hero image or a carousel of images." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-lead-form"]', title: "Lead form behavior", description: "Choose whether this product page accepts enquiries and set the CTA label that opens its lead form. Menu pages keep this form disabled." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-content"]', title: "Product content", description: "Manage the content matched to this page type, such as rooms, spaces, packages, dorms, menu items, or custom sub-products. Some content is shared with Home." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-faq"]', title: "Shared FAQs", description: "Choose whether the shared FAQ list appears on this product page. Use the shortcut to edit the actual questions and answers in the Home FAQ section." },
+      { editorPage: "products", selector: '[data-tour="wb-editor-products-page-inclusions"]', title: "Page inclusions", description: "Enable the inclusions section and choose the individual amenities or facilities that apply to this product page." },
+      // --- Gallery tab ---
+      { editorPage: "gallery", selector: '[data-tour="wb-editor-gallery-page-hero"]', title: "Gallery page heading", description: "Set the heading shown on the Gallery page and use the visibility control to show or hide the page on the published website." },
+      { editorPage: "gallery", selector: '[data-tour="wb-editor-gallery-page-images"]', title: "Gallery images", description: "Upload and manage the full gallery. These images are shared with Home, where only the first group is previewed before visitors open the complete Gallery page." },
+      // --- Partner tab ---
+      { editorPage: "partner", selector: '[data-tour="wb-editor-partner-page-header"]', title: "Partner page", description: "Use the visibility control to decide whether visitors can open the Partner page on the published website." },
+      { editorPage: "partner", selector: '[data-tour="wb-editor-partner-page-content"]', title: "Partnership content and form", description: "Set the page heading, the partnership message shown on the left, and the form title shown above the automatic enquiry form on the right." },
+      // --- Careers tab ---
+      { editorPage: "careers", selector: '[data-tour="wb-editor-careers-page-hero"]', title: "Careers page introduction", description: "Control the page visibility and write the heading and introduction shown above job openings. Posted roles are brought in automatically from Recruitment." },
+      { editorPage: "careers", selector: '[data-tour="wb-editor-careers-page-form-layout"]', title: "Application form layout", description: "Review the fixed fields included in every application. Custom fields appear after the CV upload in the order configured below." },
+      { editorPage: "careers", selector: '[data-tour="wb-editor-careers-page-custom-fields"]', title: "Additional application fields", description: "Add, rename, reorder, or remove the extra questions applicants must complete. The preview shows their final order and input type." },
+      // --- Contact Us tab ---
+      { editorPage: "contact-us", selector: '[data-tour="wb-editor-contact-page-details"]', title: "Contact page details", description: "Control the Contact page visibility and update its shared email, phone, address, and map. Changes here also update the Home contact section." },
+      { editorPage: "contact-us", selector: '[data-tour="wb-editor-contact-page-inquiry"]', title: "Contact availability and enquiries", description: "Add optional business hours and choose whether the Contact page displays its enquiry form. Submitted messages are saved as General Inquiry leads." },
+    ],
+    matches: (pathname) =>
+      /^\/dashboard\/(companies|host-companies)\/[^/]+\/website-builder\/edit-website(\/|$)/.test(pathname),
+  },
+  {
     id: "company-website-builder",
     version: 2,
     title: "Website Builder",
