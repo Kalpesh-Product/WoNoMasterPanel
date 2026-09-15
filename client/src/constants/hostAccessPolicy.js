@@ -235,6 +235,7 @@ const PROFESSIONAL_ADDITIONAL_BRANCHES = [
   ["KEY APPS", "Tickets"],
   ["KEY APPS", "Calendar"],
   ["DEPARTMENT ACCESSES", "Sales Department"],
+  ["DEPARTMENT ACCESSES", "Administration Department"],
 ];
 
 const CUSTOMIZE_ADDITIONAL_BRANCHES = [
@@ -247,7 +248,6 @@ const CUSTOMIZE_ADDITIONAL_BRANCHES = [
   ["KEY APPS", "Finance Management"],
   ["KEY APPS", "Reports"],
   ["DEPARTMENT ACCESSES", "HR Department"],
-  ["DEPARTMENT ACCESSES", "Administration Department"],
   ["DEPARTMENT ACCESSES", "Finance Department"],
   ["DEPARTMENT ACCESSES", "Maintenance Department"],
   ["DEPARTMENT ACCESSES", "Tech Department"],
