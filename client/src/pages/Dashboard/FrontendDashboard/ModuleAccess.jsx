@@ -54,7 +54,8 @@ const BASIC_PLAN_MODULE_IDS = [
   "customer-support",
   "visitor-management",
   // NOT "visitors-management" (plural) — duplicate id for the same page,
-  // used only as the Administration Department tab. See the matching note
+  // used only as the Administration Department tab, which is a
+  // Professional+ default rather than a Basic one. See the matching note
   // in HostPanel's server/config/workspaceModuleCatalog.ts.
   "visitors_manage_internal_visitors",
   "visitors_tab_daily",
@@ -99,10 +100,13 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   "calendar",
   "workspace-settings",
   "workspace-management",
-  // Administration Department (tenant-companies-admin, bookings,
-  // resource-management, house-keeping) moved to Custom-only — no longer a
-  // Professional default. Kept out of this set to match HostPanel's
-  // PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
+  // Administration Department is a Professional default — kept in sync with
+  // HostPanel's PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
+  "tenant-companies-admin",
+  "bookings",
+  "visitors-management",
+  "resource-management",
+  "house-keeping",
   "leads-management",
   "tenant-companies-sales",
   "virtual-office-sales",
