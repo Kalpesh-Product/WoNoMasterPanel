@@ -1995,11 +1995,7 @@ const bulkInsertPoc = async (req, res, next) => {
     }
 
     const companyIds = [
-      ...new Set(
-        pocs
-          .map((poc) => poc?.companyId?.trim())
-          .filter(Boolean),
-      ),
+      ...new Set(pocs.map((poc) => poc?.companyId?.trim()).filter(Boolean)),
     ];
 
     // Fetch only companies referenced by this upload.
