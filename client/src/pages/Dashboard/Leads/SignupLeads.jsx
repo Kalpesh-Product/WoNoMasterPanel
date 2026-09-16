@@ -31,7 +31,11 @@ const normalizePlanValue = (value) => {
   const n = String(value || "basic")
     .trim()
     .toLowerCase();
-  if (["custom", "customize", "customised", "customized"].includes(n))
+  if (
+    ["custom", "customise", "customize", "customised", "customized"].includes(
+      n,
+    )
+  )
     return "customise";
   if (n === "professional") return "professional";
   return "basic";
