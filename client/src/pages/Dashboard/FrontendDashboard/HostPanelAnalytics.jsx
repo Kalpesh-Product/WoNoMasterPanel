@@ -510,7 +510,7 @@ const HostPanelAnalyticsOverview = () => {
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div data-tour="host-panel-analytics-stats" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               {
                 label: "Companies",
@@ -570,7 +570,7 @@ const HostPanelAnalyticsOverview = () => {
             })}
           </div>
 
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <div data-tour="host-panel-analytics-summary" className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm xl:col-span-1">
               <h3 className="mb-4 text-[11px] font-pmedium uppercase tracking-widest text-slate-500">
                 Six Month Activity
@@ -608,7 +608,7 @@ const HostPanelAnalyticsOverview = () => {
                   Sorted by recent activity from host panel logs.
                 </p>
               </div>
-              <div className="relative w-full md:max-w-sm">
+              <div data-tour="host-panel-analytics-search" className="relative w-full md:max-w-sm">
                 <Search
                   className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                   size={15}
@@ -623,7 +623,7 @@ const HostPanelAnalyticsOverview = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div data-tour="host-panel-analytics-table" className="overflow-x-auto">
               <table className="w-full min-w-[1120px] text-left">
                 <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                   <tr>
@@ -692,6 +692,7 @@ const HostPanelAnalyticsOverview = () => {
                           <div className="flex items-center justify-center gap-2">
                             <button
                               type="button"
+                              data-tour="host-panel-analytics-row-view"
                               onClick={() => setSelectedCompany(company)}
                               className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-blue-100 hover:text-blue-700"
                               title="View company"
@@ -700,6 +701,7 @@ const HostPanelAnalyticsOverview = () => {
                             </button>
                             <button
                               type="button"
+                              data-tour="host-panel-analytics-row-drill"
                               onClick={() => navigate(String(company.companyId || ""), { state: { companyName: company.companyName } })}
                               disabled={!company.companyId}
                               className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-all hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"

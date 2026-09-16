@@ -41,7 +41,7 @@ const WonoHistoricalAnalytics = ({ range }) => {
     : [];
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+    <section data-tour="master-panel-analytics-traffic" className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 px-5 py-4 bg-slate-50/50 border-b border-slate-100">
         <span className="flex items-center gap-3 min-w-0">
           <span className="p-2 rounded-xl bg-[#2563EB] text-white shrink-0 shadow-sm shadow-blue-200">

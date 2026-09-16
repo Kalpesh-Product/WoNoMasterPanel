@@ -165,6 +165,13 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   "calendar",
   "workspace-settings",
   "workspace-management",
+  // Administration Department is a Professional default — kept in sync with
+  // HostPanel's PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
+  "tenant-companies-admin",
+  "bookings",
+  "visitors-management",
+  "resource-management",
+  "house-keeping",
   "leads-management",
   "tenant-companies-sales",
   "virtual-office-sales",
