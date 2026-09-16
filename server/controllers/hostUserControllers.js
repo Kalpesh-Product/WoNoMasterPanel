@@ -6,9 +6,6 @@ const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
 const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
-const {
-  handleVerificationPaymentWebhookEvent,
-} = require("./companyVerificationPaymentsControllers");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -1300,12 +1297,12 @@ const sanitizeEnabledModuleIds = (enabledIds = [], workspaceModules = []) => {
 
 // Previously linked ["visitor-management", "visitors-management"] so
 // toggling either kept both in sync (they're the same underlying
-// /visitors/visitor-management page). Kept unlinked: even though
-// "visitors-management" (Administration Department tab) is now a
-// Professional+ default just like "visitor-management" (Key Apps), staff
-// can still independently disable the Administration Department tab for a
-// specific workspace without also pulling the always-on Key Apps entry down
-// with it. Empty for now; add groups back here only for ids that should
+// /visitors/visitor-management page). Removed: "visitors-management" is now
+// deliberately Custom-only (Administration Department), while
+// "visitor-management" (Key Apps) stays on at every plan — linking them
+// meant enabling the always-on Key Apps entry silently re-enabled the
+// Administration Department tab on every read/save, undoing that
+// restriction. Empty for now; add groups back here only for ids that should
 // genuinely always move together.
 const LINKED_MODULE_ID_GROUPS = [];
 
@@ -2164,240 +2161,51 @@ const getInviteStatuses = async (req, res, next) => {
   }
 };
 
-// Upserts/reuses a HostLeadCompany row, mints a signed HostPanel invite
-// link, emails it, and syncs HostUser/HostInviteStatus lifecycle bookkeeping.
-// Shared by sendInviteEmail (the CRM "invite this closed lead" action) and
-// the verification-payment success path (companyVerificationPaymentsControllers.js),
-// which calls this directly — not over HTTP — to avoid a circular require
-// between the two controller files (that file requires this one lazily
-// inside its own function body for the same reason).
-const createHostInvite = async ({
-  leadId,
-  email,
-  name,
-  mobile,
-  companyName,
-  status,
-  fullName,
-  selectedPlan,
-  country,
-  state,
-  city,
-  verticalType,
-  source,
-  goals,
-  comment,
-  isUpgradeRequest,
-  nomadsCompanyId,
-}) => {
-  const normalizeMultiValue = (value) => {
-    if (Array.isArray(value)) {
-      return value
-        .map((item) => {
-          if (typeof item === "string") return item.trim();
-          if (item && typeof item === "object") {
-            return String(item.label || item.value || item.name || "").trim();
-          }
-          return "";
-        })
-        .filter(Boolean)
-        .join(", ");
-    }
-
-    if (typeof value === "string") {
-      return value.trim();
-    }
-
-    if (value && typeof value === "object") {
-      return String(value.label || value.value || value.name || "").trim();
-    }
-
-    return "";
-  };
-
-  const normalizedEmailForLookup = String(email || "")
-    .trim()
-    .toLowerCase();
-  const normalizedCompanyNameForLookup = String(companyName || "").trim();
-  const normalizedCityForLookup = String(city || "").trim();
-  const normalizedStateForLookup = String(state || "").trim();
-  const normalizedCountryForLookup = String(country || "").trim();
-  // A CRM lead can get re-submitted/duplicated upstream (each with its own
-  // _id) — sometimes under the same POC email (a repeat invite), sometimes
-  // under a different one (the same business resubmitted with a different
-  // contact). Keying purely on leadId would create a second HostLeadCompany
-  // row in either case, so reuse the existing row instead of minting a new
-  // companyId: first try matching by POC email, then fall back to an exact
-  // company name + city/state/country match (all four together, to avoid
-  // merging unrelated companies that just happen to share a common name).
-  const existingLeadCompany = normalizedEmailForLookup
-    ? await HostLeadCompany.findOne({
-        pocEmail: normalizedEmailForLookup,
-      }).lean()
-    : null;
-  const existingLeadCompanyByLocation =
-    !existingLeadCompany &&
-    normalizedCompanyNameForLookup &&
-    normalizedCityForLookup &&
-    normalizedStateForLookup &&
-    normalizedCountryForLookup
-      ? await HostLeadCompany.findOne({
-          companyName: {
-            $regex: `^${escapeRegex(normalizedCompanyNameForLookup)}$`,
-            $options: "i",
-          },
-          companyCity: {
-            $regex: `^${escapeRegex(normalizedCityForLookup)}$`,
-            $options: "i",
-          },
-          companyState: {
-            $regex: `^${escapeRegex(normalizedStateForLookup)}$`,
-            $options: "i",
-          },
-          companyCountry: {
-            $regex: `^${escapeRegex(normalizedCountryForLookup)}$`,
-            $options: "i",
-          },
-        }).lean()
-      : null;
-  const companyId =
-    existingLeadCompany?.companyId ||
-    existingLeadCompanyByLocation?.companyId ||
-    leadId?.trim() ||
-    `lead-${randomUUID()}`;
-  const normalizedVerticals = normalizeVerticalType(verticalType);
-  const normalizedPlan = String(selectedPlan || goals || "basic")
-    .trim()
-    .toLowerCase();
-
-  await HostLeadCompany.findOneAndUpdate(
-    { companyId },
-    {
-      $set: {
-        leadId: leadId?.trim() || undefined,
-        companyId,
-        companyName: companyName?.trim() || "Unknown Company",
-        industry: normalizeMultiValue(verticalType),
-        companyCountry: country?.trim() || "",
-        companyState: state?.trim() || "",
-        companyCity: city?.trim() || "",
-        isRegistered: true,
-        status: status?.trim()?.toLowerCase() || "closed",
-        plan: normalizedPlan,
-        comment: comment?.trim() || "",
-        source: source?.trim() || "signup-lead",
-        pocName: name?.trim() || "",
-        pocEmail: email?.trim()?.toLowerCase() || "",
-        pocPhone: mobile?.trim() || "",
-        invitedAt: new Date(),
-        ...(isUpgradeRequest
-          ? {
-              upgradeInviteSentAt: new Date(),
-              upgradeStatus: "payment_link_sent",
-            }
-          : {}),
-        // Cross-references this HostLeadCompany row to the Nomads directory
-        // company it came from, so HostPanel's existing
-        // effectiveNomadsCompanyId resolution automatically pulls the right
-        // Nomad Listings once the invite is completed — see Part E.
-        ...(nomadsCompanyId ? { linkedNomadsCompanyId: nomadsCompanyId } : {}),
-      },
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
-
-  const invitePayload = {
-    fullName: fullName || name,
-    name: fullName || name,
-    email,
-    // Without this, HostPanel registration has no way to link back to the
-    // lead row upserted above and mints its own companyId on setup —
-    // leaving this row orphaned and creating a second, duplicate company
-    // for the same host (visible in Host Companies with mismatched plans).
-    companyId,
-    leadId: companyId,
-    selectedPlan: normalizedPlan,
-    goals: normalizedPlan,
-    companyName: companyName || "",
-    businessName: companyName || "",
-    country: country || "",
-    state: state || "",
-    city: city || "",
-    verticalType: normalizedVerticals,
-    businessType: normalizedVerticals,
-  };
-
-  const inviteToken = jwt.sign(
-    invitePayload,
-    process.env.HOST_INVITE_TOKEN_SECRET || process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
-  );
-
-  const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
-  const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
-  const totalInvites = await HostLeadCompany.countDocuments({});
-  const requestId = `WN-ACT-${referenceDateStamp()}-${String(
-    totalInvites,
-  ).padStart(5, "0")}`;
-  const signupMail = buildSignupInviteEmail({
-    name,
-    companyName,
-    inviteLink,
-    requestId,
-  });
-  await sendMail({ to: email, ...signupMail });
-
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const hostUser = await HostUser.findOne({
-    email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
-  });
-
-  if (hostUser) {
-    const currentStatus = await syncInviteLifecycle(hostUser);
-
-    hostUser.country = country || hostUser.country || "";
-    hostUser.state = state || hostUser.state || "";
-    hostUser.city = city || hostUser.city || "";
-    hostUser.verticalType = normalizedVerticals.length
-      ? normalizedVerticals
-      : hostUser.verticalType || [];
-
-    if (!["registered", "joined"].includes(currentStatus)) {
-      hostUser.inviteStatus = "invite_sent";
-      hostUser.inviteSentAt = new Date();
-    }
-
-    await hostUser.save();
-  }
-
-  const inviteStatusDoc = await HostInviteStatus.findOne({
-    email: normalizedEmail,
-  }).lean();
-  const docStatus = normalizeInviteStatus(inviteStatusDoc?.inviteStatus);
-  const shouldKeepHigherStatus =
-    docStatus === "registered" || docStatus === "joined";
-
-  await HostInviteStatus.updateOne(
-    { email: normalizedEmail },
-    {
-      $set: {
-        email: normalizedEmail,
-        inviteStatus: shouldKeepHigherStatus ? docStatus : "invite_sent",
-        inviteSentAt:
-          inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
-            ? inviteStatusDoc?.inviteSentAt || new Date()
-            : new Date(),
-      },
-    },
-    { upsert: true },
-  );
-
-  return { inviteLink, companyId };
-};
-
 const sendInviteEmail = async (req, res, next) => {
   try {
-    const { email, name, status } = req.body;
+    const {
+      leadId,
+      email,
+      name,
+      mobile,
+      companyName,
+      status,
+      fullName,
+      selectedPlan,
+      country,
+      state,
+      city,
+      verticalType,
+      source,
+      goals,
+      comment,
+      isUpgradeRequest,
+    } = req.body;
+
+    const normalizeMultiValue = (value) => {
+      if (Array.isArray(value)) {
+        return value
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (item && typeof item === "object") {
+              return String(item.label || item.value || item.name || "").trim();
+            }
+            return "";
+          })
+          .filter(Boolean)
+          .join(", ");
+      }
+
+      if (typeof value === "string") {
+        return value.trim();
+      }
+
+      if (value && typeof value === "object") {
+        return String(value.label || value.value || value.name || "").trim();
+      }
+
+      return "";
+    };
 
     if (!email || !name) {
       return res
@@ -2411,7 +2219,177 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    await createHostInvite(req.body);
+    const normalizedEmailForLookup = String(email || "")
+      .trim()
+      .toLowerCase();
+    const normalizedCompanyNameForLookup = String(companyName || "").trim();
+    const normalizedCityForLookup = String(city || "").trim();
+    const normalizedStateForLookup = String(state || "").trim();
+    const normalizedCountryForLookup = String(country || "").trim();
+    // A CRM lead can get re-submitted/duplicated upstream (each with its own
+    // _id) — sometimes under the same POC email (a repeat invite), sometimes
+    // under a different one (the same business resubmitted with a different
+    // contact). Keying purely on leadId would create a second HostLeadCompany
+    // row in either case, so reuse the existing row instead of minting a new
+    // companyId: first try matching by POC email, then fall back to an exact
+    // company name + city/state/country match (all four together, to avoid
+    // merging unrelated companies that just happen to share a common name).
+    const existingLeadCompany = normalizedEmailForLookup
+      ? await HostLeadCompany.findOne({
+          pocEmail: normalizedEmailForLookup,
+        }).lean()
+      : null;
+    const existingLeadCompanyByLocation =
+      !existingLeadCompany &&
+      normalizedCompanyNameForLookup &&
+      normalizedCityForLookup &&
+      normalizedStateForLookup &&
+      normalizedCountryForLookup
+        ? await HostLeadCompany.findOne({
+            companyName: {
+              $regex: `^${escapeRegex(normalizedCompanyNameForLookup)}$`,
+              $options: "i",
+            },
+            companyCity: {
+              $regex: `^${escapeRegex(normalizedCityForLookup)}$`,
+              $options: "i",
+            },
+            companyState: {
+              $regex: `^${escapeRegex(normalizedStateForLookup)}$`,
+              $options: "i",
+            },
+            companyCountry: {
+              $regex: `^${escapeRegex(normalizedCountryForLookup)}$`,
+              $options: "i",
+            },
+          }).lean()
+        : null;
+    const companyId =
+      existingLeadCompany?.companyId ||
+      existingLeadCompanyByLocation?.companyId ||
+      leadId?.trim() ||
+      `lead-${randomUUID()}`;
+    const normalizedVerticals = normalizeVerticalType(verticalType);
+    const normalizedPlan = String(selectedPlan || goals || "basic")
+      .trim()
+      .toLowerCase();
+
+    await HostLeadCompany.findOneAndUpdate(
+      { companyId },
+      {
+        $set: {
+          leadId: leadId?.trim() || undefined,
+          companyId,
+          companyName: companyName?.trim() || "Unknown Company",
+          industry: normalizeMultiValue(verticalType),
+          companyCountry: country?.trim() || "",
+          companyState: state?.trim() || "",
+          companyCity: city?.trim() || "",
+          isRegistered: true,
+          status: status?.trim()?.toLowerCase() || "closed",
+          plan: normalizedPlan,
+          comment: comment?.trim() || "",
+          source: source?.trim() || "signup-lead",
+          pocName: name?.trim() || "",
+          pocEmail: email?.trim()?.toLowerCase() || "",
+          pocPhone: mobile?.trim() || "",
+          invitedAt: new Date(),
+          ...(isUpgradeRequest
+            ? {
+                upgradeInviteSentAt: new Date(),
+                upgradeStatus: "payment_link_sent",
+              }
+            : {}),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
+    const invitePayload = {
+      fullName: fullName || name,
+      name: fullName || name,
+      email,
+      // Without this, HostPanel registration has no way to link back to the
+      // lead row upserted above and mints its own companyId on setup —
+      // leaving this row orphaned and creating a second, duplicate company
+      // for the same host (visible in Host Companies with mismatched plans).
+      companyId,
+      leadId: companyId,
+      selectedPlan: normalizedPlan,
+      goals: normalizedPlan,
+      companyName: companyName || "",
+      businessName: companyName || "",
+      country: country || "",
+      state: state || "",
+      city: city || "",
+      verticalType: normalizedVerticals,
+      businessType: normalizedVerticals,
+    };
+
+    const inviteToken = jwt.sign(
+      invitePayload,
+      process.env.HOST_INVITE_TOKEN_SECRET || process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
+    );
+
+    const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
+    const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
+    const totalInvites = await HostLeadCompany.countDocuments({});
+    const requestId = `WN-ACT-${referenceDateStamp()}-${String(
+      totalInvites,
+    ).padStart(5, "0")}`;
+    const signupMail = buildSignupInviteEmail({
+      name,
+      companyName,
+      inviteLink,
+      requestId,
+    });
+    await sendMail({ to: email, ...signupMail });
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const hostUser = await HostUser.findOne({
+      email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
+    });
+
+    if (hostUser) {
+      const currentStatus = await syncInviteLifecycle(hostUser);
+
+      hostUser.country = country || hostUser.country || "";
+      hostUser.state = state || hostUser.state || "";
+      hostUser.city = city || hostUser.city || "";
+      hostUser.verticalType = normalizedVerticals.length
+        ? normalizedVerticals
+        : hostUser.verticalType || [];
+
+      if (!["registered", "joined"].includes(currentStatus)) {
+        hostUser.inviteStatus = "invite_sent";
+        hostUser.inviteSentAt = new Date();
+      }
+
+      await hostUser.save();
+    }
+
+    const inviteStatusDoc = await HostInviteStatus.findOne({
+      email: normalizedEmail,
+    }).lean();
+    const docStatus = normalizeInviteStatus(inviteStatusDoc?.inviteStatus);
+    const shouldKeepHigherStatus =
+      docStatus === "registered" || docStatus === "joined";
+
+    await HostInviteStatus.updateOne(
+      { email: normalizedEmail },
+      {
+        $set: {
+          email: normalizedEmail,
+          inviteStatus: shouldKeepHigherStatus ? docStatus : "invite_sent",
+          inviteSentAt:
+            inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
+              ? inviteStatusDoc?.inviteSentAt || new Date()
+              : new Date(),
+        },
+      },
+      { upsert: true },
+    );
 
     return res.status(200).json({ message: "Invite email sent successfully" });
   } catch (error) {
@@ -3810,16 +3788,6 @@ const handleStripeWebhook = async (req, res) => {
               },
             ],
           });
-        } else {
-          // Not a booking/plan_subscription Payment Link (or a redelivery of
-          // an already-paid one, in which case this is a safe no-op) — check
-          // if it's a company-verification payment instead.
-          const isKnownBookingLink = await BookingPaymentLink.exists({
-            stripePaymentLinkId: session.payment_link,
-          });
-          if (!isKnownBookingLink) {
-            await handleVerificationPaymentWebhookEvent(session);
-          }
         }
       } catch (error) {
         console.error(
@@ -3838,7 +3806,6 @@ module.exports = {
   getInviteStatuses,
   getCompanyMembers,
   sendInviteEmail,
-  createHostInvite,
   updateHostUserAccountStatus,
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
