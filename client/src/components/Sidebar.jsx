@@ -55,7 +55,12 @@ const Sidebar = ({ onCloseDrawer }) => {
     }));
   };
 
-  const isActive = (path) => location.pathname.startsWith(path);
+  // Exact match, or a genuine nested child route (path + "/...") — plain
+  // startsWith would also match unrelated sibling routes that merely share a
+  // prefix, e.g. "/dashboard/companies-verified" starting with
+  // "/dashboard/companies".
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
 
   const filteredModules = isSuperAdmin
     ? MASTER_PANEL_MODULES

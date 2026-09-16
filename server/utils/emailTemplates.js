@@ -352,9 +352,202 @@ function renderNotificationEmail({
       `;
 }
 
+// Company-verification payment emails (Company Verification Leads page).
+// Mirror buildPlanSubscriptionPaymentEmail / buildPlanSubscriptionConfirmationEmail
+// in hostUserControllers.js — same shell, copy adapted for a verification
+// badge instead of a plan subscription.
+
+const VERIFICATION_CHANGE_TYPE_COPY = {
+  initial: {
+    subject: "Complete Your Verification Payment",
+    heroTitle: "Complete Your Payment",
+    heroLead: "Activate Your",
+    bodyLead: "Your business verification request for",
+    bodyTrail: "has been approved and is ready for payment.",
+  },
+  renewal: {
+    subject: "Renew Your Verification Badge",
+    heroTitle: "Renew Your Verification Badge",
+    heroLead: "Keep Your",
+    bodyLead: "Your business verification badge for",
+    bodyTrail: "is expiring soon.",
+  },
+  upgrade: {
+    subject: "Change Your Verification Plan",
+    heroTitle: "Change Your Verification Plan",
+    heroLead: "Upgrade Your",
+    bodyLead: "You're switching plans for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+  downgrade: {
+    subject: "Change Your Verification Plan",
+    heroTitle: "Change Your Verification Plan",
+    heroLead: "Change Your",
+    bodyLead: "You're switching plans for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+};
+
+const buildVerificationPaymentEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  paymentLinkUrl,
+  amount,
+  changeType = "initial",
+  projectedStart,
+  projectedEnd,
+}) => {
+  const copy = VERIFICATION_CHANGE_TYPE_COPY[changeType] || VERIFICATION_CHANGE_TYPE_COPY.initial;
+  // For a renewal/change-plan started before the current plan has expired,
+  // the new one starts only once the current one runs out — spelling that
+  // out here so paying early never reads as "losing" the time already paid
+  // for.
+  const periodNote =
+    changeType !== "initial" && projectedStart && projectedEnd
+      ? [
+          [
+            "Plan Starts",
+            new Date(projectedStart) > new Date()
+              ? `${formatLongDate(projectedStart)} (after your current plan ends)`
+              : formatLongDate(projectedStart),
+          ],
+          ["Plan Ends", formatLongDate(projectedEnd)],
+        ]
+      : [];
+  return {
+    subject: copy.subject,
+    html: renderNotificationEmail({
+      heroTitle: copy.heroTitle,
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">${copy.heroLead} Verified Badge — ${tierLabel}</span><br/>${copy.bodyTrail}`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">${copy.bodyLead} <b class="email-heading">${companyName}</b> ${copy.bodyTrail}</p>
+      `,
+      detailsTitle: "Payment Summary",
+      detailRows: [
+        ["Company", companyName],
+        ["Plan", tierLabel],
+        ["Amount Due", `$${Number(amount).toFixed(2)} USD`],
+        ...periodNote,
+      ],
+      ctaButton: { href: paymentLinkUrl, label: "Complete Payment" },
+    }),
+  };
+};
+
+// Optional second CTA block appended via bodyHtml — renderNotificationEmail's
+// own ctaButton only supports one button, so a second link (either a
+// Renew/Change-Plan pair or a single Become-a-Host nudge) is built as raw
+// table markup and passed through bodyHtml instead.
+const buildTwoCtaBodyHtml = (buttons) => `
+  <tr><td style="padding:24px 32px 4px;text-align:center;">
+    ${buttons
+      .map(
+        (btn, index) => `<a href="${btn.href}" style="display:inline-block;background:${index === 0 ? "#0BA9EF" : "#ffffff"};color:${index === 0 ? "#ffffff" : "#0BA9EF"};font-weight:600;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;border:1px solid #0BA9EF;margin:0 6px 8px;">${btn.label}</a>`,
+      )
+      .join("")}
+  </td></tr>`;
+
+const buildVerificationConfirmationEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  amount,
+  paidAt,
+  verificationExpiresAt,
+  changeType = "initial",
+  becomeHostUrl,
+  invoiceUrl,
+}) => ({
+  subject: "Verification Payment Successful!",
+  html: renderNotificationEmail({
+    heroTitle: "Payment Successful!",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${companyName} Verified Badge Is ${changeType === "initial" ? "Active" : "Updated"}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">We've received your payment. Your blue verification badge for <b class="email-heading">${companyName}</b> is now live on all your listings.${changeType !== "initial" ? " Any time remaining on your previous plan has been carried over — nothing is lost." : ""}${invoiceUrl ? " Your invoice is attached to this email." : ""}</p>
+      `,
+    detailsTitle: "Payment Summary",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", tierLabel],
+      [
+        "Amount Paid",
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(amount || 0),
+      ],
+      ["Payment Date", formatLongDate(paidAt || new Date())],
+      ["Start Date", formatLongDate(paidAt || new Date())],
+      ["Valid Until", formatLongDate(verificationExpiresAt)],
+    ],
+    ctaButton: invoiceUrl
+      ? { href: invoiceUrl, label: "View Invoice" }
+      : undefined,
+    bodyHtml: becomeHostUrl
+      ? buildTwoCtaBodyHtml([
+          { href: becomeHostUrl, label: "Become a Host — Sign Up Free" },
+        ])
+      : undefined,
+  }),
+});
+
+// Sent by the renewal-reminder cron, 5 days before verificationExpiresAt.
+// Unlike buildVerificationPaymentEmail, this can't link straight to a Stripe
+// Payment Link — the tier hasn't been chosen yet, since the owner might
+// renew the same plan or change it. Both CTAs land on the self-serve
+// "Verification" tab (Part C.1) instead, which creates the actual link.
+const buildVerificationRenewalReminderEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  expiresOnLabel,
+  manageUrl,
+}) => ({
+  subject: "Your Verification Badge Is Expiring Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Renew Your Verification Badge",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Expiring ${expiresOnLabel}</span><br/>Renew now to keep your verified badge active.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your <b class="email-heading">${tierLabel}</b> verification badge for <b class="email-heading">${companyName}</b> expires on <b class="email-heading">${expiresOnLabel}</b>. Renew your current plan or switch to a different one below.</p>
+      `,
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: `${manageUrl}&action=change`, label: "Change Plan" },
+    ]),
+  }),
+});
+
+// Sent by the expiry-day cron, once verificationExpiresAt has passed and the
+// badge has actually lapsed (distinct from the 5-day-before reminder above).
+const buildVerificationExpiredEmail = ({ customerName, companyName, manageUrl }) => ({
+  subject: "Your Verification Badge Has Expired",
+  html: renderNotificationEmail({
+    heroTitle: "Your Verification Badge Has Expired",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is no longer verified</span><br/>Renew now to restore your badge.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your verification badge for <b class="email-heading">${companyName}</b> has expired and is no longer shown on your listings. Renew your plan or switch to a different one to restore it.</p>
+      `,
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: `${manageUrl}&action=change`, label: "Change Plan" },
+    ]),
+  }),
+});
+
 module.exports = emailTemplates;
 module.exports.toDMY = toDMY;
 module.exports.referenceDateStamp = referenceDateStamp;
 module.exports.formatSubmittedOn = formatSubmittedOn;
 module.exports.formatLongDate = formatLongDate;
 module.exports.renderNotificationEmail = renderNotificationEmail;
+module.exports.buildVerificationPaymentEmail = buildVerificationPaymentEmail;
+module.exports.buildVerificationConfirmationEmail =
+  buildVerificationConfirmationEmail;
+module.exports.buildVerificationRenewalReminderEmail =
+  buildVerificationRenewalReminderEmail;
+module.exports.buildVerificationExpiredEmail = buildVerificationExpiredEmail;

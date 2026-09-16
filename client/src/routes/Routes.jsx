@@ -139,6 +139,7 @@ import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/C
 import SelectWebsiteTemplate from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/SelectWebsiteTemplate";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompanyVerified from "../pages/Dashboard/FrontendDashboard/CompanyVerified";
 import CompaniesLayout from "../pages/Dashboard/FrontendDashboard/CompaniesLayout";
 import CompaniesRequests from "../pages/Dashboard/FrontendDashboard/CompaniesRequests";
 import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
@@ -154,6 +155,7 @@ import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/C
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
+import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
 import ValueAddsLeads from "../pages/Dashboard/Leads/ValueAddsLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
@@ -280,6 +282,14 @@ export const routes = createBrowserRouter([
                   {
                     path: "signup-leads",
                     element: <SignupLeads />,
+                  },
+                  {
+                    path: "company-verification-leads",
+                    element: <CompanyVerificationLeads />,
+                  },
+                  {
+                    path: "companies-verified",
+                    element: <CompanyVerified />,
                   },
                   {
                     path: "all-leads",

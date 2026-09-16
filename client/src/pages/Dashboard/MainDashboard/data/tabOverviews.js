@@ -385,6 +385,74 @@ export const TAB_OVERVIEWS = {
     ],
   },
 
+  "dashboard.company-verification-leads": {
+    sources: [
+      { key: "leads", url: "/api/company-verification-leads", pick: pickDataArray },
+      {
+        key: "paymentHistory",
+        url: "/api/company-verification-leads/payment-history",
+        pick: pickDataArray,
+      },
+    ],
+    cards: [
+      {
+        label: "Verified",
+        value: ({ data }) =>
+          data.leads.filter(
+            (l) =>
+              l.paymentStatus === "paid" &&
+              (!l.verificationExpiresAt || new Date(l.verificationExpiresAt) > new Date()),
+          ).length,
+        icon: ShieldCheck,
+        tone: 0,
+      },
+      {
+        label: "Expired",
+        value: ({ data }) =>
+          data.leads.filter(
+            (l) =>
+              l.paymentStatus === "paid" &&
+              l.verificationExpiresAt &&
+              new Date(l.verificationExpiresAt) <= new Date(),
+          ).length,
+        icon: AlertCircle,
+        tone: 1,
+      },
+      {
+        label: "Renewed",
+        value: ({ data }) =>
+          data.paymentHistory.filter((p) => p.changeType === "renewal").length,
+        icon: CheckCircle2,
+        tone: 2,
+      },
+      {
+        label: "Changed Plan",
+        value: ({ data }) =>
+          data.paymentHistory.filter((p) => ["upgrade", "downgrade"].includes(p.changeType))
+            .length,
+        icon: TrendingUp,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Requests by Status",
+        type: "donut",
+        build: ({ data }) => topN(countBy(data.leads, "status"), 6),
+      },
+      {
+        title: "Requests by Plan",
+        type: "donut",
+        build: ({ data }) => topN(countBy(data.leads, "requestedTier"), 6),
+      },
+      {
+        title: "Monthly Submission Trend",
+        type: "bars",
+        build: ({ data }) => monthlyTrend(data.leads),
+      },
+    ],
+  },
+
   "dashboard.companies": COMPANIES_OVERVIEW,
   "hostpanel.companies": COMPANIES_OVERVIEW,
 

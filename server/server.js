@@ -64,6 +64,8 @@ const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
 const siteAnalyticsRoutes = require("./routes/siteAnalyticsRoutes");
+const companyVerificationLeadsRoutes = require("./routes/companyVerificationLeadsRoutes");
+const verificationServiceRoutes = require("./routes/verificationServiceRoutes");
 
 const {
   getTemplate,
@@ -72,6 +74,8 @@ const {
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 
 require("./listeners/logEventListener");
+require("./jobs/verificationRenewalReminders");
+require("./jobs/verificationExpiryNotices");
 const app = express();
 const PORT = process.env.PORT || 5007;
 app.set("trust proxy", true);
@@ -163,6 +167,16 @@ app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
+app.use(
+  "/api/company-verification-leads",
+  verifyJwt,
+  auditLogger,
+  companyVerificationLeadsRoutes,
+);
+// Server-to-server only (Nomads backend calling in for self-serve
+// renew/change-plan) — auth is verifyNomadsServiceKey inside the router
+// itself, not verifyJwt/auditLogger (those are for staff browser sessions).
+app.use("/api/internal/verification-payments", verificationServiceRoutes);
 app.use("/api/site-analytics", verifyJwt, auditLogger, siteAnalyticsRoutes);
 
 app.all("*", (req, res) => {

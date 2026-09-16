@@ -60,6 +60,13 @@ export const MASTER_PANEL_MODULES = [
             icon: LuUserRound,
             route: "/dashboard/nomad-signup-leads",
           },
+          {
+            id: 30,
+            key: "dashboard.company-verification-leads",
+            title: "Company Verification Leads",
+            icon: LuShieldCheck,
+            route: "/dashboard/company-verification-leads",
+          },
         ],
       },
       {
@@ -72,6 +79,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Companies",
             icon: LuBuilding2,
             route: "/dashboard/companies",
+          },
+          {
+            id: 31,
+            key: "dashboard.companies-verified",
+            title: "Companies Verified",
+            icon: LuShieldCheck,
+            route: "/dashboard/companies-verified",
           },
           {
             id: 24,

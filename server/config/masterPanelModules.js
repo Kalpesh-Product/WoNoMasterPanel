@@ -12,6 +12,8 @@ const masterPanelModules = [
       { key: "dashboard.data-upload", label: "Data Upload" },
       { key: "dashboard.publish-listings", label: "Publish Listings" },
       { key: "dashboard.nomad-signup-leads", label: "Nomad Signup Leads" },
+      { key: "dashboard.company-verification-leads", label: "Company Verification Leads" },
+      { key: "dashboard.companies-verified", label: "Companies Verified" },
       { key: "dashboard.profile", label: "Profile" },
       { key: "dashboard.logs", label: "Logs" },
       { key: "dashboard.master-panel-analytics", label: "Master Panel Analytics" },
