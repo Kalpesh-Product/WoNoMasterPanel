@@ -255,7 +255,7 @@ const WebsiteTemplateRequests = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div data-tour="website-templates-stats" className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             ["Total Requests", counts.total, "border-l-slate-400", "text-slate-500"],
             ["Pending", counts.pending, "border-l-amber-500", "text-amber-600"],
@@ -271,7 +271,7 @@ const WebsiteTemplateRequests = () => {
 
         <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100/60 bg-slate-50/50 p-4 xl:flex-row xl:items-center">
-            <div className="flex max-w-full items-center gap-1.5 overflow-x-auto">
+            <div data-tour="website-templates-status-filter" className="flex max-w-full items-center gap-1.5 overflow-x-auto">
               {["all", "pending", "approved", "completed", "rejected"].map((status) => (
                 <button
                   key={status}
@@ -284,7 +284,7 @@ const WebsiteTemplateRequests = () => {
               ))}
             </div>
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center xl:w-auto">
-              <div className="relative w-full sm:min-w-72 xl:w-96">
+              <div data-tour="website-templates-search" className="relative w-full sm:min-w-72 xl:w-96">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                 <input
                   value={searchQuery}
@@ -295,6 +295,7 @@ const WebsiteTemplateRequests = () => {
               </div>
               <button
                 type="button"
+                data-tour="website-templates-settings"
                 onClick={() => setSettingsOpen(true)}
                 className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium uppercase tracking-wider text-white shadow-sm shadow-blue-200 transition-colors hover:bg-blue-700"
               >
@@ -303,7 +304,7 @@ const WebsiteTemplateRequests = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-x-auto">
+          <div data-tour="website-templates-table" className="flex-1 overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                 <tr>
@@ -338,7 +339,7 @@ const WebsiteTemplateRequests = () => {
                     <td className="px-5 py-4"><StatusPill status={request.status} /></td>
                     <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">{formatDate(request.createdAt)}</td>
                     <td className="px-5 py-4 text-center">
-                      <button type="button" title="View request" onClick={() => openRequest(request)} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"><Eye size={15} /></button>
+                      <button type="button" data-tour="website-templates-row-view" title="View request" onClick={() => openRequest(request)} className="rounded-lg bg-slate-100 p-1.5 text-slate-600 transition-colors hover:bg-blue-100 hover:text-blue-700"><Eye size={15} /></button>
                     </td>
                   </tr>
                 ))}
