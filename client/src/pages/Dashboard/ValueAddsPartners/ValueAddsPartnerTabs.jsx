@@ -192,6 +192,36 @@ const companySetupSupportTableColumns = companySetupSupportColumns.filter(
     ].includes(column.field),
 );
 
+const activationSupportColumns = [
+  { field: "company", headerName: "Company" },
+  { field: "continent", headerName: "Continent" },
+  { field: "country", headerName: "Country" },
+  { field: "destination", headerName: "State" },
+  { field: "supportProviding", headerName: "Support Providing" },
+  { field: "agentName", headerName: "Agent Name" },
+  { field: "website", headerName: "Website" },
+  { field: "contact", headerName: "Contact" },
+  { field: "email", headerName: "Email" },
+  { field: "status", headerName: "Status" },
+  { field: "address", headerName: "Address" },
+  { field: "rating", headerName: "Rating" },
+  { field: "googleReviews", headerName: "Google Reviews" },
+  { field: "lastUpdated", headerName: "Last Updated" },
+];
+
+const activationSupportTableColumns = activationSupportColumns.filter(
+  (column) =>
+    [
+      "company",
+      "continent",
+      "country",
+      "destination",
+      "contact",
+      "email",
+      "status",
+    ].includes(column.field),
+);
+
 const resolveRating = (value) => (value === 0 || value ? value : "--");
 
 const emptyDash = (value) => (value === "--" ? "" : (value ?? ""));
@@ -236,6 +266,22 @@ const buildConsultationSupportStatusPayload = (row, status) => ({
 });
 
 const buildCompanySetupSupportStatusPayload = (row, status) => ({
+  continent: emptyDash(row.continent),
+  country: emptyDash(row.country),
+  destination: emptyDash(row.destination),
+  supportProviding: emptyDash(row.supportProviding),
+  company: emptyDash(row.company),
+  agentName: emptyDash(row.agentName),
+  website: emptyDash(row.website),
+  contact: emptyDash(row.contact),
+  email: String(emptyDash(row.email)).trim().toLowerCase(),
+  address: emptyDash(row.address),
+  rating: nullableNumber(row.rating),
+  googleReviews: nullableNumber(row.googleReviews),
+  status,
+});
+
+const buildActivationSupportStatusPayload = (row, status) => ({
   continent: emptyDash(row.continent),
   country: emptyDash(row.country),
   destination: emptyDash(row.destination),
@@ -418,6 +464,62 @@ const flattenCompanySetupSupportPartners = (records = []) =>
     };
   });
 
+const flattenActivationSupportPartners = (records = []) =>
+  records.flatMap((record) => {
+    if (Array.isArray(record.partners) && record.partners.length) {
+      return record.partners.map((partner, index) => ({
+        id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
+        recordId: record._id || "",
+        continent: record.continent || "--",
+        country: record.country || "--",
+        destination: record.destination || record.city || "--",
+        supportProviding: record.supportProviding || "--",
+        company:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
+        partnerName:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
+        agentName: record.agentName || "",
+        website: partner.website || record.website || "",
+        contact: partner.contact || record.contact || "",
+        email: partner.email || record.email || "",
+        address: record.address || "--",
+        rating: resolveRating(record.rating),
+        googleReviews: resolveRating(record.googleReviews),
+        status: record.status || "Active",
+        lastUpdated: record.updatedAt || record.createdAt,
+        notes: `Activation support partner for ${[record.destination || record.city, record.country].filter(Boolean).join(", ") || "this location"}.`,
+      }));
+    }
+
+    return {
+      id:
+        record._id ||
+        `${record.country}-${record.destination}-${record.company}`,
+      recordId: record._id || "",
+      continent: record.continent || "--",
+      country: record.country || "--",
+      destination: record.destination || "--",
+      supportProviding: record.supportProviding || "--",
+      company: record.company || "--",
+      partnerName:
+        record.company || record.agentName || "Activation Support Partner",
+      agentName: record.agentName || "--",
+      website: record.website || "",
+      contact: record.contact || "",
+      email: record.email || "",
+      address: record.address || "--",
+      rating: resolveRating(record.rating),
+      googleReviews: resolveRating(record.googleReviews),
+      status: record.status || "Active",
+      lastUpdated: record.updatedAt || record.createdAt,
+      notes: `Activation support partner for ${[record.destination, record.country].filter(Boolean).join(", ") || "this location"}.`,
+    };
+  });
+
 export const VisaSupportPartnersTable = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -506,13 +608,83 @@ export const VisaSupportPartnersTable = () => {
   );
 };
 
-export const ActivationSupportPartnersTable = () => (
-  <ValueAddsPartnersTable
-    title="Activation Support"
-    rows={partnerRows["activation-support"]}
-    columns={commonColumns}
-  />
-);
+export const ActivationSupportPartnersTable = () => {
+  const queryClient = useQueryClient();
+  const {
+    data = [],
+    isPending,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["valueAddsPartners", "activation-support"],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${NOMADS_BACKEND_URL}/api/activation-support/partners`,
+        { timeout: 30000 },
+      );
+      return response?.data?.data || [];
+    },
+    retry: false,
+  });
+
+  const rows = useMemo(() => flattenActivationSupportPartners(data), [data]);
+
+  const {
+    mutate: togglePartnerStatus,
+    isPending: isTogglingStatus,
+    variables,
+  } = useMutation({
+    mutationFn: async (row) => {
+      const partnerId = row.recordId || row.id;
+      const nextStatus =
+        String(row.status || "Active").toLowerCase() === "active"
+          ? "Inactive"
+          : "Active";
+      const response = await axios.patch(
+        `${NOMADS_BACKEND_URL}/api/activation-support/partners/${partnerId}`,
+        buildActivationSupportStatusPayload(row, nextStatus),
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Activation support partner status updated");
+      queryClient.invalidateQueries({
+        queryKey: ["valueAddsPartners", "activation-support"],
+      });
+    },
+    onError: (err) => {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update activation support partner status",
+      );
+    },
+  });
+
+  return (
+    <ValueAddsPartnersTable
+      title="Activation Support"
+      rows={rows}
+      columns={activationSupportColumns}
+      isLoading={isPending}
+      isError={isError}
+      errorMessage={error?.response?.data?.message || error?.message}
+      emptyMessage="No activation support partners found."
+      tableColumns={activationSupportTableColumns}
+      filterControls={[
+        {
+          field: "continent",
+          label: "Continent",
+          placeholder: "All Continents",
+        },
+        { field: "country", label: "Country", placeholder: "All Countries" },
+        { field: "destination", label: "State", placeholder: "All States" },
+      ]}
+      onToggleStatus={(row) => togglePartnerStatus(row)}
+      togglingStatusRowId={isTogglingStatus ? variables?.id : null}
+    />
+  );
+};
 
 export const CompanySetupPartnersTable = () => {
   const queryClient = useQueryClient();
