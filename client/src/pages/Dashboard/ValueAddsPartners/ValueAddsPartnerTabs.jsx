@@ -222,6 +222,36 @@ const activationSupportTableColumns = activationSupportColumns.filter(
     ].includes(column.field),
 );
 
+const workationSupportColumns = [
+  { field: "company", headerName: "Company" },
+  { field: "continent", headerName: "Continent" },
+  { field: "country", headerName: "Country" },
+  { field: "destination", headerName: "State" },
+  { field: "numberOfPeople", headerName: "Number Of People" },
+  { field: "agentName", headerName: "Agent Name" },
+  { field: "website", headerName: "Website" },
+  { field: "contact", headerName: "Contact" },
+  { field: "email", headerName: "Email" },
+  { field: "status", headerName: "Status" },
+  { field: "address", headerName: "Address" },
+  { field: "rating", headerName: "Rating" },
+  { field: "googleReviews", headerName: "Google Reviews" },
+  { field: "lastUpdated", headerName: "Last Updated" },
+];
+
+const workationSupportTableColumns = workationSupportColumns.filter((column) =>
+  [
+    "company",
+    "continent",
+    "country",
+    "destination",
+    "numberOfPeople",
+    "contact",
+    "email",
+    "status",
+  ].includes(column.field),
+);
+
 const resolveRating = (value) => (value === 0 || value ? value : "--");
 
 const emptyDash = (value) => (value === "--" ? "" : (value ?? ""));
@@ -286,6 +316,22 @@ const buildActivationSupportStatusPayload = (row, status) => ({
   country: emptyDash(row.country),
   destination: emptyDash(row.destination),
   supportProviding: emptyDash(row.supportProviding),
+  company: emptyDash(row.company),
+  agentName: emptyDash(row.agentName),
+  website: emptyDash(row.website),
+  contact: emptyDash(row.contact),
+  email: String(emptyDash(row.email)).trim().toLowerCase(),
+  address: emptyDash(row.address),
+  rating: nullableNumber(row.rating),
+  googleReviews: nullableNumber(row.googleReviews),
+  status,
+});
+
+const buildWorkationSupportStatusPayload = (row, status) => ({
+  continent: emptyDash(row.continent),
+  country: emptyDash(row.country),
+  destination: emptyDash(row.destination),
+  numberOfPeople: nullableNumber(row.numberOfPeople),
   company: emptyDash(row.company),
   agentName: emptyDash(row.agentName),
   website: emptyDash(row.website),
@@ -517,6 +563,62 @@ const flattenActivationSupportPartners = (records = []) =>
       status: record.status || "Active",
       lastUpdated: record.updatedAt || record.createdAt,
       notes: `Activation support partner for ${[record.destination, record.country].filter(Boolean).join(", ") || "this location"}.`,
+    };
+  });
+
+const flattenWorkationSupportPartners = (records = []) =>
+  records.flatMap((record) => {
+    if (Array.isArray(record.partners) && record.partners.length) {
+      return record.partners.map((partner, index) => ({
+        id: `${record._id || `${record.country}-${record.city}`}-${partner.agentNumber || index}`,
+        recordId: record._id || "",
+        continent: record.continent || "--",
+        country: record.country || "--",
+        destination: record.destination || record.city || "--",
+        numberOfPeople: resolveRating(record.numberOfPeople),
+        company:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
+        partnerName:
+          partner.name ||
+          record.company ||
+          `Agent ${partner.agentNumber || index + 1}`,
+        agentName: record.agentName || "",
+        website: partner.website || record.website || "",
+        contact: partner.contact || record.contact || "",
+        email: partner.email || record.email || "",
+        address: record.address || "--",
+        rating: resolveRating(record.rating),
+        googleReviews: resolveRating(record.googleReviews),
+        status: record.status || "Active",
+        lastUpdated: record.updatedAt || record.createdAt,
+        notes: `Workation support partner for ${[record.destination || record.city, record.country].filter(Boolean).join(", ") || "this location"}.`,
+      }));
+    }
+
+    return {
+      id:
+        record._id ||
+        `${record.country}-${record.destination}-${record.company}`,
+      recordId: record._id || "",
+      continent: record.continent || "--",
+      country: record.country || "--",
+      destination: record.destination || "--",
+      numberOfPeople: resolveRating(record.numberOfPeople),
+      company: record.company || "--",
+      partnerName:
+        record.company || record.agentName || "Workation Support Partner",
+      agentName: record.agentName || "--",
+      website: record.website || "",
+      contact: record.contact || "",
+      email: record.email || "",
+      address: record.address || "--",
+      rating: resolveRating(record.rating),
+      googleReviews: resolveRating(record.googleReviews),
+      status: record.status || "Active",
+      lastUpdated: record.updatedAt || record.createdAt,
+      notes: `Workation support partner for ${[record.destination, record.country].filter(Boolean).join(", ") || "this location"}.`,
     };
   });
 
@@ -842,13 +944,83 @@ export const ConsultationPartnersTable = () => {
   );
 };
 
-export const WorkationPartnersTable = () => (
-  <ValueAddsPartnersTable
-    title="Workation"
-    rows={partnerRows.workation}
-    columns={commonColumns}
-  />
-);
+export const WorkationPartnersTable = () => {
+  const queryClient = useQueryClient();
+  const {
+    data = [],
+    isPending,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ["valueAddsPartners", "workation"],
+    queryFn: async () => {
+      const response = await axios.get(
+        `${NOMADS_BACKEND_URL}/api/workation-support/partners`,
+        { timeout: 30000 },
+      );
+      return response?.data?.data || [];
+    },
+    retry: false,
+  });
+
+  const rows = useMemo(() => flattenWorkationSupportPartners(data), [data]);
+
+  const {
+    mutate: togglePartnerStatus,
+    isPending: isTogglingStatus,
+    variables,
+  } = useMutation({
+    mutationFn: async (row) => {
+      const partnerId = row.recordId || row.id;
+      const nextStatus =
+        String(row.status || "Active").toLowerCase() === "active"
+          ? "Inactive"
+          : "Active";
+      const response = await axios.patch(
+        `${NOMADS_BACKEND_URL}/api/workation-support/partners/${partnerId}`,
+        buildWorkationSupportStatusPayload(row, nextStatus),
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      toast.success("Workation support partner status updated");
+      queryClient.invalidateQueries({
+        queryKey: ["valueAddsPartners", "workation"],
+      });
+    },
+    onError: (err) => {
+      toast.error(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to update workation support partner status",
+      );
+    },
+  });
+
+  return (
+    <ValueAddsPartnersTable
+      title="Workation"
+      rows={rows}
+      columns={workationSupportColumns}
+      isLoading={isPending}
+      isError={isError}
+      errorMessage={error?.response?.data?.message || error?.message}
+      emptyMessage="No workation support partners found."
+      tableColumns={workationSupportTableColumns}
+      filterControls={[
+        {
+          field: "continent",
+          label: "Continent",
+          placeholder: "All Continents",
+        },
+        { field: "country", label: "Country", placeholder: "All Countries" },
+        { field: "destination", label: "State", placeholder: "All States" },
+      ]}
+      onToggleStatus={(row) => togglePartnerStatus(row)}
+      togglingStatusRowId={isTogglingStatus ? variables?.id : null}
+    />
+  );
+};
 
 export const BecomeAContributorPartnersTable = () => (
   <ValueAddsPartnersTable
