@@ -66,6 +66,7 @@ const nomadUserRoutes = require("./routes/nomadUserRoutes");
 const siteAnalyticsRoutes = require("./routes/siteAnalyticsRoutes");
 const companyVerificationLeadsRoutes = require("./routes/companyVerificationLeadsRoutes");
 const verificationServiceRoutes = require("./routes/verificationServiceRoutes");
+const hostPanelVerificationRoutes = require("./routes/hostPanelVerificationRoutes");
 
 const {
   getTemplate,
@@ -177,6 +178,10 @@ app.use(
 // renew/change-plan) — auth is verifyNomadsServiceKey inside the router
 // itself, not verifyJwt/auditLogger (those are for staff browser sessions).
 app.use("/api/internal/verification-payments", verificationServiceRoutes);
+// Server-to-server only (HostPanel backend calling in when a host requests/
+// renews/changes their verification plan) — auth is verifyHostPanelServiceKey
+// inside the router itself, same reasoning as verificationServiceRoutes above.
+app.use("/api/hostpanel", hostPanelVerificationRoutes);
 app.use("/api/site-analytics", verifyJwt, auditLogger, siteAnalyticsRoutes);
 
 app.all("*", (req, res) => {

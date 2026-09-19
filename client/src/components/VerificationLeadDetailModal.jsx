@@ -169,9 +169,24 @@ const VerificationLeadDetailModal = ({ lead, onClose, onViewHistory }) => {
               </div>
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">
-                  Proof Document
+                  Proof Documents
                 </p>
-                {lead.proofDocument?.url ? (
+                {Array.isArray(lead.proofDocuments) &&
+                lead.proofDocuments.length ? (
+                  <div className="flex flex-col gap-1">
+                    {lead.proofDocuments.map((doc) => (
+                      <a
+                        key={doc.url}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[12px] font-pmedium text-blue-600 underline"
+                      >
+                        <FileText size={12} /> {doc.label || "Document"}
+                      </a>
+                    ))}
+                  </div>
+                ) : lead.proofDocument?.url ? (
                   <a
                     href={lead.proofDocument.url}
                     target="_blank"
@@ -200,6 +215,11 @@ const VerificationLeadDetailModal = ({ lead, onClose, onViewHistory }) => {
                 <p className="text-[12px] font-pmedium text-slate-900 capitalize">
                   {lead.status || "pending"}
                 </p>
+                {lead.status === "rejected" && lead.rejectionReason ? (
+                  <p className="text-[11px] font-pmedium text-rose-600 mt-1">
+                    {lead.rejectionReason}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">

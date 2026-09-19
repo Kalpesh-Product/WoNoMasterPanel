@@ -40,10 +40,10 @@ const CompanyVerificationLeads = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, status }) => {
+    mutationFn: async ({ id, status, rejectionReason }) => {
       const res = await axios.patch(
         `/api/company-verification-leads/${id}/status`,
-        { status },
+        { status, rejectionReason },
       );
       return res.data;
     },
@@ -82,6 +82,20 @@ const CompanyVerificationLeads = () => {
   });
 
   const handleStatusChange = (id, status) => {
+    if (status === "rejected") {
+      // The host sees this reason in HostPanel's Verify Business > Status tab
+      // so they know what to fix before resubmitting.
+      const reason = window.prompt(
+        "Reason for rejection (shown to the host so they can fix and resubmit):",
+      );
+      if (reason === null) return;
+      if (!reason.trim()) {
+        toast.error("A rejection reason is required");
+        return;
+      }
+      updateMutation.mutate({ id, status, rejectionReason: reason.trim() });
+      return;
+    }
     updateMutation.mutate({ id, status });
   };
 

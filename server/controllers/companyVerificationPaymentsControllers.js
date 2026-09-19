@@ -45,6 +45,23 @@ const computeProjectedPeriod = (currentExpiresAt, tier) => {
   return { start, end };
 };
 
+// Where Stripe sends the host after a successful payment - HostPanel's
+// payment result page. HOST_PANEL_RETURN_BASE_URL overrides the environment
+// default so a local HostPanel can be tested against a server running with
+// NODE_ENV=production (otherwise it would redirect to the deployed site).
+const resolveHostPanelFrontendUrl = () => {
+  if (process.env.HOST_PANEL_RETURN_BASE_URL) {
+    return String(process.env.HOST_PANEL_RETURN_BASE_URL).replace(/\/+$/, "");
+  }
+  const base =
+    process.env.NODE_ENV === "production"
+      ? process.env.HOST_PANEL_FRONTEND_URL || "https://hostpanel.wono.co"
+      : process.env.HOST_PANEL_FRONTEND_URL_DEV ||
+        process.env.HOST_PANEL_FRONTEND_URL_LOCAL ||
+        "http://localhost:3006";
+  return String(base).replace(/\/+$/, "");
+};
+
 const NOMADS_BASE_URL = String(
   process.env.NOMADS_BASE_URL || "http://localhost:3000/api",
 ).replace(/\/+$/, "");
@@ -89,7 +106,17 @@ const createAndSendVerificationPaymentLink = async ({ nomadsRequestId, tier }) =
     // we can attach to the confirmation email and show in payment history,
     // instead of only a bare Checkout Session/Charge.
     invoice_creation: { enabled: true },
+    after_completion: {
+      type: "redirect",
+      redirect: {
+        url: `${resolveHostPanelFrontendUrl()}/key-apps/verify-business/payment-result`,
+      },
+    },
   });
+
+  // Same email the request was submitted with, prefilled on Stripe's
+  // checkout page so the invoice goes to the address the host gave us.
+  const checkoutUrl = `${paymentLink.url}?prefilled_email=${encodeURIComponent(request.email)}`;
 
   await VerificationPaymentLink.create({
     nomadsRequestId,
@@ -113,7 +140,7 @@ const createAndSendVerificationPaymentLink = async ({ nomadsRequestId, tier }) =
       customerName: request.fullName,
       companyName: request.companyName,
       tierLabel: VERIFICATION_TIER_LABELS[tier],
-      paymentLinkUrl: paymentLink.url,
+      paymentLinkUrl: checkoutUrl,
       amount,
       changeType,
       projectedStart,
@@ -121,7 +148,7 @@ const createAndSendVerificationPaymentLink = async ({ nomadsRequestId, tier }) =
     }),
   });
 
-  return { paymentLinkUrl: paymentLink.url };
+  return { paymentLinkUrl: checkoutUrl };
 };
 
 // POST /api/company-verification-leads/:id/send-payment-link
@@ -171,6 +198,115 @@ const createVerificationPaymentLinkInternal = async (req, res) => {
     return res
       .status(500)
       .json({ message: error.message || "Failed to create payment link" });
+  }
+};
+
+// POST /api/hostpanel/verification-requests — a host submits their business
+// for verification from HostPanel's Verify Business form. This only creates
+// (or reopens, if previously rejected) the request as "pending" in Nomads —
+// staff review it in Company Verification Leads, and payment only opens up
+// once it's approved (see payHostPanelVerification below).
+// Body: { companyId, companyName, businessName, verticalsSnapshot, fullName,
+//         email, mobile, role, country, industry, registeredCompanyName,
+//         companyCountry, companyState, companyCity, continent, websiteUrl,
+//         requestedTier, proofDocuments: [{ label, url, id }] }
+const submitHostPanelVerificationRequest = async (req, res) => {
+  try {
+    const { data } = await nomadsAdminClient.post("/", req.body);
+    return res.status(200).json(data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    return res
+      .status(status)
+      .json({ message: error.response?.data?.message || error.message });
+  }
+};
+
+// POST /api/hostpanel/verification-requests/pay — once staff have approved
+// the request, the host picks a plan and pays. Also the entry point for
+// renew / change plan on an already-verified company (no re-review needed).
+// Body: { companyId, requestedTier }
+const payHostPanelVerification = async (req, res) => {
+  try {
+    const { companyId, requestedTier } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    if (!["1m", "3m", "6m", "1y"].includes(requestedTier)) {
+      return res
+        .status(400)
+        .json({ message: "requestedTier must be one of 1m, 3m, 6m, 1y" });
+    }
+
+    const { data } = await nomadsAdminClient.get("/", {
+      params: { companyId },
+    });
+    const request = data?.data?.[0];
+    if (!request) {
+      return res
+        .status(404)
+        .json({ message: "No verification request found for this company" });
+    }
+    if (request.status !== "approved") {
+      return res.status(400).json({
+        message: "Your verification request hasn't been approved yet.",
+      });
+    }
+
+    const result = await createAndSendVerificationPaymentLink({
+      nomadsRequestId: request._id,
+      tier: requestedTier,
+    });
+    return res.status(200).json(result);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    return res
+      .status(status)
+      .json({ message: error.response?.data?.message || error.message });
+  }
+};
+
+// GET /api/hostpanel/verification-requests?companyId= — so HostPanel's own
+// "Verify Business" module can show current status (not verified / awaiting
+// payment / verified until <date>) before deciding which action button to
+// show. Returns the single request for this companyId, or null if none.
+const getHostPanelVerificationStatus = async (req, res) => {
+  try {
+    const { companyId } = req.query;
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    const { data } = await nomadsAdminClient.get("/", {
+      params: { companyId },
+    });
+    return res.status(200).json({ data: data?.data?.[0] || null });
+  } catch (error) {
+    const status = error.response?.status || 500;
+    return res
+      .status(status)
+      .json({ message: error.response?.data?.message || error.message });
+  }
+};
+
+// PATCH /api/hostpanel/verification-requests/badge-visibility
+// Body: { businessId, hidden } — display-only toggle for one listing,
+// forwarded straight through to Nomads' admin endpoint.
+const updateHostPanelBadgeVisibility = async (req, res) => {
+  try {
+    const { businessId, hidden } = req.body || {};
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId is required" });
+    }
+    const { data } = await nomadsAdminClient.patch("/badge-visibility", {
+      businessId,
+      hidden: Boolean(hidden),
+    });
+    return res.status(200).json(data);
+  } catch (error) {
+    const status = error.response?.status || 500;
+    return res
+      .status(status)
+      .json({ message: error.response?.data?.message || error.message });
   }
 };
 
@@ -338,6 +474,10 @@ const handleVerificationPaymentWebhookEvent = async (session) => {
 module.exports = {
   sendVerificationPaymentLink,
   createVerificationPaymentLinkInternal,
+  submitHostPanelVerificationRequest,
+  payHostPanelVerification,
+  getHostPanelVerificationStatus,
+  updateHostPanelBadgeVisibility,
   getVerificationLeadHistory,
   getVerificationPaymentHistory,
   createAndSendVerificationPaymentLink,
