@@ -15,6 +15,13 @@ const CompaniesLayout = () => {
       heading: "Companies Requests",
       description: "Review and approve company listing requests from hosts.",
     },
+    {
+      label: "Verify Listings Claims",
+      path: "claims",
+      heading: "Verify Listings Claims",
+      description:
+        "Hosts who say their listings already exist on wono.co. Check their documents, open the listings, then approve to transfer or reject with a reason.",
+    },
   ];
 
   return (

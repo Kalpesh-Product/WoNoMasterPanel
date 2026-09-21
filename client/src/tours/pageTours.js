@@ -1500,7 +1500,7 @@ const PAGE_TOURS = [
   },
   {
     id: "companies-requests",
-    version: 3,
+    version: 4,
     title: "Company Requests",
     description:
       "Companies that applied to join WoNo. Review each application, check their nomad listing draft and create the company.",
@@ -1513,6 +1513,19 @@ const PAGE_TOURS = [
         title: "Switch tabs",
         description:
           "Move to Companies to see the full registry of already-onboarded host companies.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-requests-stats"]',
+        title: "Request summary",
+        description:
+          "Total pending requests, how many arrived in the last 7 days, and how many product types hosts asked to have listed.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-requests-filters"]',
+        title: "Filter by age",
+        description: "Focus on the requests that arrived this week, or work through the older backlog.",
         side: "bottom",
       },
       {
@@ -1537,6 +1550,42 @@ const PAGE_TOURS = [
       },
     ],
     matches: exact("/dashboard/companies/requests"),
+  },
+  {
+    id: "companies-claims",
+    version: 1,
+    title: "Verify Listings Claims",
+    description:
+      "Hosts who say the listings on wono.co already belong to them. Check their proof, open the listings, then approve to transfer or reject with a reason.",
+    replayHint: true,
+    recordsDescription:
+      "Every claim stays here with its status, so approved and rejected ones remain visible as history.",
+    steps: [
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch tabs",
+        description: "Companies is the registry; Requests holds hosts asking to be listed.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-claims-stats"]',
+        title: "Claim summary",
+        description: "Total claims and how many are pending, approved or rejected.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="companies-claims-filters"]',
+        title: "Filter by status",
+        description: "Pending needs your decision. Approved and rejected are kept as history.",
+        side: "bottom",
+      },
+      {
+        text: "Search claims...",
+        title: "Find a claim",
+        description: "Search by host company, claimed company or the contact's email.",
+      },
+    ],
+    matches: exact("/dashboard/companies/claims"),
   },
   {
     id: "companies-request-overview",

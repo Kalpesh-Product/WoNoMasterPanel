@@ -1,4 +1,8 @@
 const router = require("express").Router();
+const {
+  searchNomadCompaniesForClaim,
+  getNomadCompanyListingsForClaim,
+} = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const { verifyHostPanelServiceKey } = require("../middlewares/verifyHostPanelServiceKey");
 const { setLogModule } = require("../middlewares/logContext");
 
@@ -13,6 +17,8 @@ const {
 router.use(setLogModule("HostPanel Verification Requests"));
 router.use(verifyHostPanelServiceKey);
 
+router.get("/nomad-companies/search", searchNomadCompaniesForClaim);
+router.get("/nomad-companies/:companyId/listings", getNomadCompanyListingsForClaim);
 router.get("/verification-requests", getHostPanelVerificationStatus);
 router.post("/verification-requests", submitHostPanelVerificationRequest);
 router.post("/verification-requests/pay", payHostPanelVerification);

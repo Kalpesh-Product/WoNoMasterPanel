@@ -32,6 +32,9 @@ const {
   getCompaniesListingRequests,
   approveCompaniesListingRequest,
   rejectCompaniesListingRequest,
+  rejectExistingCompanyClaim,
+  getExistingCompanyClaims,
+  getExistingCompanyClaimDetail,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -94,6 +97,13 @@ router.post(
   "/companies-requests/:hostCompanyId/reject",
   setLogModule("Nomad Listings"),
   rejectCompaniesListingRequest,
+);
+router.get("/existing-company-claims", getExistingCompanyClaims);
+router.get("/existing-company-claims/:hostCompanyId", getExistingCompanyClaimDetail);
+router.post(
+  "/existing-company-claims/:hostCompanyId/reject",
+  setLogModule("Nomad Listings"),
+  rejectExistingCompanyClaim,
 );
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);

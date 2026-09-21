@@ -42,6 +42,36 @@ const serviceOptions = [
 const validApps = new Set(serviceOptions[0].items);
 const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
+
+// Nomads backend for the claim flow. NOMADS_BASE_URL (already used by the lead
+// controllers) is e.g. "http://localhost:3000/api"; falls back to local dev.
+const nomadsCompanyApi = () =>
+  `${String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(/\/+$/, "")}/company`;
+
+const reviewerName = (req) =>
+  String(
+    req.userData?.name || req.userData?.email || req.userData?._id || req.user?._id || "",
+  );
+
+// Plain copy of the current claim, appended to the history when it is
+// approved or rejected.
+const snapshotClaim = (claim) => ({
+  status: claim.status,
+  nomadsCompanyId: claim.nomadsCompanyId,
+  nomadsCompanyName: claim.nomadsCompanyName,
+  listingCount: claim.listingCount,
+  fullName: claim.fullName,
+  email: claim.email,
+  mobile: claim.mobile,
+  role: claim.role,
+  registeredCompanyName: claim.registeredCompanyName,
+  documents: (claim.documents || []).map((d) => ({ label: d.label, url: d.url, id: d.id })),
+  requestedAt: claim.requestedAt,
+  reviewedAt: claim.reviewedAt,
+  reviewedBy: claim.reviewedBy,
+  rejectionReason: claim.rejectionReason,
+});
+
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const normalizeListingType = (value) =>
@@ -1701,11 +1731,130 @@ const transferNomadListing = async (req, res, next) => {
       return res.status(404).json({ message: "Host company not found" });
     }
 
-    hostLeadCompany.linkedNomadsCompanyId = String(nomadsCompanyId).trim();
+    const normalizedNomadsCompanyId = String(nomadsCompanyId).trim();
+
+    // A Nomads company can only belong to one host account.
+    const linkedElsewhere = await HostLeadCompany.exists({
+      linkedNomadsCompanyId: normalizedNomadsCompanyId,
+      companyId: { $ne: hostLeadCompany.companyId },
+    });
+    if (linkedElsewhere) {
+      return res.status(409).json({
+        message: "This company is already linked to another host account.",
+      });
+    }
+
+    const NOMADS_COMPANY_API = nomadsCompanyApi();
+
+    const fetchNomadListings = async (companyId) => {
+      try {
+        const response = await axios.get(
+          `${NOMADS_COMPANY_API}/get-listings/${encodeURIComponent(companyId)}`,
+        );
+        return (Array.isArray(response.data) ? response.data : []).filter(
+          (l) => l?.businessId && !l?.isDeleted,
+        );
+      } catch (error) {
+        if (error?.response?.status === 404) return [];
+        throw error;
+      }
+    };
+
+    // Who owned what before the merge: the host's own listings already went
+    // through staff approval (they hold the host's plan slots), so they keep
+    // their enabled slot first when the plan can't hold everything.
+    let ownListings = [];
+    try {
+      ownListings = await fetchNomadListings(hostLeadCompany.companyId);
+    } catch (error) {
+      return res.status(502).json({
+        message: "Couldn't read the company's listings to transfer. Please try again.",
+      });
+    }
+
+    // Fold the listings the host had already added under their own companyId
+    // into the linked company, so host + transferred listings sit under one
+    // companyId (listings, ownership checks and leads all key off it).
+    try {
+      await axios.patch(
+        `${NOMADS_COMPANY_API}/reassign-listings`,
+        {
+          fromCompanyId: hostLeadCompany.companyId,
+          toCompanyId: normalizedNomadsCompanyId,
+        },
+        { headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY } },
+      );
+    } catch (error) {
+      return res.status(502).json({
+        message:
+          error?.response?.data?.message ||
+          "Couldn't merge the host's own listings into the company. Nothing was linked; please try again.",
+      });
+    }
+
+    hostLeadCompany.linkedNomadsCompanyId = normalizedNomadsCompanyId;
+    if (hostLeadCompany.existingCompanyClaim?.status === "pending") {
+      hostLeadCompany.existingCompanyClaim.status = "approved";
+      hostLeadCompany.existingCompanyClaim.reviewedAt = new Date();
+      hostLeadCompany.existingCompanyClaim.reviewedBy = reviewerName(req);
+      hostLeadCompany.existingCompanyClaim.rejectionReason = "";
+      hostLeadCompany.existingCompanyClaimHistory.push(
+        snapshotClaim(hostLeadCompany.existingCompanyClaim),
+      );
+    }
     await hostLeadCompany.save();
 
+    // The host's plan caps how many listings can be ENABLED (visible) at once,
+    // not how many exist. If the merged set is over that, keep the host's own
+    // enabled listings first (then the company's original ones) and switch the
+    // rest off — the host can swap by disabling one to enable another.
+    let disabledCount = 0;
+    let capWarning = "";
+    try {
+      const workspace = await Workspace.findOne({
+        companyId: hostLeadCompany.companyId,
+      })
+        .select("selectedPlan")
+        .lean();
+      const plan = String(workspace?.selectedPlan || "basic")
+        .trim()
+        .toLowerCase();
+      const enabledLimit =
+        plan === "professional" ? 9 : plan === "custom" ? null : 4;
+
+      if (enabledLimit !== null) {
+        const ownIds = new Set(ownListings.map((l) => l.businessId));
+        const allListings = await fetchNomadListings(normalizedNomadsCompanyId);
+        const enabled = allListings
+          .filter((l) => l.isPublic)
+          .sort(
+            (a, b) =>
+              Number(ownIds.has(b.businessId)) - Number(ownIds.has(a.businessId)),
+          );
+        const toDisable = enabled.slice(enabledLimit);
+        const results = await Promise.allSettled(
+          toDisable.map((l) =>
+            axios.patch(`${NOMADS_COMPANY_API}/set-public-status`, {
+              businessId: l.businessId,
+              isPublic: false,
+            }),
+          ),
+        );
+        disabledCount = results.filter((r) => r.status === "fulfilled").length;
+        if (disabledCount < toDisable.length) {
+          capWarning = `${toDisable.length - disabledCount} listing(s) are still enabled beyond the host's plan limit — disable them manually.`;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to enforce enabled-listing limit after transfer:", error.message);
+      capWarning =
+        "Linked, but couldn't apply the plan's enabled-listing limit — check the host's enabled listings.";
+    }
+
     return res.status(200).json({
-      message: `All products linked to Host Company "${hostLeadCompany.companyName}"`,
+      message: `All products linked to Host Company "${hostLeadCompany.companyName}"${
+        disabledCount ? ` — ${disabledCount} listing(s) left disabled to fit the host's plan` : ""
+      }${capWarning ? `. ${capWarning}` : ""}`,
       hostCompanyId: hostLeadCompany.companyId,
       hostCompanyName: hostLeadCompany.companyName,
     });
@@ -1982,7 +2131,225 @@ const rejectCompaniesListingRequest = async (req, res, next) => {
   }
 };
 
+
+// HostPanel (service key): a host searching for the existing Companies-page
+// company that already owns their listings. Skips companies that are host-
+// request shells (linkedHostCompanyId) or already linked to a host.
+const searchNomadCompaniesForClaim = async (req, res, next) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 2) {
+      return res.status(200).json([]);
+    }
+
+    const alreadyLinked = await HostLeadCompany.distinct(
+      "linkedNomadsCompanyId",
+      { linkedNomadsCompanyId: { $ne: "" } },
+    );
+
+    const companies = await HostCompany.find({
+      companyName: { $regex: escapeRegex(q), $options: "i" },
+      companyId: { $nin: alreadyLinked },
+      $or: [{ linkedHostCompanyId: "" }, { linkedHostCompanyId: null }, { linkedHostCompanyId: { $exists: false } }],
+    })
+      .select("companyId companyName companyCity companyState companyCountry")
+      .limit(8)
+      .lean();
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// HostPanel (service key): the listings under one candidate company, shown
+// to the host before they submit a claim.
+const getNomadCompanyListingsForClaim = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+
+    const alreadyLinked = await HostLeadCompany.exists({
+      linkedNomadsCompanyId: companyId,
+    });
+    if (alreadyLinked) {
+      return res
+        .status(409)
+        .json({ message: "This company is already linked to a host account." });
+    }
+
+    const company = await HostCompany.findOne({ companyId })
+      .select("companyId companyName")
+      .lean();
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    let listings = [];
+    try {
+      const response = await axios.get(
+        `${nomadsCompanyApi()}/get-listings/${encodeURIComponent(companyId)}`,
+      );
+      listings = Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      if (error?.response?.status !== 404) throw error;
+    }
+
+    return res.status(200).json({
+      companyId: company.companyId,
+      companyName: company.companyName,
+      listings: listings
+        .filter((l) => !l?.isDeleted)
+        .map((l) => ({
+          businessId: l.businessId,
+          companyTitle: l.companyTitle || l.companyName || "",
+          companyType: l.companyType || "",
+          city: l.city || "",
+          country: l.country || "",
+          isActive: Boolean(l.isActive),
+        })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff decline a host's claim on an existing company; the host sees the
+// reason and can resubmit.
+const rejectExistingCompanyClaim = async (req, res, next) => {
+  try {
+    const { hostCompanyId } = req.params;
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: hostCompanyId,
+    });
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+    if (hostLeadCompany.existingCompanyClaim?.status !== "pending") {
+      return res.status(400).json({ message: "No pending claim to reject" });
+    }
+    hostLeadCompany.existingCompanyClaim.status = "rejected";
+    hostLeadCompany.existingCompanyClaim.reviewedAt = new Date();
+    hostLeadCompany.existingCompanyClaim.reviewedBy = reviewerName(req);
+    hostLeadCompany.existingCompanyClaim.rejectionReason = String(
+      req.body?.reason || "",
+    ).trim();
+    hostLeadCompany.existingCompanyClaimHistory.push(
+      snapshotClaim(hostLeadCompany.existingCompanyClaim),
+    );
+    await hostLeadCompany.save();
+    return res.status(200).json({ message: "Claim rejected" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff: every host claim on an existing Companies-page company - pending
+// ones plus the full approved / rejected history - newest first. Each row
+// keeps the { companyId, companyName, existingCompanyClaim } shape; history
+// rows carry their snapshot in existingCompanyClaim.
+const getExistingCompanyClaims = async (req, res, next) => {
+  try {
+    const hosts = await HostLeadCompany.find({
+      $or: [
+        { "existingCompanyClaim.status": { $in: ["pending", "approved", "rejected"] } },
+        { "existingCompanyClaimHistory.0": { $exists: true } },
+      ],
+    })
+      .select(
+        "companyId companyName companyCity companyState companyCountry logo existingCompanyClaim existingCompanyClaimHistory",
+      )
+      .lean();
+
+    const rows = [];
+    hosts.forEach((host) => {
+      const { existingCompanyClaimHistory = [], existingCompanyClaim, ...base } = host;
+      existingCompanyClaimHistory.forEach((entry, index) => {
+        rows.push({
+          ...base,
+          _key: `${host.companyId}-h${index}`,
+          existingCompanyClaim: entry,
+        });
+      });
+      // The current claim is its own row while it's pending. Once decided it
+      // already lives in the history - except claims decided before history
+      // existed, which have no matching entry and would otherwise vanish.
+      const currentTime = new Date(existingCompanyClaim?.requestedAt || 0).getTime();
+      const inHistory = existingCompanyClaimHistory.some(
+        (entry) => new Date(entry.requestedAt || 0).getTime() === currentTime,
+      );
+      if (
+        existingCompanyClaim?.status === "pending" ||
+        (["approved", "rejected"].includes(existingCompanyClaim?.status) && !inHistory)
+      ) {
+        rows.push({ ...base, _key: `${host.companyId}-current`, existingCompanyClaim });
+      }
+    });
+
+    rows.sort(
+      (a, b) =>
+        new Date(b.existingCompanyClaim?.requestedAt || 0) -
+        new Date(a.existingCompanyClaim?.requestedAt || 0),
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff: the live listings under a claimed company. `nomadsCompanyId` in the
+// query selects a history row's company; otherwise the host's current claim.
+const getExistingCompanyClaimDetail = async (req, res, next) => {
+  try {
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: req.params.hostCompanyId,
+    })
+      .select("companyId companyName existingCompanyClaim linkedNomadsCompanyId")
+      .lean();
+    const nomadsCompanyId = String(
+      req.query.nomadsCompanyId || hostLeadCompany?.existingCompanyClaim?.nomadsCompanyId || "",
+    ).trim();
+    if (!hostLeadCompany || !nomadsCompanyId) {
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    let listings = [];
+    try {
+      const response = await axios.get(
+        `${nomadsCompanyApi()}/get-listings/${encodeURIComponent(nomadsCompanyId)}`,
+      );
+      listings = Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      if (error?.response?.status !== 404) throw error;
+    }
+
+    return res.status(200).json({
+      hostCompanyId: hostLeadCompany.companyId,
+      hostCompanyName: hostLeadCompany.companyName,
+      alreadyLinked: Boolean(hostLeadCompany.linkedNomadsCompanyId),
+      listings: listings
+        .filter((l) => !l?.isDeleted)
+        .map((l) => ({
+          businessId: l.businessId,
+          companyName: l.companyName || "",
+          companyTitle: l.companyTitle || l.companyName || "",
+          companyType: l.companyType || "",
+          city: l.city || "",
+          country: l.country || "",
+          isActive: Boolean(l.isActive),
+          isPublic: Boolean(l.isPublic),
+        })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  getExistingCompanyClaims,
+  getExistingCompanyClaimDetail,
+  searchNomadCompaniesForClaim,
+  getNomadCompanyListingsForClaim,
+  rejectExistingCompanyClaim,
   createCompany,
   editCompany,
   activateProduct,

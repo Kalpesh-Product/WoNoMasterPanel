@@ -173,6 +173,55 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Host-initiated request to be linked to an existing Companies-page
+    // company (whole-company transfer). Approval happens through
+    // transferNomadListing, which also flips this to "approved".
+    existingCompanyClaim: {
+      status: {
+        type: String,
+        enum: ["", "pending", "approved", "rejected"],
+        default: "",
+      },
+      nomadsCompanyId: { type: String, trim: true, default: "" },
+      nomadsCompanyName: { type: String, trim: true, default: "" },
+      listingCount: { type: Number, default: 0 },
+      fullName: { type: String, trim: true, default: "" },
+      email: { type: String, trim: true, default: "" },
+      mobile: { type: String, trim: true, default: "" },
+      role: { type: String, trim: true, default: "" },
+      registeredCompanyName: { type: String, trim: true, default: "" },
+      documents: {
+        type: [{ label: String, url: String, id: String }],
+        default: [],
+      },
+      requestedAt: { type: Date, default: null },
+      reviewedAt: { type: Date, default: null },
+      reviewedBy: { type: String, trim: true, default: "" },
+      rejectionReason: { type: String, trim: true, default: "" },
+    },
+    // Every finished (approved / rejected) claim is kept here so staff can see
+    // the full history even after a host resubmits a rejected one.
+    existingCompanyClaimHistory: {
+      type: [
+        {
+          status: String,
+          nomadsCompanyId: String,
+          nomadsCompanyName: String,
+          listingCount: Number,
+          fullName: String,
+          email: String,
+          mobile: String,
+          role: String,
+          registeredCompanyName: String,
+          documents: [{ label: String, url: String, id: String }],
+          requestedAt: Date,
+          reviewedAt: Date,
+          reviewedBy: String,
+          rejectionReason: String,
+        },
+      ],
+      default: [],
+    },
   },
   {
     timestamps: true,

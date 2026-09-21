@@ -27,6 +27,7 @@ const CompaniesRequests = () => {
   const [reviewTarget, setReviewTarget] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [searchQuery, setSearchQuery] = useState("");
+  const [ageFilter, setAgeFilter] = useState("all");
 
   const {
     data: requests = [],
@@ -91,17 +92,36 @@ const CompaniesRequests = () => {
     },
   });
 
+  // A request is "new" for its first week; older ones are the backlog.
+  const isNewRequest = (request) => {
+    const requestedAt = new Date(request.companiesListingRequestedAt || 0).getTime();
+    return requestedAt > 0 && Date.now() - requestedAt <= 7 * 24 * 60 * 60 * 1000;
+  };
+
+  const { newCount, typeCount } = useMemo(() => {
+    const types = new Set();
+    let fresh = 0;
+    requests.forEach((r) => {
+      if (isNewRequest(r)) fresh += 1;
+      (r.companiesListingRequestedTypes || []).forEach((t) => types.add(t));
+    });
+    return { newCount: fresh, typeCount: types.size };
+  }, [requests]);
+
   const filteredRequests = useMemo(() => {
-    if (!searchQuery.trim()) return requests;
     const q = searchQuery.trim().toLowerCase();
-    return requests.filter(
-      (r) =>
+    return requests.filter((r) => {
+      if (ageFilter === "new" && !isNewRequest(r)) return false;
+      if (ageFilter === "older" && isNewRequest(r)) return false;
+      if (!q) return true;
+      return (
         r.companyName?.toLowerCase().includes(q) ||
         r.companyCountry?.toLowerCase().includes(q) ||
         r.companyState?.toLowerCase().includes(q) ||
-        r.companyCity?.toLowerCase().includes(q),
-    );
-  }, [requests, searchQuery]);
+        r.companyCity?.toLowerCase().includes(q)
+      );
+    });
+  }, [requests, searchQuery, ageFilter]);
 
   if (isLoading) {
     return (
@@ -119,8 +139,56 @@ const CompaniesRequests = () => {
 
   return (
     <>
+      <div className="flex flex-col gap-4">
+        <div data-tour="companies-requests-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-slate-400">
+              <div className="min-w-0">
+                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
+                  Total Requests
+                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{requests.length}</p>
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
+              <div className="min-w-0">
+                <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">
+                  New This Week
+                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{newCount}</p>
+              </div>
+            </div>
+            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
+              <div className="min-w-0">
+                <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">
+                  Product Types Requested
+                </p>
+                <p className="text-[15px] font-pmedium text-slate-900">{typeCount}</p>
+              </div>
+            </div>
+        </div>
+
       <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
         <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
+          <div data-tour="companies-requests-filters" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+            {[
+              { key: "all", label: "All" },
+              { key: "new", label: "New" },
+              { key: "older", label: "Older" },
+            ].map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setAgeFilter(f.key)}
+                className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${
+                  ageFilter === f.key
+                    ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200"
+                    : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
           <div className="w-full xl:max-w-md">
             <div className="relative w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
@@ -237,6 +305,7 @@ const CompaniesRequests = () => {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {reviewTarget ? (
