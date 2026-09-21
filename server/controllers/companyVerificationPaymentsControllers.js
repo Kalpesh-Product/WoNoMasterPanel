@@ -10,7 +10,10 @@ const {
 
 // Mirrors D:\Nomads\backend\controllers\verificationControllers.js
 // VERIFICATION_TIER_AMOUNTS_USD — keep both in sync if pricing changes.
-const VERIFICATION_TIER_AMOUNTS_USD = { "1m": 10, "3m": 25, "6m": 45, "1y": 80 };
+// Only 1 month and 1 year can be purchased now. The 3m / 6m entries below
+// (months + labels) stay only so existing verifications on those legacy
+// plans still display and renew correctly.
+const VERIFICATION_TIER_AMOUNTS_USD = { "1m": 10, "1y": 50 };
 const VERIFICATION_TIER_MONTHS = { "1m": 1, "3m": 3, "6m": 6, "1y": 12 };
 const VERIFICATION_TIER_LABELS = {
   "1m": "1 Month",
@@ -156,10 +159,10 @@ const sendVerificationPaymentLink = async (req, res) => {
   try {
     const { id } = req.params;
     const { tier } = req.body || {};
-    if (!["1m", "3m", "6m", "1y"].includes(tier)) {
+    if (!["1m", "1y"].includes(tier)) {
       return res
         .status(400)
-        .json({ message: "tier must be one of 1m, 3m, 6m, 1y" });
+        .json({ message: "tier must be one of 1m, 1y" });
     }
     const result = await createAndSendVerificationPaymentLink({
       nomadsRequestId: id,
@@ -183,10 +186,10 @@ const createVerificationPaymentLinkInternal = async (req, res) => {
   try {
     const { nomadsRequestId } = req.params;
     const { tier } = req.body || {};
-    if (!["1m", "3m", "6m", "1y"].includes(tier)) {
+    if (!["1m", "1y"].includes(tier)) {
       return res
         .status(400)
-        .json({ message: "tier must be one of 1m, 3m, 6m, 1y" });
+        .json({ message: "tier must be one of 1m, 1y" });
     }
     const result = await createAndSendVerificationPaymentLink({
       nomadsRequestId,
@@ -232,10 +235,10 @@ const payHostPanelVerification = async (req, res) => {
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });
     }
-    if (!["1m", "3m", "6m", "1y"].includes(requestedTier)) {
+    if (!["1m", "1y"].includes(requestedTier)) {
       return res
         .status(400)
-        .json({ message: "requestedTier must be one of 1m, 3m, 6m, 1y" });
+        .json({ message: "requestedTier must be one of 1m, 1y" });
     }
 
     const { data } = await nomadsAdminClient.get("/", {

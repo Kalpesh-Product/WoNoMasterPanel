@@ -9,11 +9,11 @@ export const TIER_LABELS = {
   "1y": "1 Year",
 };
 
+// Plans that can be chosen now. TIER_LABELS above still lists the retired
+// 3m / 6m plans so existing records on them keep displaying properly.
 export const TIER_OPTIONS = [
   { value: "1m", label: "1 Month — $10" },
-  { value: "3m", label: "3 Months — $25" },
-  { value: "6m", label: "6 Months — $45" },
-  { value: "1y", label: "1 Year — $80" },
+  { value: "1y", label: "1 Year — $50" },
 ];
 
 export const CHANGE_TYPE_LABELS = {
