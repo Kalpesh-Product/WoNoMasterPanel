@@ -622,6 +622,15 @@ const flattenWorkationSupportPartners = (records = []) =>
     };
   });
 
+const openEditPartner = (navigate, path) => (row) => {
+  const partnerId = row.recordId || row.id;
+  if (!partnerId) return;
+
+  navigate(`/dashboard/value-adds-partners/${path}/edit/${partnerId}`, {
+    state: { partner: row },
+  });
+};
+
 export const VisaSupportPartnersTable = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -674,15 +683,6 @@ export const VisaSupportPartnersTable = () => {
     },
   });
 
-  const openEditPartner = (row) => {
-    const partnerId = row.recordId || row.id;
-    if (!partnerId) return;
-
-    navigate(`/dashboard/value-adds-partners/visa-support/edit/${partnerId}`, {
-      state: { partner: row },
-    });
-  };
-
   return (
     <ValueAddsPartnersTable
       title="Visa Support"
@@ -703,7 +703,7 @@ export const VisaSupportPartnersTable = () => {
         { field: "destination", label: "State", placeholder: "All States" },
         // { field: "status", label: "Status", placeholder: "All Statuses" },
       ]}
-      onEditRow={openEditPartner}
+      onEditRow={openEditPartner(navigate, "visa-support")}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}
     />
@@ -711,6 +711,7 @@ export const VisaSupportPartnersTable = () => {
 };
 
 export const ActivationSupportPartnersTable = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     data = [],
@@ -782,6 +783,7 @@ export const ActivationSupportPartnersTable = () => {
         { field: "country", label: "Country", placeholder: "All Countries" },
         { field: "destination", label: "State", placeholder: "All States" },
       ]}
+      onEditRow={openEditPartner(navigate, "activation-support")}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}
     />
@@ -789,6 +791,7 @@ export const ActivationSupportPartnersTable = () => {
 };
 
 export const CompanySetupPartnersTable = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     data = [],
@@ -860,6 +863,7 @@ export const CompanySetupPartnersTable = () => {
         { field: "country", label: "Country", placeholder: "All Countries" },
         { field: "destination", label: "State", placeholder: "All States" },
       ]}
+      onEditRow={openEditPartner(navigate, "company-setup")}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}
     />
@@ -867,6 +871,7 @@ export const CompanySetupPartnersTable = () => {
 };
 
 export const ConsultationPartnersTable = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     data = [],
@@ -938,6 +943,7 @@ export const ConsultationPartnersTable = () => {
         { field: "country", label: "Country", placeholder: "All Countries" },
         { field: "destination", label: "State", placeholder: "All States" },
       ]}
+      onEditRow={openEditPartner(navigate, "consultation")}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}
     />
@@ -945,6 +951,7 @@ export const ConsultationPartnersTable = () => {
 };
 
 export const WorkationPartnersTable = () => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const {
     data = [],
@@ -1016,6 +1023,7 @@ export const WorkationPartnersTable = () => {
         { field: "country", label: "Country", placeholder: "All Countries" },
         { field: "destination", label: "State", placeholder: "All States" },
       ]}
+      onEditRow={openEditPartner(navigate, "workation")}
       onToggleStatus={(row) => togglePartnerStatus(row)}
       togglingStatusRowId={isTogglingStatus ? variables?.id : null}
     />

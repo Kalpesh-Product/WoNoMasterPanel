@@ -197,7 +197,12 @@ import {
   BecomeAContributorTable,
 } from "../pages/Dashboard/Leads/ValueAddsLeadTabs";
 import ValueAddsPartners from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartners";
-import EditVisaSupportPartner from "../pages/Dashboard/ValueAddsPartners/EditVisaSupportPartner";
+import EditVisaSupportPartner, {
+  EditActivationSupportPartner,
+  EditCompanySetupPartner,
+  EditConsultationPartner,
+  EditWorkationPartner,
+} from "../pages/Dashboard/ValueAddsPartners/EditVisaSupportPartner";
 import {
   VisaSupportPartnersTable,
   ActivationSupportPartnersTable,
@@ -518,11 +523,27 @@ export const routes = createBrowserRouter([
                         element: <ActivationSupportPartnersTable />,
                       },
                       {
+                        path: "activation-support/edit/:partnerId",
+                        element: <EditActivationSupportPartner />,
+                      },
+                      {
                         path: "company-setup",
                         element: <CompanySetupPartnersTable />,
                       },
+                      {
+                        path: "company-setup/edit/:partnerId",
+                        element: <EditCompanySetupPartner />,
+                      },
                       { path: "consultation", element: <ConsultationPartnersTable /> },
+                      {
+                        path: "consultation/edit/:partnerId",
+                        element: <EditConsultationPartner />,
+                      },
                       { path: "workation", element: <WorkationPartnersTable /> },
+                      {
+                        path: "workation/edit/:partnerId",
+                        element: <EditWorkationPartner />,
+                      },
                       {
                         path: "become-a-contributor",
                         element: <BecomeAContributorPartnersTable />,

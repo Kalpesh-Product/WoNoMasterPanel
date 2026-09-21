@@ -13,6 +13,8 @@ const defaultValues = {
   country: "",
   destination: "",
   visaType: [],
+  supportProviding: "",
+  numberOfPeople: "",
   company: "",
   agentName: "",
   website: "",
@@ -49,6 +51,83 @@ const fields = [
   { name: "googleReviews", label: "Google Reviews", type: "number" },
 ];
 
+const supportProvidingField = {
+  name: "supportProviding",
+  label: "Support Providing",
+};
+
+const numberOfPeopleField = {
+  name: "numberOfPeople",
+  label: "Number Of People",
+  type: "number",
+};
+
+const partnerEditConfigs = {
+  "visa-support": {
+    title: "Visa Support",
+    routePath: "visa-support",
+    endpoint: "/api/visa-support/partners",
+    queryKey: ["valueAddsPartners", "visa-support"],
+    fields,
+    successMessage: "Visa support partner updated successfully",
+    errorMessage: "Failed to update visa support partner",
+    description:
+      "Update visa partner details used across the value-adds partner table.",
+  },
+  "activation-support": {
+    title: "Activation Support",
+    routePath: "activation-support",
+    endpoint: "/api/activation-support/partners",
+    queryKey: ["valueAddsPartners", "activation-support"],
+    fields: fields.map((field) =>
+      field.name === "visaType" ? supportProvidingField : field,
+    ),
+    successMessage: "Activation support partner updated successfully",
+    errorMessage: "Failed to update activation support partner",
+    description:
+      "Update activation partner details used across the value-adds partner table.",
+  },
+  "company-setup": {
+    title: "Company Setup",
+    routePath: "company-setup",
+    endpoint: "/api/company-setup-support/partners",
+    queryKey: ["valueAddsPartners", "company-setup"],
+    fields: fields.map((field) =>
+      field.name === "visaType" ? supportProvidingField : field,
+    ),
+    successMessage: "Company setup partner updated successfully",
+    errorMessage: "Failed to update company setup partner",
+    description:
+      "Update company setup partner details used across the value-adds partner table.",
+  },
+  consultation: {
+    title: "Consultation",
+    routePath: "consultation",
+    endpoint: "/api/consultation-support/partners",
+    queryKey: ["valueAddsPartners", "consultation"],
+    fields: fields.map((field) =>
+      field.name === "visaType" ? supportProvidingField : field,
+    ),
+    successMessage: "Consultation partner updated successfully",
+    errorMessage: "Failed to update consultation partner",
+    description:
+      "Update consultation partner details used across the value-adds partner table.",
+  },
+  workation: {
+    title: "Workation",
+    routePath: "workation",
+    endpoint: "/api/workation-support/partners",
+    queryKey: ["valueAddsPartners", "workation"],
+    fields: fields.map((field) =>
+      field.name === "visaType" ? numberOfPeopleField : field,
+    ),
+    successMessage: "Workation partner updated successfully",
+    errorMessage: "Failed to update workation partner",
+    description:
+      "Update workation partner details used across the value-adds partner table.",
+  },
+};
+
 const toVisaTypeValues = (value) => {
   if (Array.isArray(value)) {
     return value.filter(Boolean);
@@ -69,18 +148,45 @@ const toFormValues = (partner = {}) => ({
   status: partner.status || "Active",
 });
 
-const cleanPayload = (values) => ({
-  ...values,
-  visaType: Array.isArray(values.visaType)
-    ? values.visaType.join(", ")
-    : String(values.visaType || "").trim(),
-  srNo: values.srNo === "" ? null : Number(values.srNo),
-  rating: values.rating === "" ? null : Number(values.rating),
-  googleReviews: values.googleReviews === "" ? null : Number(values.googleReviews),
-  email: String(values.email || "").trim().toLowerCase(),
-});
+const cleanNumberValue = (value) => (value === "" ? null : Number(value));
 
-const EditVisaSupportPartner = () => {
+const cleanPayload = (values, config) => {
+  const payloadFields = new Set([
+    ...config.fields.map((field) => field.name),
+    "address",
+    "status",
+  ]);
+
+  return Array.from(payloadFields).reduce((payload, fieldName) => {
+    const value = values[fieldName];
+
+    if (fieldName === "visaType") {
+      payload.visaType = Array.isArray(value)
+        ? value.join(", ")
+        : String(value || "").trim();
+      return payload;
+    }
+
+    if (
+      ["srNo", "rating", "googleReviews", "numberOfPeople"].includes(
+        fieldName,
+      )
+    ) {
+      payload[fieldName] = cleanNumberValue(value);
+      return payload;
+    }
+
+    if (fieldName === "email") {
+      payload.email = String(value || "").trim().toLowerCase();
+      return payload;
+    }
+
+    payload[fieldName] = value ?? "";
+    return payload;
+  }, {});
+};
+
+const EditValueAddPartner = ({ config }) => {
   const { partnerId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -88,6 +194,7 @@ const EditVisaSupportPartner = () => {
   const statePartner = location.state?.partner || null;
   const [isVisaTypeOpen, setIsVisaTypeOpen] = useState(false);
   const visaTypeDropdownRef = useRef(null);
+  const listPath = `/dashboard/value-adds-partners/${config.routePath}`;
 
   const {
     control,
@@ -105,10 +212,10 @@ const EditVisaSupportPartner = () => {
     : "Select visa type";
 
   const { data: partner, isFetching, isError, error } = useQuery({
-    queryKey: ["valueAddsPartners", "visa-support", partnerId],
+    queryKey: [...config.queryKey, partnerId],
     queryFn: async () => {
       const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/visa-support/partners/${partnerId}`,
+        `${NOMADS_BACKEND_URL}${config.endpoint}/${partnerId}`,
       );
       return response?.data?.data || response?.data;
     },
@@ -138,19 +245,19 @@ const EditVisaSupportPartner = () => {
   const { mutate, isPending } = useMutation({
     mutationFn: async (values) => {
       const response = await axios.patch(
-        `${NOMADS_BACKEND_URL}/api/visa-support/partners/${partnerId}`,
-        cleanPayload(values),
+        `${NOMADS_BACKEND_URL}${config.endpoint}/${partnerId}`,
+        cleanPayload(values, config),
       );
       return response.data;
     },
     onSuccess: () => {
-      toast.success("Visa support partner updated successfully");
-      queryClient.invalidateQueries({ queryKey: ["valueAddsPartners", "visa-support"] });
-      navigate("/dashboard/value-adds-partners/visa-support");
+      toast.success(config.successMessage);
+      queryClient.invalidateQueries({ queryKey: config.queryKey });
+      navigate(listPath);
     },
     onError: (err) => {
       toast.error(
-        err?.response?.data?.message || err?.message || "Failed to update visa support partner",
+        err?.response?.data?.message || err?.message || config.errorMessage,
       );
     },
   });
@@ -162,15 +269,15 @@ const EditVisaSupportPartner = () => {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-title font-pmedium text-primary uppercase">
-            Edit Visa Support Partner
+            Edit {config.title} Partner
           </h2>
           <p className="text-xs font-pmedium text-slate-500 mt-1">
-            Update visa partner details used across the value-adds partner table.
+            {config.description}
           </p>
         </div>
         <button
           type="button"
-          onClick={() => navigate("/dashboard/value-adds-partners/visa-support")}
+          onClick={() => navigate(listPath)}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[11px] font-pmedium uppercase tracking-wider text-slate-600 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900"
         >
           <ArrowLeft size={15} />
@@ -181,12 +288,12 @@ const EditVisaSupportPartner = () => {
       <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         {isError ? (
           <div className="p-6 text-sm font-pmedium text-rose-500">
-            {error?.response?.data?.message || error?.message || "Failed to load visa support partner."}
+            {error?.response?.data?.message || error?.message || config.errorMessage}
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {fields.map((field) =>
+              {config.fields.map((field) =>
                 field.type === "checkboxGroup" ? (
                   <fieldset
                     key={field.name}
@@ -312,7 +419,7 @@ const EditVisaSupportPartner = () => {
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => navigate("/dashboard/value-adds-partners/visa-support")}
+                onClick={() => navigate(listPath)}
                 className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-100 px-5 py-2.5 text-[12px] font-semibold leading-5 text-slate-700 transition-all hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
@@ -324,5 +431,25 @@ const EditVisaSupportPartner = () => {
     </div>
   );
 };
+
+export const EditVisaSupportPartner = () => (
+  <EditValueAddPartner config={partnerEditConfigs["visa-support"]} />
+);
+
+export const EditActivationSupportPartner = () => (
+  <EditValueAddPartner config={partnerEditConfigs["activation-support"]} />
+);
+
+export const EditCompanySetupPartner = () => (
+  <EditValueAddPartner config={partnerEditConfigs["company-setup"]} />
+);
+
+export const EditConsultationPartner = () => (
+  <EditValueAddPartner config={partnerEditConfigs.consultation} />
+);
+
+export const EditWorkationPartner = () => (
+  <EditValueAddPartner config={partnerEditConfigs.workation} />
+);
 
 export default EditVisaSupportPartner;
