@@ -17,15 +17,11 @@ import {
 } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import PageFrame from "../../../components/Pages/PageFrame";
+import CustomPlanModulePicker from "../../../components/CustomPlanModulePicker";
 
 const STATUSES = ["pending", "contacted", "closed", "rejected"];
 const PLANS = ["basic", "professional", "customise"];
 const INVITE_STATUSES = ["not_invited", "invite_sent", "registered", "joined"];
-
-// Fixed monthly price for the Professional plan, matches AiHostPricing.jsx's
-// marketing card ($199/month). Custom plan has no fixed price — staff enters
-// it manually via the popup below.
-const PROFESSIONAL_PLAN_PRICE_USD = 199;
 
 const normalizePlanValue = (value) => {
   const n = String(value || "basic")
@@ -127,10 +123,6 @@ const SignupLeads = () => {
   const [inviteOverrides, setInviteOverrides] = useState({});
   const [sendingPaymentLeadId, setSendingPaymentLeadId] = useState(null);
   const [customPaymentLead, setCustomPaymentLead] = useState(null);
-  const [customAmount, setCustomAmount] = useState("");
-  const [customDescription, setCustomDescription] = useState(
-    "WONO Custom Plan — Subscription",
-  );
 
   const { data: leads = [], isPending } = useQuery({
     queryKey: ["signup-leads"],
@@ -165,10 +157,18 @@ const SignupLeads = () => {
     },
   });
 
-  const { data: paymentStatusByLeadId = {} } = useQuery({
-    queryKey: ["bookingPaymentStatuses"],
+  const { data: planPricing } = useQuery({
+    queryKey: ["planPricing"],
     queryFn: async () => {
-      const response = await axios.get("/api/host-user/booking-payment-links");
+      const response = await axios.get("/api/hosts/plan-pricing");
+      return response?.data || { settings: {}, rows: [] };
+    },
+  });
+
+  const { data: paymentStatusByLeadId = {} } = useQuery({
+    queryKey: ["planPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/plan-payments");
       return response?.data || {};
     },
     refetchInterval: 15000,
@@ -275,29 +275,26 @@ const SignupLeads = () => {
   };
 
   const sendPlanPaymentLinkMutation = useMutation({
-    mutationFn: async ({ lead, amount, description }) => {
-      const response = await axios.post(
-        "/api/host-user/send-booking-payment-link",
-        {
-          leadId: lead?._id,
-          customerName: lead?.name,
-          customerEmail: lead?.email,
-          companyName: lead?.companyName,
-          productType: `${normalizePlanValue(lead?.goals) === "professional" ? "Professional" : "Custom"} Plan`,
-          amount,
-          currency: "usd",
-          description,
-          paymentType: "plan_subscription",
-        },
-      );
+    mutationFn: async ({ lead, plan, customModuleIds }) => {
+      const response = await axios.post("/api/hosts/plan-payments/send", {
+        companyId: lead?._id,
+        email: lead?.email,
+        name: lead?.name,
+        companyName: lead?.companyName,
+        plan,
+        customModuleIds,
+      });
       return response.data;
     },
     onSuccess: (data) => {
       setSendingPaymentLeadId(null);
       setCustomPaymentLead(null);
-      setCustomAmount("");
-      queryClient.invalidateQueries({ queryKey: ["bookingPaymentStatuses"] });
-      toast.success(data?.message || "Payment link email sent");
+      queryClient.invalidateQueries({ queryKey: ["planPaymentStatuses"] });
+      toast.success(
+        data?.message
+          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/mo)`
+          : "Payment link email sent",
+      );
     },
     onError: (error) => {
       setSendingPaymentLeadId(null);
@@ -312,31 +309,21 @@ const SignupLeads = () => {
 
     if (plan === "professional") {
       setSendingPaymentLeadId(lead._id);
-      sendPlanPaymentLinkMutation.mutate({
-        lead,
-        amount: PROFESSIONAL_PLAN_PRICE_USD,
-        description: "WONO Professional Plan — Monthly Subscription",
-      });
+      sendPlanPaymentLinkMutation.mutate({ lead, plan: "professional" });
       return;
     }
 
-    // Custom plan has no fixed price — open the popup to enter one manually.
+    // Custom plan's price is computed server-side from the module selection
+    // staff pick here — no amount is typed by hand.
     setCustomPaymentLead(lead);
-    setCustomAmount("");
-    setCustomDescription("WONO Custom Plan — Subscription");
   };
 
-  const handleSubmitCustomPayment = () => {
-    const amount = Number(customAmount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Enter a valid amount greater than 0");
-      return;
-    }
+  const handleSubmitCustomPayment = (selectedModuleIds) => {
     setSendingPaymentLeadId(customPaymentLead._id);
     sendPlanPaymentLinkMutation.mutate({
       lead: customPaymentLead,
-      amount,
-      description: customDescription,
+      plan: "custom",
+      customModuleIds: selectedModuleIds,
     });
   };
 
@@ -576,11 +563,12 @@ const SignupLeads = () => {
                           lead.status || "pending"
                         ).toLowerCase();
                         const planVal = normalizePlanValue(lead.goals);
+                        const paymentInfo = getPaymentInfo(lead);
                         const canInvite =
                           statusVal === "closed" &&
-                          !["registered", "joined"].includes(inviteStatus);
+                          !["registered", "joined"].includes(inviteStatus) &&
+                          (planVal === "basic" || paymentInfo.isPaid);
                         const isSending = sendingInviteId === lead._id;
-                        const paymentInfo = getPaymentInfo(lead);
                         const isSendingPayment =
                           sendingPaymentLeadId === lead._id;
                         return (
@@ -663,6 +651,14 @@ const SignupLeads = () => {
                                   setSendingInviteId(lead._id);
                                   inviteMutation.mutate(lead);
                                 }}
+                                title={
+                                  !canInvite &&
+                                  statusVal === "closed" &&
+                                  planVal !== "basic" &&
+                                  !paymentInfo.isPaid
+                                    ? "Invite unlocks once the plan payment is confirmed"
+                                    : undefined
+                                }
                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition ${canInvite ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
                               >
                                 <Send size={10} />
@@ -707,7 +703,7 @@ const SignupLeads = () => {
                                   {isSendingPayment
                                     ? "Sending..."
                                     : planVal === "professional"
-                                      ? "Send $199 Link"
+                                      ? `Send $${planPricing?.settings?.professionalPlanPriceUsd ?? "..."} Link`
                                       : "Send Payment Link"}
                                 </button>
                               )}
@@ -996,81 +992,14 @@ const SignupLeads = () => {
         </div>
       )}
 
-      {/* Custom Plan Payment Link Modal */}
-      {customPaymentLead && (
-        <div
-          className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
-          onClick={() => setCustomPaymentLead(null)}
-        >
-          <div
-            className="bg-white rounded-[2rem] max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-base font-pmedium tracking-tight text-slate-800">
-                  Send Custom Plan Payment Link
-                </h2>
-                <p className="text-[11px] font-pmedium text-slate-500 mt-0.5 truncate">
-                  To {customPaymentLead?.name || "this lead"} (
-                  {customPaymentLead?.email})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCustomPaymentLead(null)}
-                className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-5 sm:p-6 space-y-4">
-              <div>
-                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
-                  Amount (USD)
-                </label>
-                <input
-                  type="number"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  autoFocus
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
-                  Description
-                </label>
-                <input
-                  type="text"
-                  value={customDescription}
-                  onChange={(e) => setCustomDescription(e.target.value)}
-                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
-                />
-              </div>
-            </div>
-            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => setCustomPaymentLead(null)}
-                className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitCustomPayment}
-                disabled={sendPlanPaymentLinkMutation.isPending}
-                className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sendPlanPaymentLinkMutation.isPending
-                  ? "Sending..."
-                  : "Generate & Send"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CustomPlanModulePicker
+        open={Boolean(customPaymentLead)}
+        contactName={customPaymentLead?.name}
+        contactEmail={customPaymentLead?.email}
+        onClose={() => setCustomPaymentLead(null)}
+        onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
+        isSubmitting={sendPlanPaymentLinkMutation.isPending}
+      />
     </>
   );
 };

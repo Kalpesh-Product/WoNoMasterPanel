@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
 const { setLogModule } = require("../middlewares/logContext");
+const { getCompanyOverview } = require("../controllers/companyOverviewController");
 
 // Default module for company management routes; nomad listing routes below
 // override it with their own tag.
@@ -54,6 +55,19 @@ const {
   deleteUnit,
   recoverUnit,
 } = require("../controllers/hostCompanyControllers/unitManagementControllers");
+const {
+  sendPlanPaymentLink,
+  getPlanPaymentStatuses,
+  getHostCompanyPlanHistory,
+} = require("../controllers/planPaymentControllers");
+const {
+  getPlanPricing,
+  getPricingCatalog,
+  updateBasePricing,
+  upsertPricingItem,
+  removePricingItem,
+  setCustomPlanModules,
+} = require("../controllers/planPricingControllers");
 
 //company
 router.post(
@@ -76,7 +90,16 @@ router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
+router.post("/plan-payments/send", sendPlanPaymentLink);
+router.get("/plan-payments", getPlanPaymentStatuses);
+router.get("/plan-pricing", getPlanPricing);
+router.get("/plan-pricing/catalog", getPricingCatalog);
+router.patch("/plan-pricing/settings", updateBasePricing);
+router.put("/plan-pricing/:itemId", upsertPricingItem);
+router.delete("/plan-pricing/:itemId", removePricingItem);
+router.post("/custom-plan-modules", setCustomPlanModules);
 router.get("/companies", getCompanies);
+router.get("/companies/overview", getCompanyOverview);
 router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
 router.get("/host-companies", getHostLeadCompanies);
@@ -86,6 +109,7 @@ router.post(
   transferNomadListing,
 );
 router.get("/host-companies/:companyId/nomad-link", getLinkedNomadCompanyMeta);
+router.get("/host-companies/:companyId/plan-history", getHostCompanyPlanHistory);
 router.get("/companies/:companyId/nomad-source", getEffectiveNomadSourceForCompany);
 router.get("/companies-requests", getCompaniesListingRequests);
 router.post(

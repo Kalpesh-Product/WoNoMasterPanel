@@ -25,6 +25,7 @@ import {
   LuLayoutTemplate,
   LuHandshake,
   LuMousePointerClick,
+  LuTag,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -225,6 +226,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Host Companies",
             icon: LuBuilding2,
             route: "/dashboard/host-companies",
+          },
+          {
+            id: 7,
+            key: "hostpanel.plan-pricing",
+            title: "Plan Pricing",
+            icon: LuTag,
+            route: "/dashboard/plan-pricing",
           },
         ],
       },

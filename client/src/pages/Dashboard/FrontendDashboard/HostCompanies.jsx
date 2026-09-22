@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
-import { Search, Eye, X } from "lucide-react";
+import { Search, Eye, X, FileText, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
@@ -38,6 +37,15 @@ const formatDateTime = (value) => {
         minute: "2-digit",
     });
 };
+
+const formatDate = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+};
+
+const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
 
 const getCurrentSubscriptionLabel = (company) => {
     if (company?.isTrialActive) return "7 Day Trial";
@@ -232,15 +240,15 @@ const HostCompanies = () => {
                             <table data-tour="host-companies-table" className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                                     <tr>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">City</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Registration</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Subscription</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Location</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Registration</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Subscription</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Plan Start</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Plan End</th>
+                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -287,9 +295,11 @@ const HostCompanies = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.industry || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCountry || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyState || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCity || "-"}</td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                        {[company.companyCity, company.companyState, company.companyCountry]
+                                                            .filter(Boolean)
+                                                            .join(", ") || "-"}
+                                                    </td>
                                                     <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center">
                                                         <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
                                                             {company.isRegistered ? "Active" : "Inactive"}
@@ -300,8 +310,14 @@ const HostCompanies = () => {
                                                             {getCurrentSubscriptionLabel(company)}
                                                         </span>
                                                     </td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                        {formatDate(company.planStartDate)}
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                        {formatDate(company.planExpiryDate)}
+                                                    </td>
                                                     <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                                                        <div className="flex items-center justify-center gap-1">
+                                                        <div data-tour="host-companies-row-actions" className="flex items-center justify-center gap-1">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleViewHostCompany(company)}
@@ -310,43 +326,53 @@ const HostCompanies = () => {
                                                             >
                                                                 <Eye size={15} strokeWidth={2.5} />
                                                             </button>
-                                                            <span data-tour="host-companies-row-menu" className="inline-flex">
-                                                            <ThreeDotMenu
-                                                                rowId={company.companyId || company._id || company.companyName}
-                                                                menuItems={[
-                                                                    company.isRegistered
-                                                                        ? {
-                                                                            label: "Mark As Inactive",
-                                                                            onClick: () =>
-                                                                                toggleCompanyStatus({
-                                                                                    companyId: company.companyId,
-                                                                                    status: false,
-                                                                                }),
-                                                                        }
-                                                                        : {
-                                                                            label: "Mark As Active",
-                                                                            onClick: () =>
-                                                                                toggleCompanyStatus({
-                                                                                    companyId: company.companyId,
-                                                                                    status: true,
-                                                                                }),
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    navigate(
+                                                                        `/dashboard/host-companies/edit/${company.companyId}`,
+                                                                        {
+                                                                            state: {
+                                                                                companyId: company.companyId,
+                                                                                companyName: company.companyName,
+                                                                            },
                                                                         },
-                                                                    {
-                                                                        label: "Edit",
-                                                                        onClick: () =>
-                                                                            navigate(
-                                                                                `/dashboard/host-companies/edit/${company.companyId}`,
-                                                                                {
-                                                                                    state: {
-                                                                                        companyId: company.companyId,
-                                                                                        companyName: company.companyName,
-                                                                                    },
-                                                                                },
-                                                                            ),
-                                                                    },
-                                                                ]}
-                                                            />
-                                                            </span>
+                                                                    )
+                                                                }
+                                                                title="Edit company"
+                                                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                                                            >
+                                                                <Pencil size={15} strokeWidth={2.5} />
+                                                            </button>
+                                                            {company.isRegistered ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        toggleCompanyStatus({
+                                                                            companyId: company.companyId,
+                                                                            status: false,
+                                                                        })
+                                                                    }
+                                                                    title="Mark as inactive"
+                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                                                                >
+                                                                    <Ban size={15} strokeWidth={2.5} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        toggleCompanyStatus({
+                                                                            companyId: company.companyId,
+                                                                            status: true,
+                                                                        })
+                                                                    }
+                                                                    title="Mark as active"
+                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                                                                >
+                                                                    <CheckCircle2 size={15} strokeWidth={2.5} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -430,6 +456,14 @@ const HostCompanies = () => {
                                         </p>
                                     </div>
                                     <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan Start</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDate(selectedCompany?.planStartDate)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan End</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDate(selectedCompany?.planExpiryDate)}</p>
+                                    </div>
+                                    <div>
                                         <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Name</p>
                                         <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.pocName || "-"}</p>
                                     </div>
@@ -461,10 +495,92 @@ const HostCompanies = () => {
                                     )}
                                 </div>
                             </div>
+
+                            <PlanHistorySection companyId={selectedCompany?.companyId} />
                         </div>
                     </div>
                 </div>
             ) : null}
+        </div>
+    );
+};
+
+// Full history of every plan payment attempt for this company (not just the
+// latest) — initial purchase, renewals, upgrades/downgrades — each with its
+// status, amount, and Stripe invoice link where one exists.
+const PlanHistorySection = ({ companyId }) => {
+    const axiosPrivate = useAxiosPrivate();
+    const { data, isLoading } = useQuery({
+        queryKey: ["hostCompanyPlanHistory", companyId],
+        enabled: Boolean(companyId),
+        queryFn: async () => {
+            const response = await axiosPrivate.get(
+                `/api/hosts/host-companies/${companyId}/plan-history`,
+            );
+            return response?.data?.history || [];
+        },
+    });
+    const history = data || [];
+
+    return (
+        <div>
+            <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                Plan History
+            </h3>
+            {isLoading ? (
+                <p className="text-[11px] text-slate-400">Loading…</p>
+            ) : history.length === 0 ? (
+                <p className="text-[11px] text-slate-400">No plan payments yet.</p>
+            ) : (
+                <div className="space-y-1.5">
+                    {history.map((entry) => (
+                        <div
+                            key={entry._id}
+                            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50/60"
+                        >
+                            <div className="min-w-0">
+                                <p className="text-[12px] font-pmedium text-slate-800">
+                                    {PLAN_LABELS[entry.plan] || formatLabel(entry.plan)}{" "}
+                                    <span className="text-slate-400 font-normal">
+                                        ({formatLabel(entry.changeType)})
+                                    </span>
+                                </p>
+                                <p className="text-[10px] text-slate-400">
+                                    {entry.status === "paid"
+                                        ? `Paid ${formatDate(entry.paidAt)}`
+                                        : `Requested ${formatDate(entry.createdAt)}`}
+                                    {entry.periodStart && entry.periodEnd
+                                        ? ` · Covers ${formatDate(entry.periodStart)} – ${formatDate(entry.periodEnd)}`
+                                        : ""}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span
+                                    className={statusPillClass(
+                                        entry.status === "paid" ? "Paid" : "Pending",
+                                    )}
+                                >
+                                    {entry.status === "paid" ? "Paid" : "Pending"}
+                                </span>
+                                <span className="text-[12px] font-pmedium text-slate-700">
+                                    ${entry.amount}
+                                </span>
+                                {entry.hostedInvoiceUrl && (
+                                    <a
+                                        href={entry.hostedInvoiceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-blue-600 hover:text-blue-700"
+                                        title="View invoice"
+                                    >
+                                        <FileText size={14} />
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

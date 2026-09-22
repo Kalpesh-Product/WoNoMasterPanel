@@ -896,7 +896,9 @@ const getHostLeadCompanies = async (req, res, next) => {
     // true, otherwise the host gets told they're upgraded while still
     // seeing their old plan (exactly today's duplicate-lead-record bug).
     const allWorkspaces = await Workspace.find({ isActive: true })
-      .select("_id companyId businessName selectedPlan")
+      .select(
+        "_id companyId businessName selectedPlan purchasedPlan planStatus planStartDate planExpiryDate",
+      )
       .lean();
     const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
       .select("searchKey companyId companyName isActive isPublished")
@@ -972,6 +974,9 @@ const getHostLeadCompanies = async (req, res, next) => {
           workspaceSelectedPlan === requestedPlan,
         isWebsiteTemplate: Boolean(matchedTemplate),
         websiteTemplate: matchedTemplate || null,
+        planStatus: matchedWorkspace?.planStatus || null,
+        planStartDate: matchedWorkspace?.planStartDate || null,
+        planExpiryDate: matchedWorkspace?.planExpiryDate || null,
       };
     });
 

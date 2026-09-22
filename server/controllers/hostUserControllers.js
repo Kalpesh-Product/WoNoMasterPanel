@@ -6,9 +6,11 @@ const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
 const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
+const PlanPaymentLink = require("../models/PlanPaymentLink");
 const {
   handleVerificationPaymentWebhookEvent,
 } = require("./companyVerificationPaymentsControllers");
+const { handlePlanPaymentWebhookEvent } = require("./planPaymentControllers");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -2415,6 +2417,30 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
+    // Payment gate: Basic is free and skips this entirely (approval alone is
+    // enough). Professional/Custom require a confirmed plan payment first —
+    // inviteUnlockedAt is set by the plan-payment webhook the moment
+    // handlePlanPaymentWebhookEvent applies a paid PlanPaymentLink (see
+    // planPaymentControllers.js), never by the client.
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const lead = await HostLeadCompany.findOne({ pocEmail: normalizedEmail })
+      .sort({ updatedAt: -1 })
+      .lean();
+    const rawPlan = String(lead?.plan || req.body.selectedPlan || req.body.goals || "basic")
+      .trim()
+      .toLowerCase();
+    const normalizedPlan = ["custom", "customize", "customised", "customized"].includes(rawPlan)
+      ? "custom"
+      : rawPlan === "professional"
+        ? "professional"
+        : "basic";
+
+    if (normalizedPlan !== "basic" && !lead?.inviteUnlockedAt) {
+      return res.status(400).json({
+        message: "Invite can only be sent after the plan payment has been confirmed",
+      });
+    }
+
     await createHostInvite(req.body);
 
     return res.status(200).json({ message: "Invite email sent successfully" });
@@ -3822,7 +3848,14 @@ const handleStripeWebhook = async (req, res) => {
             stripePaymentLinkId: session.payment_link,
           });
           if (!isKnownBookingLink) {
-            await handleVerificationPaymentWebhookEvent(session);
+            const isKnownPlanLink = await PlanPaymentLink.exists({
+              stripePaymentLinkId: session.payment_link,
+            });
+            if (isKnownPlanLink) {
+              await handlePlanPaymentWebhookEvent(session);
+            } else {
+              await handleVerificationPaymentWebhookEvent(session);
+            }
           }
         }
       } catch (error) {

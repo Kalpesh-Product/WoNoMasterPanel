@@ -43,6 +43,48 @@ const workspaceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Plan billing lifecycle fields, mirrored from HostPanel's real Workspace
+    // schema (server/models/Workspace.ts) so master panel's cron/webhook
+    // writes actually persist on the shared collection — Mongoose only
+    // writes fields declared in the schema doing the write.
+    purchasedPlan: {
+      type: String,
+      enum: ["basic", "professional", "custom", null],
+      default: null,
+    },
+    planStatus: {
+      type: String,
+      enum: ["none", "active", "expiring_soon", "expired_downgraded"],
+      default: "none",
+    },
+    planStartDate: {
+      type: Date,
+      default: null,
+    },
+    planExpiryDate: {
+      type: Date,
+      default: null,
+    },
+    planLastPaidAt: {
+      type: Date,
+      default: null,
+    },
+    planExpiryWarningSentAt: {
+      type: Date,
+      default: null,
+    },
+    preDowngradeEnabledModuleIds: {
+      type: [String],
+      default: [],
+    },
+    customPlanModuleIds: {
+      type: [String],
+      default: [],
+    },
+    customPlanMonthlyPriceUsd: {
+      type: Number,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

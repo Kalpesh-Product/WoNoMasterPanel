@@ -156,6 +156,7 @@ import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/C
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
+import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
 import ValueAddsLeads from "../pages/Dashboard/Leads/ValueAddsLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
@@ -225,6 +226,7 @@ import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/Wono
 import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadReviews";
 import NomadsLeads from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadsLeads";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import HostCompanyPlanHistory from "../pages/Dashboard/FrontendDashboard/HostCompanyPlanHistory";
 import UnitsManagement from "../pages/Dashboard/FrontendDashboard/UnitsManagement";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
@@ -283,6 +285,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "signup-leads",
                     element: <SignupLeads />,
+                  },
+                  {
+                    path: "plan-pricing",
+                    element: <PlanPricingSettings />,
                   },
                   {
                     path: "company-verification-leads",
@@ -754,6 +760,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/upgrade-plan",
                         element: <UpgradePlan />,
+                      },
+                      {
+                        path: ":companyId/plan-history",
+                        element: <HostCompanyPlanHistory />,
                       },
                       {
                         path: ":companyId/module-access",

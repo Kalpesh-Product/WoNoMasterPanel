@@ -73,10 +73,13 @@ const {
   createTemplate,
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
+const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
 
 require("./listeners/logEventListener");
 require("./jobs/verificationRenewalReminders");
 require("./jobs/verificationExpiryNotices");
+require("./jobs/planExpiryReminders");
+require("./jobs/planExpiryDowngrade");
 const app = express();
 const PORT = process.env.PORT || 5007;
 app.set("trust proxy", true);
@@ -115,6 +118,11 @@ app.get("/", (req, res) => {
 // Shared with other apps: auth is optional, actions are logged only when a
 // master panel token is present.
 app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
+// Fully public — just the Professional plan price, so Nomads' and
+// HostPanel's public-facing pricing pages can stay in sync with whatever
+// staff set on the Plan Pricing settings page, without exposing anything
+// else in the pricing model.
+app.get("/api/public/plan-pricing", getPublicPlanPricing);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs

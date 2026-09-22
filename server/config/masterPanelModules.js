@@ -36,6 +36,7 @@ const masterPanelModules = [
       { key: "hostpanel.website-credits", label: "Website Credits" },
       { key: "hostpanel.website-templates", label: "Website Templates" },
       { key: "hostpanel.host-companies", label: "Host Companies" },
+      { key: "hostpanel.plan-pricing", label: "Plan Pricing" },
       { key: "hostpanel.module-access-logs", label: "Module Access Logs" },
       { key: "hostpanel.host-panel-logs", label: "Host Panel Logs" },
       { key: "hostpanel.host-panel-analytics", label: "Host Panel Analytics" },

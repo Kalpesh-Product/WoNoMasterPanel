@@ -1,15 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Eye, Search } from "lucide-react";
+import { Eye, Search, Send, RotateCw, FileText } from "lucide-react";
 import { toast } from "sonner";
 import PageFrame from "../../../components/Pages/PageFrame";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
-
-const DEFAULT_TEST_PAYMENT_LINK = "https://example.com/test-payment-link";
+import CustomPlanModulePicker from "../../../components/CustomPlanModulePicker";
 
 const formatPlan = (value) => {
   const rawPlan = String(value || "").trim();
@@ -53,10 +51,11 @@ const UpgradePlan = () => {
   const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
   const { auth } = useAuth();
-  const [paymentLinks, setPaymentLinks] = useState({});
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [customPaymentCompany, setCustomPaymentCompany] = useState(null);
+  const [sendingPaymentCompanyId, setSendingPaymentCompanyId] = useState(null);
   const resolvedCompanyId = useMemo(() => {
     const stateCompanyId = String(location.state?.companyId || "").trim();
     if (stateCompanyId) return stateCompanyId;
@@ -94,157 +93,80 @@ const UpgradePlan = () => {
     },
   });
 
-  useEffect(() => {
-    setPaymentLinks((prev) => {
-      const next = { ...prev };
-      companies.forEach((company) => {
-        if (!next[company.companyId]) {
-          next[company.companyId] = company.paymentLinkUrl || DEFAULT_TEST_PAYMENT_LINK;
-        }
-      });
-      return next;
-    });
-  }, [companies]);
+  // Live, webhook-driven payment status per company — same source Signup
+  // Leads reads, so "Paid" here always reflects an actual confirmed Stripe
+  // payment, never a manual self-report.
+  const { data: paymentStatusByCompanyId = {} } = useQuery({
+    queryKey: ["planPaymentStatuses"],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/hosts/plan-payments");
+      return response?.data || {};
+    },
+    refetchInterval: 15000,
+  });
 
-  const updateCompaniesCache = (updater) => {
-    queryClient.setQueryData(["hostCompaniesList"], (oldCompanies = []) =>
-      oldCompanies.map((company) => updater(company)),
-    );
+  const getPaymentInfo = (companyId) => {
+    const record = paymentStatusByCompanyId[String(companyId || "")];
+    if (!record) return { label: "Not Sent", isPaid: false, hostedInvoiceUrl: null };
+    const isPaid = record.status === "paid";
+    const formattedAmount = new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: String(record.currency || "USD").toUpperCase(),
+      maximumFractionDigits: 0,
+    }).format(record.amount || 0);
+    return {
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      isPaid,
+      hostedInvoiceUrl: record.hostedInvoiceUrl,
+    };
   };
 
-  const { mutate: sendPaymentLink, isPending: isSendingPaymentLink } = useMutation({
-    mutationFn: async (company) => {
-      const paymentLinkUrl = paymentLinks[company.companyId] || DEFAULT_TEST_PAYMENT_LINK;
-      await axiosPrivate.patch("/api/hosts/send-upgrade-payment-link", {
+  const sendPlanPaymentLinkMutation = useMutation({
+    mutationFn: async ({ company, plan, customModuleIds }) => {
+      const response = await axiosPrivate.post("/api/hosts/plan-payments/send", {
         companyId: company.companyId,
-        paymentLinkUrl,
-      });
-      const response = await axiosPrivate.post(
-        "/api/host-user/send-upgrade-payment-link-email",
-        {
-          email: company?.pocEmail,
-          name: company?.pocName,
-          companyName: company?.companyName,
-          currentPlan: company?.plan,
-          selectedPlan: company?.requestedPlan || company?.plan,
-          paymentLinkUrl,
-        },
-      );
-      return { response: response.data, company, paymentLinkUrl };
-    },
-    onMutate: async (company) => {
-      await queryClient.cancelQueries({ queryKey: ["hostCompaniesList"] });
-      const previousCompanies = queryClient.getQueryData(["hostCompaniesList"]);
-      const paymentLinkUrl = paymentLinks[company.companyId] || DEFAULT_TEST_PAYMENT_LINK;
-      const paymentLinkSentAt = new Date().toISOString();
-      updateCompaniesCache((row) =>
-        row.companyId === company.companyId
-          ? { ...row, paymentLinkUrl, paymentLinkSentAt, upgradeStatus: "payment_link_sent" }
-          : row,
-      );
-      return { previousCompanies };
-    },
-    onSuccess: ({ response }) => {
-      toast.success(response?.message || "Payment link email sent successfully");
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previousCompanies) {
-        queryClient.setQueryData(["hostCompaniesList"], context.previousCompanies);
-      }
-      toast.error(error?.response?.data?.message || "Failed to send payment link email");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
-    },
-  });
-
-  const { mutate: updatePaymentStatus } = useMutation({
-    mutationFn: async ({ companyId, paymentStatus }) => {
-      const response = await axiosPrivate.patch(
-        "/api/hosts/update-upgrade-payment-status",
-        { companyId, paymentStatus },
-      );
-      return response.data;
-    },
-    onMutate: async ({ companyId, paymentStatus }) => {
-      await queryClient.cancelQueries({ queryKey: ["hostCompaniesList"] });
-      const previousCompanies = queryClient.getQueryData(["hostCompaniesList"]);
-      const paymentConfirmedAt = paymentStatus ? new Date().toISOString() : null;
-      updateCompaniesCache((company) =>
-        company.companyId === companyId
-          ? {
-              ...company,
-              paymentStatus,
-              paymentConfirmedAt,
-              plan: paymentStatus
-                ? String(company.requestedPlan || company.plan || "").trim().toLowerCase() || company.plan
-                : company.plan,
-              upgradeStatus: paymentStatus
-                ? "paid"
-                : company.paymentLinkSentAt
-                  ? "payment_link_sent"
-                  : "requested",
-            }
-          : company,
-      );
-      return { previousCompanies };
-    },
-    onSuccess: (data) => {
-      toast.success(data?.message || "Payment status updated");
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previousCompanies) {
-        queryClient.setQueryData(["hostCompaniesList"], context.previousCompanies);
-      }
-      toast.error(error?.response?.data?.message || "Failed to update payment status");
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
-    },
-  });
-
-  const { mutate: sendUpgradeSuccess, isPending: isSendingUpgradeSuccess } = useMutation({
-    mutationFn: async (company) => {
-      await axiosPrivate.post("/api/host-user/send-upgrade-success-email", {
         email: company?.pocEmail,
         name: company?.pocName,
-        companyId: company?.companyId,
         companyName: company?.companyName,
-        selectedPlan: company?.requestedPlan || company?.plan,
+        plan,
+        customModuleIds,
       });
-      const response = await axiosPrivate.patch(
-        "/api/hosts/mark-upgrade-success-email-sent",
-        { companyId: company.companyId },
-      );
-      return { response: response.data, company };
+      return response.data;
     },
-    onMutate: async (company) => {
-      await queryClient.cancelQueries({ queryKey: ["hostCompaniesList"] });
-      const previousCompanies = queryClient.getQueryData(["hostCompaniesList"]);
-      const upgradeSuccessSentAt = new Date().toISOString();
-      updateCompaniesCache((row) =>
-        row.companyId === company.companyId
-          ? { ...row, upgradeSuccessSentAt, upgradeStatus: "upgraded" }
-          : row,
-      );
-      return { previousCompanies };
-    },
-    onSuccess: ({ response }) => {
-      toast.success(response?.message || "Upgrade success email sent successfully");
-    },
-    onError: (error, _variables, context) => {
-      if (context?.previousCompanies) {
-        queryClient.setQueryData(["hostCompaniesList"], context.previousCompanies);
-      }
-      toast.error(error?.response?.data?.message || "Failed to send upgrade success email");
-    },
-    onSettled: () => {
+    onSuccess: (data) => {
+      setSendingPaymentCompanyId(null);
+      setCustomPaymentCompany(null);
+      queryClient.invalidateQueries({ queryKey: ["planPaymentStatuses"] });
       queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
+      toast.success(
+        data?.message
+          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/mo)`
+          : "Payment link sent",
+      );
+    },
+    onError: (error) => {
+      setSendingPaymentCompanyId(null);
+      toast.error(error?.response?.data?.message || "Failed to send payment link");
     },
   });
 
-  const handlePaymentLinkChange = (companyId, value) => {
-    setPaymentLinks((prev) => ({ ...prev, [companyId]: value }));
+  const handleSendPaymentLink = (company) => {
+    const plan = String(company.requestedPlan || "").trim().toLowerCase();
+    if (plan === "custom" || plan === "customise") {
+      setCustomPaymentCompany(company);
+      return;
+    }
+    setSendingPaymentCompanyId(company.companyId);
+    sendPlanPaymentLinkMutation.mutate({ company, plan: "professional" });
+  };
+
+  const handleSubmitCustomPayment = (selectedModuleIds) => {
+    setSendingPaymentCompanyId(customPaymentCompany.companyId);
+    sendPlanPaymentLinkMutation.mutate({
+      company: customPaymentCompany,
+      plan: "custom",
+      customModuleIds: selectedModuleIds,
+    });
   };
 
   const handleViewCompany = (company) => {
@@ -261,13 +183,13 @@ const UpgradePlan = () => {
         .filter((company) => String(company?.companyId || "").trim() === resolvedCompanyId)
         .filter((company) => Boolean(normalizePlan(company?.requestedPlan)))
         .sort((a, b) => {
-          const aDone = Boolean(a?.upgradeSuccessSentAt);
-          const bDone = Boolean(b?.upgradeSuccessSentAt);
-          if (aDone !== bDone) return aDone ? 1 : -1;
-          if (a.paymentStatus === b.paymentStatus) return 0;
-          return a.paymentStatus ? -1 : 1;
+          const aPaid = getPaymentInfo(a.companyId).isPaid;
+          const bPaid = getPaymentInfo(b.companyId).isPaid;
+          if (aPaid !== bPaid) return aPaid ? 1 : -1;
+          return 0;
         }),
-    [companies, resolvedCompanyId],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [companies, resolvedCompanyId, paymentStatusByCompanyId],
   );
 
   const filteredCompanies = useMemo(() => {
@@ -284,47 +206,8 @@ const UpgradePlan = () => {
   }, [sortedCompanies, searchQuery]);
 
   const totalCount = sortedCompanies.length;
-  const paidCount = sortedCompanies.filter((c) => c.paymentStatus === true).length;
-  const pendingCount = sortedCompanies.filter((c) => !c.paymentStatus).length;
-  const upgradedCount = sortedCompanies.filter((c) => c.upgradeStatus === "upgraded").length;
-
-  const getActionMenuItems = (row) => {
-    const hasRequestedPlan = Boolean(String(row.requestedPlan || "").trim());
-    const isAlreadySent = Boolean(row.paymentLinkSentAt);
-    const canSend = row.paymentStatus === true;
-    const isSuccessSent = Boolean(row.upgradeSuccessSentAt);
-    const canUpdatePayment = Boolean(row.paymentLinkSentAt) && row.paymentStatus !== true;
-    const menuItems = [];
-
-    if (!isAlreadySent && hasRequestedPlan) {
-      menuItems.push({
-        label: "Send Payment Link",
-        disabled: isSendingPaymentLink,
-        onClick: () => sendPaymentLink(row),
-      });
-    } else if (canUpdatePayment) {
-      menuItems.push({
-        label: "Mark As Paid",
-        disabled: false,
-        onClick: () => updatePaymentStatus({ companyId: row.companyId, paymentStatus: true }),
-      });
-    } else if (canSend && !isSuccessSent) {
-      if (row.workspacePlanApplied) {
-        menuItems.push({
-          label: "Send Success Email",
-          disabled: isSendingUpgradeSuccess,
-          onClick: () => sendUpgradeSuccess(row),
-        });
-      } else {
-        menuItems.push({
-          label: "Workspace plan not synced — re-confirm payment",
-          disabled: true,
-          onClick: () => {},
-        });
-      }
-    }
-    return menuItems;
-  };
+  const paidCount = sortedCompanies.filter((c) => getPaymentInfo(c.companyId).isPaid).length;
+  const pendingCount = totalCount - paidCount;
 
   if (isLoading) return <div className="p-6">Loading host companies...</div>;
   if (isError) return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -336,13 +219,14 @@ const UpgradePlan = () => {
           <div>
             <h2 className="text-title font-pmedium text-primary uppercase">Upgrade Plan</h2>
             <p className="text-xs font-pmedium text-slate-500 mt-1">
-              Manage payment links and upgrade workflows for host companies.
+              Real Stripe payment links, generated and verified automatically
+              — nothing here is self-reported.
             </p>
           </div>
         </div>
 
         {/* Stat Cards */}
-        <div data-tour="upgrade-plan-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
+        <div data-tour="upgrade-plan-stats" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-1 shrink-0">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
             <div className="min-w-0">
               <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Requests</p>
@@ -359,12 +243,6 @@ const UpgradePlan = () => {
             <div className="min-w-0">
               <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Paid</p>
               <p className="text-[15px] font-pmedium text-slate-900">{paidCount}</p>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-purple-500">
-            <div className="min-w-0">
-              <p className="text-[10px] font-pmedium text-purple-600 uppercase tracking-widest mb-1">Upgraded</p>
-              <p className="text-[15px] font-pmedium text-slate-900">{upgradedCount}</p>
             </div>
           </div>
         </div>
@@ -407,8 +285,10 @@ const UpgradePlan = () => {
                 ) : (
                   filteredCompanies.map((row, index) => {
                     const isSent = Boolean(row.paymentLinkSentAt);
-                    const isPaid = row.paymentStatus === true;
+                    const paymentInfo = getPaymentInfo(row.companyId);
                     const upgradeStatus = String(row.upgradeStatus || "requested").trim().toLowerCase();
+                    const isSending =
+                      sendingPaymentCompanyId === row.companyId && sendPlanPaymentLinkMutation.isPending;
 
                     return (
                       <tr key={row.companyId} className="hover:bg-slate-50/50 transition-colors group">
@@ -425,7 +305,7 @@ const UpgradePlan = () => {
                           })}
                         </td>
                         <td className="px-5 py-4 align-top text-center">
-                          {statusPill(isPaid ? "Paid" : "Unpaid", {
+                          {statusPill(paymentInfo.isPaid ? "Paid" : "Unpaid", {
                             Paid: { bg: "#D1FAE5", color: "#10B981" },
                             Unpaid: { bg: "#FEE2E2", color: "#EF4444" },
                           })}
@@ -434,12 +314,15 @@ const UpgradePlan = () => {
                           {statusPill(formatPlan(upgradeStatus), {
                             Requested: { bg: "#FEF3C7", color: "#B45309" },
                             "Payment Link Sent": { bg: "#DBEAFE", color: "#1D4ED8" },
-                            Paid: { bg: "#D1FAE5", color: "#047857" },
-                            Upgraded: { bg: "#E9D5FF", color: "#7C3AED" },
+                            Active: { bg: "#D1FAE5", color: "#047857" },
+                            Downgraded: { bg: "#FEE2E2", color: "#B91C1C" },
                           })}
                         </td>
                         <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                          <div
+                            data-tour={index === 0 ? "upgrade-plan-row-actions" : undefined}
+                            className="flex items-center justify-center gap-1"
+                          >
                             <button
                               type="button"
                               onClick={() => handleViewCompany(row)}
@@ -449,16 +332,36 @@ const UpgradePlan = () => {
                             >
                               <Eye size={15} strokeWidth={2.5} />
                             </button>
-                            <span
-                              className="inline-flex"
-                              data-tour={index === 0 ? "upgrade-plan-row-menu" : undefined}
-                            >
-                              <ThreeDotMenu
-                                rowId={row.companyId}
-                                disabled={!getActionMenuItems(row).length}
-                                menuItems={getActionMenuItems(row)}
-                              />
-                            </span>
+                            {paymentInfo.isPaid ? (
+                              paymentInfo.hostedInvoiceUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    window.open(paymentInfo.hostedInvoiceUrl, "_blank", "noopener")
+                                  }
+                                  title="View invoice"
+                                  className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all"
+                                >
+                                  <FileText size={15} strokeWidth={2.5} />
+                                </button>
+                              )
+                            ) : (
+                              Boolean(String(row.requestedPlan || "").trim()) && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSendPaymentLink(row)}
+                                  disabled={isSending}
+                                  title={row.paymentLinkSentAt ? "Resend payment link" : "Send payment link"}
+                                  className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {row.paymentLinkSentAt ? (
+                                    <RotateCw size={15} strokeWidth={2.5} />
+                                  ) : (
+                                    <Send size={15} strokeWidth={2.5} />
+                                  )}
+                                </button>
+                              )
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -508,21 +411,29 @@ const UpgradePlan = () => {
                 <h2 className="text-subtitle font-pmedium text-gray-800">Upgrade Details</h2>
                 <DetailRow label="Current Plan" value={formatPlan(selectedCompany?.plan)} />
                 <DetailRow label="Requested Plan" value={formatPlan(selectedCompany?.requestedPlan)} />
-                <DetailRow label="Payment Status" value={selectedCompany?.paymentStatus ? "Paid" : "Unpaid"} />
+                <DetailRow
+                  label="Payment Status"
+                  value={getPaymentInfo(selectedCompany?.companyId).isPaid ? "Paid" : "Unpaid"}
+                />
                 <DetailRow label="Upgrade Status" value={formatPlan(selectedCompany?.upgradeStatus)} />
-                <DetailRow label="Trial Start" value={formatDateTime(selectedCompany?.trialStartAt)} />
-                <DetailRow label="Trial End" value={formatDateTime(selectedCompany?.trialEndAt)} />
-                <DetailRow label="Subscription Status" value={formatPlan(selectedCompany?.subscriptionStatus)} />
-                <DetailRow label="Payment Link" value={selectedCompany?.paymentLinkUrl || paymentLinks[selectedCompany?.companyId]} />
                 <DetailRow label="Payment Link Sent" value={formatDateTime(selectedCompany?.paymentLinkSentAt)} />
                 <DetailRow label="Payment Confirmed" value={formatDateTime(selectedCompany?.paymentConfirmedAt)} />
-                <DetailRow label="Success Email Sent" value={formatDateTime(selectedCompany?.upgradeSuccessSentAt)} />
                 <DetailRow label="Comment" value={selectedCompany?.comment} />
               </div>
             </div>
           </div>
         </div>
       )}
+
+      <CustomPlanModulePicker
+        open={Boolean(customPaymentCompany)}
+        title="Send Custom Plan Payment Link"
+        contactName={customPaymentCompany?.pocName}
+        contactEmail={customPaymentCompany?.pocEmail}
+        onClose={() => setCustomPaymentCompany(null)}
+        onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
+        isSubmitting={sendPlanPaymentLinkMutation.isPending}
+      />
     </PageFrame>
   );
 };

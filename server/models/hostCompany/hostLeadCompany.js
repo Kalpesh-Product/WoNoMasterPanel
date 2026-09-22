@@ -125,6 +125,21 @@ const hostLeadCompanySchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // Set the moment invite becomes eligible: at lead-approval time for
+    // Basic (no payment required), at plan-payment-webhook time for
+    // Professional/Custom. The invite gate checks THIS, not paymentStatus
+    // directly, so Basic never needs a fake "paid" state.
+    inviteUnlockedAt: {
+      type: Date,
+      default: null,
+    },
+    // Custom-plan module selection made before the workspace exists (staff
+    // picks these pre-registration); carried over onto Workspace at
+    // registration time (completeWorkspaceSetup, HostPanel).
+    customPlanModuleIds: {
+      type: [String],
+      default: [],
+    },
     comment: {
       type: String,
       trim: true,

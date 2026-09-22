@@ -1,5 +1,14 @@
 import React from "react";
-import { X, Mail, ShieldCheck, Users, History as HistoryIcon, FileText } from "lucide-react";
+import {
+  X,
+  Mail,
+  ShieldCheck,
+  Users,
+  History as HistoryIcon,
+  FileText,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
 import {
   TIER_LABELS,
   formatDate,
@@ -13,8 +22,20 @@ import {
 // never drifts between them. onViewHistory is optional (Companies Verified
 // passes it to add a shortcut into the renewal-history modal; the Leads
 // page omits it since that history doesn't apply until a company is paid).
-const VerificationLeadDetailModal = ({ lead, onClose, onViewHistory }) => {
+// onApprove/onReject are only offered by the Leads queue, and only take
+// effect while the request is still "pending" — once decided, the decision
+// can't be changed here, so the modal falls back to a plain Close button.
+const VerificationLeadDetailModal = ({
+  lead,
+  onClose,
+  onViewHistory,
+  onApprove,
+  onReject,
+}) => {
   if (!lead) return null;
+
+  const canDecide =
+    (lead.status || "pending") === "pending" && (onApprove || onReject);
 
   return (
     <div
@@ -316,13 +337,32 @@ const VerificationLeadDetailModal = ({ lead, onClose, onViewHistory }) => {
           )}
         </div>
         <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm"
-          >
-            Close
-          </button>
+          {canDecide ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onReject}
+                className="flex-1 py-2.5 bg-white border border-rose-200 text-rose-600 rounded-xl font-pmedium text-[12px] hover:bg-rose-50 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <XCircle size={15} /> Reject
+              </button>
+              <button
+                type="button"
+                onClick={onApprove}
+                className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-pmedium text-[12px] hover:bg-emerald-700 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 size={15} /> Approve
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm"
+            >
+              Close
+            </button>
+          )}
         </div>
       </div>
     </div>

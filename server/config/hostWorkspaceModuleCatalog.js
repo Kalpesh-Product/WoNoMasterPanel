@@ -266,10 +266,73 @@ const buildCatalogIndex = () => {
   return index;
 };
 
+// Real modules/departments staff can actually price as Custom-plan add-ons —
+// anything NOT already included free at Professional (PROFESSIONAL_DEFAULT_IDS)
+// — derived straight from MODULE_GROUPS instead of staff typing ids by hand
+// on the Plan Pricing settings page.
+//
+// A department's chargeable tabs are ALWAYS exposed BOTH ways at once, never
+// either/or:
+//   1. individually, as their own "module" entries — so a Custom workspace
+//      that only wants e.g. 2 of HR Department's 7 tabs can be priced for
+//      exactly those 2, and
+//   2. (when there are 2+ chargeable tabs) ALSO as a "department" bundle
+//      covering all of them at one discounted flat rate, for when a
+//      workspace wants the whole department.
+// computeCustomPlanMonthlyPrice (modulePricingService.js) already prefers
+// the bundle price only when every one of its ids is selected, and falls
+// back to summing individual module prices otherwise — this catalog just
+// needs to offer both options for staff to price.
+//
+// A department already fully covered by Professional (e.g. Administration,
+// Sales) has zero chargeable tabs and is excluded entirely; nothing
+// already-free is ever priced.
+const getPriceableCatalog = () => {
+  const modules = [];
+  const departments = [];
+
+  for (const section of MODULE_GROUPS) {
+    for (const item of section.items || []) {
+      if (Array.isArray(item.tabs) && item.tabs.length) {
+        const chargeableTabs = item.tabs.filter((tab) => !PROFESSIONAL_DEFAULT_IDS.has(tab.id));
+        if (!chargeableTabs.length) continue;
+
+        for (const tab of chargeableTabs) {
+          modules.push({
+            itemId: tab.id,
+            label: `${item.label || item.id} — ${tab.label || tab.id}`,
+            sectionLabel: section.sectionLabel,
+          });
+        }
+
+        // A "bundle" of a single tab is just that module's own price, so
+        // only offer the whole-department option once there's actually
+        // something to bundle.
+        if (chargeableTabs.length > 1) {
+          departments.push({
+            itemId: item.id,
+            label: item.label || item.id,
+            sectionLabel: section.sectionLabel,
+            includesModuleIds: chargeableTabs.map((tab) => tab.id),
+          });
+        }
+        continue;
+      }
+
+      if (!PROFESSIONAL_DEFAULT_IDS.has(item.id)) {
+        modules.push({ itemId: item.id, label: item.label || item.id, sectionLabel: section.sectionLabel });
+      }
+    }
+  }
+
+  return { modules, departments };
+};
+
 module.exports = {
   MODULE_GROUPS,
   normalizePlan,
   getDefaultEnabledModuleIdsForPlan,
   planAvailabilityFor,
   buildCatalogIndex,
+  getPriceableCatalog,
 };

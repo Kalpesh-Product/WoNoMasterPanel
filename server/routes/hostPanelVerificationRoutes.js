@@ -13,6 +13,7 @@ const {
   updateHostPanelBadgeVisibility,
   getVerificationLeadHistory,
 } = require("../controllers/companyVerificationPaymentsControllers");
+const { getHostPanelPlanInvoices } = require("../controllers/planPaymentControllers");
 
 router.use(setLogModule("HostPanel Verification Requests"));
 router.use(verifyHostPanelServiceKey);
@@ -24,5 +25,6 @@ router.post("/verification-requests", submitHostPanelVerificationRequest);
 router.post("/verification-requests/pay", payHostPanelVerification);
 router.patch("/verification-requests/badge-visibility", updateHostPanelBadgeVisibility);
 router.get("/verification-requests/:id/history", getVerificationLeadHistory);
+router.get("/plan/:companyId/invoices", getHostPanelPlanInvoices);
 
 module.exports = router;
