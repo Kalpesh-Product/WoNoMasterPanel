@@ -15,6 +15,7 @@ const PlanPricingSettings = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
   const [professionalPrice, setProfessionalPrice] = useState("");
+  const [annualPrice, setAnnualPrice] = useState("");
   const [newItemType, setNewItemType] = useState("module");
   const [selectedCatalogId, setSelectedCatalogId] = useState("");
   const [newPriceUsd, setNewPriceUsd] = useState("");
@@ -36,6 +37,11 @@ const PlanPricingSettings = () => {
     if (priceTouched) return;
     if (data?.settings?.professionalPlanPriceUsd == null) return;
     setProfessionalPrice(String(data.settings.professionalPlanPriceUsd));
+    setAnnualPrice(
+      data.settings.professionalAnnualPlanPriceUsd != null
+        ? String(data.settings.professionalAnnualPlanPriceUsd)
+        : "",
+    );
   }, [data, priceTouched]);
 
   // The REAL modules/departments that can be priced, derived server-side
@@ -60,13 +66,15 @@ const PlanPricingSettings = () => {
     mutationFn: async () => {
       const res = await axios.patch("/api/hosts/plan-pricing/settings", {
         professionalPlanPriceUsd: Number(professionalPrice),
+        professionalAnnualPlanPriceUsd:
+          annualPrice === "" || annualPrice == null ? null : Number(annualPrice),
       });
       return res.data;
     },
     onSuccess: () => {
       setPriceTouched(false);
       queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
-      toast.success("Professional plan price updated");
+      toast.success("Professional plan pricing updated");
     },
     onError: (error) =>
       toast.error(error?.response?.data?.message || "Failed to update pricing"),
@@ -126,9 +134,13 @@ const PlanPricingSettings = () => {
             There's only one base price. Custom plan always includes
             everything in Professional, so it costs this same amount plus
             whatever add-on modules/departments are priced below — there's no
-            separate Custom base price to set.
+            separate Custom base price to set. The Annual rate is the full
+            yearly price (e.g. $1,999/yr) charged once, in advance, for a
+            12-month cycle — the save shown to hosts is the discount vs
+            paying the monthly rate for 12 months. Leave it blank to offer
+            monthly billing only.
           </p>
-          <div className="flex items-end gap-3">
+          <div className="flex flex-wrap items-end gap-3">
             <div className="max-w-xs w-full">
               <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
                 Professional Plan (USD / month)
@@ -143,6 +155,21 @@ const PlanPricingSettings = () => {
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
               />
             </div>
+            <div className="max-w-xs w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Professional Plan Annual (USD / year)
+              </label>
+              <input
+                type="number"
+                value={annualPrice}
+                placeholder="Blank = no discount"
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setAnnualPrice(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
             <button
               type="button"
               onClick={() => saveBaseMutation.mutate()}
@@ -150,7 +177,7 @@ const PlanPricingSettings = () => {
               className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[11px] font-pmedium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
             >
               <Save size={12} />
-              Save Price
+              Save Prices
             </button>
           </div>
         </div>

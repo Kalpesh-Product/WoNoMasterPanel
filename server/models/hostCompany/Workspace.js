@@ -69,6 +69,14 @@ const workspaceSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // The billing cycle the current plan is on: monthly (renew every month
+    // at the monthly rate) or annual (paid upfront for a 12-month period at
+    // the discounted monthly-equivalent rate × 12).
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "annual"],
+      default: "monthly",
+    },
     planExpiryWarningSentAt: {
       type: Date,
       default: null,

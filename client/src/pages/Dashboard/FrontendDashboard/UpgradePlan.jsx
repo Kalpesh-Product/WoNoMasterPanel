@@ -47,6 +47,7 @@ const UpgradePlan = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [customPaymentCompany, setCustomPaymentCompany] = useState(null);
+  const [customModuleEditCompany, setCustomModuleEditCompany] = useState(null);
   const [sendingPaymentCompanyId, setSendingPaymentCompanyId] = useState(null);
   const [activeTab, setActiveTab] = useState("requested");
   const [isEditingModules, setIsEditingModules] = useState(false);
@@ -105,28 +106,41 @@ const UpgradePlan = () => {
     },
   });
 
-  const computeCustomPlanPrice = (customModuleIds = []) => {
-    const base = Number(planPricing?.settings?.professionalPlanPriceUsd || 0);
+
+  const computeCustomPlanBreakdown = (customModuleIds = []) => {
+    const basePriceUsd = Number(planPricing?.settings?.professionalPlanPriceUsd || 0);
     const rows = planPricing?.rows || [];
     const selected = new Set(customModuleIds);
     const departments = rows.filter((r) => r.itemType === "department");
     const modules = rows.filter((r) => r.itemType === "module");
     const covered = new Set();
-    let extra = 0;
+    const lineItems = [];
+    let total = basePriceUsd;
+
     for (const dept of departments) {
       const ids = dept.includesModuleIds || [];
-      if (ids.length && ids.every((id) => selected.has(id))) {
-        extra += dept.priceUsd;
+      if (selected.has(dept.itemId) || (ids.length && ids.every((id) => selected.has(id)))) {
+        const price = Number(dept.priceUsd || 0);
+        total += price;
+        lineItems.push({ ...dept, priceUsd: price, displayType: "Bundle" });
         ids.forEach((id) => covered.add(id));
+        covered.add(dept.itemId);
       }
     }
+
     for (const id of selected) {
       if (covered.has(id)) continue;
       const row = modules.find((m) => m.itemId === id);
-      if (row) extra += row.priceUsd;
+      if (!row) continue;
+      const price = Number(row.priceUsd || 0);
+      total += price;
+      lineItems.push({ ...row, priceUsd: price, displayType: "Module" });
     }
-    return base + extra;
+
+    return { basePriceUsd, lineItems, totalMonthlyPriceUsd: Math.round(total * 100) / 100 };
   };
+
+  const computeCustomPlanPrice = (customModuleIds = []) => computeCustomPlanBreakdown(customModuleIds).totalMonthlyPriceUsd;
 
   // Full plan-payment history for this company — the "Payment History"
   // sub-tab. Once a requested upgrade is actually paid, it moves here
@@ -141,7 +155,7 @@ const UpgradePlan = () => {
       return response?.data?.history || [];
     },
   });
-  const sendPlanPaymentLinkMutation = useMutation({
+const sendPlanPaymentLinkMutation = useMutation({
     mutationFn: async ({ company, plan, customModuleIds }) => {
       const response = await axiosPrivate.post("/api/hosts/plan-payments/send", {
         companyId: company.companyId,
@@ -150,6 +164,7 @@ const UpgradePlan = () => {
         companyName: company?.companyName,
         plan,
         customModuleIds,
+        billingCycle: company?.billingCycle || "monthly",
       });
       return response.data;
     },
@@ -157,9 +172,10 @@ const UpgradePlan = () => {
       setSendingPaymentCompanyId(null);
       setCustomPaymentCompany(null);
       queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
+      const cycle = String(data?.billingCycle || "monthly").toLowerCase();
       toast.success(
         data?.message
-          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/mo)`
+          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/${cycle === "annual" ? "yr" : "mo"})`
           : "Payment link sent",
       );
     },
@@ -184,6 +200,7 @@ const UpgradePlan = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
       setSelectedCompany(data?.company || null);
+      setCustomModuleEditCompany(null);
       setIsEditingModules(false);
       toast.success(data?.message || "Modules updated");
     },
@@ -449,11 +466,13 @@ const UpgradePlan = () => {
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.industry || "-"}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{formatPlan(row.plan)}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{formatPlan(row.requestedPlan)}</td>
-                        <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+<td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
                           {normalizePlan(row.requestedPlan) === "custom" || normalizePlan(row.requestedPlan) === "customise"
                             ? `$${computeCustomPlanPrice(row.customPlanModuleIds || [])}/mo`
                             : normalizePlan(row.requestedPlan) === "professional"
-                              ? `$${planPricing?.settings?.professionalPlanPriceUsd ?? "-"}/mo`
+                              ? row?.billingCycle === "annual"
+                                ? `$${planPricing?.settings?.professionalAnnualPlanPriceUsd ?? "-"}/yr (annual)`
+                                : `$${planPricing?.settings?.professionalPlanPriceUsd ?? "-"}/mo`
                               : "-"}
                         </td>
                         <td className="px-5 py-4 align-top text-center">
@@ -624,11 +643,11 @@ const UpgradePlan = () => {
                         type="button"
                         onClick={() => {
                           setEditedModuleIds(selectedCompany?.customPlanModuleIds || []);
-                          setIsEditingModules(true);
+                          setCustomModuleEditCompany(selectedCompany);
                         }}
                         className="text-[10px] font-pmedium text-blue-600 hover:text-blue-700 uppercase tracking-widest"
                       >
-                        Edit
+                        Add / Remove
                       </button>
                     )}
                   </div>
@@ -707,8 +726,28 @@ const UpgradePlan = () => {
                             })
                           )}
                         </div>
+                        {(() => {
+                          const breakdown = computeCustomPlanBreakdown(selectedCompany?.customPlanModuleIds || []);
+                          return (
+                            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                              <div className="flex items-center justify-between px-3 py-2 text-[11px] font-pmedium text-slate-700 border-b border-slate-100">
+                                <span>Professional Base</span>
+                                <span>${breakdown.basePriceUsd}/mo</span>
+                              </div>
+                              {breakdown.lineItems.map((item) => (
+                                <div key={item.itemId} className="flex items-center justify-between gap-3 px-3 py-2 text-[11px] font-pmedium text-slate-700 border-b border-slate-100 last:border-b-0">
+                                  <span className="min-w-0">
+                                    <span className="block truncate">{item.label || item.itemId}</span>
+                                    <span className="text-[9px] uppercase tracking-widest text-slate-400">{item.displayType}</span>
+                                  </span>
+                                  <span className="shrink-0 text-slate-900">${item.priceUsd}/mo</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                         <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
-                          <span>Estimated Price</span>
+                          <span>Final Amount</span>
                           <span>
                             ${computeCustomPlanPrice(selectedCompany?.customPlanModuleIds || [])}/mo
                           </span>
@@ -732,6 +771,23 @@ const UpgradePlan = () => {
         onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
         isSubmitting={sendPlanPaymentLinkMutation.isPending}
         initialSelectedModuleIds={customPaymentCompany?.customPlanModuleIds || []}
+      />
+      <CustomPlanModulePicker
+        open={Boolean(customModuleEditCompany)}
+        title="Edit Custom Plan Modules"
+        contactName={customModuleEditCompany?.pocName}
+        contactEmail={customModuleEditCompany?.pocEmail}
+        onClose={() => setCustomModuleEditCompany(null)}
+        onSubmit={(selectedModuleIds) =>
+          updateRequestedModulesMutation.mutate({
+            companyId: customModuleEditCompany.companyId,
+            customModuleIds: selectedModuleIds,
+          })
+        }
+        isSubmitting={updateRequestedModulesMutation.isPending}
+        initialSelectedModuleIds={customModuleEditCompany?.customPlanModuleIds || []}
+        submitLabel="Save Modules"
+        submittingLabel="Saving..."
       />
     </PageFrame>
   );

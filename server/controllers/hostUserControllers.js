@@ -214,6 +214,7 @@ const PLAN_INFO = {
   professional: {
     label: "Professional",
     priceLabel: "$199/month",
+    annualPriceLabel: "$1,999/year billed annually",
     billingCycle: "Monthly",
     amount: 199,
   },
@@ -225,18 +226,24 @@ const PLAN_INFO = {
   },
 };
 
-function planInfo(plan) {
+function planInfo(plan, billingCycle = "monthly") {
   const key = String(plan || "")
     .trim()
     .toLowerCase();
-  return (
-    PLAN_INFO[key] || {
-      label: plan || "-",
-      priceLabel: "-",
-      billingCycle: "-",
-      amount: null,
-    }
-  );
+  const base = PLAN_INFO[key] || {
+    label: plan || "-",
+    priceLabel: "-",
+    billingCycle: "-",
+    amount: null,
+  };
+  if (String(billingCycle || "").trim().toLowerCase() === "annual") {
+    return {
+      ...base,
+      priceLabel: base.annualPriceLabel || base.priceLabel,
+      billingCycle: "Annual",
+    };
+  }
+  return base;
 }
 
 const buildUpgradeSummaryBody = ({
@@ -349,11 +356,12 @@ const buildUpgradePaymentEmail = ({
   companyName,
   currentPlan,
   selectedPlan,
+  billingCycle = "monthly",
   paymentLinkUrl,
   requestId,
 }) => {
-  const currentPlanData = planInfo(currentPlan);
-  const newPlanData = planInfo(selectedPlan);
+  const currentPlanData = planInfo(currentPlan, billingCycle);
+  const newPlanData = planInfo(selectedPlan, billingCycle);
   const amountDueLabel =
     newPlanData.amount != null ? `$${newPlanData.amount.toFixed(2)} USD` : "-";
 
@@ -461,11 +469,12 @@ const buildUpgradeSuccessEmail = ({
   companyName,
   previousPlan,
   selectedPlan,
+  billingCycle = "monthly",
   effectiveDate,
   dashboardUrl,
 }) => {
-  const previousPlanData = planInfo(previousPlan);
-  const newPlanData = planInfo(selectedPlan);
+  const previousPlanData = planInfo(previousPlan, billingCycle);
+  const newPlanData = planInfo(selectedPlan, billingCycle);
   const effectiveDateLabel = formatLongDate(effectiveDate || new Date());
 
   return {
@@ -3487,6 +3496,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
       companyName,
       currentPlan,
       selectedPlan,
+      billingCycle,
       paymentLinkUrl,
     } = req.body || {};
 
@@ -3506,6 +3516,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
       companyName,
       currentPlan,
       selectedPlan: String(selectedPlan || "requested").trim(),
+      billingCycle,
       paymentLinkUrl: String(paymentLinkUrl).trim(),
       requestId,
     });
@@ -3525,7 +3536,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
 
 const sendUpgradeSuccessEmail = async (req, res, next) => {
   try {
-    const { email, name, companyId, companyName, selectedPlan } =
+    const { email, name, companyId, companyName, selectedPlan, billingCycle } =
       req.body || {};
 
     if (!email || !name) {
@@ -3548,6 +3559,7 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
       selectedPlan: String(
         selectedPlan || leadCompany?.plan || "requested",
       ).trim(),
+      billingCycle: billingCycle || leadCompany?.billingCycle || "monthly",
       effectiveDate: leadCompany?.paymentConfirmedAt,
       dashboardUrl,
     });

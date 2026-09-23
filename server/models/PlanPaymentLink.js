@@ -72,6 +72,22 @@ const planPaymentLinkSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    customPricingBreakdown: {
+      basePriceUsd: { type: Number, default: 0 },
+      lineItems: {
+        type: [
+          {
+            itemId: { type: String, trim: true },
+            label: { type: String, trim: true },
+            itemType: { type: String, enum: ["module", "department"], default: "module" },
+            priceUsd: { type: Number, default: 0 },
+            includesModuleIds: { type: [String], default: [] },
+          },
+        ],
+        default: [],
+      },
+      totalMonthlyPriceUsd: { type: Number, default: 0 },
+    },
     amount: {
       type: Number,
       required: true,
@@ -82,6 +98,15 @@ const planPaymentLinkSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       default: "usd",
+    },
+    // The billing cycle this specific payment covers: monthly renews every
+    // calendar month at the monthly rate; annual charges the (discounted)
+    // monthly-equivalent rate × 12 upfront and covers a 12-month period.
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "annual"],
+      default: "monthly",
+      index: true,
     },
     // The monthly cycle this specific payment covers.
     periodStart: {

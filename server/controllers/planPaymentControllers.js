@@ -9,15 +9,31 @@ const {
   buildPlanStartedEmail,
 } = require("../utils/emailTemplates");
 const {
-  computeCustomPlanMonthlyPrice,
+  computeCustomPlanPrice,
+  getCustomPlanPricingBreakdown,
   getProfessionalPlanPriceUsd,
+  getProfessionalAnnualPlanPriceUsd,
 } = require("../services/modulePricingService");
 const { getDefaultEnabledModuleIdsForPlan } = require("../config/hostWorkspaceModuleCatalog");
 
 const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
 const PLAN_RANK = { basic: 0, professional: 1, custom: 2 };
 
+const normalizeBillingCycle = (value) =>
+  ["monthly", "annual"].includes(String(value || "").trim().toLowerCase())
+    ? String(value).trim().toLowerCase()
+    : "monthly";
+
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeIdList = (value = []) =>
+  Array.from(new Set((Array.isArray(value) ? value : []).map((id) => String(id).trim()).filter(Boolean))).sort();
+
+const sameIdList = (a = [], b = []) => {
+  const first = normalizeIdList(a);
+  const second = normalizeIdList(b);
+  return first.length === second.length && first.every((id, index) => id === second[index]);
+};
 
 // Same prefix/name-fallback matching convention already used in
 // hostCompanyControllers.js's updateUpgradePaymentStatus.
@@ -63,13 +79,19 @@ const computeChangeType = (previousPlan, newPlan) => {
 // email before the host has actually paid — the authoritative value is set
 // on the webhook (or, for a pre-registration initial payment, when the
 // workspace is actually created in completeWorkspaceSetup on HostPanel).
-const computeProjectedPeriod = (currentExpiryDate) => {
+// Monthly covers +1 calendar month; annual covers +12 months (one full
+// yearly cycle, matching the rate × 12 charged for it).
+const computeProjectedPeriod = (currentExpiryDate, billingCycle = "monthly") => {
   const start =
     currentExpiryDate && new Date(currentExpiryDate) > new Date()
       ? new Date(currentExpiryDate)
       : new Date();
   const end = new Date(start);
-  end.setMonth(end.getMonth() + 1);
+  if (normalizeBillingCycle(billingCycle) === "annual") {
+    end.setFullYear(end.getFullYear() + 1);
+  } else {
+    end.setMonth(end.getMonth() + 1);
+  }
   return { start, end };
 };
 
@@ -85,8 +107,10 @@ const createAndSendPlanPaymentLink = async ({
   plan,
   previousPlan = null,
   customModuleIds = [],
+  billingCycle = "monthly",
 }) => {
   const normalizedPlan = String(plan || "").toLowerCase();
+  const cycle = normalizeBillingCycle(billingCycle);
   if (!["professional", "custom"].includes(normalizedPlan)) {
     throw new Error("plan must be 'professional' or 'custom'");
   }
@@ -95,16 +119,25 @@ const createAndSendPlanPaymentLink = async ({
   const workspace = await resolveWorkspaceForCompany({ companyId, companyName });
   const changeType = computeChangeType(previousPlan, normalizedPlan);
 
+  const customPricingBreakdown =
+    normalizedPlan === "custom" ? await getCustomPlanPricingBreakdown(customModuleIds) : null;
+  // monthly → the monthly rate once. annual → the annual total
+  // (professionalAnnualPlanPriceUsd is the FULL yearly price, e.g. $1,999/yr
+  // charged once for a single 12-month cycle) or the custom yearly total.
   const amount =
     normalizedPlan === "professional"
-      ? await getProfessionalPlanPriceUsd()
-      : await computeCustomPlanMonthlyPrice(customModuleIds);
+      ? cycle === "annual"
+        ? await getProfessionalAnnualPlanPriceUsd()
+        : await getProfessionalPlanPriceUsd()
+      : await computeCustomPlanPrice(customModuleIds, cycle);
 
   const { start: projectedStart, end: projectedEnd } = computeProjectedPeriod(
     workspace?.planExpiryDate,
+    cycle,
   );
 
   const planLabel = PLAN_LABELS[normalizedPlan];
+  const cycleLabel = cycle === "annual" ? "Annual" : "Monthly";
 
   const paymentLink = await stripe.paymentLinks.create({
     line_items: [
@@ -113,7 +146,7 @@ const createAndSendPlanPaymentLink = async ({
           currency: "usd",
           unit_amount: Math.round(amount * 100),
           product_data: {
-            name: `${changeType === "renewal" ? `${planLabel} — Monthly Renewal` : planLabel} (${companyName || leadName})`,
+            name: `${changeType === "renewal" ? `${planLabel} — ${cycleLabel} Renewal` : planLabel} (${companyName || leadName})`,
           },
         },
         quantity: 1,
@@ -141,7 +174,9 @@ const createAndSendPlanPaymentLink = async ({
     plan: normalizedPlan,
     previousPlan: previousPlan || null,
     changeType,
+    billingCycle: cycle,
     customModuleIds: normalizedPlan === "custom" ? customModuleIds : [],
+    customPricingBreakdown: customPricingBreakdown || undefined,
     amount,
     currency: "usd",
     periodStart: projectedStart,
@@ -159,12 +194,14 @@ const createAndSendPlanPaymentLink = async ({
       paymentLinkUrl: checkoutUrl,
       amount,
       changeType,
+      billingCycle: cycle,
       projectedStart,
       projectedEnd,
+      customPricingBreakdown,
     }),
   });
 
-  return { paymentLinkUrl: checkoutUrl, amount, changeType };
+  return { paymentLinkUrl: checkoutUrl, amount, changeType, billingCycle: cycle };
 };
 
 // POST /api/hosts/plan-payments/send  { companyId, plan, customModuleIds?, companyName?, email?, name? }
@@ -176,7 +213,8 @@ const createAndSendPlanPaymentLink = async ({
 // companyId there).
 const sendPlanPaymentLink = async (req, res, next) => {
   try {
-    const { companyId, plan, customModuleIds, companyName, email, name } = req.body || {};
+    const { companyId, plan, customModuleIds, companyName, email, name, billingCycle } =
+      req.body || {};
     if (!companyId) return res.status(400).json({ message: "companyId is required" });
     if (!["professional", "custom"].includes(String(plan || "").toLowerCase())) {
       return res.status(400).json({ message: "plan must be 'professional' or 'custom'" });
@@ -203,6 +241,10 @@ const sendPlanPaymentLink = async (req, res, next) => {
     }
 
     const normalizedPlan = String(plan).toLowerCase();
+    // Cycle from the request; falls back to the lead's remembered cycle
+    // (set from their HostUser submission or a prior link send), guaranteed
+    // "monthly" otherwise.
+    const cycle = normalizeBillingCycle(billingCycle || lead.billingCycle);
     const resolvedCustomModuleIds =
       normalizedPlan === "custom"
         ? Array.isArray(customModuleIds) && customModuleIds.length
@@ -215,11 +257,17 @@ const sendPlanPaymentLink = async (req, res, next) => {
     // this, a double-click (or staff re-clicking "Send Payment Link" before
     // the first email lands) creates multiple live links for the same
     // request, and only one of them ever actually gets paid.
-    const existingPending = await PlanPaymentLink.findOne({
+    const pendingCandidates = await PlanPaymentLink.find({
       companyId: lead.companyId,
       plan: normalizedPlan,
+      billingCycle: cycle,
       status: "pending",
     }).sort({ createdAt: -1 });
+    const existingPending = pendingCandidates.find((link) =>
+      normalizedPlan === "custom"
+        ? sameIdList(link.customModuleIds, resolvedCustomModuleIds)
+        : true,
+    );
 
     let paymentLinkUrl;
     let amount;
@@ -240,8 +288,10 @@ const sendPlanPaymentLink = async (req, res, next) => {
           paymentLinkUrl,
           amount,
           changeType,
+          billingCycle: existingPending.billingCycle || cycle,
           projectedStart: existingPending.periodStart,
           projectedEnd: existingPending.periodEnd,
+          customPricingBreakdown: existingPending.customPricingBreakdown,
         }),
       });
     } else {
@@ -254,10 +304,12 @@ const sendPlanPaymentLink = async (req, res, next) => {
         plan: normalizedPlan,
         previousPlan: lead.plan || null,
         customModuleIds: resolvedCustomModuleIds,
+        billingCycle: cycle,
       }));
     }
 
     lead.requestedPlan = normalizedPlan;
+    lead.billingCycle = cycle;
     if (normalizedPlan === "custom" && resolvedCustomModuleIds.length) {
       lead.customPlanModuleIds = resolvedCustomModuleIds;
     }
@@ -278,6 +330,7 @@ const sendPlanPaymentLink = async (req, res, next) => {
       paymentLinkUrl,
       amount,
       changeType,
+      billingCycle: cycle,
     });
   } catch (error) {
     next(error);
@@ -290,7 +343,7 @@ const getPlanPaymentStatuses = async (req, res, next) => {
   try {
     const links = await PlanPaymentLink.find()
       .sort({ createdAt: -1 })
-      .select("companyId status amount currency plan paidAt createdAt hostedInvoiceUrl")
+      .select("companyId status amount currency plan billingCycle paidAt createdAt hostedInvoiceUrl")
       .lean();
 
     // Prefer a PAID link over a pending one for the same company — a
@@ -324,7 +377,7 @@ const getHostCompanyPlanHistory = async (req, res, next) => {
     const history = await PlanPaymentLink.find({ companyId })
       .sort({ createdAt: -1 })
       .select(
-        "plan previousPlan changeType customModuleIds amount currency status paidAt periodStart periodEnd hostedInvoiceUrl invoicePdfUrl createdAt",
+        "plan previousPlan changeType customModuleIds billingCycle amount currency status paidAt periodStart periodEnd hostedInvoiceUrl invoicePdfUrl createdAt",
       )
       .lean();
     return res.status(200).json({ history });
@@ -352,6 +405,7 @@ const applyPaidPlanToWorkspace = async (link) => {
           $set: {
             selectedPlan: link.plan,
             purchasedPlan: link.plan,
+            billingCycle: link.billingCycle || "monthly",
             planStatus: "active",
             planStartDate: workspace.planStartDate || link.periodStart || new Date(),
             planExpiryDate: link.periodEnd,
@@ -378,6 +432,7 @@ const applyPaidPlanToWorkspace = async (link) => {
       $set: {
         plan: link.plan,
         previousPlan: link.previousPlan || undefined,
+        billingCycle: link.billingCycle || "monthly",
         paymentStatus: true,
         paymentConfirmedAt: link.paidAt || new Date(),
         upgradeStatus: "active",
@@ -469,6 +524,7 @@ const handlePlanPaymentWebhookEvent = async (session) => {
       periodEnd: claimed.periodEnd,
       changeType: claimed.changeType,
       invoiceUrl: claimed.hostedInvoiceUrl || claimed.invoicePdfUrl,
+      customPricingBreakdown: claimed.customPricingBreakdown,
     }),
     attachments: claimed.invoicePdfUrl
       ? [

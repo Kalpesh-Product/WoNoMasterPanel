@@ -575,6 +575,23 @@ const PLAN_CHANGE_TYPE_COPY = {
   },
 };
 
+const formatUsdMonthly = (value) => `$${Number(value || 0).toFixed(2)} USD / month`;
+
+const buildCustomPlanDetailRows = (customPricingBreakdown) => {
+  const lineItems = Array.isArray(customPricingBreakdown?.lineItems)
+    ? customPricingBreakdown.lineItems
+    : [];
+  if (!customPricingBreakdown || !lineItems.length) return [];
+  return [
+    ["Professional Base", formatUsdMonthly(customPricingBreakdown.basePriceUsd)],
+    ...lineItems.map((item) => [
+      `${item.label || item.itemId}${item.itemType === "department" ? " Bundle" : ""}`,
+      formatUsdMonthly(item.priceUsd),
+    ]),
+    ["Final Monthly Amount", formatUsdMonthly(customPricingBreakdown.totalMonthlyPriceUsd)],
+  ];
+};
+
 const buildPlanPaymentEmail = ({
   customerName,
   companyName,
@@ -582,10 +599,16 @@ const buildPlanPaymentEmail = ({
   paymentLinkUrl,
   amount,
   changeType = "initial",
+  billingCycle = "monthly",
   projectedStart,
   projectedEnd,
+  customPricingBreakdown,
 }) => {
   const copy = PLAN_CHANGE_TYPE_COPY[changeType] || PLAN_CHANGE_TYPE_COPY.initial;
+  const amountLabel =
+    String(billingCycle || "").toLowerCase() === "annual"
+      ? `$${Number(amount).toFixed(2)} USD / year`
+      : `$${Number(amount).toFixed(2)} USD / month`;
   return {
     subject: copy.subject,
     html: renderNotificationEmail({
@@ -599,7 +622,14 @@ const buildPlanPaymentEmail = ({
       detailRows: [
         ["Company", companyName],
         ["Plan", planLabel],
-        ["Amount Due", `$${Number(amount).toFixed(2)} USD / month`],
+        [
+          "Billing Cycle",
+          String(billingCycle || "").toLowerCase() === "annual"
+            ? "Annual"
+            : "Monthly",
+        ],
+        ["Amount Due", amountLabel],
+        ...buildCustomPlanDetailRows(customPricingBreakdown),
         ...(projectedStart && projectedEnd
           ? [
               ["Cycle Starts", formatLongDate(projectedStart)],
@@ -621,6 +651,7 @@ const buildPlanPaymentConfirmationEmail = ({
   periodEnd,
   changeType = "initial",
   invoiceUrl,
+  customPricingBreakdown,
 }) => ({
   subject: "Plan Payment Successful!",
   html: renderNotificationEmail({
@@ -640,6 +671,7 @@ const buildPlanPaymentConfirmationEmail = ({
           amount || 0,
         ),
       ],
+      ...buildCustomPlanDetailRows(customPricingBreakdown),
       ["Payment Date", formatLongDate(paidAt || new Date())],
       ["Renews On", formatLongDate(periodEnd)],
     ],

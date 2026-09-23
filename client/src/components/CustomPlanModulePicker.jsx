@@ -22,6 +22,8 @@ const CustomPlanModulePicker = ({
   // from HostPanel's upgrade request — so staff review/adjust it rather
   // than re-picking from scratch. Staff can still change it before sending.
   initialSelectedModuleIds = [],
+  submitLabel = "Generate & Send",
+  submittingLabel = "Sending...",
 }) => {
   const axios = useAxiosPrivate();
   const [selectedModuleIds, setSelectedModuleIds] = useState(initialSelectedModuleIds);
@@ -50,9 +52,10 @@ const CustomPlanModulePicker = ({
     let extra = 0;
     for (const dept of departments) {
       const ids = dept.includesModuleIds || [];
-      if (ids.length && ids.every((id) => selected.has(id))) {
+      if (selected.has(dept.itemId) || (ids.length && ids.every((id) => selected.has(id)))) {
         extra += dept.priceUsd;
         ids.forEach((id) => covered.add(id));
+        covered.add(dept.itemId);
       }
     }
     for (const id of selected) {
@@ -111,11 +114,18 @@ const CustomPlanModulePicker = ({
                     type="checkbox"
                     checked={selectedModuleIds.includes(row.itemId)}
                     onChange={(e) =>
-                      setSelectedModuleIds((prev) =>
-                        e.target.checked
-                          ? [...prev, row.itemId]
-                          : prev.filter((id) => id !== row.itemId),
-                      )
+                      setSelectedModuleIds((prev) => {
+                        const relatedIds = row.itemType === "department"
+                          ? [row.itemId, ...(row.includesModuleIds || [])]
+                          : [row.itemId];
+                        const next = new Set(prev);
+                        if (e.target.checked) {
+                          relatedIds.forEach((id) => next.add(id));
+                        } else {
+                          relatedIds.forEach((id) => next.delete(id));
+                        }
+                        return Array.from(next);
+                      })
                     }
                   />
                   {row.label}
@@ -153,7 +163,7 @@ const CustomPlanModulePicker = ({
             disabled={isSubmitting || !selectedModuleIds.length}
             className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Sending..." : "Generate & Send"}
+            {isSubmitting ? submittingLabel : submitLabel}
           </button>
         </div>
       </div>

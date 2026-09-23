@@ -6,6 +6,7 @@ const {
   deleteModulePricing,
   updatePlanPricingSettings,
   getOrCreatePlanPricingSettings,
+  getProfessionalPlanPricing,
   computeCustomPlanMonthlyPrice,
 } = require("../services/modulePricingService");
 const { resolveWorkspaceForCompany } = require("./planPaymentControllers");
@@ -46,15 +47,22 @@ const getPlanPricing = async (req, res, next) => {
   }
 };
 
-// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd }
-// Custom has no separate base price — it's always this same Professional
-// price plus whatever add-on modules/departments are priced below.
+// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }
+// professionalAnnualPlanPriceUsd is the FULL yearly total (e.g. $1,999/yr)
+// for yearly billing (e.g. $165 → the host is charged $1,980 upfront for a
+// 12-month cycle). Custom has no separate base price — it's always this
+// same Professional price plus whatever add-on modules/departments are
+// priced below.
 const updateBasePricing = async (req, res, next) => {
   try {
-    const { professionalPlanPriceUsd } = req.body || {};
+    const { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd } = req.body || {};
     const settings = await updatePlanPricingSettings({
       professionalPlanPriceUsd:
         professionalPlanPriceUsd != null ? Number(professionalPlanPriceUsd) : undefined,
+      professionalAnnualPlanPriceUsd:
+        professionalAnnualPlanPriceUsd != null
+          ? Number(professionalAnnualPlanPriceUsd)
+          : undefined,
       updatedByEmail: req.user?.email || req.body?.updatedByEmail || "",
     });
     return res.status(200).json({ message: "Base plan pricing updated", settings });
@@ -141,14 +149,19 @@ const setCustomPlanModules = async (req, res, next) => {
   }
 };
 
-// GET /api/public/plan-pricing — fully public, no auth. Just the one number
+// GET /api/public/plan-pricing — fully public, no auth. Just the numbers
 // public marketing pages (Nomads' AiHostPricing card, HostPanel's
 // workspace-setup cards) need to stay in sync with what staff set here,
-// without exposing anything else in the pricing model.
+// without exposing anything else in the pricing model. Returns both rates:
+// monthly, plus the full yearly rate for annual billing.
 const getPublicPlanPricing = async (req, res, next) => {
   try {
-    const settings = await getOrCreatePlanPricingSettings();
-    return res.status(200).json({ professionalPlanPriceUsd: settings.professionalPlanPriceUsd });
+    const { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd } =
+      await getProfessionalPlanPricing();
+    return res.status(200).json({
+      professionalPlanPriceUsd,
+      professionalAnnualPlanPriceUsd,
+    });
   } catch (error) {
     next(error);
   }

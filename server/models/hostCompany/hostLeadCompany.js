@@ -73,6 +73,14 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Billing cycle the host picked (or staff defaulted to) for the plan
+    // request: monthly renews monthly; annual charges the discounted
+    // monthly-equivalent rate × 12 upfront for a 12-month cycle.
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "annual"],
+      default: "monthly",
+    },
     previousPlan: {
       type: String,
       trim: true,

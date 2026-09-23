@@ -267,9 +267,11 @@ const SignupLeads = () => {
     }).format(record.amount || 0);
 
     const isPaid = record.status === "paid";
+    const cycleSuffix =
+      String(record.billingCycle || "").toLowerCase() === "annual" ? "/yr" : "/mo";
     return {
       status: isPaid ? "Paid" : "Pending",
-      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
+      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}${cycleSuffix}`,
       isPaid,
     };
   };
@@ -283,6 +285,7 @@ const SignupLeads = () => {
         companyName: lead?.companyName,
         plan,
         customModuleIds,
+        billingCycle: lead?.billingCycle || "monthly",
       });
       return response.data;
     },
@@ -290,9 +293,10 @@ const SignupLeads = () => {
       setSendingPaymentLeadId(null);
       setCustomPaymentLead(null);
       queryClient.invalidateQueries({ queryKey: ["planPaymentStatuses"] });
+      const cycle = String(data?.billingCycle || "monthly").toLowerCase();
       toast.success(
         data?.message
-          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/mo)`
+          ? `${data.message} ($${Number(data.amount || 0).toFixed(0)}/${cycle === "annual" ? "yr" : "mo"})`
           : "Payment link email sent",
       );
     },
@@ -703,7 +707,9 @@ const SignupLeads = () => {
                                   {isSendingPayment
                                     ? "Sending..."
                                     : planVal === "professional"
-                                      ? `Send $${planPricing?.settings?.professionalPlanPriceUsd ?? "..."} Link`
+                                      ? `Send $${lead?.billingCycle === "annual"
+                                          ? planPricing?.settings?.professionalAnnualPlanPriceUsd ?? "..."
+                                          : planPricing?.settings?.professionalPlanPriceUsd ?? "..."} Link`
                                       : "Send Payment Link"}
                                 </button>
                               )}
