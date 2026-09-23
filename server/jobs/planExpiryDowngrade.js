@@ -2,7 +2,7 @@ const schedule = require("node-schedule");
 const Workspace = require("../models/hostCompany/Workspace");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const { sendMail } = require("../config/nodemailerConfig");
-const { buildPlanDowngradedEmail } = require("../utils/emailTemplates");
+const { buildPlanDowngradedEmail, buildTrialEndedEmail } = require("../utils/emailTemplates");
 const { getDefaultEnabledModuleIdsForPlan, buildCatalogIndex } = require("../config/hostWorkspaceModuleCatalog");
 
 const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
@@ -45,6 +45,7 @@ schedule.scheduleJob({ rule: "0 7 * * *", tz: "UTC" }, async () => {
     for (const workspace of workspaces) {
       try {
         const previousPlan = workspace.selectedPlan;
+        const wasTrialing = Boolean(workspace.isTrialing);
         const modulesLost = resolveModulesLost(previousPlan);
         const basicDefaultIds = getDefaultEnabledModuleIdsForPlan("basic");
 
@@ -56,24 +57,35 @@ schedule.scheduleJob({ rule: "0 7 * * *", tz: "UTC" }, async () => {
               planStatus: "expired_downgraded",
               enabledModuleIds: basicDefaultIds,
               preDowngradeEnabledModuleIds: workspace.enabledModuleIds || [],
+              isTrialing: false,
             },
           },
         );
 
+        // hasUsedTrial is NOT touched here — it stays permanently true once a
+        // trial has ever been claimed, so a company gets exactly one trial.
         await HostLeadCompany.updateOne(
           { companyId: workspace.companyId },
-          { $set: { upgradeStatus: "downgraded" } },
+          wasTrialing
+            ? { $set: { isTrialActive: false, subscriptionStatus: "" } }
+            : { $set: { upgradeStatus: "downgraded" } },
         );
 
         const lead = await HostLeadCompany.findOne({ companyId: workspace.companyId }).lean();
         await sendMail({
           to: lead?.pocEmail,
-          ...buildPlanDowngradedEmail({
-            customerName: lead?.pocName || workspace.businessName,
-            companyName: workspace.businessName,
-            previousPlanLabel: PLAN_LABELS[previousPlan] || previousPlan,
-            modulesLost,
-          }),
+          ...(wasTrialing
+            ? buildTrialEndedEmail({
+                customerName: lead?.pocName || workspace.businessName,
+                companyName: workspace.businessName,
+                modulesLost,
+              })
+            : buildPlanDowngradedEmail({
+                customerName: lead?.pocName || workspace.businessName,
+                companyName: workspace.businessName,
+                previousPlanLabel: PLAN_LABELS[previousPlan] || previousPlan,
+                modulesLost,
+              })),
         });
       } catch (itemError) {
         console.error(

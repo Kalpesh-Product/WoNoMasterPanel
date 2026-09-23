@@ -7,6 +7,7 @@ const {
   updatePlanPricingSettings,
   getOrCreatePlanPricingSettings,
   getProfessionalPlanPricing,
+  getFreeTrialConfig,
   computeCustomPlanMonthlyPrice,
 } = require("../services/modulePricingService");
 const { resolveWorkspaceForCompany } = require("./planPaymentControllers");
@@ -47,15 +48,22 @@ const getPlanPricing = async (req, res, next) => {
   }
 };
 
-// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }
+// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd, freeTrialEnabled?, freeTrialDurationDays? }
 // professionalAnnualPlanPriceUsd is the FULL yearly total (e.g. $1,999/yr)
 // for yearly billing (e.g. $165 → the host is charged $1,980 upfront for a
 // 12-month cycle). Custom has no separate base price — it's always this
 // same Professional price plus whatever add-on modules/departments are
-// priced below.
+// priced below. freeTrialEnabled/freeTrialDurationDays control the
+// Professional free-trial offer (see hostCompanyControllers.startTrial) —
+// changing the day count only affects trials started after the change.
 const updateBasePricing = async (req, res, next) => {
   try {
-    const { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd } = req.body || {};
+    const {
+      professionalPlanPriceUsd,
+      professionalAnnualPlanPriceUsd,
+      freeTrialEnabled,
+      freeTrialDurationDays,
+    } = req.body || {};
     const settings = await updatePlanPricingSettings({
       professionalPlanPriceUsd:
         professionalPlanPriceUsd != null ? Number(professionalPlanPriceUsd) : undefined,
@@ -63,6 +71,9 @@ const updateBasePricing = async (req, res, next) => {
         professionalAnnualPlanPriceUsd != null
           ? Number(professionalAnnualPlanPriceUsd)
           : undefined,
+      freeTrialEnabled: freeTrialEnabled != null ? Boolean(freeTrialEnabled) : undefined,
+      freeTrialDurationDays:
+        freeTrialDurationDays != null ? Number(freeTrialDurationDays) : undefined,
       updatedByEmail: req.user?.email || req.body?.updatedByEmail || "",
     });
     return res.status(200).json({ message: "Base plan pricing updated", settings });
@@ -153,14 +164,17 @@ const setCustomPlanModules = async (req, res, next) => {
 // public marketing pages (Nomads' AiHostPricing card, HostPanel's
 // workspace-setup cards) need to stay in sync with what staff set here,
 // without exposing anything else in the pricing model. Returns both rates:
-// monthly, plus the full yearly rate for annual billing.
+// monthly, plus the full yearly rate for annual billing. Also returns the
+// free-trial toggle/duration so HostPanel's upgrade modal can show or hide
+// the "Start Free Trial" action without a second round trip.
 const getPublicPlanPricing = async (req, res, next) => {
   try {
-    const { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd } =
-      await getProfessionalPlanPricing();
+    const [{ professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }, freeTrialConfig] =
+      await Promise.all([getProfessionalPlanPricing(), getFreeTrialConfig()]);
     return res.status(200).json({
       professionalPlanPriceUsd,
       professionalAnnualPlanPriceUsd,
+      ...freeTrialConfig,
     });
   } catch (error) {
     next(error);

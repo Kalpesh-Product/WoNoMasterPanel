@@ -41,6 +41,8 @@ const deleteModulePricing = (itemId) => ModulePricing.deleteOne({ itemId });
 const updatePlanPricingSettings = async ({
   professionalPlanPriceUsd,
   professionalAnnualPlanPriceUsd,
+  freeTrialEnabled,
+  freeTrialDurationDays,
   updatedByEmail,
 }) => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -48,6 +50,8 @@ const updatePlanPricingSettings = async ({
   if (professionalAnnualPlanPriceUsd != null) {
     settings.professionalAnnualPlanPriceUsd = professionalAnnualPlanPriceUsd;
   }
+  if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
+  if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;
   await settings.save();
   return settings;
@@ -85,6 +89,14 @@ const getProfessionalPlanPricing = async () => {
       Number.isFinite(annual) && annual > 0
         ? annual
         : settings.professionalPlanPriceUsd,
+  };
+};
+
+const getFreeTrialConfig = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  return {
+    freeTrialEnabled: Boolean(settings.freeTrialEnabled),
+    freeTrialDurationDays: settings.freeTrialDurationDays,
   };
 };
 
@@ -186,6 +198,7 @@ module.exports = {
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
   getProfessionalPlanPricing,
+  getFreeTrialConfig,
   getCustomPlanPricingBreakdown,
   computeCustomPlanMonthlyPrice,
   computeCustomPlanPrice,

@@ -81,6 +81,16 @@ const workspaceSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // True while this workspace's current Professional plan is an active
+    // free trial (started via hostCompanyControllers.startTrial) rather than
+    // a paid subscription. The expiry reminder/downgrade cron jobs branch on
+    // this to pick trial-flavored email copy and to reset the company-level
+    // trial flags on downgrade; they otherwise treat a trialing workspace
+    // exactly like any other active Professional plan.
+    isTrialing: {
+      type: Boolean,
+      default: false,
+    },
     preDowngradeEnabledModuleIds: {
       type: [String],
       default: [],

@@ -732,6 +732,41 @@ const buildPlanDowngradedEmail = ({
   }),
 });
 
+// Sent by the plan-expiry-reminder cron, 5 days before a TRIAL's
+// planExpiryDate (workspace.isTrialing true) — same trigger as
+// buildPlanExpiryReminderEmail, just trial-specific copy since nothing was
+// ever paid for here.
+const buildTrialExpiryReminderEmail = ({
+  customerName,
+  companyName,
+  expiryDate,
+  modulesAtRisk = [],
+}) => ({
+  subject: "Your WONO Free Trial Is Ending Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Is Ending Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Ends ${formatLongDate(expiryDate)}</span><br/>Renew now to keep everything you've set up.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your free trial of the Professional plan for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${formatLongDate(expiryDate)}</b>. If you don't renew by then, your workspace will move to the Basic plan${modulesAtRisk.length ? ` and you'll lose access to: <b class="email-heading">${modulesAtRisk.join(", ")}</b>` : ""}. Your data is never deleted — renewing restores full access immediately.</p>
+      `,
+  }),
+});
+
+// Sent by the downgrade cron once a TRIAL's planExpiryDate has passed with no
+// renewal — same trigger as buildPlanDowngradedEmail, trial-specific copy.
+const buildTrialEndedEmail = ({ customerName, companyName, modulesLost = [] }) => ({
+  subject: "Your WONO Free Trial Has Ended",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Has Ended",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the Basic plan</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your free trial of the Professional plan for <b class="email-heading">${companyName}</b> has ended, so your workspace has moved to the Basic plan${modulesLost.length ? ` and you've lost access to: <b class="email-heading">${modulesLost.join(", ")}</b>` : ""}. Nothing has been deleted — upgrade anytime to restore full access.</p>
+      `,
+  }),
+});
+
 module.exports = emailTemplates;
 module.exports.toDMY = toDMY;
 module.exports.referenceDateStamp = referenceDateStamp;
@@ -749,3 +784,5 @@ module.exports.buildPlanPaymentConfirmationEmail = buildPlanPaymentConfirmationE
 module.exports.buildPlanStartedEmail = buildPlanStartedEmail;
 module.exports.buildPlanExpiryReminderEmail = buildPlanExpiryReminderEmail;
 module.exports.buildPlanDowngradedEmail = buildPlanDowngradedEmail;
+module.exports.buildTrialExpiryReminderEmail = buildTrialExpiryReminderEmail;
+module.exports.buildTrialEndedEmail = buildTrialEndedEmail;

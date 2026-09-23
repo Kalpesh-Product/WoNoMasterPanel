@@ -16,6 +16,8 @@ const PlanPricingSettings = () => {
   const queryClient = useQueryClient();
   const [professionalPrice, setProfessionalPrice] = useState("");
   const [annualPrice, setAnnualPrice] = useState("");
+  const [freeTrialEnabled, setFreeTrialEnabled] = useState(false);
+  const [freeTrialDurationDays, setFreeTrialDurationDays] = useState("30");
   const [newItemType, setNewItemType] = useState("module");
   const [selectedCatalogId, setSelectedCatalogId] = useState("");
   const [newPriceUsd, setNewPriceUsd] = useState("");
@@ -42,6 +44,8 @@ const PlanPricingSettings = () => {
         ? String(data.settings.professionalAnnualPlanPriceUsd)
         : "",
     );
+    setFreeTrialEnabled(Boolean(data.settings.freeTrialEnabled));
+    setFreeTrialDurationDays(String(data.settings.freeTrialDurationDays ?? 30));
   }, [data, priceTouched]);
 
   // The REAL modules/departments that can be priced, derived server-side
@@ -68,6 +72,8 @@ const PlanPricingSettings = () => {
         professionalPlanPriceUsd: Number(professionalPrice),
         professionalAnnualPlanPriceUsd:
           annualPrice === "" || annualPrice == null ? null : Number(annualPrice),
+        freeTrialEnabled,
+        freeTrialDurationDays: Number(freeTrialDurationDays),
       });
       return res.data;
     },
@@ -178,6 +184,58 @@ const PlanPricingSettings = () => {
             >
               <Save size={12} />
               Save Prices
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <h2 className="text-[13px] font-pmedium text-slate-700">Professional Free Trial</h2>
+          <p className="text-[11px] text-slate-500 max-w-2xl">
+            When on, a host who has never claimed a trial before sees a "Start
+            Free Trial" option on the Professional plan card. Changing the
+            duration only affects trials started after the change — a trial
+            already running keeps the day count it started with. Turning the
+            offer off stops new claims but does not end a trial already in
+            progress.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={freeTrialEnabled}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setFreeTrialEnabled(e.target.checked);
+                }}
+                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-[11px] font-pmedium text-slate-700">
+                Offer active
+              </span>
+            </label>
+            <div className="max-w-[160px] w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Trial Length (days)
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={freeTrialDurationDays}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setFreeTrialDurationDays(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => saveBaseMutation.mutate()}
+              disabled={saveBaseMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[11px] font-pmedium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
+            >
+              <Save size={12} />
+              Save Trial Settings
             </button>
           </div>
         </div>

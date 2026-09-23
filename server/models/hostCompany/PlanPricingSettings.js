@@ -33,6 +33,20 @@ const planPricingSettingsSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    // Master switch for the Professional free-trial offer, plus how long a
+    // newly-started trial runs. Changing freeTrialDurationDays only affects
+    // trials started after the change — a trial already in progress keeps
+    // the day count it started with (its planExpiryDate/trialEndAt were
+    // already computed and stored on that start-trial call).
+    freeTrialEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    freeTrialDurationDays: {
+      type: Number,
+      default: 30,
+      min: 1,
+    },
     updatedByEmail: {
       type: String,
       trim: true,

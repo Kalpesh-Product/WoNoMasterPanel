@@ -47,8 +47,19 @@ const formatDate = (value) => {
 
 const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
 
+// Reads the real, staff-configurable trial length from the dates actually
+// stored on this company rather than a hardcoded day count, so it stays
+// correct even after Plan Pricing settings' trial duration changes.
+const trialDayCountLabel = (company) => {
+    const start = new Date(company?.trialStartAt);
+    const end = new Date(company?.trialEndAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "Free Trial";
+    const days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    return days > 0 ? `${days} Day Trial` : "Free Trial";
+};
+
 const getCurrentSubscriptionLabel = (company) => {
-    if (company?.isTrialActive) return "7 Day Trial";
+    if (company?.isTrialActive) return trialDayCountLabel(company);
     if (String(company?.subscriptionStatus || "").trim()) {
         return formatLabel(company.subscriptionStatus);
     }

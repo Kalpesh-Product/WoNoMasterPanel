@@ -2,7 +2,7 @@ const schedule = require("node-schedule");
 const Workspace = require("../models/hostCompany/Workspace");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const { sendMail } = require("../config/nodemailerConfig");
-const { buildPlanExpiryReminderEmail } = require("../utils/emailTemplates");
+const { buildPlanExpiryReminderEmail, buildTrialExpiryReminderEmail } = require("../utils/emailTemplates");
 const { getDefaultEnabledModuleIdsForPlan, buildCatalogIndex } = require("../config/hostWorkspaceModuleCatalog");
 
 const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
@@ -45,13 +45,20 @@ schedule.scheduleJob({ rule: "0 6 * * *", tz: "UTC" }, async () => {
 
         await sendMail({
           to: lead?.pocEmail,
-          ...buildPlanExpiryReminderEmail({
-            customerName: lead?.pocName || workspace.businessName,
-            companyName: workspace.businessName,
-            planLabel: PLAN_LABELS[workspace.selectedPlan] || workspace.selectedPlan,
-            expiryDate: workspace.planExpiryDate,
-            modulesAtRisk,
-          }),
+          ...(workspace.isTrialing
+            ? buildTrialExpiryReminderEmail({
+                customerName: lead?.pocName || workspace.businessName,
+                companyName: workspace.businessName,
+                expiryDate: workspace.planExpiryDate,
+                modulesAtRisk,
+              })
+            : buildPlanExpiryReminderEmail({
+                customerName: lead?.pocName || workspace.businessName,
+                companyName: workspace.businessName,
+                planLabel: PLAN_LABELS[workspace.selectedPlan] || workspace.selectedPlan,
+                expiryDate: workspace.planExpiryDate,
+                modulesAtRisk,
+              })),
         });
 
         await Workspace.updateOne(

@@ -2281,7 +2281,18 @@ const createHostInvite = async ({
     leadId?.trim() ||
     `lead-${randomUUID()}`;
   const normalizedVerticals = normalizeVerticalType(verticalType);
-  const normalizedPlan = String(selectedPlan || goals || "basic")
+  // The DB row (once it exists) is the authoritative record of what was
+  // actually paid for — it's what the plan-payment webhook writes to. The
+  // caller-supplied selectedPlan/goals is only a fallback for a brand-new
+  // lead's very first invite, when no HostLeadCompany row exists yet to read
+  // from. Trusting the caller's value even when a DB row exists let a stale
+  // or missing selectedPlan in the invite request silently downgrade an
+  // already-paid Professional/Custom lead back to "basic" the moment the
+  // invite was sent — exactly the bug where a paid host ends up on Basic
+  // after registering.
+  const normalizedPlan = String(
+    existingLeadCompany?.plan || existingLeadCompanyByLocation?.plan || selectedPlan || goals || "basic",
+  )
     .trim()
     .toLowerCase();
 
@@ -2333,6 +2344,10 @@ const createHostInvite = async ({
     leadId: companyId,
     selectedPlan: normalizedPlan,
     goals: normalizedPlan,
+    // Same DB-first precedence as normalizedPlan above — the finalize-setup
+    // page needs this to show the annual price/label for a host who paid
+    // annually, instead of always assuming monthly.
+    billingCycle: existingLeadCompany?.billingCycle || existingLeadCompanyByLocation?.billingCycle || "monthly",
     companyName: companyName || "",
     businessName: companyName || "",
     country: country || "",

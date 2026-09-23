@@ -25,6 +25,7 @@ const {
   getHostLeadCompanies,
   sendUpgradePaymentLink,
   requestUpgradePlan,
+  startTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
@@ -89,6 +90,7 @@ router.patch("/bulk-set-active-status", bulkSetListingActiveStatus);
 router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
+router.patch("/start-trial", startTrial);
 router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPlanModules);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);

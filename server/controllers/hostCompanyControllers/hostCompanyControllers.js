@@ -19,6 +19,8 @@ const {
   patchNomadListingsCache,
   fetchAllNomadListings,
 } = require("../hostListingControllers");
+const { getDefaultEnabledModuleIdsForPlan } = require("../../config/hostWorkspaceModuleCatalog");
+const { getFreeTrialConfig } = require("../../services/modulePricingService");
 
 const serviceOptions = [
   {
@@ -1028,7 +1030,7 @@ const sendUpgradePaymentLink = async (req, res, next) => {
 
 const requestUpgradePlan = async (req, res, next) => {
   try {
-    const { companyId, requestedPlan, customModuleIds } = req.body || {};
+    const { companyId, requestedPlan, customModuleIds, billingCycle } = req.body || {};
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });
@@ -1039,6 +1041,8 @@ const requestUpgradePlan = async (req, res, next) => {
     }
 
     const normalizedRequestedPlan = String(requestedPlan).trim().toLowerCase();
+    const normalizedBillingCycle =
+      String(billingCycle || "").trim().toLowerCase() === "annual" ? "annual" : "monthly";
 
     // A new upgrade request starts a fresh review cycle on this row — reset
     // the previous cycle's payment-link/paid/upgraded tracking so the
@@ -1051,6 +1055,7 @@ const requestUpgradePlan = async (req, res, next) => {
       {
         $set: {
           requestedPlan: normalizedRequestedPlan,
+          billingCycle: normalizedBillingCycle,
           paymentLinkUrl: "",
           paymentLinkSentAt: null,
           paymentStatus: false,
@@ -1077,6 +1082,80 @@ const requestUpgradePlan = async (req, res, next) => {
     return res.status(200).json({
       message: "Requested upgrade plan saved successfully",
       company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/start-trial  { companyId }
+// Self-serve — unlike requestUpgradePlan, no staff review/payment link is
+// involved, since a trial isn't a purchase. Bumps EVERY workspace under this
+// companyId (a company can own more than one) straight to an active
+// Professional plan, marked isTrialing so the existing expiry
+// reminder/downgrade cron jobs (planExpiryReminders.js/planExpiryDowngrade.js)
+// pick it up automatically — they already key off planStatus/planExpiryDate
+// and don't care why those were set. hasUsedTrial is permanent: once true it
+// never resets, even after the trial ends, so a company gets exactly one
+// trial ever regardless of how many times the master toggle is flipped.
+const startTrial = async (req, res, next) => {
+  try {
+    const { companyId, companyName } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    const normalizedCompanyId = String(companyId).trim();
+
+    const { freeTrialEnabled, freeTrialDurationDays } = await getFreeTrialConfig();
+    if (!freeTrialEnabled) {
+      return res.status(403).json({ message: "The free trial offer is not currently active." });
+    }
+
+    // A workspace created directly (skipping the signup-lead/invite pipeline
+    // — common for locally/manually-created test or edge-case accounts) has
+    // no HostLeadCompany row at all. The trial is self-serve, so create one
+    // on the fly instead of blocking it the way the staff-mediated
+    // requestUpgradePlan does — companyName comes from HostPanel's own
+    // Workspace.businessName when this row doesn't exist yet.
+    const leadCompany = await HostLeadCompany.findOneAndUpdate(
+      { companyId: normalizedCompanyId },
+      { $setOnInsert: { companyId: normalizedCompanyId, companyName: companyName || normalizedCompanyId } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    if (leadCompany.hasUsedTrial) {
+      return res.status(409).json({ message: "This company has already used its free trial." });
+    }
+
+    const now = new Date();
+    const trialEndAt = new Date(now.getTime() + freeTrialDurationDays * 24 * 60 * 60 * 1000);
+
+    leadCompany.trialStartAt = now;
+    leadCompany.trialEndAt = trialEndAt;
+    leadCompany.isTrialActive = true;
+    leadCompany.hasUsedTrial = true;
+    leadCompany.subscriptionStatus = "trialing";
+    await leadCompany.save();
+
+    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
+    await Workspace.updateMany(
+      { companyId: normalizedCompanyId },
+      {
+        $set: {
+          selectedPlan: "professional",
+          planStatus: "active",
+          planStartDate: now,
+          planExpiryDate: trialEndAt,
+          planExpiryWarningSentAt: null,
+          isTrialing: true,
+          enabledModuleIds: professionalModuleIds,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      message: "Free trial started",
+      trialStartAt: now,
+      trialEndAt,
     });
   } catch (error) {
     next(error);
@@ -2418,6 +2497,7 @@ module.exports = {
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,
+  startTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,

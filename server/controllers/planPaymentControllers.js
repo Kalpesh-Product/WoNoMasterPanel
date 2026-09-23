@@ -393,8 +393,20 @@ const getHostCompanyPlanHistory = async (req, res, next) => {
 const applyPaidPlanToWorkspace = async (link) => {
   const defaultModuleIds = getDefaultEnabledModuleIdsForPlan(link.plan);
 
-  if (link.workspaceId) {
-    const workspace = await Workspace.findById(link.workspaceId);
+  // link.workspaceId is a snapshot taken at PAYMENT-LINK CREATION time — null
+  // there correctly means "not registered yet" at that moment, but the host
+  // can go on to complete registration (creating their workspace on Basic)
+  // before actually paying. Re-resolving here, at confirmed-payment time,
+  // catches that case instead of silently skipping a workspace that exists
+  // by the time payment lands (same matching convention resolveWorkspaceForCompany
+  // already uses at link-creation time).
+  const workspaceId = link.workspaceId || (await resolveWorkspaceForCompany({
+    companyId: link.companyId,
+    companyName: link.companyName,
+  }))?._id;
+
+  if (workspaceId) {
+    const workspace = await Workspace.findById(workspaceId);
     if (workspace) {
       const restoredModuleIds = Array.from(
         new Set([...defaultModuleIds, ...(workspace.preDowngradeEnabledModuleIds || [])]),
@@ -421,10 +433,11 @@ const applyPaidPlanToWorkspace = async (link) => {
       );
     }
   }
-  // No workspace yet (pre-registration initial payment) — nothing to update
-  // here. completeWorkspaceSetup (HostPanel) reads HostLeadCompany's
-  // paymentStatus/paymentConfirmedAt/plan when the Workspace is actually
-  // created and initializes the same lifecycle fields at that point.
+  // Still genuinely no workspace (pre-registration initial payment, and none
+  // was created since) — nothing to update here. completeWorkspaceSetup
+  // (HostPanel) reads HostLeadCompany's paymentStatus/paymentConfirmedAt/plan
+  // when the Workspace is actually created and initializes the same
+  // lifecycle fields at that point.
 
   await HostLeadCompany.updateOne(
     { companyId: link.companyId },
