@@ -18,12 +18,17 @@ const CustomPlanModulePicker = ({
   onClose,
   onSubmit,
   isSubmitting = false,
+  // Pre-fills the picker — e.g. with the host's own selection submitted
+  // from HostPanel's upgrade request — so staff review/adjust it rather
+  // than re-picking from scratch. Staff can still change it before sending.
+  initialSelectedModuleIds = [],
 }) => {
   const axios = useAxiosPrivate();
-  const [selectedModuleIds, setSelectedModuleIds] = useState([]);
+  const [selectedModuleIds, setSelectedModuleIds] = useState(initialSelectedModuleIds);
 
   useEffect(() => {
-    if (open) setSelectedModuleIds([]);
+    if (open) setSelectedModuleIds(initialSelectedModuleIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, contactEmail]);
 
   const { data: planPricing } = useQuery({
@@ -90,6 +95,11 @@ const CustomPlanModulePicker = ({
             everything in Professional. Price is computed automatically from
             Master Panel's Plan Pricing settings — nothing is typed by hand.
           </p>
+          {initialSelectedModuleIds.length > 0 && (
+            <p className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+              Pre-filled with the modules the host selected on their end — review and adjust before sending.
+            </p>
+          )}
           <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
             {(planPricing?.rows || []).map((row) => (
               <label

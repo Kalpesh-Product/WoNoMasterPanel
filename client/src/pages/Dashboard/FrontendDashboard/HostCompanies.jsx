@@ -144,6 +144,10 @@ const HostCompanies = () => {
                 );
             }
         },
+        // Keeps plan/upgrade-request status fresh without a manual reload —
+        // this data changes from a host's own session, which nothing else
+        // here would ever invalidate.
+        refetchInterval: 15000,
     });
 
     const sortedCompanies = useMemo(

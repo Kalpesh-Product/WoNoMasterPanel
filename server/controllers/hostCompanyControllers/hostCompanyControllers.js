@@ -1028,7 +1028,7 @@ const sendUpgradePaymentLink = async (req, res, next) => {
 
 const requestUpgradePlan = async (req, res, next) => {
   try {
-    const { companyId, requestedPlan } = req.body || {};
+    const { companyId, requestedPlan, customModuleIds } = req.body || {};
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });
@@ -1037,6 +1037,8 @@ const requestUpgradePlan = async (req, res, next) => {
     if (!requestedPlan || !String(requestedPlan).trim()) {
       return res.status(400).json({ message: "requestedPlan is required" });
     }
+
+    const normalizedRequestedPlan = String(requestedPlan).trim().toLowerCase();
 
     // A new upgrade request starts a fresh review cycle on this row — reset
     // the previous cycle's payment-link/paid/upgraded tracking so the
@@ -1048,13 +1050,21 @@ const requestUpgradePlan = async (req, res, next) => {
       { companyId: String(companyId).trim() },
       {
         $set: {
-          requestedPlan: String(requestedPlan).trim().toLowerCase(),
+          requestedPlan: normalizedRequestedPlan,
           paymentLinkUrl: "",
           paymentLinkSentAt: null,
           paymentStatus: false,
           paymentConfirmedAt: null,
           upgradeSuccessSentAt: null,
           upgradeStatus: "requested",
+          // The host's own module picks from HostPanel's Custom-plan
+          // selection modal, when this is a Custom request — staff see
+          // these pre-filled (and can still adjust) on the Upgrade Plan
+          // page before sending the payment link. Left untouched for a
+          // Professional request (no module selection involved).
+          ...(normalizedRequestedPlan === "custom" && Array.isArray(customModuleIds)
+            ? { customPlanModuleIds: customModuleIds }
+            : {}),
         },
       },
       { new: true },
@@ -1066,6 +1076,49 @@ const requestUpgradePlan = async (req, res, next) => {
 
     return res.status(200).json({
       message: "Requested upgrade plan saved successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/host-companies/:companyId/custom-plan-modules
+// Lets staff remove modules from a Custom plan request the host submitted
+// (e.g. if the host over-selected) without restarting the whole review
+// cycle the way requestUpgradePlan does. Any already-sent payment link is
+// invalidated since removing a module changes the price — staff must send
+// a fresh one for the updated selection.
+const updateRequestedPlanModules = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { customModuleIds } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    if (!Array.isArray(customModuleIds)) {
+      return res.status(400).json({ message: "customModuleIds must be an array" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          customPlanModuleIds: customModuleIds,
+          paymentLinkUrl: "",
+          paymentLinkSentAt: null,
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Requested modules updated successfully",
       company,
     });
   } catch (error) {
@@ -2365,6 +2418,7 @@ module.exports = {
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,
+  updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
   getCompanies,

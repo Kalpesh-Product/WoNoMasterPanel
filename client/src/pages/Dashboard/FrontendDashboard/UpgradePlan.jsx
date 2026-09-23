@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Eye, Search, Send, RotateCw, FileText } from "lucide-react";
+import { Eye, Search, Send, RotateCw, FileText, X } from "lucide-react";
 import { toast } from "sonner";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -26,14 +26,6 @@ const formatDateTime = (value) => {
   return date.toLocaleString();
 };
 
-const DetailRow = ({ label, value }) => (
-  <div className="grid grid-cols-[140px_16px_1fr] gap-2 text-content">
-    <span className="font-pmedium text-gray-700">{label}</span>
-    <span className="text-gray-400">:</span>
-    <span className="break-words text-gray-900">{value || "-"}</span>
-  </div>
-);
-
 const statusPill = (value, colorMap) => {
   const style = colorMap[value] || { bg: "#F3F4F6", color: "#4B5563" };
   return (
@@ -56,6 +48,9 @@ const UpgradePlan = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [customPaymentCompany, setCustomPaymentCompany] = useState(null);
   const [sendingPaymentCompanyId, setSendingPaymentCompanyId] = useState(null);
+  const [activeTab, setActiveTab] = useState("requested");
+  const [isEditingModules, setIsEditingModules] = useState(false);
+  const [editedModuleIds, setEditedModuleIds] = useState([]);
   const resolvedCompanyId = useMemo(() => {
     const stateCompanyId = String(location.state?.companyId || "").trim();
     if (stateCompanyId) return stateCompanyId;
@@ -91,36 +86,61 @@ const UpgradePlan = () => {
       const response = await axiosPrivate.get("/api/hosts/host-companies");
       return response.data;
     },
-  });
-
-  // Live, webhook-driven payment status per company — same source Signup
-  // Leads reads, so "Paid" here always reflects an actual confirmed Stripe
-  // payment, never a manual self-report.
-  const { data: paymentStatusByCompanyId = {} } = useQuery({
-    queryKey: ["planPaymentStatuses"],
-    queryFn: async () => {
-      const response = await axiosPrivate.get("/api/hosts/plan-payments");
-      return response?.data || {};
-    },
+    // Without this, a host's new upgrade request (requestedPlan,
+    // customPlanModuleIds) never appears here unless staff manually reload
+    // the page — nothing else invalidates this query for a change made by a
+    // completely different user in a different session.
     refetchInterval: 15000,
   });
 
-  const getPaymentInfo = (companyId) => {
-    const record = paymentStatusByCompanyId[String(companyId || "")];
-    if (!record) return { label: "Not Sent", isPaid: false, hostedInvoiceUrl: null };
-    const isPaid = record.status === "paid";
-    const formattedAmount = new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: String(record.currency || "USD").toUpperCase(),
-      maximumFractionDigits: 0,
-    }).format(record.amount || 0);
-    return {
-      label: `${isPaid ? "Paid" : "Pending"} · ${formattedAmount}`,
-      isPaid,
-      hostedInvoiceUrl: record.hostedInvoiceUrl,
-    };
+
+  // Live pricing (same source the Custom module picker reads) — used to show
+  // an estimated price on a Custom request before staff have even opened
+  // the picker, so the request is reviewable at a glance.
+  const { data: planPricing } = useQuery({
+    queryKey: ["planPricing"],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/hosts/plan-pricing");
+      return response?.data || { settings: {}, rows: [] };
+    },
+  });
+
+  const computeCustomPlanPrice = (customModuleIds = []) => {
+    const base = Number(planPricing?.settings?.professionalPlanPriceUsd || 0);
+    const rows = planPricing?.rows || [];
+    const selected = new Set(customModuleIds);
+    const departments = rows.filter((r) => r.itemType === "department");
+    const modules = rows.filter((r) => r.itemType === "module");
+    const covered = new Set();
+    let extra = 0;
+    for (const dept of departments) {
+      const ids = dept.includesModuleIds || [];
+      if (ids.length && ids.every((id) => selected.has(id))) {
+        extra += dept.priceUsd;
+        ids.forEach((id) => covered.add(id));
+      }
+    }
+    for (const id of selected) {
+      if (covered.has(id)) continue;
+      const row = modules.find((m) => m.itemId === id);
+      if (row) extra += row.priceUsd;
+    }
+    return base + extra;
   };
 
+  // Full plan-payment history for this company — the "Payment History"
+  // sub-tab. Once a requested upgrade is actually paid, it moves here
+  // instead of staying mixed in with still-pending requests.
+  const { data: planHistoryData } = useQuery({
+    queryKey: ["hostCompanyPlanHistory", resolvedCompanyId],
+    enabled: Boolean(resolvedCompanyId) && activeTab === "history",
+    queryFn: async () => {
+      const response = await axiosPrivate.get(
+        `/api/hosts/host-companies/${resolvedCompanyId}/plan-history`,
+      );
+      return response?.data?.history || [];
+    },
+  });
   const sendPlanPaymentLinkMutation = useMutation({
     mutationFn: async ({ company, plan, customModuleIds }) => {
       const response = await axiosPrivate.post("/api/hosts/plan-payments/send", {
@@ -136,7 +156,6 @@ const UpgradePlan = () => {
     onSuccess: (data) => {
       setSendingPaymentCompanyId(null);
       setCustomPaymentCompany(null);
-      queryClient.invalidateQueries({ queryKey: ["planPaymentStatuses"] });
       queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
       toast.success(
         data?.message
@@ -147,6 +166,29 @@ const UpgradePlan = () => {
     onError: (error) => {
       setSendingPaymentCompanyId(null);
       toast.error(error?.response?.data?.message || "Failed to send payment link");
+    },
+  });
+
+  // Lets staff remove modules from a Custom request's selection (e.g. the
+  // host over-selected) directly from the View modal, without restarting
+  // the whole review cycle — invalidates any already-sent payment link
+  // since the price may have changed.
+  const updateRequestedModulesMutation = useMutation({
+    mutationFn: async ({ companyId, customModuleIds }) => {
+      const response = await axiosPrivate.patch(
+        `/api/hosts/host-companies/${companyId}/custom-plan-modules`,
+        { customModuleIds },
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
+      setSelectedCompany(data?.company || null);
+      setIsEditingModules(false);
+      toast.success(data?.message || "Modules updated");
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to update modules");
     },
   });
 
@@ -172,10 +214,22 @@ const UpgradePlan = () => {
   const handleViewCompany = (company) => {
     setSelectedCompany(company);
     setIsViewModalOpen(true);
+    setIsEditingModules(false);
+    setEditedModuleIds(company?.customPlanModuleIds || []);
   };
 
   const normalizePlan = (value) =>
     String(value || "").trim().toLowerCase();
+
+  // Whether THIS specific upgrade request/cycle has been fulfilled — driven
+  // by HostLeadCompany.upgradeStatus (reset to "requested" by every new
+  // request, flipped to "active" only when ITS OWN payment succeeds), never
+  // by getPaymentInfo()/PlanPaymentLink's "latest ever" status. A company
+  // that already paid for Professional last month and just requested Custom
+  // must still show as pending here — the old paid link is unrelated
+  // history, not proof the *new* request is fulfilled.
+  const isRequestFulfilled = (company) =>
+    String(company?.upgradeStatus || "").trim().toLowerCase() === "active";
 
   const sortedCompanies = useMemo(
     () =>
@@ -183,18 +237,25 @@ const UpgradePlan = () => {
         .filter((company) => String(company?.companyId || "").trim() === resolvedCompanyId)
         .filter((company) => Boolean(normalizePlan(company?.requestedPlan)))
         .sort((a, b) => {
-          const aPaid = getPaymentInfo(a.companyId).isPaid;
-          const bPaid = getPaymentInfo(b.companyId).isPaid;
+          const aPaid = isRequestFulfilled(a);
+          const bPaid = isRequestFulfilled(b);
           if (aPaid !== bPaid) return aPaid ? 1 : -1;
           return 0;
         }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [companies, resolvedCompanyId, paymentStatusByCompanyId],
+    [companies, resolvedCompanyId],
+  );
+
+  // Requested tab shows only what's still awaiting payment — once paid, a
+  // request moves out of here and into the Payment History tab instead of
+  // staying mixed in with genuinely pending ones.
+  const requestedCompanies = useMemo(
+    () => sortedCompanies.filter((c) => !isRequestFulfilled(c)),
+    [sortedCompanies],
   );
 
   const filteredCompanies = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return sortedCompanies.filter((c) => {
+    return requestedCompanies.filter((c) => {
       if (!query) return true;
       return (
         (c.companyName || "").toLowerCase().includes(query) ||
@@ -203,11 +264,20 @@ const UpgradePlan = () => {
         formatPlan(c.requestedPlan).toLowerCase().includes(query)
       );
     });
-  }, [sortedCompanies, searchQuery]);
+  }, [requestedCompanies, searchQuery]);
+
+  const filteredHistory = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const history = planHistoryData || [];
+    return history.filter((entry) => {
+      if (!query) return true;
+      return `${formatPlan(entry.plan)} ${entry.amount}`.toLowerCase().includes(query);
+    });
+  }, [planHistoryData, searchQuery]);
 
   const totalCount = sortedCompanies.length;
-  const paidCount = sortedCompanies.filter((c) => getPaymentInfo(c.companyId).isPaid).length;
-  const pendingCount = totalCount - paidCount;
+  const paidCount = sortedCompanies.filter((c) => isRequestFulfilled(c)).length;
+  const pendingCount = requestedCompanies.length;
 
   if (isLoading) return <div className="p-6">Loading host companies...</div>;
   if (isError) return <div className="p-6 text-red-500">Failed to load companies.</div>;
@@ -223,6 +293,32 @@ const UpgradePlan = () => {
               — nothing here is self-reported.
             </p>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setActiveTab("requested")}
+            className={`flex-1 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all ${
+              activeTab === "requested"
+                ? "bg-[#2563EB] text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Upgrade Plan Requests
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("history")}
+            className={`flex-1 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all ${
+              activeTab === "history"
+                ? "bg-[#2563EB] text-white shadow-sm"
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            Payment History
+          </button>
         </div>
 
         {/* Stat Cards */}
@@ -255,7 +351,7 @@ const UpgradePlan = () => {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <input
                 type="text"
-                placeholder="Search companies..."
+                placeholder={activeTab === "requested" ? "Search companies..." : "Search payment history..."}
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -263,6 +359,62 @@ const UpgradePlan = () => {
             </div>
           </div>
 
+          {activeTab === "history" ? (
+            <div className="overflow-x-auto flex-1">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                  <tr>
+                    <th className="px-5 py-3.5">Plan</th>
+                    <th className="px-5 py-3.5">Type</th>
+                    <th className="px-5 py-3.5">Amount</th>
+                    <th className="px-5 py-3.5">Status</th>
+                    <th className="px-5 py-3.5">Paid / Requested</th>
+                    <th className="px-5 py-3.5 text-center">Invoice</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-center py-20 text-slate-400 font-pmedium">
+                        No payment history yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredHistory.map((entry) => (
+                      <tr key={entry._id} className="hover:bg-slate-50/50 transition-colors border-b border-slate-50">
+                        <td className="px-5 py-3.5 text-[12px] font-pmedium text-slate-800">{formatPlan(entry.plan)}</td>
+                        <td className="px-5 py-3.5 text-[12px] text-slate-600">{formatPlan(entry.changeType)}</td>
+                        <td className="px-5 py-3.5 text-[12px] text-slate-600">${entry.amount}</td>
+                        <td className="px-5 py-3.5">
+                          {statusPill(entry.status === "paid" ? "Paid" : "Pending", {
+                            Paid: { bg: "#D1FAE5", color: "#10B981" },
+                            Pending: { bg: "#FEF3C7", color: "#B45309" },
+                          })}
+                        </td>
+                        <td className="px-5 py-3.5 text-[12px] text-slate-500">
+                          {formatDateTime(entry.status === "paid" ? entry.paidAt : entry.createdAt)}
+                        </td>
+                        <td className="px-5 py-3.5 text-center">
+                          {entry.hostedInvoiceUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => window.open(entry.hostedInvoiceUrl, "_blank", "noopener")}
+                              title="View invoice"
+                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all inline-flex"
+                            >
+                              <FileText size={14} strokeWidth={2.5} />
+                            </button>
+                          ) : (
+                            <span className="text-slate-300 text-[11px]">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
           <div className="overflow-x-auto flex-1">
             <table data-tour="upgrade-plan-table" className="w-full text-left border-collapse">
               <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
@@ -271,8 +423,8 @@ const UpgradePlan = () => {
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Current Plan</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Requested Plan</th>
+                  <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Est. Price</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Payment Link</th>
-                  <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Payment</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Upgrade Status</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
                 </tr>
@@ -285,7 +437,6 @@ const UpgradePlan = () => {
                 ) : (
                   filteredCompanies.map((row, index) => {
                     const isSent = Boolean(row.paymentLinkSentAt);
-                    const paymentInfo = getPaymentInfo(row.companyId);
                     const upgradeStatus = String(row.upgradeStatus || "requested").trim().toLowerCase();
                     const isSending =
                       sendingPaymentCompanyId === row.companyId && sendPlanPaymentLinkMutation.isPending;
@@ -298,16 +449,17 @@ const UpgradePlan = () => {
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.industry || "-"}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{formatPlan(row.plan)}</td>
                         <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{formatPlan(row.requestedPlan)}</td>
+                        <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                          {normalizePlan(row.requestedPlan) === "custom" || normalizePlan(row.requestedPlan) === "customise"
+                            ? `$${computeCustomPlanPrice(row.customPlanModuleIds || [])}/mo`
+                            : normalizePlan(row.requestedPlan) === "professional"
+                              ? `$${planPricing?.settings?.professionalPlanPriceUsd ?? "-"}/mo`
+                              : "-"}
+                        </td>
                         <td className="px-5 py-4 align-top text-center">
                           {statusPill(isSent ? "Sent" : "Not Sent", {
                             Sent: { bg: "#DBEAFE", color: "#1D4ED8" },
                             "Not Sent": { bg: "#F3F4F6", color: "#4B5563" },
-                          })}
-                        </td>
-                        <td className="px-5 py-4 align-top text-center">
-                          {statusPill(paymentInfo.isPaid ? "Paid" : "Unpaid", {
-                            Paid: { bg: "#D1FAE5", color: "#10B981" },
-                            Unpaid: { bg: "#FEE2E2", color: "#EF4444" },
                           })}
                         </td>
                         <td className="px-5 py-4 align-top text-center">
@@ -332,35 +484,26 @@ const UpgradePlan = () => {
                             >
                               <Eye size={15} strokeWidth={2.5} />
                             </button>
-                            {paymentInfo.isPaid ? (
-                              paymentInfo.hostedInvoiceUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    window.open(paymentInfo.hostedInvoiceUrl, "_blank", "noopener")
-                                  }
-                                  title="View invoice"
-                                  className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all"
-                                >
-                                  <FileText size={15} strokeWidth={2.5} />
-                                </button>
-                              )
-                            ) : (
-                              Boolean(String(row.requestedPlan || "").trim()) && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleSendPaymentLink(row)}
-                                  disabled={isSending}
-                                  title={row.paymentLinkSentAt ? "Resend payment link" : "Send payment link"}
-                                  className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {row.paymentLinkSentAt ? (
-                                    <RotateCw size={15} strokeWidth={2.5} />
-                                  ) : (
-                                    <Send size={15} strokeWidth={2.5} />
-                                  )}
-                                </button>
-                              )
+                            {/* Every row here is, by construction, an
+                            unfulfilled request (isRequestFulfilled filters
+                            fulfilled ones out into Payment History) — always
+                            offer Send/Resend, never "View Invoice", which
+                            would otherwise show for a company that has some
+                            unrelated OLD paid plan on record. */}
+                            {Boolean(String(row.requestedPlan || "").trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSendPaymentLink(row)}
+                                disabled={isSending}
+                                title={row.paymentLinkSentAt ? "Resend payment link" : "Send payment link"}
+                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                {row.paymentLinkSentAt ? (
+                                  <RotateCw size={15} strokeWidth={2.5} />
+                                ) : (
+                                  <Send size={15} strokeWidth={2.5} />
+                                )}
+                              </button>
                             )}
                           </div>
                         </td>
@@ -371,55 +514,210 @@ const UpgradePlan = () => {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
 
       {/* View Modal */}
       {isViewModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
           onClick={() => { setIsViewModalOpen(false); setSelectedCompany(null); }}
         >
           <div
             data-tour="upgrade-plan-details-modal"
-            className="rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] w-[min(650px,92vw)] max-h-[84vh] flex flex-col"
+            className="bg-white rounded-[2rem] max-w-xl w-full shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200 border border-white/70 max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB]/10">
-                  <Eye size={18} className="text-[#2563EB]" />
+            <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-sm shrink-0 bg-[#2563EB] text-white">
+                  <Eye size={18} />
                 </div>
-                <h2 className="text-base font-semibold text-slate-900">Upgrade Plan Details</h2>
+                <div className="min-w-0">
+                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800 truncate">
+                    {selectedCompany?.companyName || "Company Details"}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {statusPill(formatPlan(String(selectedCompany?.upgradeStatus || "requested").trim().toLowerCase()), {
+                      Requested: { bg: "#FEF3C7", color: "#B45309" },
+                      "Payment Link Sent": { bg: "#DBEAFE", color: "#1D4ED8" },
+                      Active: { bg: "#D1FAE5", color: "#047857" },
+                      Downgraded: { bg: "#FEE2E2", color: "#B91C1C" },
+                    })}
+                  </div>
+                </div>
               </div>
               <button
+                type="button"
                 onClick={() => { setIsViewModalOpen(false); setSelectedCompany(null); }}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="w-8 h-8 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-400 shadow-sm hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
               >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <X size={16} />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-6 py-4">
-              <div className="flex flex-col gap-4">
-                <h2 className="text-subtitle font-pmedium text-gray-800">Company Details</h2>
-                <DetailRow label="Company Name" value={selectedCompany?.companyName} />
-                <DetailRow label="Vertical" value={selectedCompany?.industry} />
-                <DetailRow label="POC Name" value={selectedCompany?.pocName} />
-                <DetailRow label="POC Email" value={selectedCompany?.pocEmail} />
-                <DetailRow label="POC Phone" value={selectedCompany?.pocPhone} />
-                <hr className="border-borderGray my-1" />
-                <h2 className="text-subtitle font-pmedium text-gray-800">Upgrade Details</h2>
-                <DetailRow label="Current Plan" value={formatPlan(selectedCompany?.plan)} />
-                <DetailRow label="Requested Plan" value={formatPlan(selectedCompany?.requestedPlan)} />
-                <DetailRow
-                  label="Payment Status"
-                  value={getPaymentInfo(selectedCompany?.companyId).isPaid ? "Paid" : "Unpaid"}
-                />
-                <DetailRow label="Upgrade Status" value={formatPlan(selectedCompany?.upgradeStatus)} />
-                <DetailRow label="Payment Link Sent" value={formatDateTime(selectedCompany?.paymentLinkSentAt)} />
-                <DetailRow label="Payment Confirmed" value={formatDateTime(selectedCompany?.paymentConfirmedAt)} />
-                <DetailRow label="Comment" value={selectedCompany?.comment} />
+
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto bg-white">
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Company Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Vertical</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany?.industry || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Name</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany?.pocName || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Email</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany?.pocEmail || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Phone</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany?.pocPhone || "-"}</p>
+                  </div>
+                </div>
               </div>
+
+              <div>
+                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                  Upgrade Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Current Plan</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{formatPlan(selectedCompany?.plan)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Requested Plan</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{formatPlan(selectedCompany?.requestedPlan)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Payment Link Sent</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{formatDateTime(selectedCompany?.paymentLinkSentAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Payment Confirmed</p>
+                    <p className="text-[12px] font-pmedium text-slate-900">{formatDateTime(selectedCompany?.paymentConfirmedAt)}</p>
+                  </div>
+                  {selectedCompany?.comment && (
+                    <div className="sm:col-span-2">
+                      <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Comment</p>
+                      <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.comment}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {(normalizePlan(selectedCompany?.requestedPlan) === "custom" ||
+                normalizePlan(selectedCompany?.requestedPlan) === "customise") && (
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                    <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">
+                      Modules Requested
+                    </h3>
+                    {!isEditingModules && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditedModuleIds(selectedCompany?.customPlanModuleIds || []);
+                          setIsEditingModules(true);
+                        }}
+                        className="text-[10px] font-pmedium text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  <div className="bg-slate-50/60 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    {isEditingModules ? (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {editedModuleIds.length === 0 && (
+                            <p className="text-[11px] text-slate-400">No modules selected.</p>
+                          )}
+                          {editedModuleIds.map((id) => {
+                            const row = (planPricing?.rows || []).find((r) => r.itemId === id);
+                            return (
+                              <span
+                                key={id}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-pmedium text-slate-700"
+                              >
+                                {row?.label || id}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setEditedModuleIds((prev) => prev.filter((m) => m !== id))
+                                  }
+                                  title="Remove"
+                                  className="text-slate-400 hover:text-red-500"
+                                >
+                                  <X size={12} strokeWidth={2.5} />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
+                          <span>New Estimated Price</span>
+                          <span>${computeCustomPlanPrice(editedModuleIds)}/mo</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingModules(false)}
+                            className="flex-1 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[11px] hover:bg-slate-100 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateRequestedModulesMutation.mutate({
+                                companyId: selectedCompany.companyId,
+                                customModuleIds: editedModuleIds,
+                              })
+                            }
+                            disabled={updateRequestedModulesMutation.isPending}
+                            className="flex-1 py-2 bg-[#2563EB] text-white rounded-xl font-pmedium text-[11px] hover:bg-blue-700 transition-colors disabled:opacity-50"
+                          >
+                            {updateRequestedModulesMutation.isPending ? "Saving..." : "Save Changes"}
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(selectedCompany?.customPlanModuleIds || []).length === 0 ? (
+                            <p className="text-[11px] text-slate-400">No modules selected.</p>
+                          ) : (
+                            (selectedCompany?.customPlanModuleIds || []).map((id) => {
+                              const row = (planPricing?.rows || []).find((r) => r.itemId === id);
+                              return (
+                                <span
+                                  key={id}
+                                  className="inline-flex items-center rounded-full bg-white border border-slate-200 px-3 py-1.5 text-[11px] font-pmedium text-slate-700"
+                                >
+                                  {row?.label || id}
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
+                          <span>Estimated Price</span>
+                          <span>
+                            ${computeCustomPlanPrice(selectedCompany?.customPlanModuleIds || [])}/mo
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -433,6 +731,7 @@ const UpgradePlan = () => {
         onClose={() => setCustomPaymentCompany(null)}
         onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
         isSubmitting={sendPlanPaymentLinkMutation.isPending}
+        initialSelectedModuleIds={customPaymentCompany?.customPlanModuleIds || []}
       />
     </PageFrame>
   );
