@@ -55,7 +55,7 @@ const DormsSection = ({ control, register }) => {
       {...field2}
       label="Dorm Images"
       maxFiles={10}
-      allowedExtensions={["jpg", "jpeg", "png", "webp", "pdf"]}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
       id={`dorms.${index}.images`}
     />}
   />

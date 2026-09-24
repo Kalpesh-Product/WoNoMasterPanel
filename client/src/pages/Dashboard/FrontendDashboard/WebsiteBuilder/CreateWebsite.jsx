@@ -783,6 +783,7 @@ const CreateWebsite = () => {
   // (which would re-send the same not-yet-marked-uploaded files and race the
   // first on the same document, failing as "Draft save failed").
   const draftSaveInFlightRef = useRef(false);
+  const pendingItemFilesRef = useRef({});
   const hasRedirectedToEditRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
   const isCheckingWebsiteInFlightRef = useRef(false);
@@ -2009,6 +2010,44 @@ const CreateWebsite = () => {
       setDraftStatus("saved");
       const savedTemplate = data?.template;
       if (savedTemplate) {
+        // Rooms / co-living spaces / packages / dorms / meeting rooms: swap the
+        // Files this request uploaded for their saved refs, per item. Without
+        // this the form keeps raw Files, and Submit then serialises them as
+        // empty `{}` objects that wipe the images just saved.
+        const pendingFieldFiles = pendingItemFilesRef.current || {};
+        [
+          ["rooms", "draftRoomImages_"],
+          ["meetingRooms", "draftMeetingRoomImages_"],
+          ["coLivingRooms", "draftCoLivingRoomImages_"],
+          ["packages", "draftPackageImages_"],
+          ["dorms", "draftDormImages_"]
+        ].forEach(([listName, fieldPrefix]) => {
+          const savedList = savedTemplate[listName];
+          const currentList = getValues(listName);
+          if (!Array.isArray(savedList) || !Array.isArray(currentList)) return;
+          let changed = false;
+          const nextList = currentList.map((item, itemIdx) => {
+            const submitted = [];
+            Object.keys(pendingFieldFiles)
+              .filter((key) => new RegExp(`^${fieldPrefix}${itemIdx}_\\d+$`).test(key))
+              .sort((a, b) => Number(a.split("_").pop()) - Number(b.split("_").pop()))
+              .forEach((key) => submitted.push(...pendingFieldFiles[key]));
+            const savedImages = savedList[itemIdx]?.images;
+            if (!submitted.length || !Array.isArray(savedImages)) return item;
+            const newlyUploaded = savedImages.slice(-submitted.length);
+            if (newlyUploaded.length !== submitted.length) return item;
+            const fileToSaved = new Map();
+            submitted.forEach((file, idx) => fileToSaved.set(file, newlyUploaded[idx]));
+            changed = true;
+            return {
+              ...item,
+              images: (item?.images || []).map(
+                (img) => img instanceof File && fileToSaved.has(img) ? fileToSaved.get(img) : img
+              )
+            };
+          });
+          if (changed) setValue(listName, nextList, { shouldDirty: false });
+        });
         // Keep File objects if they're newer than saved; otherwise use saved S3
         // object. Syncing back (rather than only appending) is what lets the next
         // autosave tick correctly report which persisted images the user still
@@ -2099,12 +2138,19 @@ const CreateWebsite = () => {
       fd.set("draftData", JSON.stringify(draftData));
       const pendingFileKeys = [];
       const getFileKey = (file) => `${file.name}__${file.size}__${file.lastModified}`;
+      // This request's Files per field, in send order — used after the save to
+      // swap them for their saved refs (see onSuccess).
+      const pendingFieldFiles = {};
+      pendingItemFilesRef.current = pendingFieldFiles;
       const appendDraftFileOnce = (fieldName, file) => {
-        if (!file) return;
+        // Item image lists mix saved {id,url} refs with fresh Files; only Files
+        // are uploaded (a saved ref would go out as "[object Object]").
+        if (!(file instanceof File)) return;
         const key = `${fieldName}::${getFileKey(file)}`;
         if (uploadedDraftFileKeysRef.current.has(key)) return;
         fd.append(fieldName, file);
         pendingFileKeys.push(key);
+        (pendingFieldFiles[fieldName] ||= []).push(file);
       };
       appendDraftFileOnce("companyLogo", values?.companyLogo);
       appendDraftFileOnce("mainHeroImage", values?.mainHeroImage);

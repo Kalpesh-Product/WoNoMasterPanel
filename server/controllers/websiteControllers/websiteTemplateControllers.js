@@ -3102,6 +3102,54 @@ const editTemplate = async (req, res, next) => {
     const filesByField = {};
     for (const f of req.files || []) (filesByField[f.fieldname] ||= []).push(f);
 
+    // Rooms / co-living spaces / packages / dorms arrive as JSON where each
+    // item's `images` is the client's form state: saved {id,url} refs, plus
+    // File objects that JSON.stringify turns into empty `{}` placeholders.
+    // Taking that array as-is wiped every image the client still held as a
+    // File, and files sent alongside were never uploaded by this handler.
+    // Rebuild each item's images from: saved refs the client still has,
+    // images the draft autosave already uploaded for that slot, and files
+    // that arrived with this request.
+    const mergeItemImages = async (bodyItems, existingItems, filePrefix, folder) => {
+      if (!Array.isArray(bodyItems)) return existingItems;
+      const merged = [];
+      for (let i = 0; i < bodyItems.length; i++) {
+        const item = bodyItems[i] || {};
+        const existingImages = Array.isArray(existingItems?.[i]?.images)
+          ? existingItems[i].images
+          : [];
+        const bodyImages = Array.isArray(item.images) ? item.images : [];
+        const refs = bodyImages.filter(
+          (img) => img && typeof img === "object" && img.url,
+        );
+        const refIds = new Set(refs.map((img) => String(img.id || img.url)));
+        const newFiles = filesByField[`${filePrefix}_${i}`] || [];
+        const placeholderCount = bodyImages.length - refs.length;
+        const uploadedEarlier = existingImages
+          .filter((img) => img?.url && !refIds.has(String(img.id || img.url)))
+          .slice(0, Math.max(0, placeholderCount - newFiles.length));
+        const uploadedNow = newFiles.length
+          ? await uploadImages(newFiles.slice(0, 10), `${folder}/${i}`, 10)
+          : [];
+        merged.push({
+          ...item,
+          images: [...refs, ...uploadedEarlier, ...uploadedNow].slice(0, 10),
+        });
+      }
+      return merged;
+    };
+    const baseFolderForItems = `hosts/template/${template.searchKey}`;
+    const mergedRooms = await mergeItemImages(rooms, template.rooms, "roomImages", `${baseFolderForItems}/rooms`);
+    const mergedMeetingRooms = await mergeItemImages(
+      Array.isArray(meetingRooms) ? meetingRooms : rooms,
+      template.meetingRooms,
+      "meetingRoomImages",
+      `${baseFolderForItems}/meetingRooms`,
+    );
+    const mergedCoLivingRooms = await mergeItemImages(coLivingRooms, template.coLivingRooms, "coLivingRoomImages", `${baseFolderForItems}/coLivingRooms`);
+    const mergedPackages = await mergeItemImages(packages, template.packages, "packageImages", `${baseFolderForItems}/packages`);
+    const mergedDorms = await mergeItemImages(dorms, template.dorms, "dormImages", `${baseFolderForItems}/dorms`);
+
     Object.assign(template, {
       workspaceId: req.body?.workspaceId ?? template.workspaceId ?? null,
       companyName:
@@ -3341,17 +3389,15 @@ const editTemplate = async (req, res, next) => {
           : Array.isArray(menuItems)
             ? menuItems
             : template.menuItems,
-      rooms: Array.isArray(rooms) ? rooms : template.rooms,
-      meetingRooms: Array.isArray(meetingRooms)
-        ? meetingRooms
-        : Array.isArray(rooms)
-          ? rooms
-          : template.meetingRooms,
+      rooms: Array.isArray(rooms) ? mergedRooms : template.rooms,
+      meetingRooms: Array.isArray(meetingRooms) || Array.isArray(rooms)
+        ? mergedMeetingRooms
+        : template.meetingRooms,
       coLivingRooms: Array.isArray(coLivingRooms)
-        ? coLivingRooms
+        ? mergedCoLivingRooms
         : template.coLivingRooms,
-      packages: Array.isArray(packages) ? packages : template.packages,
-      dorms: Array.isArray(dorms) ? dorms : template.dorms,
+      packages: Array.isArray(packages) ? mergedPackages : template.packages,
+      dorms: Array.isArray(dorms) ? mergedDorms : template.dorms,
     });
     template.isDraft = false;
     template.draftData = null;
@@ -4043,7 +4089,20 @@ const getTemplate = async (req, res) => {
       .sort({ publishedAt: -1, version: -1 })
       .lean();
 
-    if (latestPublished?.templateSnapshot) {
+    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
+
+    // A version snapshot is only authoritative until the website builder
+    // publishes again: builder Submit refreshes the live document's
+    // publishedData/publishedAt but never creates a new version, so an older
+    // version would otherwise shadow every later publish forever.
+    const builderPublishIsNewer =
+      template?.isPublished === true &&
+      template?.publishedData &&
+      (!latestPublished ||
+        new Date(template.publishedAt || 0).getTime() >
+          new Date(latestPublished.publishedAt || 0).getTime());
+
+    if (latestPublished?.templateSnapshot && !builderPublishIsNewer) {
       return res.json({
         ...latestPublished.templateSnapshot,
         isPublished: true,
@@ -4052,7 +4111,6 @@ const getTemplate = async (req, res) => {
       });
     }
 
-    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
     if (!template) {
       return res.status(200).json([]);
     }
