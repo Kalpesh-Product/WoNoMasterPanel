@@ -4,6 +4,7 @@ import TemplateServicesDropdown from "./TemplateServicesDropdown";
 import { isProductsNavItem } from "./templateNavigation";
 import { getInclusionMeta } from "./inclusionIcons";
 import { SOCIAL_ICON } from "./socialIcons";
+import { buildEmeraldThemeCss } from "./emeraldTheme";
 import professionalTeamFallback from "../../../../../assets/WONO_images/img/website-builder/emerald-studio-professional-team.png";
 import exploreArrow from "../../../../../assets/WONO_images/img/website-builder/emerald-studio-arrow.svg";
 const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Outfit:wght@300;400;500;600;700&display=swap');";
@@ -12,13 +13,13 @@ const BODY_FONT = "font-['Outfit',system-ui,sans-serif]";
 const WRAP = "max-w-7xl mx-auto px-6";
 function LinedHeading({ title, className = "" }) {
   return <div className={`flex items-center gap-4 mb-6 ${className}`}>
-      <div className="flex-1 h-px bg-amber-400" />
-      <h2 className={`text-sm font-semibold uppercase tracking-[0.15em] sm:text-base md:text-xl lg:text-[18px] text-amber-400 ${HEADING_FONT}`}>{title}</h2>
-      <div className="flex-1 h-px bg-amber-400" />
+      <div className="flex-1 h-px bg-white" />
+      <h2 className={`text-sm font-semibold uppercase tracking-[0.15em] sm:text-base md:text-xl lg:text-[18px] text-white ${HEADING_FONT}`}>{title}</h2>
+      <div className="flex-1 h-px bg-white" />
     </div>;
 }
-const INPUT = "w-full bg-emerald-950/60 border border-emerald-800 rounded-lg px-4 py-3 text-stone-100 text-sm placeholder:text-stone-600 focus:outline-none focus:border-amber-400 transition-colors";
-const CONTACT_ICON_CIRCLE = ({ children }) => <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-amber-400/50 text-amber-400">
+const INPUT = "w-full bg-white/10 border border-white/25 rounded-lg px-4 py-3 text-white text-sm placeholder:text-white/90 focus:outline-none focus:border-white transition-colors";
+const CONTACT_ICON_CIRCLE = ({ children }) => <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/50 text-white">
     {children}
   </span>;
 const ContactMailIcon = () => <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -45,7 +46,7 @@ const FigmaInclusions = ({
 }) => {
   const enabled = inclusions.filter((item) => item?.enabled !== false);
   if (!enabled.length) return null;
-  return <section className="py-20 px-6 bg-[#004f3b]/20">
+  return <section className="py-20 px-6 bg-[#1f3556]/15">
       <div className="max-w-7xl mx-auto">
         <LinedHeading title={title} />
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 md:grid-cols-6">
@@ -55,8 +56,8 @@ const FigmaInclusions = ({
       key={item?.key || index}
       className="flex flex-col items-center gap-2 text-center"
     >
-                <span className="text-amber-400">{icon}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+                <span className="text-white">{icon}</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/90">
                   {label}
                 </span>
               </div>;
@@ -90,7 +91,7 @@ const FigmaFaqList = ({ faqs }) => {
   const [openIndex, setOpenIndex] = useState(0);
   const visible = faqs.filter((item) => item?.question && item?.answer);
   if (!visible.length) return null;
-  return <section className="py-20 px-6 bg-[#004f3b]/20">
+  return <section className="py-20 px-6 bg-[#1f3556]/15">
       <div className="max-w-7xl mx-auto">
         <LinedHeading title="FAQ" />
         <div className="flex flex-col gap-3">
@@ -100,7 +101,7 @@ const FigmaFaqList = ({ faqs }) => {
     const hasBullets = blocks.some((b) => b.type === "bullet");
     return <div
       key={`${item.question}-${index}`}
-      className="overflow-hidden rounded-xl border border-emerald-800/50 bg-emerald-900/40"
+      className="overflow-hidden rounded-xl border border-white/25 bg-[#1f3556]/35"
     >
                 <button
       type="button"
@@ -108,14 +109,14 @@ const FigmaFaqList = ({ faqs }) => {
       className="flex w-full items-center justify-between gap-6 px-5 py-4 text-left"
     >
                   <span className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-400 text-[12px] font-bold text-emerald-950">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[12px] font-bold text-slate-900">
                       {index + 1}
                     </span>
-                    <span className="font-semibold text-stone-100">
+                    <span className="font-semibold text-white">
                       {item.question}
                     </span>
                   </span>
-                  <span className="text-amber-400 text-xl">
+                  <span className="text-white text-xl">
                     {isOpen ? "\u2212" : "+"}
                   </span>
                 </button>
@@ -123,13 +124,13 @@ const FigmaFaqList = ({ faqs }) => {
                     <div className="space-y-2">
                       {blocks.map(
       (block, bi) => block.type === "bullet" ? <div key={bi} className="flex items-start gap-2">
-                            <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
-                            <p className="text-sm leading-relaxed text-stone-400">
+                            <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
+                            <p className="text-sm leading-relaxed text-white/90">
                               {block.text}
                             </p>
                           </div> : <p
         key={bi}
-        className={`text-sm leading-relaxed text-stone-400 ${hasBullets ? "pl-4" : ""}`}
+        className={`text-sm leading-relaxed text-white/90 ${hasBullets ? "pl-4" : ""}`}
       >
                             {block.text}
                           </p>
@@ -156,26 +157,26 @@ const FigmaProductGrid = ({
     key={idx}
     type="button"
     onClick={() => onSelect(product)}
-    className="group flex h-full flex-col items-center rounded-xl border border-emerald-800/50 bg-emerald-900/40 p-7 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-amber-400/40 hover:bg-emerald-900/60 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-400"
+    className="group flex h-full flex-col items-center rounded-xl border border-white/25 bg-[#1f3556]/35 p-7 text-center transition-all duration-300 hover:-translate-y-0.5 hover:border-white/50 hover:bg-white/20 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
   >
-          <div className="mb-4 flex h-[200px] w-full items-center justify-center overflow-hidden rounded-lg bg-emerald-950/60 md:h-[230px]">
+          <div className="mb-4 flex h-[200px] w-full items-center justify-center overflow-hidden rounded-lg bg-white/10 md:h-[230px]">
             {image ? <img
     src={image}
     alt={product?.name || product?.title || ""}
     className="h-full w-full object-cover opacity-80 transition-transform duration-300 group-hover:scale-105 group-hover:opacity-100"
-  /> : <span className="text-2xl text-amber-400 transition-transform duration-300 group-hover:scale-110">
+  /> : <span className="text-2xl text-white transition-transform duration-300 group-hover:scale-110">
                 ◈
               </span>}
           </div>
           <h3
-    className={`mb-2 text-lg font-semibold text-stone-100 ${HEADING_FONT}`}
+    className={`mb-2 text-lg font-semibold text-white ${HEADING_FONT}`}
   >
             {product?.homeCardHeading || product?.heading || product?.name || product?.title || "Service"}
           </h3>
-          {description ? <p className="line-clamp-2 text-sm leading-relaxed text-stone-400">
+          {description ? <p className="line-clamp-2 text-sm leading-relaxed text-white/90">
               {description}
             </p> : null}
-          <span className="mt-auto pt-3 text-xs font-semibold uppercase tracking-wider text-amber-400 group-hover:underline">
+          <span className="mt-auto pt-3 text-xs font-semibold uppercase tracking-wider text-white group-hover:underline">
             Learn more →
           </span>
         </button>;
@@ -184,9 +185,9 @@ const FigmaProductGrid = ({
 const FigmaLogoCarousel = ({
   logos,
   title
-}) => <section className="border-y border-emerald-800/40 bg-[#004f3b]/20 px-6 py-12">
+}) => <section className="border-y border-white/20 bg-[#1f3556]/15 px-6 py-12">
     <div className="max-w-7xl mx-auto">
-      {title ? <p className="mb-8 text-center text-xs font-semibold uppercase tracking-widest text-stone-500">
+      {title ? <p className="mb-8 text-center text-xs font-semibold uppercase tracking-widest text-white/90">
           {title}
         </p> : null}
       <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-7">
@@ -205,7 +206,7 @@ const getTestimonialsPerView = () => {
   if (window.innerWidth < 1024) return 2;
   return 3;
 };
-const StarIcon = ({ filled, size = 14 }) => <svg viewBox="0 0 20 20" className="inline-block" style={{ width: size, height: size, color: filled ? "#ffb900" : "#3f5d52", fill: "currentColor" }}>
+const StarIcon = ({ filled, size = 14 }) => <svg viewBox="0 0 20 20" className="inline-block" style={{ width: size, height: size, color: filled ? "#fde68a" : "rgba(255,255,255,0.35)", fill: "currentColor" }}>
     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.286 3.957a1 1 0 00.95.69h4.162c.969 0 1.371 1.24.588 1.81l-3.37 2.448a1 1 0 00-.364 1.118l1.287 3.957c.3.921-.755 1.688-1.538 1.118l-3.37-2.448a1 1 0 00-1.175 0l-3.37 2.448c-.783.57-1.838-.197-1.538-1.118l1.287-3.957a1 1 0 00-.364-1.118L3.063 9.39c-.783-.57-.38-1.81.588-1.81h4.162a1 1 0 00.95-.69l1.286-3.957z" />
   </svg>;
 const EmeraldOverallRating = ({ testimonials }) => {
@@ -214,11 +215,11 @@ const EmeraldOverallRating = ({ testimonials }) => {
   const average = ratings.reduce((a, b) => a + b, 0) / ratings.length;
   const rounded = Math.round(average);
   return <div className="mb-8 flex flex-col items-center gap-1">
-      <span className={`text-5xl font-semibold text-stone-100 ${HEADING_FONT}`}>{average.toFixed(1)}</span>
+      <span className={`text-5xl font-semibold text-white ${HEADING_FONT}`}>{average.toFixed(1)}</span>
       <div className="flex items-center gap-1">
         {Array.from({ length: 5 }).map((_, i) => <StarIcon key={i} filled={i < rounded} size={20} />)}
       </div>
-      <span className="text-sm text-stone-400">
+      <span className="text-sm text-white/90">
         {ratings.length} review{ratings.length !== 1 ? "s" : ""}
       </span>
     </div>;
@@ -229,23 +230,23 @@ const EmeraldTestimonialCard = ({ item }) => {
   const text = String(item?.text || "").trim();
   const isLong = text.length > TESTIMONIAL_MAX_CHARS;
   const [expanded, setExpanded] = useState(false);
-  return <div className="h-full min-h-[254px] bg-[#004f3b]/40 border border-[#006045]/50 rounded-xl p-8 flex flex-col gap-6">
-      <p className="text-stone-300 text-base leading-relaxed flex-1">
+  return <div className="h-full min-h-[254px] bg-[#1f3556]/35 border border-white/25 rounded-xl p-8 flex flex-col gap-6">
+      <p className="text-white/90 text-base leading-relaxed flex-1">
         &ldquo;{expanded || !isLong ? text : `${text.slice(0, TESTIMONIAL_MAX_CHARS).trimEnd()}...`}&rdquo;
       </p>
       {isLong ? <button
     type="button"
     onClick={() => setExpanded((prev) => !prev)}
-    className="-mt-4 self-start text-xs font-semibold text-amber-400 hover:underline"
+    className="-mt-4 self-start text-xs font-semibold text-white hover:underline"
   >
           {expanded ? "Show less" : "View more"}
         </button> : null}
-      <div className="flex items-center gap-3 border-t border-emerald-800/50 pt-5">
-        <div className="w-10 h-10 rounded-full bg-amber-400 text-emerald-950 font-bold text-sm flex items-center justify-center shrink-0">
+      <div className="flex items-center gap-3 border-t border-white/25 pt-5">
+        <div className="w-10 h-10 rounded-full bg-white text-slate-900 font-bold text-sm flex items-center justify-center shrink-0">
           {item?.name?.split(" ").map((w) => w.charAt(0)).join("").slice(0, 2).toUpperCase() || "?"}
         </div>
         <div>
-          <p className="font-semibold text-sm text-stone-100">{item?.name}</p>
+          <p className="font-semibold text-sm text-white">{item?.name}</p>
           {rating ? <div className="flex items-center gap-0.5">
               {Array.from({ length: 5 }).map((_, i) => <StarIcon key={i} filled={i < rating} size={12} />)}
             </div> : null}
@@ -346,9 +347,9 @@ const EmeraldStudioTemplate = () => {
   const section = t.currentSection;
   const isHome = section === "home";
   if (!draft) {
-    return <div className={`min-h-screen bg-[#002c22] p-6 ${BODY_FONT}`}>
-        <h2 className="text-lg font-semibold text-stone-100">Preview</h2>
-        <p className="mt-2 text-sm text-stone-400">
+    return <div className={`min-h-screen bg-[#4a6b96] p-6 ${BODY_FONT}`}>
+        <h2 className="text-lg font-semibold text-white">Preview</h2>
+        <p className="mt-2 text-sm text-white/90">
           No preview data found. Go back to Create Website and click Preview.
         </p>
       </div>;
@@ -393,10 +394,10 @@ const EmeraldStudioTemplate = () => {
     breadcrumbItems[breadcrumbItems.length - 1].onClick = void 0;
   }
   const galleryViewer = t.galleryViewerOpen ? <div
-    className="fixed inset-0 z-50 bg-emerald-950/95 flex items-center justify-center px-6"
+    className="fixed inset-0 z-50 bg-[#2f4a70]/95 flex items-center justify-center px-6"
     onClick={t.closeGalleryViewer}
   >
-      <button className="absolute top-6 right-6 text-stone-400 hover:text-stone-100 transition-colors">
+      <button className="absolute top-6 right-6 text-white/90 hover:text-white transition-colors">
         <svg
     className="w-8 h-8"
     fill="none"
@@ -419,7 +420,7 @@ const EmeraldStudioTemplate = () => {
   />
       </div>
       <button
-    className="absolute left-6 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-400 transition-colors"
+    className="absolute left-6 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-colors"
     onClick={(e) => {
       e.stopPropagation();
       t.goToGalleryIndex(t.galleryViewerIndex - 1);
@@ -440,7 +441,7 @@ const EmeraldStudioTemplate = () => {
         </svg>
       </button>
       <button
-    className="absolute right-6 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-400 transition-colors"
+    className="absolute right-6 top-1/2 -translate-y-1/2 text-white/90 hover:text-white transition-colors"
     onClick={(e) => {
       e.stopPropagation();
       t.goToGalleryIndex(t.galleryViewerIndex + 1);
@@ -462,24 +463,25 @@ const EmeraldStudioTemplate = () => {
       </button>
     </div> : null;
   return <div
-    className={`fm-template min-h-screen bg-[#002c22] text-stone-100 ${BODY_FONT}`}
+    className={`fm-template min-h-screen bg-[#4a6b96] text-white ${BODY_FONT}`}
   >
       <style>{`
         ${FONT_IMPORT}
-        .fm-template { background-color: #002c22; }
-        .fm-template .bg-amber-400 { background-color: #ffb900; }
-        .fm-template .text-amber-400 { color: #ffb900; }
-        .fm-template .text-emerald-950 { color: #002c22; }
+        .fm-template { background-color: #4a6b96; }
+        .fm-template .bg-white { background-color: #ffffff; }
+        .fm-template .text-white { color: #ffffff; }
+        .fm-template .text-slate-900 { color: #1b2b44; }
         .fm-template button, .fm-template a { cursor: pointer; }
         .fm-template * { scrollbar-width: none; }
         .fm-template *::-webkit-scrollbar { display: none; }
         .fm-template html { scroll-behavior: smooth; }
+        ${buildEmeraldThemeCss(draft?.styleConfig)}
       `}</style>
 
       {
     /* Navbar */
   }
-      <header className="fixed inset-x-0 top-0 z-50 bg-[#002c22]/[0.92] backdrop-blur border-b border-[#006045]/40">
+      <header className="fixed inset-x-0 top-0 z-50 bg-[#4a6b96]/[0.92] backdrop-blur border-b border-white/20">
         <div className={`${WRAP} h-16 flex items-center justify-between`}>
           <button
     type="button"
@@ -492,12 +494,12 @@ const EmeraldStudioTemplate = () => {
     className="h-8 w-auto object-contain"
   /> : <>
                 <span
-    className={`w-7 h-7 rounded-sm bg-amber-400 flex items-center justify-center text-emerald-950 font-bold text-sm ${HEADING_FONT}`}
+    className={`w-7 h-7 rounded-sm bg-white flex items-center justify-center text-slate-900 font-bold text-sm ${HEADING_FONT}`}
   >
                   {(draft?.companyName || "Y").charAt(0).toUpperCase()}
                 </span>
                 <span
-    className={`font-semibold text-lg tracking-tight text-stone-100 ${HEADING_FONT}`}
+    className={`font-semibold text-lg tracking-tight text-white ${HEADING_FONT}`}
   >
                   {draft?.companyName || "Your Company"}
                 </span>
@@ -519,7 +521,7 @@ const EmeraldStudioTemplate = () => {
       key={item.slug}
       type="button"
       onClick={() => t.goToSection(item.slug)}
-      className={`border-b-2 pb-1 transition-colors duration-150 ${t.currentSection === resolveSectionFromSlug(item.slug) || isHome && item.slug === "home" ? "border-[#ffb900] text-amber-400" : "border-transparent text-stone-400 hover:border-[#ffb900] hover:text-stone-100"}`}
+      className={`border-b-2 pb-1 transition-colors duration-150 ${t.currentSection === resolveSectionFromSlug(item.slug) || isHome && item.slug === "home" ? "border-white text-white" : "border-transparent text-white/90 hover:border-white hover:text-white"}`}
     >
                   {item.name}
                 </button>
@@ -530,7 +532,7 @@ const EmeraldStudioTemplate = () => {
             <button
     type="button"
     onClick={() => window.location.assign("/")}
-    className="text-sm font-semibold text-stone-200 px-4 py-2 rounded border border-[#007a55] hover:border-[#ffb900] hover:text-[#ffb900] transition-colors"
+    className="text-sm font-semibold text-white px-4 py-2 rounded border border-white/60 hover:border-white hover:text-white transition-colors"
   >
               Login
             </button>
@@ -538,7 +540,7 @@ const EmeraldStudioTemplate = () => {
     /* <button
       type="button"
       onClick={() => t.goToSection("contact")}
-      className="text-sm font-semibold bg-amber-400 text-emerald-950 px-4 py-2 rounded hover:bg-amber-300 transition-colors"
+      className="text-sm font-semibold bg-white text-slate-900 px-4 py-2 rounded hover:bg-sky-50 transition-colors"
     >
       {draft?.ctaText || "Get In Touch"}
     </button> */
@@ -546,7 +548,7 @@ const EmeraldStudioTemplate = () => {
           </div>
 
           <button
-    className="md:hidden text-stone-300"
+    className="md:hidden text-white/90"
     onClick={() => t.setMobileMenuOpen((p) => !p)}
   >
             <svg
@@ -570,7 +572,7 @@ const EmeraldStudioTemplate = () => {
           </button>
         </div>
 
-        {t.mobileMenuOpen ? <div className="md:hidden bg-emerald-950 border-t border-emerald-800/40 px-6 py-4 flex flex-col gap-4">
+        {t.mobileMenuOpen ? <div className="md:hidden bg-[#2f4a70] border-t border-white/20 px-6 py-4 flex flex-col gap-4">
             {t.navItems.map(
     (item) => isProductsNavItem(item) && t.productsPageEnabled ? <TemplateServicesDropdown
       key={`m-${item.slug}`}
@@ -586,7 +588,7 @@ const EmeraldStudioTemplate = () => {
       key={`m-${item.slug}`}
       type="button"
       onClick={() => t.goToSection(item.slug)}
-      className={`w-fit border-b-2 pb-1 text-sm font-medium text-left transition-colors duration-150 ${t.currentSection === resolveSectionFromSlug(item.slug) ? "border-[#ffb900] text-amber-400" : "border-transparent text-stone-400"}`}
+      className={`w-fit border-b-2 pb-1 text-sm font-medium text-left transition-colors duration-150 ${t.currentSection === resolveSectionFromSlug(item.slug) ? "border-white text-white" : "border-transparent text-white/90"}`}
     >
                   {item.name}
                 </button>
@@ -594,35 +596,35 @@ const EmeraldStudioTemplate = () => {
             <button
     type="button"
     onClick={() => window.location.assign("/")}
-    className="text-sm font-semibold text-left text-[#ffb900] py-2"
+    className="text-sm font-semibold text-left text-white py-2"
   >
               Login
             </button>
             <button
     type="button"
     onClick={() => t.goToSection("contact")}
-    className="text-sm font-semibold bg-amber-400 text-emerald-950 px-4 py-2 rounded text-center"
+    className="text-sm font-semibold bg-white text-slate-900 px-4 py-2 rounded text-center"
   >
               {draft?.ctaText || "Get In Touch"}
             </button>
           </div> : null}
       </header>
 
-      {breadcrumbItems.length > 1 ? <div className="pt-16 bg-[#004f3b]/20">
+      {breadcrumbItems.length > 1 ? <div className="pt-16 bg-[#1f3556]/15">
           <div className={`${WRAP} flex items-center gap-3 py-2 px-4 md:px-6 text-[12px]`}>
             {breadcrumbItems.map((item, index) => {
     const isCurrent = index === breadcrumbItems.length - 1;
     return <div key={`${item.label}-${index}`} className="flex items-center gap-3">
-                  {index > 0 ? <span aria-hidden="true" className="text-stone-600">&rsaquo;</span> : null}
+                  {index > 0 ? <span aria-hidden="true" className="text-white/90">&rsaquo;</span> : null}
                   {item.onClick && !isCurrent ? <button
       type="button"
       onClick={item.onClick}
-      className="transition hover:text-amber-400 text-stone-500"
+      className="transition hover:text-white text-white/90"
     >
                       {item.label}
                     </button> : <span
       aria-current="page"
-      className="inline-block border-b-2 border-[#ffb900] pb-0.5 font-semibold text-amber-400"
+      className="inline-block border-b-2 border-white pb-0.5 font-semibold text-white"
     >
                       {item.label}
                     </span>}
@@ -638,37 +640,37 @@ const EmeraldStudioTemplate = () => {
           {
     /* Hero */
   }
-          {t.isSectionEnabled("home_hero") ? <section className="relative pt-36 pb-28 px-6 overflow-hidden bg-[#002c22]">
+          {t.isSectionEnabled("home_hero") ? <section className="relative pt-36 pb-28 px-6 overflow-hidden bg-gradient-to-b from-[#3f5d85] via-[#4a6b96] to-[#557699]">
               <div
     className="absolute inset-0 opacity-[0.04]"
     style={{
-      backgroundImage: "linear-gradient(#ffb900 1px, transparent 1px), linear-gradient(90deg, #ffb900 1px, transparent 1px)",
+      backgroundImage: "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
       backgroundSize: "60px 60px"
     }}
   />
-              <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-[#007a55]/20 blur-[60px] pointer-events-none" />
+              <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-sky-200/20 blur-[60px] pointer-events-none" />
               <div className="relative max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
                 <div>
                   {
-    /* <div className="inline-flex items-center gap-2 bg-[#004f3b]/60 border border-[#007a55]/50 rounded-full px-4 py-1.5 text-xs font-medium text-[#ffb900] mb-8">
-      <span className="w-1.5 h-1.5 rounded-full bg-[#ffb900]" />
+    /* <div className="inline-flex items-center gap-2 bg-[#1f3556]/35/60 border border-white/60/50 rounded-full px-4 py-1.5 text-xs font-medium text-white mb-8">
+      <span className="w-1.5 h-1.5 rounded-full bg-white" />
       {draft?.heroBadgeText ||
         "Trusted by 350+ businesses worldwide"}
     </div> */
   }
                   <h1
-    className={`text-5xl md:text-6xl font-semibold leading-[1.08] tracking-tight mb-6 text-stone-100 ${HEADING_FONT}`}
+    className={`text-5xl md:text-6xl font-semibold leading-[1.08] tracking-tight mb-6 text-white ${HEADING_FONT}`}
   >
                     {draft?.title || draft?.companyName || "Your Company"}
                   </h1>
-                  <p className="text-lg text-stone-400 leading-relaxed mb-10">
+                  <p className="text-lg text-white/90 leading-relaxed mb-10">
                     {draft?.subTitle || ""}
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <button
     type="button"
     onClick={() => t.goToSection("products")}
-    className={`inline-flex items-center gap-2 bg-amber-400 text-emerald-950 font-semibold px-7 py-3.5 rounded hover:bg-amber-300 transition-colors text-sm ${BODY_FONT}`}
+    className={`inline-flex items-center gap-2 bg-white text-slate-900 font-semibold px-7 py-3.5 rounded-full hover:bg-sky-50 transition-colors text-sm ${BODY_FONT}`}
   >
                       Explore Services
                       <img src={exploreArrow} alt="" className="w-4 h-4" />
@@ -676,35 +678,35 @@ const EmeraldStudioTemplate = () => {
                     <button
     type="button"
     onClick={() => t.goToSection("contact")}
-    className="inline-flex items-center gap-2 border border-emerald-700 text-stone-300 font-medium px-7 py-3.5 rounded hover:border-amber-400 hover:text-amber-400 transition-colors text-sm"
+    className="inline-flex items-center gap-2 border border-white/50 text-white/90 font-medium px-7 py-3.5 rounded-full hover:border-white hover:text-white transition-colors text-sm"
   >
                       Contact Us
                     </button>
                   </div>
                 </div>
                 <div className="relative hidden md:block">
-                  <div className="rounded-2xl overflow-hidden h-[420px] bg-[#004f3b]">
+                  <div className="rounded-2xl overflow-hidden h-[420px] bg-[#1f3556]/35">
                     <img
     src={t.resolvedHomeHeroImage || professionalTeamFallback}
     alt=""
     className="w-full h-full object-cover opacity-80"
   />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#002c22]/50 to-transparent rounded-2xl" />
-                    {t.showHeroCarousel ? <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-emerald-950/80 px-4 py-2 rounded-b-2xl backdrop-blur-sm">
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#4a6b96]/50 to-transparent rounded-2xl" />
+                    {t.showHeroCarousel ? <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[#2f4a70]/85 px-4 py-2 rounded-b-2xl backdrop-blur-sm">
                         <button
     type="button"
     onClick={t.handleHeroPrev}
-    className="text-xs font-medium text-stone-400 hover:text-amber-400 transition-colors"
+    className="text-xs font-medium text-white/90 hover:text-white transition-colors"
   >
                           ← Prev
                         </button>
-                        <span className="text-xs text-stone-500">
+                        <span className="text-xs text-white/90">
                           {t.heroIndex + 1} / {t.heroImages.length}
                         </span>
                         <button
     type="button"
     onClick={t.handleHeroNext}
-    className="text-xs font-medium text-stone-400 hover:text-amber-400 transition-colors"
+    className="text-xs font-medium text-white/90 hover:text-white transition-colors"
   >
                           Next →
                         </button>
@@ -717,29 +719,29 @@ const EmeraldStudioTemplate = () => {
           {
     /* Stats — only if we have some from the draft */
   }
-          {draft?.stats && Array.isArray(draft.stats) && draft.stats.length > 0 ? <div className="bg-amber-400 py-14 px-6">
+          {draft?.stats && Array.isArray(draft.stats) && draft.stats.length > 0 ? <div className="bg-white py-14 px-6">
               <div className="max-w-7xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-8">
                 {draft.stats.map((s, i) => <div key={i} className="text-center">
                     <p
-    className={`text-4xl font-bold text-emerald-950 mb-1 ${HEADING_FONT}`}
+    className={`text-4xl font-bold text-slate-900 mb-1 ${HEADING_FONT}`}
   >
                       {s.value || s.label || ""}
                     </p>
-                    <p className="text-emerald-800 text-xs font-semibold uppercase tracking-widest">
+                    <p className="text-slate-600 text-xs font-semibold uppercase tracking-widest">
                       {s.label || ""}
                     </p>
                   </div>)}
               </div>
             </div> : null}
 
-          {t.aboutPageEnabled && t.isSectionEnabled("home_about") && t.aboutIntroBlocks.length > 0 ? <section className="py-20 px-6 bg-[#004f3b]/20">
+          {t.aboutPageEnabled && t.isSectionEnabled("home_about") && t.aboutIntroBlocks.length > 0 ? <section className="py-20 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title={String(draft?.aboutTitle || "").trim() || "About Our Vision"} className="justify-center" />
                 <div className="mt-8 max-w-2xl mx-auto space-y-4 text-center">
                   {t.aboutIntroBlocks.map(
     (paragraph, index) => <p
       key={index}
-      className="text-stone-400 text-base leading-8"
+      className="text-white/90 text-base leading-8"
     >
                         {paragraph}
                       </p>
@@ -747,7 +749,7 @@ const EmeraldStudioTemplate = () => {
                   <button
     type="button"
     onClick={() => t.goToSection("about")}
-    className="text-sm font-semibold text-amber-400 underline underline-offset-4"
+    className="text-sm font-semibold text-white underline underline-offset-4"
   >
                     Learn more about us →
                   </button>
@@ -757,7 +759,7 @@ const EmeraldStudioTemplate = () => {
           {
     /* Services / Products preview */
   }
-          {t.productsPageEnabled && t.isSectionEnabled("home_products") && t.productPages.length ? <section className="py-24 px-6 bg-[#004f3b]/20">
+          {t.productsPageEnabled && t.isSectionEnabled("home_products") && t.productPages.length ? <section className="py-24 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title={String(draft?.productTitle || "").trim() || "Our Services"} className="justify-center" />
                 <div className="mt-10">
@@ -770,7 +772,7 @@ const EmeraldStudioTemplate = () => {
                   <button
     type="button"
     onClick={() => t.goToSection("products")}
-    className="text-sm font-medium text-amber-400 hover:text-amber-300 underline underline-offset-4 transition-colors"
+    className="text-sm font-medium text-white hover:text-white underline underline-offset-4 transition-colors"
   >
                     View all products →
                   </button>
@@ -782,7 +784,7 @@ const EmeraldStudioTemplate = () => {
           {
     /* Home gallery */
   }
-          {t.galleryPageEnabled && t.isSectionEnabled("home_gallery") ? <section className="py-24 px-6 bg-[#004f3b]/20">
+          {t.galleryPageEnabled && t.isSectionEnabled("home_gallery") ? <section className="py-24 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <div className="mb-12">
                   <LinedHeading title={draft?.galleryTitle || "Gallery"} className="justify-center" />
@@ -792,7 +794,7 @@ const EmeraldStudioTemplate = () => {
     key={idx}
     type="button"
     onClick={() => t.openGalleryViewer(idx)}
-    className="group relative rounded-xl overflow-hidden bg-emerald-900 aspect-[4/3]"
+    className="group relative rounded-xl overflow-hidden bg-[#1f3556]/35 aspect-[4/3]"
   >
                       <img
     src={src}
@@ -805,7 +807,7 @@ const EmeraldStudioTemplate = () => {
                     <button
     type="button"
     onClick={() => t.goToSection("gallery")}
-    className="rounded-full border border-emerald-700 px-6 py-2.5 text-[13px] font-semibold text-stone-200 hover:border-amber-400 hover:text-amber-400 transition-colors"
+    className="rounded-full border border-white/50 px-6 py-2.5 text-[13px] font-semibold text-white hover:border-white hover:text-white transition-colors"
   >
                       Show more →
                     </button>
@@ -816,7 +818,7 @@ const EmeraldStudioTemplate = () => {
           {
     /* Testimonials */
   }
-          {t.isSectionEnabled("home_testimonials") && t.testimonials.length ? <section className="py-24 px-6 bg-[#004f3b]/20">
+          {t.isSectionEnabled("home_testimonials") && t.testimonials.length ? <section className="py-24 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title={draft?.testimonialTitle || "Testimonials"} className="justify-center" />
                 <div className="mt-10">
@@ -826,7 +828,7 @@ const EmeraldStudioTemplate = () => {
                     <button
     type="button"
     onClick={t.openReviewModal}
-    className="text-sm font-medium text-amber-400 hover:text-amber-300 underline underline-offset-4 transition-colors"
+    className="text-sm font-medium text-white hover:text-white underline underline-offset-4 transition-colors"
   >
                       Write a review →
                     </button>
@@ -834,7 +836,7 @@ const EmeraldStudioTemplate = () => {
               </div>
             </section> : null}
 
-          {t.contactPageEnabled && t.isSectionEnabled("home_contact") ? <section className="py-20 px-6 bg-[#004f3b]/20">
+          {t.contactPageEnabled && t.isSectionEnabled("home_contact") ? <section className="py-20 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title={draft?.contactTitle || "Contact"} className="justify-center" />
                 <div className="mt-10 grid md:grid-cols-[0.6fr_0.4fr] gap-8 items-stretch">
@@ -843,20 +845,20 @@ const EmeraldStudioTemplate = () => {
     src={draft.mapUrl}
     loading="lazy"
     className="h-[380px] w-full rounded-2xl border-0"
-  /> : <div className="min-h-[300px] rounded-2xl bg-emerald-900/40 border border-emerald-800/50" />}
-                <div className="rounded-2xl border border-emerald-800/50 bg-emerald-900/40 p-8 flex flex-col">
+  /> : <div className="min-h-[300px] rounded-2xl bg-[#1f3556]/35 border border-white/25" />}
+                <div className="rounded-2xl border border-white/25 bg-[#1f3556]/35 p-8 flex flex-col">
                   {draft?.companyLogo ? <img
     src={draft.companyLogo}
     alt={draft.companyName || "Company"}
     className="mb-12 h-12 w-auto self-center object-contain"
   /> : <span
-    className={`mb-5 flex h-12 w-12 items-center justify-center self-start rounded-lg bg-amber-400 text-lg font-bold text-emerald-950 ${HEADING_FONT}`}
+    className={`mb-5 flex h-12 w-12 items-center justify-center self-start rounded-lg bg-white text-lg font-bold text-slate-900 ${HEADING_FONT}`}
   >
                       {(draft?.companyName || "Y").charAt(0).toUpperCase()}
                     </span>}
-                  <div className="space-y-4 text-lg text-stone-300">
+                  <div className="space-y-4 text-lg text-white/90">
                     {t.contactEmail ? <a
-    className="flex items-center gap-4 hover:text-amber-400"
+    className="flex items-center gap-4 hover:text-white"
     href={`mailto:${t.contactEmail}`}
   >
                         <CONTACT_ICON_CIRCLE>
@@ -865,7 +867,7 @@ const EmeraldStudioTemplate = () => {
                         <span>{t.contactEmail}</span>
                       </a> : null}
                     {t.contactPhone ? <a
-    className="flex items-center gap-4 hover:text-amber-400"
+    className="flex items-center gap-4 hover:text-white"
     href={`tel:${t.contactPhone.replace(/[^\d+]/g, "")}`}
   >
                         <CONTACT_ICON_CIRCLE>
@@ -884,7 +886,7 @@ const EmeraldStudioTemplate = () => {
     /* <button
       type="button"
       onClick={() => t.goToSection("contact")}
-      className="mt-8 self-start rounded bg-amber-400 px-6 py-3 text-sm font-semibold text-emerald-950"
+      className="mt-8 self-start rounded bg-white px-6 py-3 text-sm font-semibold text-slate-900"
     >
       Contact Us
     </button> */
@@ -906,22 +908,22 @@ const EmeraldStudioTemplate = () => {
           {
     /* <section className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="relative min-h-[331px] rounded-2xl bg-[#006045]/30 border border-[#007a55]/50 overflow-hidden px-8 py-16 text-center flex items-center justify-center">
+        <div className="relative min-h-[331px] rounded-2xl bg-white/10 border border-white/40 overflow-hidden px-8 py-16 text-center flex items-center justify-center">
           <div
             className="absolute inset-0 opacity-[0.04]"
             style={{
               backgroundImage:
-                "radial-gradient(circle, #ffb900 1px, transparent 1px)",
+                "radial-gradient(circle, #ffffff 1px, transparent 1px)",
               backgroundSize: "28px 28px",
             }}
           />
           <div className="relative">
             <h2
-              className={`text-4xl md:text-5xl font-semibold mb-4 text-stone-100 ${HEADING_FONT}`}
+              className={`text-4xl md:text-5xl font-semibold mb-4 text-white ${HEADING_FONT}`}
             >
               Ready to grow?
             </h2>
-            <p className="text-stone-400 mb-10 max-w-lg mx-auto">
+            <p className="text-white/90 mb-10 max-w-lg mx-auto">
               Let us show you what a focused, experienced team can do for
               your business in 90 days.
             </p>
@@ -929,14 +931,14 @@ const EmeraldStudioTemplate = () => {
               <button
                 type="button"
                 onClick={() => t.goToSection("contact")}
-                className="bg-amber-400 text-emerald-950 font-semibold px-8 py-3.5 rounded hover:bg-amber-300 transition-colors text-sm"
+                className="bg-white text-slate-900 font-semibold px-8 py-3.5 rounded hover:bg-sky-50 transition-colors text-sm"
               >
                 Start the Conversation
               </button>
               <button
                 type="button"
                 onClick={() => t.goToSection("about")}
-                className="border border-emerald-600 text-stone-300 font-medium px-8 py-3.5 rounded hover:border-stone-400 transition-colors text-sm"
+                className="border border-white/60 text-white/90 font-medium px-8 py-3.5 rounded hover:border-white transition-colors text-sm"
               >
                 Learn About Us
               </button>
@@ -952,11 +954,11 @@ const EmeraldStudioTemplate = () => {
     /* ─── ABOUT ─── */
   }
       {section === "about" && t.aboutPageEnabled ? <>
-          <section className="pt-20 pb-20 px-6 bg-[#004f3b]/20">
+          <section className="pt-20 pb-20 px-6 bg-[#1f3556]/15">
             <div className="max-w-7xl mx-auto text-center">
               <LinedHeading title={String(draft?.aboutTitle || "").trim() || "About Our Vision"} className="justify-center" />
               {t.aboutIntroBlocks.length > 0 ? <div className="max-w-2xl mx-auto space-y-4">
-                  {t.aboutIntroBlocks.map((paragraph, idx) => <p key={idx} className="text-stone-400 text-lg leading-relaxed">
+                  {t.aboutIntroBlocks.map((paragraph, idx) => <p key={idx} className="text-white/90 text-lg leading-relaxed">
                       {paragraph}
                     </p>)}
                 </div> : null}
@@ -964,20 +966,20 @@ const EmeraldStudioTemplate = () => {
             {t.aboutNarrativeBlocks.length ? <div className="mt-14 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                 {t.aboutNarrativeBlocks.map((item, i) => <div
     key={item.title}
-    className="flex gap-5 bg-emerald-900/40 border border-emerald-800/50 rounded-xl p-7"
+    className="flex gap-5 bg-[#1f3556]/35 border border-white/25 rounded-xl p-7"
   >
                     <span
-    className={`text-amber-400 font-bold text-xl shrink-0 ${HEADING_FONT}`}
+    className={`text-white font-bold text-xl shrink-0 ${HEADING_FONT}`}
   >
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div>
                       <h3
-    className={`font-semibold text-lg mb-2 text-stone-100 ${HEADING_FONT}`}
+    className={`font-semibold text-lg mb-2 text-white ${HEADING_FONT}`}
   >
                         {item.title}
                       </h3>
-                      <p className="text-stone-400 text-sm leading-relaxed whitespace-pre-line">
+                      <p className="text-white/90 text-sm leading-relaxed whitespace-pre-line">
                         {item.body}
                       </p>
                     </div>
@@ -985,19 +987,19 @@ const EmeraldStudioTemplate = () => {
               </div> : null}
           </section>
 
-          {t.founders.length ? <section className="py-24 px-6 bg-[#004f3b]/20">
+          {t.founders.length ? <section className="py-24 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title="Our Founders" />
                 {
     /* <h2
-      className={`text-4xl font-semibold mb-12 text-stone-100 ${HEADING_FONT}`}
+      className={`text-4xl font-semibold mb-12 text-white ${HEADING_FONT}`}
     >
       Leadership team
     </h2> */
   }
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   {t.founders.map((founder, idx) => <div key={idx} className="group">
-                      <div className="rounded-xl overflow-hidden h-64 bg-emerald-900 mb-4">
+                      <div className="rounded-xl overflow-hidden h-64 bg-[#1f3556]/35 mb-4">
                         {founder?.image ? <img
     src={typeof founder.image === "string" ? founder.image : founder.image?.url}
     alt={founder?.name || ""}
@@ -1005,12 +1007,12 @@ const EmeraldStudioTemplate = () => {
   /> : null}
                       </div>
                       <p
-    className={`font-semibold text-stone-100 ${HEADING_FONT}`}
+    className={`font-semibold text-white ${HEADING_FONT}`}
   >
                         {founder?.name}
                       </p>
-                      <p className="text-stone-500 text-sm">{founder?.role}</p>
-                      {founder?.bio ? <p className="text-stone-400 text-xs mt-1 leading-relaxed">
+                      <p className="text-white/90 text-sm">{founder?.role}</p>
+                      {founder?.bio ? <p className="text-white/90 text-xs mt-1 leading-relaxed">
                           {founder.bio}
                         </p> : null}
                     </div>)}
@@ -1018,7 +1020,7 @@ const EmeraldStudioTemplate = () => {
               </div>
             </section> : null}
 
-          {t.aboutPageImageCards.length > 0 ? <section className="py-24 px-6 bg-[#004f3b]/20">
+          {t.aboutPageImageCards.length > 0 ? <section className="py-24 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto">
                 <LinedHeading title={draft?.aboutPageTeamHeading || "Our Team"} />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1027,13 +1029,13 @@ const EmeraldStudioTemplate = () => {
     src={card.image}
     alt={card?.title || ""}
     className="aspect-[4/3] w-full object-cover rounded-xl"
-  /> : <div className="aspect-[4/3] w-full bg-emerald-900/40 rounded-xl" />}
+  /> : <div className="aspect-[4/3] w-full bg-[#1f3556]/35 rounded-xl" />}
                         {card?.title ? <p
-    className={`mt-3 font-semibold text-stone-100 ${HEADING_FONT}`}
+    className={`mt-3 font-semibold text-white ${HEADING_FONT}`}
   >
                             {card.title}
                           </p> : null}
-                        {card?.description ? <p className="mt-1 text-stone-400 text-sm">
+                        {card?.description ? <p className="mt-1 text-white/90 text-sm">
                             {card.description}
                           </p> : null}
                       </div>)}
@@ -1058,55 +1060,55 @@ const EmeraldStudioTemplate = () => {
     const image = item?.images?.[0]?.url || item?.images?.[0] || item?.cardImage || page?.cardImage || "";
     const price = String(item?.price || item?.cost || "").trim();
     return <>
-                <section className="pt-20 pb-24 px-6 bg-[#004f3b]/20">
+                <section className="pt-20 pb-24 px-6 bg-[#1f3556]/15">
                   <div className="max-w-7xl mx-auto grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-14">
                     <div className="w-full">
                       {image ? <img
       src={typeof image === "string" ? image : image?.url}
       alt={title}
       className="h-[300px] w-full rounded-2xl object-cover md:h-full"
-    /> : <div className="h-[300px] w-full rounded-2xl bg-emerald-900 md:h-full" />}
+    /> : <div className="h-[300px] w-full rounded-2xl bg-[#1f3556]/35 md:h-full" />}
                     </div>
                     <div className="flex flex-col">
                       <div className="shrink-0">
                         <LinedHeading title={page?.name || "Service"} className="justify-center md:justify-start" />
-                        <h1 className={`text-3xl md:text-4xl font-semibold text-stone-100 mb-4 ${HEADING_FONT} text-center md:text-left`}>
+                        <h1 className={`text-3xl md:text-4xl font-semibold text-white mb-4 ${HEADING_FONT} text-center md:text-left`}>
                           {title}
                         </h1>
-                        {price ? <p className="text-stone-400 text-lg mb-4 text-center md:text-left">{price}</p> : null}
+                        {price ? <p className="text-white/90 text-lg mb-4 text-center md:text-left">{price}</p> : null}
                       </div>
                       <div className="flex-1 overflow-y-auto py-2 pr-1 md:max-h-[220px]">
                         {description ? <ul className="space-y-2">
                             {description.split(/\n|(?<=\.)\s+/).map((s) => s.trim()).filter(Boolean).map((point, i) => <li
       key={`desc-bullet-${i}`}
-      className="flex items-start gap-2 text-sm leading-relaxed text-stone-400"
+      className="flex items-start gap-2 text-sm leading-relaxed text-white/90"
     >
-                                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                                  <span className="mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full bg-white" />
                                   <span>{point}</span>
                                 </li>)}
                           </ul> : null}
                       </div>
                       <div className="shrink-0 min-h-[380px]">
-                        {t.leadSubmitted ? <div className="flex h-full min-h-[380px] flex-col items-center justify-center rounded-2xl border border-emerald-800/50 bg-emerald-900/30 p-8 text-center">
-                            <div className="w-14 h-14 rounded-full bg-amber-400 flex items-center justify-center text-emerald-950 text-2xl mb-4 mx-auto">
+                        {t.leadSubmitted ? <div className="flex h-full min-h-[380px] flex-col items-center justify-center rounded-2xl border border-white/25 bg-[#1f3556]/30 p-8 text-center">
+                            <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-slate-900 text-2xl mb-4 mx-auto">
                               ✓
                             </div>
-                            <h3 className={`text-xl font-semibold text-stone-100 mb-2 ${HEADING_FONT}`}>
+                            <h3 className={`text-xl font-semibold text-white mb-2 ${HEADING_FONT}`}>
                               Enquiry submitted!
                             </h3>
-                            <p className="text-stone-400 text-sm">
+                            <p className="text-white/90 text-sm">
                               We&apos;ll get back to you shortly.
                             </p>
                           </div> : <form
       onSubmit={t.submitLeadForm}
-      className="bg-emerald-900/30 border border-emerald-800/50 rounded-2xl p-8 space-y-4"
+      className="bg-[#1f3556]/30 border border-white/25 rounded-2xl p-8 space-y-4"
     >
                             <LinedHeading title="Enquire now" />
                             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                               {t.getLeadFieldsForProduct(
       t.selectedLeadProduct?.slug || t.selectedLeadProduct?.name || ""
     ).map((field) => <div key={field.key}>
-                                    <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                                    <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                                       {field.label}
                                     </label>
                                     <input
@@ -1122,11 +1124,11 @@ const EmeraldStudioTemplate = () => {
     />
                                   </div>)}
                             </div>
-                            {t.leadSubmitError ? <p className="text-xs text-red-400">{t.leadSubmitError}</p> : null}
+                            {t.leadSubmitError ? <p className="text-xs text-red-200">{t.leadSubmitError}</p> : null}
                             <button
       type="submit"
       disabled={t.leadSubmitPending}
-      className="w-full bg-amber-400 text-emerald-950 font-semibold py-3.5 rounded-lg hover:bg-amber-300 transition-colors text-sm disabled:opacity-50"
+      className="w-full bg-white text-slate-900 font-semibold py-3.5 rounded-lg hover:bg-sky-50 transition-colors text-sm disabled:opacity-50"
     >
                               {t.leadSubmitPending ? "Submitting\u2026" : "Submit Enquiry"}
                             </button>
@@ -1142,7 +1144,7 @@ const EmeraldStudioTemplate = () => {
                 {page?.faqEnabled !== false ? <FigmaFaqList faqs={Array.isArray(draft?.faqs) ? draft.faqs : []} /> : null}
                 </>;
   })() : t.selectedProductPage ? <>
-              {t.selectedProductPage?.heroEnabled !== false ? <section className="relative h-[50svh] min-h-[320px] overflow-hidden md:h-[88vh] md:min-h-[400px] bg-[#002c22]">
+              {t.selectedProductPage?.heroEnabled !== false ? <section className="relative h-[50svh] min-h-[320px] overflow-hidden md:h-[88vh] md:min-h-[400px] bg-[#4a6b96]">
                   {t.selectedProductHeroImage ? <img
     src={t.selectedProductHeroImage}
     alt={t.selectedProductPage?.name || "Service"}
@@ -1157,17 +1159,17 @@ const EmeraldStudioTemplate = () => {
                       <div
     className="absolute inset-0 opacity-[0.06]"
     style={{
-      backgroundImage: "linear-gradient(#ffb900 1px, transparent 1px), linear-gradient(90deg, #ffb900 1px, transparent 1px)",
+      backgroundImage: "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
       backgroundSize: "60px 60px"
     }}
   />
-                      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-[#007a55]/25 blur-[60px] pointer-events-none" />
+                      <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full bg-sky-200/25 blur-[60px] pointer-events-none" />
                     </>}
                   {
-    /* <div className="absolute inset-0 bg-gradient-to-t from-[#002c22] to-[#002c22]/40" /> */
+    /* <div className="absolute inset-0 bg-gradient-to-t from-[#4a6b96] to-[#4a6b96]/40" /> */
   }
                   <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 px-6 pb-10 text-center md:pb-14">
-                    <h1 className={`text-3xl md:text-5xl font-semibold text-stone-100 ${HEADING_FONT}`}>
+                    <h1 className={`text-3xl md:text-5xl font-semibold text-white ${HEADING_FONT}`}>
                       {t.selectedProductPage?.heroHeading || t.selectedProductPage?.name}
                     </h1>
                     {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-white text-base">
@@ -1176,7 +1178,7 @@ const EmeraldStudioTemplate = () => {
                     {t.selectedProductPage?.heroButtonText ? <button
     type="button"
     onClick={() => t.goToSection("contact")}
-    className="mt-2 inline-flex items-center gap-2 bg-amber-400 text-emerald-950 font-semibold px-7 py-3.5 rounded hover:bg-amber-300 transition-colors text-sm"
+    className="mt-2 inline-flex items-center gap-2 bg-white text-slate-900 font-semibold px-7 py-3.5 rounded hover:bg-sky-50 transition-colors text-sm"
   >
                         {t.selectedProductPage.heroButtonText}
                       </button> : null}
@@ -1185,7 +1187,7 @@ const EmeraldStudioTemplate = () => {
                       <button
     type="button"
     onClick={t.handleProductHeroPrev}
-    className="absolute left-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-2xl text-white md:block"
+    className="absolute left-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-2xl text-[#ffffff] md:block"
     aria-label="Previous image"
   >
                         ‹
@@ -1193,14 +1195,14 @@ const EmeraldStudioTemplate = () => {
                       <button
     type="button"
     onClick={t.handleProductHeroNext}
-    className="absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-2xl text-white md:block"
+    className="absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/50 px-4 py-2 text-2xl text-[#ffffff] md:block"
     aria-label="Next image"
   >
                         ›
                       </button>
                     </> : null}
                 </section> : null}
-              <section className="pt-16 pb-24 px-6 bg-[#004f3b]/20">
+              <section className="pt-16 pb-24 px-6 bg-[#1f3556]/15">
                 <div className="max-w-7xl mx-auto">
                   <LinedHeading
     title={`${String(t.selectedProductPage?.heading || t.selectedProductPage?.name || "").trim() || "Our"} Services`}
@@ -1222,12 +1224,12 @@ const EmeraldStudioTemplate = () => {
               {t.selectedProductPage?.faqEnabled !== false ? <FigmaFaqList
     faqs={Array.isArray(draft?.faqs) ? draft.faqs : []}
   /> : null}
-            </> : <section className="pt-20 pb-16 px-6 bg-[#004f3b]/20">
+            </> : <section className="pt-20 pb-16 px-6 bg-[#1f3556]/15">
               <div className="max-w-7xl mx-auto text-center">
                 <LinedHeading title={String(draft?.productTitle || "").trim() || "Our Services"} className="justify-center" />
                 {
     /* <h1
-      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-stone-100 mb-6 ${HEADING_FONT}`}
+      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-white mb-6 ${HEADING_FONT}`}
     >
       {String(draft?.productTitle || "").trim() ||
         "Everything you need to build and scale."}
@@ -1247,26 +1249,26 @@ const EmeraldStudioTemplate = () => {
     /* ─── GALLERY ─── */
   }
       {section === "gallery" && t.galleryPageEnabled ? <>
-          <section className="pt-20 pb-16 px-6 bg-[#004f3b]/20">
+          <section className="pt-20 pb-16 px-6 bg-[#1f3556]/15">
             <div className="max-w-7xl mx-auto text-center">
               <LinedHeading title="Gallery" className="justify-center" />
               {
     /* <h1
-      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-2xl mx-auto text-stone-100 mb-4 ${HEADING_FONT}`}
+      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-2xl mx-auto text-white mb-4 ${HEADING_FONT}`}
     >
       Inside our world.
     </h1>
-    <p className="text-stone-400 text-lg">
+    <p className="text-white/90 text-lg">
       A look at our events, team moments, and client work.
     </p> */
   }
             </div>
           </section>
-          <section className="px-6 pb-24 bg-[#004f3b]/20">
+          <section className="px-6 pb-24 bg-[#1f3556]/15">
             <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {t.galleryItems.map((src, idx) => <div
     key={idx}
-    className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-[#004f3b] cursor-pointer"
+    className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-[#1f3556]/35 cursor-pointer"
     onClick={() => t.openGalleryViewer(idx)}
   >
                   <img
@@ -1282,13 +1284,13 @@ const EmeraldStudioTemplate = () => {
       {
     /* ─── TESTIMONIALS ─── */
   }
-      {section === "testimonials" ? <section className="pt-20 pb-24 px-6 bg-[#004f3b]/20">
+      {section === "testimonials" ? <section className="pt-20 pb-24 px-6 bg-[#1f3556]/15">
           <div className="max-w-7xl mx-auto">
             <div className="flex flex-col items-center gap-4 text-center mb-14">
               <div>
                 <LinedHeading title={draft?.testimonialTitle || "Testimonials"} className="justify-center" />
                 <h2
-    className={`text-4xl md:text-5xl font-semibold leading-tight text-stone-100 ${HEADING_FONT}`}
+    className={`text-4xl md:text-5xl font-semibold leading-tight text-white ${HEADING_FONT}`}
   >
                   What our clients say
                 </h2>
@@ -1296,7 +1298,7 @@ const EmeraldStudioTemplate = () => {
               {t.showWriteReview ? <button
     type="button"
     onClick={t.openReviewModal}
-    className="text-sm font-medium text-amber-400 hover:text-amber-300 underline underline-offset-4 transition-colors"
+    className="text-sm font-medium text-white hover:text-white underline underline-offset-4 transition-colors"
   >
                   Write a review →
                 </button> : null}
@@ -1308,23 +1310,23 @@ const EmeraldStudioTemplate = () => {
       {
     /* ─── PARTNER ─── */
   }
-      {section === "partner" && t.partnerPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#004f3b]/20">
+      {section === "partner" && t.partnerPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#1f3556]/15">
           <div className="max-w-7xl mx-auto">
             <LinedHeading title={t.partnerPageHeading || "Become A Partner"} className="justify-center" />
             {
     /* <h1
-      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-stone-100 mb-6 ${HEADING_FONT}`}
+      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-white mb-6 ${HEADING_FONT}`}
     >
       {t.partnerPageHeading || "Become a partner"}
     </h1> */
   }
             <div className="grid md:grid-cols-2 gap-14 mt-12 text-left">
-              <div className="text-stone-400 text-base leading-relaxed">
+              <div className="text-white/90 text-base leading-relaxed">
                 {t.partnerPageContent ? t.partnerPageContent.split("\n").map((p, i) => <p key={i} className="mb-4 last:mb-0">
                         {p}
-                      </p>) : <p className="text-stone-500">Partner content coming soon.</p>}
+                      </p>) : <p className="text-white/90">Partner content coming soon.</p>}
               </div>
-              <div className="bg-emerald-900/30 border border-emerald-800/50 rounded-2xl p-8">
+              <div className="bg-[#1f3556]/30 border border-white/25 rounded-2xl p-8">
                 <LinedHeading title={t.partnerFormTitle || `Partner with ${draft?.companyName || "us"}`} />
                 <div className="mt-4 space-y-4">
                   <input
@@ -1370,7 +1372,7 @@ const EmeraldStudioTemplate = () => {
                   <button
     type="button"
     disabled={t.partnerSubmitPending}
-    className="w-full bg-amber-400 text-emerald-950 font-semibold py-3.5 rounded-lg hover:bg-amber-300 transition-colors text-sm disabled:opacity-50"
+    className="w-full bg-white text-slate-900 font-semibold py-3.5 rounded-lg hover:bg-sky-50 transition-colors text-sm disabled:opacity-50"
   >
                     {t.partnerSubmitPending ? "Submitting\u2026" : "Connect"}
                   </button>
@@ -1383,33 +1385,33 @@ const EmeraldStudioTemplate = () => {
       {
     /* ─── CAREERS ─── */
   }
-      {section === "careers" && t.careersPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#004f3b]/20">
+      {section === "careers" && t.careersPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#1f3556]/15">
           <div className="max-w-7xl mx-auto">
             {!t.careersApplyJob ? <>
                 <LinedHeading title={draft?.companyName ? `Join Our Team - ${draft.companyName}` : "Join Our Team - Company Name"} className="justify-center" />
                 {
     /* <h1
-      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-stone-100 mb-6 ${HEADING_FONT}`}
+      className={`text-5xl md:text-6xl font-semibold leading-tight max-w-3xl mx-auto text-center text-white mb-6 ${HEADING_FONT}`}
     >
       {draft?.companyName
         ? `Join ${draft.companyName}`
         : "Join our team"}
     </h1> */
   }
-                <div className="text-stone-400 text-lg max-w-2xl mx-auto text-center leading-relaxed mb-12">
+                <div className="text-white/90 text-lg max-w-2xl mx-auto text-center leading-relaxed mb-12">
                   {(draft?.careersPageIntro ? draft.careersPageIntro.split("\n") : t.careersFallbackIntro).map((p, i) => <p key={i} className="mb-3 last:mb-0">
                       {p}
                     </p>)}
                 </div>
 
-                {t.careersJobsLoading ? <p className="text-stone-500">Loading open roles…</p> : t.careersJobs.length === 0 ? <p className="text-stone-500">
+                {t.careersJobsLoading ? <p className="text-white/90">Loading open roles…</p> : t.careersJobs.length === 0 ? <p className="text-white/90">
                     No job openings at the moment — check back later.
                   </p> : <div className="space-y-4">
                     {t.careersDepartmentSections.map((dept) => {
     const isOpen = t.careersOpenDepartment === dept.department;
     return <div
       key={dept.department}
-      className="bg-emerald-900/40 border border-emerald-800/50 rounded-xl overflow-hidden"
+      className="bg-[#1f3556]/35 border border-white/25 rounded-xl overflow-hidden"
     >
                           <button
       type="button"
@@ -1419,11 +1421,11 @@ const EmeraldStudioTemplate = () => {
       className="w-full flex items-center justify-between px-7 py-5 text-left"
     >
                             <span
-      className={`font-semibold text-lg text-stone-100 ${HEADING_FONT}`}
+      className={`font-semibold text-lg text-white ${HEADING_FONT}`}
     >
                               {dept.ordinal}. {dept.department}
                             </span>
-                            <span className="text-amber-400">
+                            <span className="text-white">
                               {isOpen ? "\u2212" : "+"}
                             </span>
                           </button>
@@ -1432,17 +1434,17 @@ const EmeraldStudioTemplate = () => {
       key={idx}
       type="button"
       onClick={() => t.openCareersJob(job)}
-      className="w-full flex items-center justify-between border-t border-emerald-800/40 py-4 text-left hover:text-amber-400 transition-colors"
+      className="w-full flex items-center justify-between border-t border-white/20 py-4 text-left hover:text-white transition-colors"
     >
                                   <div>
-                                    <p className="font-medium text-stone-100 text-sm">
+                                    <p className="font-medium text-white text-sm">
                                       {job?.title || job?.designation || job?.name}
                                     </p>
-                                    <p className="text-stone-500 text-xs mt-0.5">
+                                    <p className="text-white/90 text-xs mt-0.5">
                                       {job?.location || ""}
                                     </p>
                                   </div>
-                                  <span className="text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                                  <span className="text-white text-xs font-semibold uppercase tracking-wider">
                                     Apply →
                                   </span>
                                 </button>)}
@@ -1452,7 +1454,7 @@ const EmeraldStudioTemplate = () => {
                     <button
     type="button"
     onClick={t.openCareersGeneralApply}
-    className="mt-8 inline-flex items-center gap-2 border border-emerald-700 text-stone-300 font-medium px-7 py-3.5 rounded hover:border-amber-400 hover:text-amber-400 transition-colors text-sm"
+    className="mt-8 inline-flex items-center gap-2 border border-white/50 text-white/90 font-medium px-7 py-3.5 rounded hover:border-white hover:text-white transition-colors text-sm"
   >
                       General Application
                     </button>
@@ -1461,36 +1463,36 @@ const EmeraldStudioTemplate = () => {
                 <button
     type="button"
     onClick={t.closeCareersJob}
-    className="text-sm font-medium text-amber-400 hover:text-amber-300 underline underline-offset-4 mb-6"
+    className="text-sm font-medium text-white hover:text-white underline underline-offset-4 mb-6"
   >
                   ← Back to Careers
                 </button>
                 <h1
-    className={`text-4xl md:text-5xl font-semibold text-stone-100 mb-6 ${HEADING_FONT}`}
+    className={`text-4xl md:text-5xl font-semibold text-white mb-6 ${HEADING_FONT}`}
   >
                   {t.careersDirectApply ? "General Application" : t.careersApplyJob?.title || t.careersApplyJob?.name}
                 </h1>
 
-                {!t.careersDirectApply ? <div className="flex gap-6 border-b border-emerald-800/50 mb-8">
+                {!t.careersDirectApply ? <div className="flex gap-6 border-b border-white/25 mb-8">
                     <button
     type="button"
     onClick={() => t.setCareersDetailTab("description")}
-    className={`pb-3 text-xs font-semibold uppercase tracking-widest transition-colors ${t.careersDetailTab === "description" ? "text-amber-400 border-b-2 border-amber-400" : "text-stone-500 hover:text-stone-300"}`}
+    className={`pb-3 text-xs font-semibold uppercase tracking-widest transition-colors ${t.careersDetailTab === "description" ? "text-white border-b-2 border-white" : "text-white/90 hover:text-white"}`}
   >
                       Description
                     </button>
                     <button
     type="button"
     onClick={() => t.setCareersDetailTab("apply")}
-    className={`pb-3 text-xs font-semibold uppercase tracking-widest transition-colors ${t.careersDetailTab === "apply" ? "text-amber-400 border-b-2 border-amber-400" : "text-stone-500 hover:text-stone-300"}`}
+    className={`pb-3 text-xs font-semibold uppercase tracking-widest transition-colors ${t.careersDetailTab === "apply" ? "text-white border-b-2 border-white" : "text-white/90 hover:text-white"}`}
   >
                       Apply
                     </button>
                   </div> : null}
 
-                {t.careersDetailTab === "description" && !t.careersDirectApply ? <div className="max-w-2xl space-y-6 text-stone-400 text-base leading-relaxed">
+                {t.careersDetailTab === "description" && !t.careersDirectApply ? <div className="max-w-2xl space-y-6 text-white/90 text-base leading-relaxed">
                     {t.careersApplyJob?.aboutTheJob ? <div>
-                        <p className="font-semibold text-stone-100 mb-1">
+                        <p className="font-semibold text-white mb-1">
                           About this role
                         </p>
                         <p className="whitespace-pre-wrap">
@@ -1498,7 +1500,7 @@ const EmeraldStudioTemplate = () => {
                         </p>
                       </div> : null}
                     {t.careersApplyJob?.keyResponsibilities ? <div>
-                        <p className="font-semibold text-stone-100 mb-1">
+                        <p className="font-semibold text-white mb-1">
                           Key responsibilities
                         </p>
                         <p className="whitespace-pre-wrap">
@@ -1506,7 +1508,7 @@ const EmeraldStudioTemplate = () => {
                         </p>
                       </div> : null}
                     {t.careersApplyJob?.requirements ? <div>
-                        <p className="font-semibold text-stone-100 mb-1">
+                        <p className="font-semibold text-white mb-1">
                           Requirements
                         </p>
                         <p className="whitespace-pre-wrap">
@@ -1516,24 +1518,24 @@ const EmeraldStudioTemplate = () => {
                   </div> : null}
 
                 {(t.careersDetailTab === "apply" || t.careersDirectApply) && <div>
-                    {t.careersApplySubmitted ? <div className="bg-emerald-900/30 border border-emerald-800/50 rounded-2xl p-8 text-center">
-                        <div className="w-14 h-14 rounded-full bg-amber-400 flex items-center justify-center text-emerald-950 text-2xl mb-4 mx-auto">
+                    {t.careersApplySubmitted ? <div className="bg-[#1f3556]/30 border border-white/25 rounded-2xl p-8 text-center">
+                        <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-slate-900 text-2xl mb-4 mx-auto">
                           ✓
                         </div>
                         <h3
-    className={`text-xl font-semibold text-stone-100 mb-2 ${HEADING_FONT}`}
+    className={`text-xl font-semibold text-white mb-2 ${HEADING_FONT}`}
   >
                           Application submitted!
                         </h3>
-                        <p className="text-stone-400 text-sm">
+                        <p className="text-white/90 text-sm">
                           We&apos;ll review it and get back to you shortly.
                         </p>
                       </div> : <form
     onSubmit={t.submitCareersApplication}
-    className="bg-emerald-900/30 border border-emerald-800/50 rounded-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-4"
+    className="bg-[#1f3556]/30 border border-white/25 rounded-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-4"
   >
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             Full Name *
                           </label>
                           <input
@@ -1548,7 +1550,7 @@ const EmeraldStudioTemplate = () => {
   />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             Email *
                           </label>
                           <input
@@ -1563,7 +1565,7 @@ const EmeraldStudioTemplate = () => {
   />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             Date of Birth *
                           </label>
                           <input
@@ -1578,7 +1580,7 @@ const EmeraldStudioTemplate = () => {
   />
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             Country *
                           </label>
                           <select
@@ -1597,7 +1599,7 @@ const EmeraldStudioTemplate = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             State *
                           </label>
                           <select
@@ -1617,7 +1619,7 @@ const EmeraldStudioTemplate = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             City *
                           </label>
                           <select
@@ -1637,11 +1639,11 @@ const EmeraldStudioTemplate = () => {
                           </select>
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                          <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                             Phone *
                           </label>
                           <div className="flex items-stretch">
-                            <span className="flex shrink-0 items-center border border-r-0 border-emerald-800 bg-emerald-950/60 px-3 text-sm text-stone-500 rounded-l-lg">
+                            <span className="flex shrink-0 items-center border border-r-0 border-white/25 bg-white/10 px-3 text-sm text-white/90 rounded-l-lg">
                               {t.careersApplyDialCode || "+ --"}
                             </span>
                             <input
@@ -1655,16 +1657,16 @@ const EmeraldStudioTemplate = () => {
         ""
       )
     }))}
-    className="flex-1 bg-emerald-950/60 border border-emerald-800 rounded-r-lg px-4 py-3 text-stone-100 text-sm focus:outline-none focus:border-amber-400 transition-colors"
+    className="flex-1 bg-white/10 border border-white/25 rounded-r-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-white transition-colors"
   />
                           </div>
                         </div>
                         <div className="md:col-span-2">
-                          <label className="flex cursor-pointer items-center justify-between border border-dashed border-emerald-700 px-4 py-3 text-sm rounded-lg hover:border-amber-400 transition-colors">
-                            <span className="text-stone-300">
+                          <label className="flex cursor-pointer items-center justify-between border border-dashed border-white/50 px-4 py-3 text-sm rounded-lg hover:border-white transition-colors">
+                            <span className="text-white/90">
                               {t.careersResumeFile ? t.careersResumeFile.name : "Upload resume / CV *"}
                             </span>
-                            <span className="border border-emerald-700 px-3 py-1 text-xs uppercase tracking-wider text-stone-400 rounded">
+                            <span className="border border-white/50 px-3 py-1 text-xs uppercase tracking-wider text-white/90 rounded">
                               Choose file
                             </span>
                             <input
@@ -1680,7 +1682,7 @@ const EmeraldStudioTemplate = () => {
                         </div>
                         {t.careersFormFields.map(
     (field) => field.type === "textarea" ? <div key={field.id} className="md:col-span-2">
-                              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                              <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                                 {field.label}
                                 {field.required ? " *" : ""}
                               </label>
@@ -1698,7 +1700,7 @@ const EmeraldStudioTemplate = () => {
       key={field.id}
       className={field.fullWidth ? "md:col-span-2" : ""}
     >
-                              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                              <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                                 {field.label}
                                 {field.required ? " *" : ""}
                               </label>
@@ -1714,14 +1716,14 @@ const EmeraldStudioTemplate = () => {
     />
                             </div>
   )}
-                        {t.careersApplyError ? <p className="md:col-span-2 text-xs text-red-400">
+                        {t.careersApplyError ? <p className="md:col-span-2 text-xs text-red-200">
                             {t.careersApplyError}
                           </p> : null}
                         <div className="md:col-span-2">
                           <button
     type="submit"
     disabled={t.careersApplySubmitting}
-    className="w-full bg-amber-400 text-emerald-950 font-semibold py-3.5 rounded-lg hover:bg-amber-300 transition-colors text-sm disabled:opacity-50"
+    className="w-full bg-white text-slate-900 font-semibold py-3.5 rounded-lg hover:bg-sky-50 transition-colors text-sm disabled:opacity-50"
   >
                             {t.careersApplySubmitting ? "Submitting\u2026" : "Submit Application"}
                           </button>
@@ -1735,12 +1737,12 @@ const EmeraldStudioTemplate = () => {
       {
     /* ─── CONTACT ─── */
   }
-      {section === "contact" && t.contactPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#004f3b]/20">
+      {section === "contact" && t.contactPageEnabled ? <section className="pt-20 pb-24 px-6 bg-[#1f3556]/15">
           <div className="max-w-7xl mx-auto text-center mb-12">
             <LinedHeading title={draft?.contactTitle || "Contact"} className="justify-center" />
             {
     /* <h1
-      className={`text-5xl md:text-6xl font-semibold leading-tight text-stone-100 ${HEADING_FONT}`}
+      className={`text-5xl md:text-6xl font-semibold leading-tight text-white ${HEADING_FONT}`}
     >
       {draft?.contactTitle || "Let us start a conversation."}
     </h1> */
@@ -1752,20 +1754,20 @@ const EmeraldStudioTemplate = () => {
     src={draft.mapUrl}
     loading="lazy"
     className="h-[320px] w-full rounded-2xl border-0 md:h-[440px]"
-  /> : <div className="h-[320px] w-full rounded-2xl border border-emerald-800/50 bg-emerald-900/40 md:h-[440px]" />}
-            <div className="flex flex-col gap-6 rounded-2xl border border-emerald-800/50 bg-emerald-900/40 p-8">
+  /> : <div className="h-[320px] w-full rounded-2xl border border-white/25 bg-[#1f3556]/35 md:h-[440px]" />}
+            <div className="flex flex-col gap-6 rounded-2xl border border-white/25 bg-[#1f3556]/35 p-8">
               {draft?.companyLogo ? <img
     src={draft.companyLogo}
     alt={draft.companyName || "Company"}
     className="mb-7 h-12 w-auto self-center object-contain"
   /> : <span
-    className={`mb-1 flex h-12 w-12 items-center justify-center self-start rounded-lg bg-amber-400 text-lg font-bold text-emerald-950 ${HEADING_FONT}`}
+    className={`mb-1 flex h-12 w-12 items-center justify-center self-start rounded-lg bg-white text-lg font-bold text-slate-900 ${HEADING_FONT}`}
   >
                   {(draft?.companyName || "Y").charAt(0).toUpperCase()}
                 </span>}
               {t.contactEmail ? <a
     href={`mailto:${t.contactEmail}`}
-    className="flex items-center gap-4 text-stone-300 hover:text-amber-400"
+    className="flex items-center gap-4 text-white/90 hover:text-white"
   >
                   <CONTACT_ICON_CIRCLE>
                     <ContactMailIcon />
@@ -1774,14 +1776,14 @@ const EmeraldStudioTemplate = () => {
                 </a> : null}
               {t.contactPhone ? <a
     href={`tel:${t.contactPhone.replace(/[^\d+]/g, "")}`}
-    className="flex items-center gap-4 text-stone-300 hover:text-amber-400"
+    className="flex items-center gap-4 text-white/90 hover:text-white"
   >
                   <CONTACT_ICON_CIRCLE>
                     <ContactPhoneIcon />
                   </CONTACT_ICON_CIRCLE>
                   <span>{t.contactPhone}</span>
                 </a> : null}
-              {t.contactAddress ? <div className="flex items-start gap-4 text-stone-300">
+              {t.contactAddress ? <div className="flex items-start gap-4 text-white/90">
                   <CONTACT_ICON_CIRCLE>
                     <ContactMapIcon />
                   </CONTACT_ICON_CIRCLE>
@@ -1798,7 +1800,7 @@ const EmeraldStudioTemplate = () => {
       {
     /* ─── FOOTER ─── */
   }
-      <footer className="border-t border-[#006045]/40 bg-[#002c22]">
+      <footer className="border-t border-white/20 bg-[#4a6b96]">
         <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-6 py-14 text-center md:grid-cols-[1.35fr_1fr_1fr_1fr] md:text-left">
           <div className="col-span-1">
             <button
@@ -1812,18 +1814,18 @@ const EmeraldStudioTemplate = () => {
     className="h-8 w-auto object-contain"
   /> : <>
                   <span
-    className={`w-7 h-7 rounded-sm bg-amber-400 flex items-center justify-center text-emerald-950 font-bold text-sm ${HEADING_FONT}`}
+    className={`w-7 h-7 rounded-sm bg-white flex items-center justify-center text-slate-900 font-bold text-sm ${HEADING_FONT}`}
   >
                     {(draft?.companyName || "Y").charAt(0).toUpperCase()}
                   </span>
                   <span
-    className={`font-semibold text-lg tracking-tight text-stone-100 ${HEADING_FONT}`}
+    className={`font-semibold text-lg tracking-tight text-white ${HEADING_FONT}`}
   >
                     {draft?.companyName || "Your Company"}
                   </span>
                 </>}
             </button>
-            {t.footerAddress ? <p className="text-stone-500 text-sm leading-relaxed mt-1">
+            {t.footerAddress ? <p className="text-white/90 text-sm leading-relaxed mt-1">
                 {t.footerAddress}
               </p> : null}
             {t.footerSocialLinks.length ? <div className="flex items-center gap-3 mt-4 md:justify-start justify-center">
@@ -1834,7 +1836,7 @@ const EmeraldStudioTemplate = () => {
     key={social.key}
     {...linkProps}
     aria-label={SOCIAL_LABEL[social.key] || social.key}
-    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-400/50 text-amber-400 transition-colors ${social.href ? "hover:bg-amber-400 hover:text-emerald-950" : "cursor-default"}`}
+    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 text-white transition-colors ${social.href ? "hover:bg-white hover:text-slate-900" : "cursor-default"}`}
   >
                     {SOCIAL_ICON[social.key]}
                   </Tag>;
@@ -1842,7 +1844,7 @@ const EmeraldStudioTemplate = () => {
               </div> : null}
           </div>
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-stone-200">
+            <h4 className="font-semibold text-sm mb-4 text-white">
               Quick Links
             </h4>
             <ul className="space-y-2.5">
@@ -1850,7 +1852,7 @@ const EmeraldStudioTemplate = () => {
                   <button
     type="button"
     onClick={() => t.goToSection(item.slug)}
-    className="text-stone-500 text-sm hover:text-stone-300 transition-colors text-left"
+    className="text-white/90 text-sm hover:text-white transition-colors text-left"
   >
                     {item.name}
                   </button>
@@ -1858,7 +1860,7 @@ const EmeraldStudioTemplate = () => {
             </ul>
           </div>
           {t.productsPageEnabled ? <div>
-              <h4 className="font-semibold text-sm mb-4 text-stone-200">
+              <h4 className="font-semibold text-sm mb-4 text-white">
                 Services
               </h4>
               <ul className="space-y-2.5">
@@ -1866,29 +1868,29 @@ const EmeraldStudioTemplate = () => {
                       <button
     type="button"
     onClick={() => t.goToProductPage(page?.slug || page?.name || "")}
-    className="text-stone-500 text-sm hover:text-stone-300 transition-colors text-left"
+    className="text-white/90 text-sm hover:text-white transition-colors text-left"
   >
                         {page?.name || page?.heading || "Service"}
                       </button>
                     </li>) : <li>
-                    <span className="text-stone-600 text-sm">
+                    <span className="text-white/90 text-sm">
                       No products listed
                     </span>
                   </li>}
               </ul>
             </div> : null}
           <div>
-            <h4 className="font-semibold text-sm mb-4 text-stone-200">
+            <h4 className="font-semibold text-sm mb-4 text-white">
               Contact Us
             </h4>
-            <ul className="space-y-2.5 text-stone-500 text-sm">
+            <ul className="space-y-2.5 text-white/90 text-sm">
               {t.contactEmail ? <li>{t.contactEmail}</li> : null}
               {t.contactPhone ? <li>{t.contactPhone}</li> : null}
               {t.footerAddress ? <li className="whitespace-pre-line">{t.footerAddress}</li> : null}
             </ul>
           </div>
         </div>
-        <div className="border-t border-emerald-800/40 pt-6 pb-6 px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-stone-600 text-xs max-w-7xl mx-auto">
+        <div className="border-t border-white/20 pt-6 pb-6 px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-white/90 text-xs max-w-7xl mx-auto">
           <p>{t.footerCopyrightText}</p>
         </div>
       </footer>
@@ -1901,37 +1903,37 @@ const EmeraldStudioTemplate = () => {
     /* Lead modal */
   }
       {t.selectedLeadProduct && !t.selectedDetailItem ? <div
-    className="fixed inset-0 z-50 bg-emerald-950/95 flex items-center justify-center px-6"
+    className="fixed inset-0 z-50 bg-[#2f4a70]/95 flex items-center justify-center px-6"
     onClick={t.closeLeadModal}
   >
           <div
-    className="bg-emerald-900/80 border border-emerald-800/50 rounded-2xl max-w-md w-full shadow-2xl p-8"
+    className="bg-[#1f3556]/35/80 border border-white/25 rounded-2xl max-w-md w-full shadow-2xl p-8"
     onClick={(e) => e.stopPropagation()}
   >
             <div className="flex items-start justify-between mb-6">
               <h3
-    className={`text-lg font-semibold text-stone-100 ${HEADING_FONT}`}
+    className={`text-lg font-semibold text-white ${HEADING_FONT}`}
   >
                 {t.selectedLeadProduct?.name || "Enquire"}
               </h3>
               <button
     type="button"
     onClick={t.closeLeadModal}
-    className="text-stone-500 hover:text-stone-100 transition-colors"
+    className="text-white/90 hover:text-white transition-colors"
   >
                 ✕
               </button>
             </div>
             {t.leadSubmitted ? <div className="text-center py-6">
-                <div className="w-14 h-14 rounded-full bg-amber-400 flex items-center justify-center text-emerald-950 text-2xl mb-4 mx-auto">
+                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center text-slate-900 text-2xl mb-4 mx-auto">
                   ✓
                 </div>
                 <h3
-    className={`text-xl font-semibold text-stone-100 mb-2 ${HEADING_FONT}`}
+    className={`text-xl font-semibold text-white mb-2 ${HEADING_FONT}`}
   >
                   Enquiry submitted!
                 </h3>
-                <p className="text-stone-400 text-sm">
+                <p className="text-white/90 text-sm">
                   We&apos;ll be in touch shortly.
                 </p>
               </div> : <form onSubmit={t.submitLeadForm} className="space-y-4">
@@ -1941,7 +1943,7 @@ const EmeraldStudioTemplate = () => {
     { key: "email", label: "Email", type: "email" },
     { key: "people", label: "No. of people", type: "number" }
   ].map((field) => <div key={field.key}>
-                    <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                    <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                       {field.label}
                     </label>
                     <input
@@ -1955,11 +1957,11 @@ const EmeraldStudioTemplate = () => {
     className={INPUT}
   />
                   </div>)}
-                {t.leadSubmitError ? <p className="text-xs text-red-400">{t.leadSubmitError}</p> : null}
+                {t.leadSubmitError ? <p className="text-xs text-red-200">{t.leadSubmitError}</p> : null}
                 <button
     type="submit"
     disabled={t.leadSubmitPending}
-    className="w-full bg-amber-400 text-emerald-950 font-semibold py-3.5 rounded-lg hover:bg-amber-300 transition-colors text-sm disabled:opacity-50"
+    className="w-full bg-white text-slate-900 font-semibold py-3.5 rounded-lg hover:bg-sky-50 transition-colors text-sm disabled:opacity-50"
   >
                   {t.leadSubmitPending ? "Submitting\u2026" : "Submit"}
                 </button>
@@ -1971,30 +1973,30 @@ const EmeraldStudioTemplate = () => {
     /* Review modal */
   }
       {t.reviewModalOpen ? <div
-    className="fixed inset-0 z-50 bg-emerald-950/95 flex items-center justify-center px-6"
+    className="fixed inset-0 z-50 bg-[#2f4a70]/95 flex items-center justify-center px-6"
     onClick={() => t.setReviewModalOpen(false)}
   >
           <div
-    className="bg-emerald-900/80 border border-emerald-800/50 rounded-2xl max-w-md w-full shadow-2xl p-8"
+    className="bg-[#1f3556]/35/80 border border-white/25 rounded-2xl max-w-md w-full shadow-2xl p-8"
     onClick={(e) => e.stopPropagation()}
   >
             <div className="flex items-start justify-between mb-6">
               <h3
-    className={`text-lg font-semibold text-stone-100 ${HEADING_FONT}`}
+    className={`text-lg font-semibold text-white ${HEADING_FONT}`}
   >
                 Write a review
               </h3>
               <button
     type="button"
     onClick={() => t.setReviewModalOpen(false)}
-    className="text-stone-500 hover:text-stone-100 transition-colors"
+    className="text-white/90 hover:text-white transition-colors"
   >
                 ✕
               </button>
             </div>
             <form onSubmit={t.submitReviewForm} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                   Your name
                 </label>
                 <input
@@ -2009,7 +2011,7 @@ const EmeraldStudioTemplate = () => {
   />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                   Rating
                 </label>
                 <select
@@ -2026,7 +2028,7 @@ const EmeraldStudioTemplate = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-white/90 uppercase tracking-wider mb-1">
                   Your review
                 </label>
                 <textarea
@@ -2040,11 +2042,11 @@ const EmeraldStudioTemplate = () => {
     className={INPUT}
   />
               </div>
-              {t.reviewSubmitError ? <p className="text-xs text-red-400">{t.reviewSubmitError}</p> : null}
+              {t.reviewSubmitError ? <p className="text-xs text-red-200">{t.reviewSubmitError}</p> : null}
               <button
     type="submit"
     disabled={t.reviewSubmitPending}
-    className="w-full bg-amber-400 text-emerald-950 font-semibold py-3.5 rounded-lg hover:bg-amber-300 transition-colors text-sm disabled:opacity-50"
+    className="w-full bg-white text-slate-900 font-semibold py-3.5 rounded-lg hover:bg-sky-50 transition-colors text-sm disabled:opacity-50"
   >
                 {t.reviewSubmitPending ? "Submitting\u2026" : "Submit Review"}
               </button>
@@ -2055,7 +2057,7 @@ const EmeraldStudioTemplate = () => {
       {
     /* Success popup */
   }
-      {t.successPopup.open ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 bg-emerald-900/90 border border-emerald-800/50 rounded-xl px-5 py-3 text-sm text-stone-100 shadow-lg backdrop-blur">
+      {t.successPopup.open ? <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 bg-[#1f3556]/35/90 border border-white/25 rounded-xl px-5 py-3 text-sm text-white shadow-lg backdrop-blur">
           {t.successPopup.message}
         </div> : null}
     </div>;

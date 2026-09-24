@@ -21,6 +21,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import SectionPreviewInfo from "./SectionPreviewInfo";
 import CreditsIndicator from "../../../../components/CreditsIndicator";
 import RoomsSection from "./RoomsSection";
+import ThemeColors from "./ThemeColors";
+import { supportsThemeColors } from "./templates/templateTheme";
 import PackagesSection from "./PackagesSection";
 import DormsSection from "./DormsSection";
 import MenuSection from "./MenuSection";
@@ -1210,6 +1212,7 @@ const CreateWebsite = () => {
                 DEFAULT_TEMPLATE_ID
             ).trim(),
             sectionOverrides: draftData?.sectionOverrides || found?.sectionOverrides || {},
+            styleConfig: draftData?.styleConfig || found?.styleConfig || {},
             companyId: String(draftData?.companyId || prefillCompanyId || found?.companyId || "").trim(),
             companyName: String(draftData?.companyName || prefillCompanyName || found?.companyName || "").trim(),
             companyLogo: found?.companyLogo || null,
@@ -1676,6 +1679,7 @@ const CreateWebsite = () => {
     fd.set("inclusions", JSON.stringify(values2.inclusions || []));
     fd.set("faqs", JSON.stringify(values2.faqs || []));
     fd.set("sectionOverrides", JSON.stringify(values2.sectionOverrides || {}));
+    fd.set("styleConfig", JSON.stringify(values2.styleConfig || {}));
     // themeVariant is never bound to a real form input (it's set once by the
     // template picker and shown read-only afterward), so FormData(formEl)
     // never picks it up on its own — without this explicit set, the chosen
@@ -3774,6 +3778,7 @@ const CreateWebsite = () => {
               </div> : null}
           </div>
           {activeMainPageSlug === "home" ? <div className="md:grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4" data-tour="wb-editor-home-content">
+            {supportsThemeColors(watch("themeVariant")) && <ThemeColors control={control} templateId={watch("themeVariant")} />}
             {
     /* HERO / COMPANY */
   }

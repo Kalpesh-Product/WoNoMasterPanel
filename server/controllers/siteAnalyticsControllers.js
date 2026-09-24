@@ -91,16 +91,30 @@ const DAY_NAMES = [
   "Saturday",
 ];
 
+const UNKNOWN_GA_DIMENSION_VALUES = new Set(["", "(not set)", "not set", "unknown"]);
+
+const cleanGaDimensionValue = (value) => String(value || "").trim();
+
+const isKnownGaDimensionValue = (value) =>
+  !UNKNOWN_GA_DIMENSION_VALUES.has(cleanGaDimensionValue(value).toLowerCase());
+
 // GA4 dimension values for hour/dayOfWeek/date come back unordered (they're
 // treated as plain strings, so a naive sort would put "10" before "2") —
 // bucket them into fixed-size arrays by index instead of trusting row order.
-const rowsToRankedLabel = (rows, buildLabel) =>
+const rowsToRankedLabel = (rows, buildLabel, options = {}) =>
   (rows || [])
+    .filter((row) => {
+      if (!options.onlyKnownDimensions) return true;
+      return (row.dimensionValues || []).every((dimension) =>
+        isKnownGaDimensionValue(dimension?.value),
+      );
+    })
     .map((row) => ({
       label: buildLabel(row.dimensionValues || []),
       value: Number(row.metricValues?.[0]?.value || 0),
     }))
-    .sort((a, b) => b.value - a.value);
+    .sort((a, b) => b.value - a.value)
+    .slice(0, options.limit || Infinity);
 
 const bucketByIndex = (rows, size, mapLabel) => {
   const buckets = Array.from({ length: size }, (_, index) => ({
@@ -155,21 +169,21 @@ const getHistoricalAnalytics = async (req, res) => {
             dimensions: [{ name: "country" }],
             metrics: [{ name: "activeUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 10,
+            limit: 25,
           },
           {
             dateRanges,
             dimensions: [{ name: "region" }, { name: "country" }],
             metrics: [{ name: "activeUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 10,
+            limit: 25,
           },
           {
             dateRanges,
             dimensions: [{ name: "city" }, { name: "region" }],
             metrics: [{ name: "activeUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 10,
+            limit: 25,
           },
         ],
       }),
@@ -186,14 +200,20 @@ const getHistoricalAnalytics = async (req, res) => {
     const [hourR, dayR] = timeBatch.reports;
 
     const topPages = rowsToRankedLabel(pagesR.rows, (d) => d[0]?.value || "Unknown");
-    const byCountry = rowsToRankedLabel(countryR.rows, (d) => d[0]?.value || "Unknown");
+    const byCountry = rowsToRankedLabel(
+      countryR.rows,
+      (d) => d[0]?.value || "Unknown",
+      { onlyKnownDimensions: true, limit: 10 },
+    );
     const byState = rowsToRankedLabel(
       regionR.rows,
       (d) => [d[0]?.value, d[1]?.value].filter(Boolean).join(", ") || "Unknown",
+      { onlyKnownDimensions: true, limit: 10 },
     );
     const byCity = rowsToRankedLabel(
       cityR.rows,
       (d) => [d[0]?.value, d[1]?.value].filter(Boolean).join(", ") || "Unknown",
+      { onlyKnownDimensions: true, limit: 10 },
     );
 
     const byHour = bucketByIndex(hourR.rows, 24, (hour) => `${String(hour).padStart(2, "0")}:00`);
