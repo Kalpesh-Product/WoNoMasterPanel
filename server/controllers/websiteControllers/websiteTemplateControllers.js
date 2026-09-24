@@ -4043,7 +4043,20 @@ const getTemplate = async (req, res) => {
       .sort({ publishedAt: -1, version: -1 })
       .lean();
 
-    if (latestPublished?.templateSnapshot) {
+    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
+
+    // A version snapshot is only authoritative until the website builder
+    // publishes again: builder Submit refreshes the live document's
+    // publishedData/publishedAt but never creates a new version, so an older
+    // version would otherwise shadow every later publish forever.
+    const builderPublishIsNewer =
+      template?.isPublished === true &&
+      template?.publishedData &&
+      (!latestPublished ||
+        new Date(template.publishedAt || 0).getTime() >
+          new Date(latestPublished.publishedAt || 0).getTime());
+
+    if (latestPublished?.templateSnapshot && !builderPublishIsNewer) {
       return res.json({
         ...latestPublished.templateSnapshot,
         isPublished: true,
@@ -4052,7 +4065,6 @@ const getTemplate = async (req, res) => {
       });
     }
 
-    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
     if (!template) {
       return res.status(200).json([]);
     }

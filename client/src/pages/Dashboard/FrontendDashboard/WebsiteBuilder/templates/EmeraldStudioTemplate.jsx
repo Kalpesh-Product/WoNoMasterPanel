@@ -1169,7 +1169,7 @@ const EmeraldStudioTemplate = () => {
                     <h1 className={`text-3xl md:text-5xl font-semibold text-stone-100 ${HEADING_FONT}`}>
                       {t.selectedProductPage?.heroHeading || t.selectedProductPage?.name}
                     </h1>
-                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-stone-400 text-base">
+                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-white text-base">
                         {t.selectedProductPage.heroSubHeading}
                       </p> : null}
                     {t.selectedProductPage?.heroButtonText ? <button
