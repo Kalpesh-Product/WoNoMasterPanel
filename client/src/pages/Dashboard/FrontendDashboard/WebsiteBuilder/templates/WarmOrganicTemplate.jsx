@@ -122,7 +122,7 @@ const ProductGrid = ({
           </div>
           <div className="flex flex-1 flex-col items-center gap-3 px-5 py-5 text-center">
             <h3 className={`text-[16px] font-normal ${SERIF}`}>
-              {product?.name || product?.heading || "Service"}
+              {product?.homeCardHeading || product?.heading || product?.name || "Service"}
             </h3>
             {description ? <p
     className="line-clamp-2 text-[12.5px] leading-relaxed"
@@ -1090,7 +1090,7 @@ const WarmOrganicTemplate = () => {
   >
                       {t.selectedProductPage?.heroHeading || t.selectedProductPage?.name}
                     </h1>
-                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-[14.5px]" style={{ color: MUTED }}>
+                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-[14.5px]" style={{ color: "white" }}>
                         {t.selectedProductPage.heroSubHeading}
                       </p> : null}
                     {t.selectedProductPage?.heroButtonText ? <button
@@ -1148,6 +1148,9 @@ const WarmOrganicTemplate = () => {
                                 {item.price}
                               </span> : null}
                           </div>
+                          {item?.description ? <p className="mt-2 text-[13px] leading-relaxed" style={{ color: MUTED }}>
+                              {item.description}
+                            </p> : null}
                         </div>)}
                     </div> : <ProductGrid
     products={t.selectedProductContentItems.length ? t.selectedProductContentItems : [t.selectedProductPage]}
@@ -1192,7 +1195,7 @@ const WarmOrganicTemplate = () => {
                         </div>
                         <div className="flex flex-1 flex-col items-center gap-3 px-5 py-5 text-center">
                           <h3 className={`text-[16px] font-normal ${SERIF}`}>
-                            {product?.name || product?.heading || "Service"}
+                            {product?.homeCardHeading || product?.heading || product?.name || "Service"}
                           </h3>
                           {description ? <p
       className="line-clamp-2 text-[12.5px] leading-relaxed"

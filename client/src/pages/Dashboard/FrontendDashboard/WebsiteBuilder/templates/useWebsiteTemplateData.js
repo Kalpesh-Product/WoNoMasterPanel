@@ -338,7 +338,9 @@ const useWebsiteTemplateData = () => {
   const navItems = useMemo(() => {
     const fromDraft = sourceNavItems.filter((item) => item?.enabled !== false).map((item) => {
       const slug = normalizeSlug(item?.slug || item?.name || "page");
-      return { name: slug === "products" ? "Services" : item?.name || "Page", slug };
+      const rawName = String(item?.name || "").trim();
+      const name = slug === "products" && (!rawName || rawName.toLowerCase() === "products") ? "Services" : rawName || "Page";
+      return { name, slug };
     });
     return fromDraft.length ? fromDraft : FALLBACK_NAV;
   }, [sourceNavItems]);
@@ -372,7 +374,7 @@ const useWebsiteTemplateData = () => {
         if (!productImageBySlug[s]) productImageBySlug[s] = url;
       });
     });
-    const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || getMediaSrc(
+    const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || getMediaSrc((Array.isArray(item?.heroImages) ? item.heroImages : [])[0]) || getMediaSrc(item?.heroImage) || getMediaSrc(
       (Array.isArray(item?.subProducts) ? item.subProducts : []).find(
         (sp) => sp?.enabled !== false && getMediaSrc(sp?.images?.[0])
       )?.images?.[0]
@@ -524,7 +526,7 @@ const useWebsiteTemplateData = () => {
   }, [careersJobs]);
   const heroImage = heroImages[heroIndex] || heroImages[0] || "";
   const mainHeroImage = getMediaSrc(draft?.mainHeroImage) || heroImage || "";
-  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.map((item) => getMediaSrc(item)).filter(Boolean) : [];
+  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.filter((item) => item?.enabled !== false).map((item) => getMediaSrc(item)).filter(Boolean) : [];
   const homeGalleryItems = galleryItems.slice(0, 6);
   const draftTestimonials = (Array.isArray(draft?.testimonials) ? draft.testimonials : []).map((item, index) => ({
     key: `draft-${index}`,
