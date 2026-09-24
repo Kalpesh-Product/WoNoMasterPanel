@@ -3,18 +3,20 @@ import { useWebsiteTemplateData, resolveSectionFromSlug } from "./useWebsiteTemp
 import TemplateServicesDropdown from "./TemplateServicesDropdown";
 import { isProductsNavItem } from "./templateNavigation";
 import { getInclusionMeta } from "./inclusionIcons";
+import { buildThemeVars } from "./templateTheme";
 const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap');";
 const HEADING_FONT = "font-['Manrope',ui-sans-serif,system-ui,sans-serif]";
 const FONT = "font-['Work_Sans',ui-sans-serif,system-ui,sans-serif]";
-const TEXT = "rgba(255,255,255,0.72)";
-const HEADING = "#ffffff";
-const MUTED = "rgba(255,255,255,0.55)";
-const WHITE = "#ffffff";
+const TEXT = "color-mix(in srgb, var(--t-text, #ffffff) min(100%, calc(var(--t-k, 1) * 72%)), transparent)";
+const HEADING = "var(--t-text, #ffffff)";
+const MUTED = "color-mix(in srgb, var(--t-text, #ffffff) min(100%, calc(var(--t-k, 1) * 55%)), transparent)";
+const WHITE = "var(--t-text, #ffffff)";
+const ON_ACCENT = "var(--t-accent-text, #ffffff)";
 const BLACK = "#000000";
-const ACCENT = "#D94B4B";
-const ACCENT_GRADIENT = "linear-gradient(135deg, #D94B4B 0%, #D94B4B 100%)";
-const PAGE_BG = "#0A0A12";
-const SURFACE = "#14141c";
+const ACCENT = "var(--t-accent, #D94B4B)";
+const ACCENT_GRADIENT = "linear-gradient(135deg, var(--t-accent, #D94B4B) 0%, var(--t-accent, #D94B4B) 100%)";
+const PAGE_BG = "var(--t-bg, #0A0A12)";
+const SURFACE = "var(--t-surface, #14141c)";
 const WRAP = "mx-auto w-full max-w-7xl px-6 md:px-10";
 const PAGE_WRAP = `${WRAP} py-12 md:py-16`;
 const EYEBROW = `text-[12px] font-semibold uppercase tracking-[0.08em] ${FONT}`;
@@ -30,12 +32,12 @@ const LinedHeading = ({
     </h2>
     <div className="flex-1 border-t" style={{ borderColor: ACCENT }} />
   </div>;
-const CARD = "rounded-[4px] bg-[#14141c] transition duration-150";
+const CARD = "rounded-[4px] bg-[var(--t-surface,#14141c)] transition duration-150";
 const PILL_BUTTON = `inline-flex items-center justify-center rounded-full px-7 py-3 text-[14px] font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${FONT}`;
-const INPUT = "w-full rounded-[4px] border px-3.5 py-2.5 text-[14px] outline-none transition duration-150 bg-[#14141c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1";
-const inputStyle = { borderColor: "rgba(255,255,255,0.18)", color: TEXT };
+const INPUT = "w-full rounded-[4px] border px-3.5 py-2.5 text-[14px] outline-none transition duration-150 bg-[var(--t-surface,#14141c)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1";
+const inputStyle = { borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)", color: TEXT };
 const focusStyle = { outlineColor: ACCENT };
-const inputFocusStyle = { outlineColor: "rgba(255,255,255,0.35)" };
+const inputFocusStyle = { outlineColor: "color-mix(in srgb, var(--t-text, #ffffff) 35%, transparent)" };
 const MailIcon = () => <svg
   viewBox="0 0 24 24"
   className="h-4 w-4"
@@ -138,11 +140,11 @@ const ProductGrid = ({
     type="button"
     onClick={() => onSelect(product)}
     className={`${CARD} group flex flex-col overflow-hidden border text-left hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2`}
-    style={{ borderColor: "rgba(255,255,255,0.12)", ...focusStyle }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)", ...focusStyle }}
   >
           <div
     className="aspect-[4/3] w-full overflow-hidden"
-    style={{ backgroundColor: "#15151f" }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
   >
             {cardImage ? <img
     src={cardImage}
@@ -226,7 +228,7 @@ const getTestimonialsPerView = () => {
 };
 const TestimonialCard = ({ item }) => <div
   className={`${CARD} h-full border p-5`}
-  style={{ borderColor: "rgba(255,255,255,0.12)" }}
+  style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
 >
     <div className="text-[13px]" style={{ color: ACCENT }}>
       {"\u2605".repeat(Number(item?.rating) || 5)}
@@ -313,7 +315,7 @@ const TestimonialsCarousel = ({ testimonials }) => {
     className="h-1.5 rounded-full transition-all"
     style={{
       width: i === dotIndex ? 24 : 6,
-      backgroundColor: i === dotIndex ? ACCENT : "rgba(255,255,255,0.18)"
+      backgroundColor: i === dotIndex ? ACCENT : "color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)"
     }}
   />)}
       </div>
@@ -355,7 +357,7 @@ const FaqList = ({
     return <div
       key={idx}
       className={`${CARD} overflow-hidden border`}
-      style={{ borderColor: "rgba(255,255,255,0.12)" }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
     >
               <button
       type="button"
@@ -365,7 +367,7 @@ const FaqList = ({
     >
                 <span className="flex min-w-0 items-center gap-3">
                   <span
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-white"
+      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-[color:var(--t-accent-text,#ffffff)]"
       style={{ background: ACCENT_GRADIENT }}
     >
                     {idx + 1}
@@ -379,14 +381,14 @@ const FaqList = ({
                 </span>
                 <span
       className="ml-4 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[16px]"
-      style={{ borderColor: "rgba(255,255,255,0.18)", color: MUTED }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)", color: MUTED }}
     >
                   {isOpen ? "\u2212" : "+"}
                 </span>
               </button>
               {isOpen ? <div
       className="border-t px-5 py-4"
-      style={{ borderColor: "rgba(255,255,255,0.10)", backgroundColor: "#101018" }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)", backgroundColor: "var(--t-surface2, #101018)" }}
     >
                   <div className="space-y-2">
                     {blocks.map(
@@ -446,6 +448,7 @@ const Inclusions = ({
 const FreshStudioTemplate = () => {
   const t = useWebsiteTemplateData();
   const { draft } = t;
+  const themeVars = buildThemeVars("fresh-studio", draft?.styleConfig);
   if (!draft) {
     return <div className={`mx-auto max-w-4xl p-6 ${FONT}`}>
         <h2 className="text-lg font-semibold" style={{ color: HEADING }}>
@@ -503,7 +506,7 @@ const FreshStudioTemplate = () => {
   }
   return <div
     className={`min-h-screen ${FONT}`}
-    style={{ backgroundColor: PAGE_BG, color: TEXT }}
+    style={{ ...themeVars, backgroundColor: PAGE_BG, color: TEXT }}
   >
       <style>{FONT_IMPORT}</style>
       {
@@ -513,9 +516,9 @@ const FreshStudioTemplate = () => {
     ref={t.headerRef}
     className="sticky top-0 z-30"
     style={{
-      backgroundColor: "rgba(10,10,18,0.92)",
+      backgroundColor: "color-mix(in srgb, var(--t-bg, #0A0A12) 92%, transparent)",
       backdropFilter: "blur(8px)",
-      borderBottom: "1px solid rgba(255,255,255,0.10)"
+      borderBottom: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)"
     }}
   >
         <div className={`${WRAP} flex items-center justify-between gap-4 py-4`}>
@@ -543,7 +546,7 @@ const FreshStudioTemplate = () => {
     onClick={() => t.setMobileMenuOpen((p) => !p)}
     className="inline-flex h-9 w-9 items-center justify-center rounded-[4px] md:hidden focus-visible:outline focus-visible:outline-2"
     style={{
-      border: "1px solid rgba(255,255,255,0.18)",
+      border: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)",
       ...focusStyle
     }}
     aria-label="Toggle navigation"
@@ -578,7 +581,7 @@ const FreshStudioTemplate = () => {
       key={item.slug}
       type="button"
       onClick={() => t.goToSection(item.slug)}
-      className={`border-b-2 pb-1 text-[14px] font-medium transition duration-150 hover:border-[#D94B4B] focus-visible:outline focus-visible:outline-2 ${isActive ? "border-[#D94B4B]" : "border-transparent"}`}
+      className={`border-b-2 pb-1 text-[14px] font-medium transition duration-150 hover:border-[color:var(--t-accent,#D94B4B)] focus-visible:outline focus-visible:outline-2 ${isActive ? "border-[color:var(--t-accent,#D94B4B)]" : "border-transparent"}`}
       style={{ color: isActive ? ACCENT : TEXT, ...focusStyle }}
     >
                   {item.name}
@@ -587,7 +590,7 @@ const FreshStudioTemplate = () => {
             <button
     type="button"
     onClick={() => window.location.assign("/")}
-    className="rounded-full border border-white/22 px-5 py-2 text-[13px] font-semibold text-white transition hover:border-[#D94B4B] hover:text-[#D94B4B] focus-visible:outline focus-visible:outline-2"
+    className="rounded-full border border-[color:color-mix(in_srgb,var(--t-text,#ffffff)_22%,transparent)] px-5 py-2 text-[13px] font-semibold text-[color:var(--t-text,#ffffff)] transition hover:border-[color:var(--t-accent,#D94B4B)] hover:text-[color:var(--t-accent,#D94B4B)] focus-visible:outline focus-visible:outline-2"
     style={focusStyle}
   >
               Login
@@ -597,7 +600,7 @@ const FreshStudioTemplate = () => {
 
         {t.mobileMenuOpen ? <div
     className={`${WRAP} py-3 md:hidden`}
-    style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}
+    style={{ borderTop: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)" }}
   >
             <div className="flex flex-col">
               {t.navItems.map(
@@ -615,9 +618,9 @@ const FreshStudioTemplate = () => {
       key={`m-${item.slug}`}
       type="button"
       onClick={() => t.goToSection(item.slug)}
-      className={`py-3 text-left text-[14px] font-medium ${t.currentSection === resolveSectionFromSlug(item.slug) ? "text-[#D94B4B]" : ""}`}
+      className={`py-3 text-left text-[14px] font-medium ${t.currentSection === resolveSectionFromSlug(item.slug) ? "text-[color:var(--t-accent,#D94B4B)]" : ""}`}
       style={{
-        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        borderBottom: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 8%, transparent)",
         color: t.currentSection === resolveSectionFromSlug(item.slug) ? ACCENT : TEXT
       }}
     >
@@ -629,7 +632,7 @@ const FreshStudioTemplate = () => {
     onClick={() => window.location.assign("/")}
     className="py-3 text-left text-[14px] font-semibold"
     style={{
-      borderBottom: "1px solid rgba(255,255,255,0.08)",
+      borderBottom: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 8%, transparent)",
       color: ACCENT
     }}
   >
@@ -650,15 +653,15 @@ const FreshStudioTemplate = () => {
                   {index > 0 ? <span
       aria-hidden="true"
       className={FONT}
-      style={{ color: "rgba(255,255,255,0.25)" }}
+      style={{ color: "color-mix(in srgb, var(--t-text, #ffffff) 25%, transparent)" }}
     >
                       &rsaquo;
                     </span> : null}
                   {item.onClick && !isCurrent ? <button
       type="button"
       onClick={item.onClick}
-      className={`${FONT} transition hover:text-[#D94B4B]`}
-      style={{ color: "rgba(255,255,255,0.55)" }}
+      className={`${FONT} transition hover:text-[color:var(--t-accent,#D94B4B)]`}
+      style={{ color: "color-mix(in srgb, var(--t-text, #ffffff) min(100%, calc(var(--t-k, 1) * 55%)), transparent)" }}
     >
                       {item.label}
                     </button> : <span
@@ -721,7 +724,7 @@ const FreshStudioTemplate = () => {
                   <div
     className="absolute inset-0"
     style={{
-      background: "linear-gradient(180deg, rgba(10,10,18,0.35) 0%, rgba(10,10,18,0.55) 55%, rgba(10,10,18,0.82) 100%)"
+      background: "linear-gradient(180deg, color-mix(in srgb, var(--t-bg, #0A0A12) 35%, transparent) 0%, color-mix(in srgb, var(--t-bg, #0A0A12) 55%, transparent) 55%, color-mix(in srgb, var(--t-bg, #0A0A12) 82%, transparent) 100%)"
     }}
   />
                 </div> : null}
@@ -735,17 +738,17 @@ const FreshStudioTemplate = () => {
                   </h1>
                   <p
     className="max-w-md text-[15px] leading-relaxed"
-    style={{ color: "rgba(255,255,255,0.62)" }}
+    style={{ color: "color-mix(in srgb, var(--t-text, #ffffff) min(100%, calc(var(--t-k, 1) * 62%)), transparent)" }}
   >
                     {draft?.subTitle || ""}
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <button
     type="button"
-    className="rounded-full px-7 py-3 text-[14px] font-semibold text-white transition duration-200 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+    className="rounded-full px-7 py-3 text-[14px] font-semibold text-[color:var(--t-accent-text,#ffffff)] transition duration-200 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
     style={{
-      background: "linear-gradient(135deg, #D94B4B 0%, #D94B4B 100%)",
-      outlineColor: "#D94B4B"
+      background: "linear-gradient(135deg, var(--t-accent, #D94B4B) 0%, var(--t-accent, #D94B4B) 100%)",
+      outlineColor: "var(--t-accent, #D94B4B)"
     }}
   >
                       {draft?.ctaText || "Get in touch"}
@@ -753,8 +756,8 @@ const FreshStudioTemplate = () => {
                     <button
     type="button"
     onClick={() => t.goToSection("contact")}
-    className="rounded-full bg-white px-7 py-3 text-[14px] font-semibold transition duration-200 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-    style={{ color: "#0A0A12", outlineColor: WHITE }}
+    className="rounded-full bg-[var(--t-text,#ffffff)] px-7 py-3 text-[14px] font-semibold transition duration-200 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+    style={{ color: "var(--t-bg, #0A0A12)", outlineColor: WHITE }}
   >
                       Contact us
                     </button>
@@ -765,12 +768,12 @@ const FreshStudioTemplate = () => {
                   <div
     className="pointer-events-none absolute -inset-6 rounded-[40px] opacity-50 blur-3xl md:-inset-10"
     style={{
-      background: "radial-gradient(circle, #D94B4B, transparent 65%)"
+      background: "radial-gradient(circle, var(--t-accent, #D94B4B), transparent 65%)"
     }}
   />
                   <div
     className="relative aspect-[4/3] w-full overflow-hidden rounded-[28px] md:aspect-square md:w-[420px] md:rounded-[32px]"
-    style={{ backgroundColor: "#16161f" }}
+    style={{ backgroundColor: "var(--t-surface2, #16161f)" }}
   >
                     {
     /* Fixed featured shot — distinct from the rotating
@@ -783,7 +786,7 @@ const FreshStudioTemplate = () => {
   /> : <div
     className="pointer-events-none absolute inset-0"
     style={{
-      background: "radial-gradient(circle at 30% 25%, rgba(217,75,75,1), transparent 55%)"
+      background: "radial-gradient(circle at 30% 25%, var(--t-accent, #D94B4B), transparent 55%)"
     }}
   />}
                   </div>
@@ -819,7 +822,7 @@ const FreshStudioTemplate = () => {
     type="button"
     onClick={() => t.openGalleryViewer(idx)}
     className="aspect-square overflow-hidden rounded-[4px] focus-visible:outline focus-visible:outline-2"
-    style={{ backgroundColor: "#15151f", ...focusStyle }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)", ...focusStyle }}
   >
                     <img
     src={src}
@@ -834,7 +837,7 @@ const FreshStudioTemplate = () => {
     onClick={() => t.goToSection("gallery")}
     className="rounded-full px-6 py-2.5 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2"
     style={{
-      border: "1px solid rgba(255,255,255,0.22)",
+      border: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 22%, transparent)",
       color: HEADING,
       ...focusStyle
     }}
@@ -855,7 +858,7 @@ const FreshStudioTemplate = () => {
     onClick={t.openReviewModal}
     className="rounded-full px-6 py-2.5 text-[13px] font-semibold focus-visible:outline focus-visible:outline-2"
     style={{
-      border: "1px solid rgba(255,255,255,0.22)",
+      border: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 22%, transparent)",
       color: HEADING,
       ...focusStyle
     }}
@@ -875,7 +878,7 @@ const FreshStudioTemplate = () => {
   >
                   <span
     className={EYEBROW}
-    style={{ color: "rgba(255,255,255,0.85)" }}
+    style={{ color: "color-mix(in srgb, var(--t-text, #ffffff) min(100%, calc(var(--t-k, 1) * 85%)), transparent)" }}
   >
                     Contact
                   </span>
@@ -889,7 +892,7 @@ const FreshStudioTemplate = () => {
                 <div
     className="pointer-events-none absolute inset-0"
     style={{
-      background: "radial-gradient(circle at 85% 30%, rgba(255,255,255,0.10), transparent 45%)"
+      background: "radial-gradient(circle at 85% 30%, color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent), transparent 45%)"
     }}
   />
               </section>
@@ -905,11 +908,11 @@ const FreshStudioTemplate = () => {
     loading="lazy"
   /> : <div
     className="h-[320px] w-full rounded-[4px] md:h-[420px]"
-    style={{ backgroundColor: "#15151f" }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
   />}
                   <div
     className={`${CARD} border flex flex-col justify-center gap-4 p-7`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
                     {draft?.companyLogo ? <img
     src={draft.companyLogo}
@@ -969,7 +972,7 @@ const FreshStudioTemplate = () => {
               {t.aboutNarrativeBlocks.map((item) => <div
     key={item.title}
     className={`${CARD} border p-5`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
                   <h3
     className="text-[13px] font-semibold uppercase tracking-[0.06em]"
@@ -1000,7 +1003,7 @@ const FreshStudioTemplate = () => {
       className="h-full min-h-[280px] w-full rounded-[4px] object-cover md:min-h-[420px]"
     /> : <div
       className="h-full min-h-[280px] w-full rounded-[4px] md:min-h-[420px]"
-      style={{ backgroundColor: "#15151f" }}
+      style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
     />}
                     </div>
                     <div className="flex w-full flex-col justify-center md:w-1/2">
@@ -1038,7 +1041,7 @@ const FreshStudioTemplate = () => {
       className="aspect-square w-full rounded-[4px] object-cover"
     /> : <div
       className="aspect-square w-full rounded-[4px]"
-      style={{ backgroundColor: "#15151f" }}
+      style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
     />}
                       {card?.title ? <h5
       className={`mt-3 text-[15px] font-bold ${HEADING_FONT}`}
@@ -1087,7 +1090,7 @@ const FreshStudioTemplate = () => {
       className="h-[300px] w-full rounded-[4px] object-cover md:h-[520px]"
     /> : <div
       className="h-[300px] w-full rounded-[4px] md:h-[520px]"
-      style={{ backgroundColor: "#15151f" }}
+      style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
     />}
                     </div>
                     <div className="flex flex-col md:h-[520px]">
@@ -1122,7 +1125,7 @@ const FreshStudioTemplate = () => {
                       <div className="shrink-0">
                         {t.leadSubmitted ? <div
       className={`${CARD} flex h-full min-h-[220px] flex-col items-center justify-center gap-3 border p-6 text-center`}
-      style={{ borderColor: "rgba(255,255,255,0.12)" }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
     >
                             <p
       className="text-[16px] font-semibold"
@@ -1139,7 +1142,7 @@ const FreshStudioTemplate = () => {
                           </div> : <form
       onSubmit={t.submitLeadForm}
       className={`${CARD} flex flex-col gap-3 border p-5`}
-      style={{ borderColor: "rgba(255,255,255,0.12)" }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
     >
                             <span
       className={EYEBROW}
@@ -1162,7 +1165,7 @@ const FreshStudioTemplate = () => {
       style={{ ...inputStyle, ...inputFocusStyle }}
     />)}
                             </div>
-                            {t.leadSubmitError ? <p className="text-[12px] text-[#D94B4B]">
+                            {t.leadSubmitError ? <p className="text-[12px] text-[color:var(--t-accent,#D94B4B)]">
                                 {t.leadSubmitError}
                               </p> : null}
                             <button
@@ -1171,7 +1174,7 @@ const FreshStudioTemplate = () => {
       className={`${PILL_BUTTON} mt-1 disabled:opacity-50`}
       style={{
         background: ACCENT_GRADIENT,
-        color: WHITE,
+        color: ON_ACCENT,
         ...focusStyle
       }}
     >
@@ -1196,7 +1199,7 @@ const FreshStudioTemplate = () => {
   }
               {t.selectedProductPage?.heroEnabled !== false ? <section
     className="relative h-[62svh] min-h-[450px] overflow-hidden md:h-[84vh] md:min-h-[550px]"
-    style={{ backgroundColor: "#15151f" }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
   >
                   {t.selectedProductHeroImage ? <img
     src={t.selectedProductHeroImage}
@@ -1220,7 +1223,7 @@ const FreshStudioTemplate = () => {
                       {t.selectedProductPage?.heroButtonText ? <button
     type="button"
     className={`${PILL_BUTTON} mt-4 md:mt-6`}
-    style={{ background: ACCENT_GRADIENT, color: WHITE }}
+    style={{ background: ACCENT_GRADIENT, color: ON_ACCENT }}
   >
                           {String(
     t.selectedProductPage.heroButtonText
@@ -1260,7 +1263,7 @@ const FreshStudioTemplate = () => {
                       {t.menuItems.map((item, idx) => <div
     key={idx}
     className={`${CARD} border p-4`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
                           {item?.image ? <img
     src={item.image}
@@ -1324,7 +1327,7 @@ const FreshStudioTemplate = () => {
     type="button"
     onClick={() => t.openGalleryViewer(idx)}
     className="aspect-square overflow-hidden rounded-[4px] focus-visible:outline focus-visible:outline-2"
-    style={{ backgroundColor: "#15151f", ...focusStyle }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)", ...focusStyle }}
   >
                 <img
     src={src}
@@ -1375,7 +1378,7 @@ const FreshStudioTemplate = () => {
             </div>
             <div
     className={`${CARD} border p-6`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
               <h3
     className="text-center text-[18px] font-semibold md:text-[20px]"
@@ -1434,7 +1437,7 @@ const FreshStudioTemplate = () => {
     className={`${PILL_BUTTON} disabled:opacity-50`}
     style={{
       background: ACCENT_GRADIENT,
-      color: WHITE,
+      color: ON_ACCENT,
       ...focusStyle
     }}
   >
@@ -1470,7 +1473,7 @@ const FreshStudioTemplate = () => {
     return <div
       key={dept.department}
       className={`${CARD} border`}
-      style={{ borderColor: "rgba(255,255,255,0.12)" }}
+      style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
     >
                         <button
       type="button"
@@ -1495,7 +1498,7 @@ const FreshStudioTemplate = () => {
       key={idx}
       type="button"
       onClick={() => t.openCareersJob(job)}
-      className="flex items-center justify-between rounded-[4px] px-3 py-2.5 text-left transition hover:bg-white/5 focus-visible:outline focus-visible:outline-2"
+      className="flex items-center justify-between rounded-[4px] px-3 py-2.5 text-left transition hover:bg-[color-mix(in_srgb,var(--t-text,#ffffff)_5%,transparent)] focus-visible:outline focus-visible:outline-2"
       style={focusStyle}
     >
                                 <p className="text-[13.5px] font-medium">
@@ -1542,7 +1545,7 @@ const FreshStudioTemplate = () => {
               </h2>
               {!t.careersDirectApply ? <div
     className="mt-6 flex gap-6"
-    style={{ borderBottom: "1px solid rgba(255,255,255,0.10)" }}
+    style={{ borderBottom: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)" }}
   >
                   <button
     type="button"
@@ -1600,7 +1603,7 @@ const FreshStudioTemplate = () => {
                         {t.careersApplyJob.softSkills.split(/\.\s+/).map((s) => s.replace(/\.$/, "").trim()).filter(Boolean).map((point, i) => <li key={i}>{point}</li>)}
                       </ul>
                     </div> : null}
-                  <div className="mt-2 pt-6 text-center" style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+                  <div className="mt-2 pt-6 text-center" style={{ borderTop: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)" }}>
                     {draft?.companyLogo ? <img
     src={draft.companyLogo}
     alt={draft.companyName || "Company"}
@@ -1620,7 +1623,7 @@ const FreshStudioTemplate = () => {
               {t.careersDetailTab === "apply" || t.careersDirectApply ? <div className="mt-8">
                   {t.careersApplySubmitted ? <div
     className={`${CARD} border p-6 text-center`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
                       <p
     className="text-[14px] font-semibold"
@@ -1634,7 +1637,7 @@ const FreshStudioTemplate = () => {
                     </div> : <form
     onSubmit={t.submitCareersApplication}
     className={`${CARD} border grid grid-cols-1 gap-3 p-6 md:grid-cols-2 md:p-7`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
                       <input
     type="text"
@@ -1725,9 +1728,9 @@ const FreshStudioTemplate = () => {
                         <span
     className="flex shrink-0 items-center px-3 text-[13px]"
     style={{
-      borderRight: "1px solid rgba(255,255,255,0.18)",
+      borderRight: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)",
       color: MUTED,
-      backgroundColor: "#1c1c26"
+      backgroundColor: "var(--t-surface2, #1c1c26)"
     }}
   >
                           {t.careersApplyDialCode || "+ --"}
@@ -1746,14 +1749,14 @@ const FreshStudioTemplate = () => {
                       </div>
                       <label
     className="flex cursor-pointer items-center justify-between rounded-[4px] border border-dashed px-3 py-2.5 text-[13px]"
-    style={{ borderColor: "rgba(255,255,255,0.22)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 22%, transparent)" }}
   >
                         <span>
                           {t.careersResumeFile ? t.careersResumeFile.name : "Upload resume / CV *"}
                         </span>
                         <span
     className="rounded-[3px] border px-2 py-1 text-[11px] uppercase tracking-wider"
-    style={{ borderColor: "rgba(255,255,255,0.18)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)" }}
   >
                           Choose file
                         </span>
@@ -1792,7 +1795,7 @@ const FreshStudioTemplate = () => {
       style={{ ...inputStyle, ...inputFocusStyle }}
     />
   )}
-                      {t.careersApplyError ? <p className="md:col-span-2 text-[12px] text-[#D94B4B]">
+                      {t.careersApplyError ? <p className="md:col-span-2 text-[12px] text-[color:var(--t-accent,#D94B4B)]">
                           {t.careersApplyError}
                         </p> : null}
                       <button
@@ -1801,7 +1804,7 @@ const FreshStudioTemplate = () => {
     className={`${PILL_BUTTON} md:col-span-2 disabled:opacity-50`}
     style={{
       background: ACCENT_GRADIENT,
-      color: WHITE,
+      color: ON_ACCENT,
       ...focusStyle
     }}
   >
@@ -1829,11 +1832,11 @@ const FreshStudioTemplate = () => {
     loading="lazy"
   /> : <div
     className="h-[300px] w-full rounded-[4px] md:h-[420px]"
-    style={{ backgroundColor: "#15151f" }}
+    style={{ backgroundColor: "var(--t-surface2, #15151f)" }}
   />}
             <div
     className={`${CARD} border flex flex-col p-7`}
-    style={{ borderColor: "rgba(255,255,255,0.12)" }}
+    style={{ borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)" }}
   >
               {draft?.companyLogo ? <img
     src={draft.companyLogo}
@@ -1910,7 +1913,7 @@ const FreshStudioTemplate = () => {
       {
     /* Footer */
   }
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+      <footer style={{ borderTop: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)" }}>
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-14 text-center md:grid-cols-[1.35fr_1fr_1fr_1fr] md:px-10 md:text-left">
           <div>
             {draft?.companyLogo ? <img
@@ -1938,9 +1941,9 @@ const FreshStudioTemplate = () => {
     key={social.key}
     {...linkProps}
     aria-label={SOCIAL_LABEL[social.key] || social.key}
-    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition focus-visible:outline focus-visible:outline-2 ${social.href ? "hover:bg-white hover:text-[#0A0A12]" : "cursor-default"}`}
+    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition focus-visible:outline focus-visible:outline-2 ${social.href ? "hover:bg-[var(--t-text,#ffffff)] hover:text-[color:var(--t-bg,#0A0A12)]" : "cursor-default"}`}
     style={{
-      borderColor: "rgba(255,255,255,0.18)",
+      borderColor: "color-mix(in srgb, var(--t-text, #ffffff) 18%, transparent)",
       color: WHITE,
       ...focusStyle
     }}
@@ -1989,7 +1992,7 @@ const FreshStudioTemplate = () => {
     className="hover:opacity-70"
   >
                       {page?.name || page?.heading || "Service"}
-                    </button>) : <p style={{ color: "rgba(255,255,255,0.35)" }}>
+                    </button>) : <p style={{ color: "color-mix(in srgb, var(--t-text, #ffffff) 35%, transparent)" }}>
                     No products listed
                   </p>}
               </div>
@@ -2013,7 +2016,7 @@ const FreshStudioTemplate = () => {
         <div
     className="px-6 py-4 text-center text-[12px]"
     style={{
-      borderTop: "1px solid rgba(255,255,255,0.10)",
+      borderTop: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 10%, transparent)",
       color: MUTED
     }}
   >
@@ -2029,7 +2032,7 @@ const FreshStudioTemplate = () => {
     onClick={t.closeLeadModal}
   >
           <div
-    className="w-full max-w-md rounded-[4px] bg-[#14141c] p-8 shadow-xl"
+    className="w-full max-w-md rounded-[4px] bg-[var(--t-surface,#14141c)] p-8 shadow-xl"
     onClick={(e) => e.stopPropagation()}
   >
             <div className="flex items-start justify-between">
@@ -2070,7 +2073,7 @@ const FreshStudioTemplate = () => {
     className={INPUT}
     style={{ ...inputStyle, ...inputFocusStyle }}
   />)}
-                {t.leadSubmitError ? <p className="text-[12px] text-[#D94B4B]">
+                {t.leadSubmitError ? <p className="text-[12px] text-[color:var(--t-accent,#D94B4B)]">
                     {t.leadSubmitError}
                   </p> : null}
                 <button
@@ -2079,7 +2082,7 @@ const FreshStudioTemplate = () => {
     className={`${PILL_BUTTON} mt-2 disabled:opacity-50`}
     style={{
       background: ACCENT_GRADIENT,
-      color: WHITE,
+      color: ON_ACCENT,
       ...focusStyle
     }}
   >
@@ -2097,7 +2100,7 @@ const FreshStudioTemplate = () => {
     onClick={() => t.setReviewModalOpen(false)}
   >
           <div
-    className="w-full max-w-md rounded-[4px] bg-[#14141c] p-8 shadow-xl"
+    className="w-full max-w-md rounded-[4px] bg-[var(--t-surface,#14141c)] p-8 shadow-xl"
     onClick={(e) => e.stopPropagation()}
   >
             <div className="flex items-start justify-between">
@@ -2154,7 +2157,7 @@ const FreshStudioTemplate = () => {
     className={INPUT}
     style={{ ...inputStyle, ...inputFocusStyle }}
   />
-              {t.reviewSubmitError ? <p className="text-[12px] text-[#D94B4B]">
+              {t.reviewSubmitError ? <p className="text-[12px] text-[color:var(--t-accent,#D94B4B)]">
                   {t.reviewSubmitError}
                 </p> : null}
               <button
@@ -2163,7 +2166,7 @@ const FreshStudioTemplate = () => {
     className={`${PILL_BUTTON} mt-2 disabled:opacity-50`}
     style={{
       background: ACCENT_GRADIENT,
-      color: WHITE,
+      color: ON_ACCENT,
       ...focusStyle
     }}
   >
@@ -2174,8 +2177,8 @@ const FreshStudioTemplate = () => {
         </div> : null}
 
       {t.successPopup.open ? <div
-    className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[4px] bg-[#14141c] px-5 py-3 text-[13px] shadow-lg"
-    style={{ border: "1px solid rgba(255,255,255,0.12)", color: HEADING }}
+    className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-[4px] bg-[var(--t-surface,#14141c)] px-5 py-3 text-[13px] shadow-lg"
+    style={{ border: "1px solid color-mix(in srgb, var(--t-text, #ffffff) 12%, transparent)", color: HEADING }}
   >
           {t.successPopup.message}
         </div> : null}

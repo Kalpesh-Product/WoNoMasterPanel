@@ -53,7 +53,7 @@ export const TEMPLATE_REGISTRY = {
     id: "emerald-studio",
     name: "Emerald Studio",
     description:
-      "Dark emerald canvas, amber gold accents, Fraunces serif headings — elegant and bold.",
+      "Light steel-blue canvas, frosted panels, white accents and Fraunces serif headings — calm, clean and modern.",
     component: EmeraldStudioTemplate,
     swatch: {
       bg: "#052e21",
