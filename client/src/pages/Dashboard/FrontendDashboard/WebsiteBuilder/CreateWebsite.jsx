@@ -1252,7 +1252,7 @@ const CreateWebsite = () => {
             menuItems: Array.isArray(found?.menuItems) ? found.menuItems : Array.isArray(draftData?.menuItems) ? draftData.menuItems : [],
             rooms: Array.isArray(found?.rooms) ? found.rooms : Array.isArray(draftData?.rooms) ? draftData.rooms : [],
             meetingRooms: Array.isArray(found?.meetingRooms) ? found.meetingRooms : Array.isArray(draftData?.meetingRooms) ? draftData.meetingRooms : Array.isArray(found?.rooms) ? found.rooms : Array.isArray(draftData?.rooms) ? draftData.rooms : [],
-            coLivingRooms: Array.isArray(draftData?.coLivingRooms) ? draftData.coLivingRooms : [],
+            coLivingRooms: Array.isArray(found?.coLivingRooms) ? found.coLivingRooms : Array.isArray(draftData?.coLivingRooms) ? draftData.coLivingRooms : [],
             packages: Array.isArray(found?.packages) ? found.packages : Array.isArray(draftData?.packages) ? draftData.packages : [],
             dorms: Array.isArray(found?.dorms) ? found.dorms : Array.isArray(draftData?.dorms) ? draftData.dorms : [],
             galleryTitle: String(draftData?.galleryTitle || found?.galleryTitle || "").trim(),
