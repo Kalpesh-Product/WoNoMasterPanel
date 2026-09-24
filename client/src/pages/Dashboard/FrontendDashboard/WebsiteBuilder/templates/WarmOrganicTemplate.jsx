@@ -1781,17 +1781,19 @@ const WarmOrganicTemplate = () => {
               </p> : null}
             {t.footerAddress ? <p className="mt-1 text-[13px] opacity-70">{t.footerAddress}</p> : null}
             {t.footerSocialLinks.length ? <div className="mt-4 flex items-center justify-center gap-3 md:justify-start">
-                {t.footerSocialLinks.map((social) => <a
+                {t.footerSocialLinks.map((social) => {
+                  const Tag = social.href ? "a" : "span";
+                  const linkProps = social.href ? { href: social.href, target: "_blank", rel: "noreferrer" } : { role: "img" };
+                  return <Tag
     key={social.key}
-    href={social.href}
-    target="_blank"
-    rel="noreferrer"
+    {...linkProps}
     aria-label={SOCIAL_LABEL[social.key] || social.key}
-    className="inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:opacity-75"
+    className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${social.href ? "hover:opacity-75" : "cursor-default"}`}
     style={{ backgroundColor: `${RUST}15`, color: RUST }}
   >
                     {SOCIAL_ICON[social.key]}
-                  </a>)}
+                  </Tag>;
+                })}
               </div> : null}
           </div>
           <div>

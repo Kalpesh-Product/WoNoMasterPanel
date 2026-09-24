@@ -1931,13 +1931,14 @@ const FreshStudioTemplate = () => {
                 {t.footerAddress}
               </p> : null}
             {t.footerSocialLinks.length ? <div className="mt-4 flex items-center justify-center gap-3 md:justify-start">
-                {t.footerSocialLinks.map((social) => <a
+                {t.footerSocialLinks.map((social) => {
+                  const Tag = social.href ? "a" : "span";
+                  const linkProps = social.href ? { href: social.href, target: "_blank", rel: "noreferrer" } : { role: "img" };
+                  return <Tag
     key={social.key}
-    href={social.href}
-    target="_blank"
-    rel="noreferrer"
+    {...linkProps}
     aria-label={SOCIAL_LABEL[social.key] || social.key}
-    className="inline-flex h-9 w-9 items-center justify-center rounded-full border transition hover:bg-white hover:text-[#0A0A12] focus-visible:outline focus-visible:outline-2"
+    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition focus-visible:outline focus-visible:outline-2 ${social.href ? "hover:bg-white hover:text-[#0A0A12]" : "cursor-default"}`}
     style={{
       borderColor: "rgba(255,255,255,0.18)",
       color: WHITE,
@@ -1945,7 +1946,8 @@ const FreshStudioTemplate = () => {
     }}
   >
                     {SOCIAL_ICON[social.key]}
-                  </a>)}
+                  </Tag>;
+                })}
               </div> : null}
           </div>
           <div>
