@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { api } from "../../../../utils/axios";
 import { Country, State, City } from "country-state-city";
+import { buildClassicThemeCss } from "./templates/classicTheme";
 const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 const normalizeSlug = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, "-");
 const FALLBACK_NAV = [
@@ -1271,7 +1272,8 @@ const ClassicTemplate = () => {
   const selectedProductContentItems = selectedProductPage ? getProductContentItems(draft, selectedProductPage?.slug || selectedProductPage?.name || "") : [];
   const resolvedHomeHeroImage = heroImage || galleryItems[0] || "";
   const showHeroCarousel = heroImages.length > 1;
-  return <div className="min-h-screen bg-[#e9e9e9] text-[#1f1f1f]">
+  return <div className="classic-scope min-h-screen bg-[#e9e9e9] text-[#1f1f1f]">
+      <style>{buildClassicThemeCss(draft?.styleConfig)}</style>
       <header ref={headerRef} className="sticky top-0 z-30 border-b border-slate-300 bg-[#ffffff] shadow-sm">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-0 md:py-3">
           <button
