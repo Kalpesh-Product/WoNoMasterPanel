@@ -169,7 +169,7 @@ const FigmaProductGrid = ({
           <h3
     className={`mb-2 text-lg font-semibold text-stone-100 ${HEADING_FONT}`}
   >
-            {product?.name || product?.title || product?.heading || "Service"}
+            {product?.homeCardHeading || product?.heading || product?.name || product?.title || "Service"}
           </h3>
           {description ? <p className="line-clamp-2 text-sm leading-relaxed text-stone-400">
               {description}
@@ -954,9 +954,11 @@ const EmeraldStudioTemplate = () => {
           <section className="pt-20 pb-20 px-6 bg-[#004f3b]/20">
             <div className="max-w-7xl mx-auto text-center">
               <LinedHeading title={String(draft?.aboutTitle || "").trim() || "About Our Vision"} className="justify-center" />
-              {t.aboutIntroBlocks.length > 0 ? <p className="text-stone-400 text-lg max-w-2xl mx-auto leading-relaxed">
-                  {t.aboutIntroBlocks[0]}
-                </p> : null}
+              {t.aboutIntroBlocks.length > 0 ? <div className="max-w-2xl mx-auto space-y-4">
+                  {t.aboutIntroBlocks.map((paragraph, idx) => <p key={idx} className="text-stone-400 text-lg leading-relaxed">
+                      {paragraph}
+                    </p>)}
+                </div> : null}
             </div>
             {t.aboutNarrativeBlocks.length ? <div className="mt-14 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                 {t.aboutNarrativeBlocks.map((item, i) => <div

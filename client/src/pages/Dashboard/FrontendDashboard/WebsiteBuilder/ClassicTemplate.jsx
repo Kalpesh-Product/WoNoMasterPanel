@@ -716,7 +716,7 @@ const ClassicTemplate = () => {
           if (!productImageBySlug[s]) productImageBySlug[s] = url;
         });
       });
-      const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || productImageBySlug[normalizeSlug(item?.slug || item?.name || "")] || getMediaSrc(products?.[index]?.images?.[0]) || getMediaSrc(products?.[index]?.files?.[0]) || "";
+      const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || getMediaSrc((Array.isArray(item?.heroImages) ? item.heroImages : [])[0]) || getMediaSrc(item?.heroImage) || productImageBySlug[normalizeSlug(item?.slug || item?.name || "")] || getMediaSrc(products?.[index]?.images?.[0]) || getMediaSrc(products?.[index]?.files?.[0]) || "";
       const dropdownPages = Array.isArray(draft?.productDropdownPages) ? draft.productDropdownPages : [];
       if (dropdownPages.length > 0) {
         return dropdownPages.filter((item) => item?.enabled !== false).map((item, index) => ({
@@ -984,7 +984,7 @@ const ClassicTemplate = () => {
     }));
   }, [careersJobs]);
   const heroImage = heroImages[heroIndex] || heroImages[0] || "";
-  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.map((item) => getMediaSrc(item)).filter(Boolean) : [];
+  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.filter((item) => item?.enabled !== false).map((item) => getMediaSrc(item)).filter(Boolean) : [];
   const homeGalleryItems = galleryItems.slice(0, 6);
   const draftTestimonials = (Array.isArray(draft?.testimonials) ? draft.testimonials : []).map((item, index) => ({
     key: `draft-${index}`,

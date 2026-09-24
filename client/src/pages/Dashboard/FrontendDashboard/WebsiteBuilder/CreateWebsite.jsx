@@ -779,6 +779,10 @@ const CreateWebsite = () => {
   const pendingDraftSnapshotRef = useRef("");
   const uploadedDraftFileKeysRef = useRef(/* @__PURE__ */ new Set());
   const pendingDraftFileKeysRef = useRef([]);
+  // True while a draft-save request is on the wire; blocks a second autosave
+  // (which would re-send the same not-yet-marked-uploaded files and race the
+  // first on the same document, failing as "Draft save failed").
+  const draftSaveInFlightRef = useRef(false);
   const hasRedirectedToEditRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
   const isCheckingWebsiteInFlightRef = useRef(false);
@@ -2063,6 +2067,9 @@ const CreateWebsite = () => {
       pendingDraftSnapshotRef.current = "";
       pendingDraftFileKeysRef.current = [];
       setDraftStatus("error");
+    },
+    onSettled: () => {
+      draftSaveInFlightRef.current = false;
     }
   });
   useEffect(() => {
@@ -2077,6 +2084,7 @@ const CreateWebsite = () => {
     const snapshot = JSON.stringify(draftData);
     if (snapshot === lastDraftSnapshotRef.current) return;
     const timeoutId = window.setTimeout(() => {
+      if (draftSaveInFlightRef.current) return;
       setDraftStatus("saving");
       pendingDraftSnapshotRef.current = snapshot;
       const fd = new FormData();
@@ -2182,6 +2190,7 @@ const CreateWebsite = () => {
         if (file instanceof File) appendDraftFileOnce(`logoCarouselLogos`, file);
       });
       pendingDraftFileKeysRef.current = pendingFileKeys;
+      draftSaveInFlightRef.current = true;
       saveWebsiteDraft(fd);
     }, 1200);
     return () => window.clearTimeout(timeoutId);
@@ -3418,7 +3427,7 @@ const CreateWebsite = () => {
       name="gallery"
       label="Gallery Images"
       maxFiles={40}
-      allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
       id="gallery-page-synced"
       enabledToggle
     />}
@@ -3770,7 +3779,7 @@ const CreateWebsite = () => {
       name="heroImages"
       label="Carousel Images"
       maxFiles={5}
-      allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
       id="heroImages"
     />}
   />
@@ -4364,7 +4373,7 @@ const CreateWebsite = () => {
       name="gallery"
       label="Gallery Images"
       maxFiles={40}
-      allowedExtensions={["jpg", "jpeg", "png", "pdf", "webp"]}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
       id="gallery"
       enabledToggle
     />}
@@ -4521,7 +4530,7 @@ const CreateWebsite = () => {
       {...field}
       label="Logo Images"
       maxFiles={12}
-      allowedExtensions={["jpg", "jpeg", "png", "webp", "svg"]}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
       id="logo-carousel-logos-persistent"
     />}
   />
