@@ -3,6 +3,7 @@ import { useWebsiteTemplateData, resolveSectionFromSlug } from "./useWebsiteTemp
 import TemplateServicesDropdown from "./TemplateServicesDropdown";
 import { isProductsNavItem } from "./templateNavigation";
 import { getInclusionMeta } from "./inclusionIcons";
+import { SOCIAL_ICON } from "./socialIcons";
 import professionalTeamFallback from "../../../../../assets/WONO_images/img/website-builder/emerald-studio-professional-team.png";
 import exploreArrow from "../../../../../assets/WONO_images/img/website-builder/emerald-studio-arrow.svg";
 const FONT_IMPORT = "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=Outfit:wght@300;400;500;600;700&display=swap');";
@@ -1169,7 +1170,7 @@ const EmeraldStudioTemplate = () => {
                     <h1 className={`text-3xl md:text-5xl font-semibold text-stone-100 ${HEADING_FONT}`}>
                       {t.selectedProductPage?.heroHeading || t.selectedProductPage?.name}
                     </h1>
-                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-stone-400 text-base">
+                    {t.selectedProductPage?.heroSubHeading ? <p className="mx-auto mt-1 max-w-xl text-white text-base">
                         {t.selectedProductPage.heroSubHeading}
                       </p> : null}
                     {t.selectedProductPage?.heroButtonText ? <button
@@ -1825,16 +1826,19 @@ const EmeraldStudioTemplate = () => {
             {t.footerAddress ? <p className="text-stone-500 text-sm leading-relaxed mt-1">
                 {t.footerAddress}
               </p> : null}
-            {t.footerSocialLinks.length ? <div className="flex gap-4 mt-4 md:justify-start justify-center">
-                {t.footerSocialLinks.map((social) => <a
+            {t.footerSocialLinks.length ? <div className="flex items-center gap-3 mt-4 md:justify-start justify-center">
+                {t.footerSocialLinks.map((social) => {
+                  const Tag = social.href ? "a" : "span";
+                  const linkProps = social.href ? { href: social.href, target: "_blank", rel: "noreferrer" } : { role: "img" };
+                  return <Tag
     key={social.key}
-    href={social.href}
-    target="_blank"
-    rel="noreferrer"
-    className="text-stone-600 text-xs hover:text-amber-400 transition-colors"
+    {...linkProps}
+    aria-label={SOCIAL_LABEL[social.key] || social.key}
+    className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-amber-400/50 text-amber-400 transition-colors ${social.href ? "hover:bg-amber-400 hover:text-emerald-950" : "cursor-default"}`}
   >
-                    {SOCIAL_LABEL[social.key] || social.key}
-                  </a>)}
+                    {SOCIAL_ICON[social.key]}
+                  </Tag>;
+                })}
               </div> : null}
           </div>
           <div>

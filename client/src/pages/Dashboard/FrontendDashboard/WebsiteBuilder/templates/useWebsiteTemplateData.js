@@ -103,6 +103,16 @@ const getSocialHref = (key, link) => {
   }
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
 };
+const isUsableSocialHref = (key, href) => {
+  if (!href) return false;
+  if (key === "whatsapp") return /^https:\/\/wa\.me\/\d{7,}$/.test(href);
+  try {
+    const url = new URL(href);
+    return /^https?:$/.test(url.protocol) && /\.[a-z]{2,}$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+};
 const getCareersJobTitle = (job) => String(job?.title || job?.designation || job?.name || "Untitled Role").trim();
 const formatCareersMetaValue = (value, mode = "generic") => {
   const raw = String(value || "").trim().toLowerCase();
@@ -593,8 +603,7 @@ const useWebsiteTemplateData = () => {
     const entry = draft?.socials?.[key];
     if (entry?.enabled !== true) return null;
     const href = getSocialHref(key, entry?.link);
-    if (!href) return null;
-    return { key, href };
+    return { key, href: isUsableSocialHref(key, href) ? href : "" };
   }).filter(Boolean);
   const resolvedHomeHeroImage = heroImage || galleryItems[0] || "";
   const showHeroCarousel = heroImages.length > 1;
