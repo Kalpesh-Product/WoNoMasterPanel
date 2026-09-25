@@ -11,7 +11,9 @@ const verifyJwtOptional = (req, res, next) => {
   const token = authorization.split(" ")[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (!err && decoded?.userInfo) {
-      req.user = decoded.userInfo.userId;
+      // Admin access tokens normally carry Mongoose's `_id`; retain the
+      // legacy `userId` fallback for already-issued tokens.
+      req.user = decoded.userInfo.userId || decoded.userInfo._id || decoded.userInfo.id;
       req.roles = decoded.userInfo.roles;
       req.company = decoded.userInfo.company;
       req.departments = decoded.userInfo.departments;

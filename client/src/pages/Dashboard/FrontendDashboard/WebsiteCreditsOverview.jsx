@@ -52,20 +52,20 @@ const WebsiteCreditsOverview = () => {
   });
 
   const { data: allLedger = [] } = useQuery({
-    queryKey: ["website-credit-ledger-all"],
+    queryKey: ["website-credit-ledger-all", selectedYear, selectedMonth],
     queryFn: async () => {
-      const response = await axiosPrivate.get("/api/website-credits/ledger");
+      const params = new URLSearchParams({
+        startDate: dayjs().year(selectedYear).month(selectedMonth).startOf("month").toISOString(),
+        endDate: dayjs().year(selectedYear).month(selectedMonth).endOf("month").toISOString(),
+      });
+      const response = await axiosPrivate.get(`/api/website-credits/ledger?${params.toString()}`);
       return Array.isArray(response.data) ? response.data : [];
     },
   });
 
   const rangeTotals = useMemo(() => {
     const map = new Map();
-    const start = dayjs().year(selectedYear).month(selectedMonth).startOf("month");
-    const end = dayjs().year(selectedYear).month(selectedMonth).endOf("month");
     allLedger.forEach((entry) => {
-      const entryDate = dayjs(entry.createdAt);
-      if (!entryDate.isValid() || entryDate.isBefore(start) || entryDate.isAfter(end)) return;
       const workspaceKey = String(entry.workspaceId || "").trim();
       const companyKey = String(entry.companyId || "").trim();
       let bucket = (workspaceKey && map.get(workspaceKey)) || (companyKey && map.get(companyKey)) || null;
@@ -76,7 +76,7 @@ const WebsiteCreditsOverview = () => {
       else bucket.added += Number(entry.credits) || 0;
     });
     return map;
-  }, [allLedger, selectedMonth, selectedYear]);
+  }, [allLedger]);
 
   const { mutate: addCredits, isPending: isAdding } = useMutation({
     mutationFn: async () =>
@@ -93,6 +93,7 @@ const WebsiteCreditsOverview = () => {
       setNote("");
       queryClient.invalidateQueries({ queryKey: ["website-credits-summary"] });
       queryClient.invalidateQueries({ queryKey: ["website-credit-ledger"] });
+      queryClient.invalidateQueries({ queryKey: ["website-credit-ledger-all"] });
     },
     onError: (error) => toast.error(error?.response?.data?.message || "Failed to add credits"),
   });
@@ -134,10 +135,15 @@ const WebsiteCreditsOverview = () => {
   const filteredRows = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return rows.filter((r) => {
+      if (!isCurrentMonth) {
+        const key = String(r.workspaceId || "").trim();
+        const companyKey = String(r.companyId || "").trim();
+        if (!rangeTotals.has(key) && !rangeTotals.has(companyKey)) return false;
+      }
       if (!query) return true;
       return (r.companyName || "").toLowerCase().includes(query) || (r.workspaceName || "").toLowerCase().includes(query);
     });
-  }, [rows, searchQuery]);
+  }, [rows, searchQuery, isCurrentMonth, rangeTotals]);
 
   const ledgerRows = useMemo(
     () =>
