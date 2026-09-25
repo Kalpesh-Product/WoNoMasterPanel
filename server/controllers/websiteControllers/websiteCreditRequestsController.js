@@ -1305,7 +1305,7 @@ const getWebsiteCreditLedger = async (req, res, next) => {
       return res.status(403).json({ message: "Master access required" });
     }
 
-    const { companyId, workspaceId } = req.query || {};
+    const { companyId, workspaceId, startDate, endDate } = req.query || {};
 
     const clauses = [];
     if (String(workspaceId || "").trim()) {
@@ -1319,10 +1319,30 @@ const getWebsiteCreditLedger = async (req, res, next) => {
       });
     }
 
-    const filter = clauses.length ? { $or: clauses } : {};
+    const dateFilter = {};
+    if (String(startDate || "").trim()) {
+      const parsedStart = new Date(startDate);
+      if (Number.isNaN(parsedStart.getTime())) {
+        return res.status(400).json({ message: "Invalid start date" });
+      }
+      dateFilter.$gte = parsedStart;
+    }
+    if (String(endDate || "").trim()) {
+      const parsedEnd = new Date(endDate);
+      if (Number.isNaN(parsedEnd.getTime())) {
+        return res.status(400).json({ message: "Invalid end date" });
+      }
+      dateFilter.$lte = parsedEnd;
+    }
+    if (dateFilter.$gte && dateFilter.$lte && dateFilter.$gte > dateFilter.$lte) {
+      return res.status(400).json({ message: "Start date must be before end date" });
+    }
+
+    const filter = {};
+    if (clauses.length) filter.$or = clauses;
+    if (Object.keys(dateFilter).length) filter.createdAt = dateFilter;
     const entries = await WebsiteCreditLedger.find(filter)
       .sort({ createdAt: -1 })
-      .limit(2000)
       .lean();
 
     return res.status(200).json(entries);
