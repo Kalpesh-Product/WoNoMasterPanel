@@ -2,79 +2,48 @@ import { Controller, useFieldArray } from "react-hook-form";
 import UploadMultipleFilesInput from "../../../../components/website-builder/UploadMultipleFilesInput";
 import EnabledSwitch from "../../../../components/ui/EnabledSwitch";
 import WebsiteFormField from "../../../../components/WebsiteFormField";
+import ItemExtraFields, { OfferingDescription } from "./ItemExtraFields";
 const PackagesSection = ({ control, register }) => {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "packages"
-  });
-  return <div className="col-span-2">
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: "packages",
+    });
+    return (<div className="col-span-2">
       <div className="py-4 border-b-default border-borderGray" data-tour="wb-editor-offerings-section">
         <span className="text-subtitle font-pmedium">Packages</span>
       </div>
       <div className="grid grid-cols sm:grid-cols-1 md:grid-cols-1 gap-4 p-4">
-        {fields.map((field, index) => <div key={field.id} className="rounded-xl border border-borderGray p-4 mb-3">
+        {fields.map((field, index) => (<div key={field.id} className="rounded-xl border border-borderGray p-4 mb-3">
             <div className="flex items-center justify-between mb-3 gap-3">
               <span className="font-pmedium">Package #{index + 1}</span>
               <div className="flex items-center gap-3">
-                <EnabledSwitch name={`packages.${index}.enabled`} control={control} />
-                <button
-    type="button"
-    onClick={() => remove(index)}
-    className="text-red-500 hover:text-red-700 text-xs font-semibold transition-all"
-  >
+                <EnabledSwitch name={`packages.${index}.enabled`} control={control}/>
+                <button type="button" onClick={() => remove(index)} className="text-red-500 hover:text-red-700 text-xs font-semibold transition-all">
                   Remove
                 </button>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <WebsiteFormField
-    label="Title"
-    registration={register(`packages.${index}.title`)}
-  />
-              <WebsiteFormField
-    label="Price"
-    registration={register(`packages.${index}.price`)}
-  />
-              <WebsiteFormField
-    label="Stay Duration"
-    placeholder="e.g., 2 days / 1 week / 14 nights"
-    registration={register(`packages.${index}.duration`)}
-  />
-              <WebsiteFormField
-    label="Description"
-    multiline
-    minRows={3}
-    registration={register(`packages.${index}.description`)}
-  />
+              <WebsiteFormField label="Title" registration={register(`packages.${index}.title`)}/>
+              <WebsiteFormField label="Price" registration={register(`packages.${index}.price`)}/>
+              <WebsiteFormField label="Stay Duration" placeholder="e.g., 2 days / 1 week / 14 nights" registration={register(`packages.${index}.duration`)}/>
+              <OfferingDescription control={control} register={register} name={`packages.${index}.description`} kind="offering"/>
             </div>
             <div className="pt-4">
-              <Controller
-    name={`packages.${index}.images`}
-    control={control}
-    render={({ field: field2 }) => <UploadMultipleFilesInput
-      {...field2}
-      label="Package Images"
-      maxFiles={10}
-      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
-      id={`packages.${index}.images`}
-    />}
-  />
+              <Controller name={`packages.${index}.images`} control={control} render={({ field }) => (<UploadMultipleFilesInput {...field} label="Package Images" maxFiles={10} allowedExtensions={["jpg", "jpeg", "png", "webp"]} id={`packages.${index}.images`}/>)}/>
             </div>
-          </div>)}
-        <button
-    type="button"
-    onClick={() => append({
-      title: "",
-      description: "",
-      price: "",
-      duration: "",
-      images: []
-    })}
-    className="text-[#2563EB] text-sm font-semibold hover:underline inline-flex items-center gap-1 transition-all"
-  >
+            <ItemExtraFields control={control} register={register} name={`packages.${index}`} kind="package"/>
+          </div>))}
+        <button type="button" onClick={() => append({
+            title: "",
+            description: "",
+            price: "",
+            duration: "",
+            images: [],
+        })} className="text-[#2563EB] text-sm font-semibold hover:underline inline-flex items-center gap-1 transition-all">
           + Add item
         </button>
       </div>
-    </div>;
+    </div>);
 };
 export default PackagesSection;

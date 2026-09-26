@@ -25,6 +25,15 @@ const {
   pagesFromChanges,
 } = require("../../utils/websiteChangeTracker");
 const { assertWebsiteEditLock } = require("./websiteEditLockControllers");
+const {
+  parseJsonField,
+  sanitizeItemExtras,
+  sanitizeOpeningHours,
+  sanitizeReservation,
+  sanitizeStayPolicy,
+  sanitizeTourBooking,
+  sanitizeTemplateContent,
+} = require("../../utils/websiteOfferingFields");
 
 const VALID_VERTICALS = new Set([
   "co-working",
@@ -121,7 +130,7 @@ const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const normalizeSearchKeyFromName = (name = "") =>
-  String(name).toLowerCase().split("-")[0].replace(/\s+/g, "");
+  String(name).toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
 
 const toBool = (value, fallback = false) => {
   if (typeof value === "boolean") return value;
@@ -196,6 +205,23 @@ const normalizeProductDropdownPages = (items = []) =>
       leadFormLabel: String(item?.leadFormLabel || "").trim(),
       faqs: Array.isArray(item?.faqs) ? item.faqs : [],
       inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+      subProducts: Array.isArray(item?.subProducts)
+        ? item.subProducts.map((sp) => ({
+            name: String(sp?.name || "").trim(),
+            description: String(sp?.description || "").trim(),
+            cost: String(sp?.cost || "").trim(),
+            enabled: toBool(sp?.enabled, true),
+            ...sanitizeItemExtras("subProduct", sp),
+            images: Array.isArray(sp?.images)
+              ? sp.images
+                  .map((img) => ({
+                    id: String(img?.id || "").trim(),
+                    url: String(img?.url || "").trim(),
+                  }))
+                  .filter((img) => img.id || img.url)
+              : [],
+          }))
+        : [],
     };
 
     if (item?.heroImage && typeof item.heroImage === "object") {
@@ -610,7 +636,7 @@ const ensureNomadsCompanyRecord = async ({
   }
 };
 
-const saveTemplateDraft = async (req, res) => {
+const saveTemplateDraftHandler = async (req, res) => {
   try {
     const parsedDraftData =
       typeof req.body?.draftData === "string"
@@ -772,6 +798,10 @@ const saveTemplateDraft = async (req, res) => {
         const existing = template.productDropdownPages?.[index] || {};
         return {
           ...page,
+          // A sub-product whose photos arrive empty (the client still holds them as Files) keeps the ones already saved.
+          subProducts: (page.subProducts || []).map((sp, subIndex) =>
+            sp?.images?.length ? sp : { ...sp, images: existing?.subProducts?.[subIndex]?.images || [] },
+          ),
           ...(page?.heroImage?.url
             ? { heroImage: page.heroImage }
             : existing?.heroImage
@@ -789,6 +819,10 @@ const saveTemplateDraft = async (req, res) => {
         };
       });
     }
+    template.aboutTitle =
+      draftData?.aboutTitle !== undefined
+        ? String(draftData.aboutTitle || "").trim()
+        : template.aboutTitle;
     template.aboutPageIntro =
       draftData?.aboutPageIntro !== undefined
         ? String(draftData.aboutPageIntro || "").trim()
@@ -869,6 +903,21 @@ const saveTemplateDraft = async (req, res) => {
       draftData?.contactInquirySuccessMessage !== undefined
         ? String(draftData.contactInquirySuccessMessage || "").trim()
         : template.contactInquirySuccessMessage;
+    if (draftData?.openingHours !== undefined) {
+      template.openingHours = sanitizeOpeningHours(draftData.openingHours);
+    }
+    if (draftData?.reservation !== undefined) {
+      template.reservation = sanitizeReservation(draftData.reservation);
+    }
+    if (draftData?.stayPolicy !== undefined) {
+      template.stayPolicy = sanitizeStayPolicy(draftData.stayPolicy);
+    }
+    if (draftData?.tourBooking !== undefined) {
+      template.tourBooking = sanitizeTourBooking(draftData.tourBooking);
+    }
+    if (draftData?.templateContent !== undefined) {
+      template.templateContent = sanitizeTemplateContent(draftData.templateContent);
+    }
     template.products = Array.isArray(draftData?.products)
       ? draftData.products.map((item, index) => {
           const existing = template.products?.[index];
@@ -890,6 +939,7 @@ const saveTemplateDraft = async (req, res) => {
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
             enabled: item?.enabled !== false,
+            ...sanitizeItemExtras("menu", item),
           };
           if (existing?.image) nextItem.image = existing.image;
           return nextItem;
@@ -899,6 +949,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.rooms.map((item, index) => {
           const existing = template.rooms?.[index];
           return {
+          ...sanitizeItemExtras("room", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -911,6 +962,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.meetingRooms.map((item, index) => {
           const existing = template.meetingRooms?.[index];
           return {
+          ...sanitizeItemExtras("meeting", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -922,6 +974,7 @@ const saveTemplateDraft = async (req, res) => {
         ? draftData.rooms.map((item, index) => {
             const existing = template.meetingRooms?.[index];
             return {
+            ...sanitizeItemExtras("meeting", item),
               title: String(item?.title || "").trim(),
               description: String(item?.description || "").trim(),
               price: String(item?.price || "").trim(),
@@ -934,6 +987,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.coLivingRooms.map((item, index) => {
           const existing = template.coLivingRooms?.[index];
           return {
+          ...sanitizeItemExtras("coLiving", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -946,6 +1000,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.packages.map((item, index) => {
           const existing = template.packages?.[index];
           return {
+          ...sanitizeItemExtras("package", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -959,6 +1014,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.dorms.map((item, index) => {
           const existing = template.dorms?.[index];
           return {
+          ...sanitizeItemExtras("dorm", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -1107,6 +1163,15 @@ const saveTemplateDraft = async (req, res) => {
         1,
       );
       template.companyLogo = uploaded[0] || template.companyLogo;
+    } else if (
+      // The builder tells us the logo was removed by sending an empty signature for it.
+      draftData?.mediaSignature &&
+      draftData.mediaSignature.companyLogo === "" &&
+      template.companyLogo?.url
+    ) {
+      // The live (published) copy may still show this logo until the next publish, so keep the file.
+      await deleteImagesFromS3ForDraft([template.companyLogo], collectMediaUrls(template.publishedData));
+      template.companyLogo = undefined;
     }
 
     if (filesByField.mainHeroImage?.[0]) {
@@ -1256,6 +1321,26 @@ const saveTemplateDraft = async (req, res) => {
           template.productDropdownPages[i].homeCardImage =
             uploaded[0] || undefined;
         }
+
+        const pageSubProducts = template.productDropdownPages[i].subProducts || [];
+        for (let j = 0; j < pageSubProducts.length; j++) {
+          const subImages = filesByField[`subProductImages_${i}_${j}`] || [];
+          if (subImages.length) {
+            // Cumulative cap, same reasoning as the logo carousel above.
+            const existingCount = (pageSubProducts[j].images || []).length;
+            const roomLeft = Math.max(0, 5 - existingCount);
+            const filesToUpload = subImages.slice(0, roomLeft);
+            if (filesToUpload.length) {
+              const uploaded = await uploadImagesForDraft(
+                filesToUpload,
+                `${baseFolder}/subProducts/${i}_${j}`,
+                5,
+              );
+              pageSubProducts[j].images = [...(pageSubProducts[j].images || []), ...uploaded];
+            }
+          }
+        }
+        template.productDropdownPages[i].subProducts = pageSubProducts;
       }
     }
 
@@ -1461,7 +1546,7 @@ const saveTemplateDraft = async (req, res) => {
   }
 };
 
-const createTemplate = async (req, res, next) => {
+const createTemplateHandler = async (req, res, next) => {
   try {
     console.log("REQ BODY VERTICAL:", req.body.vertical);
     console.log("REQ BODY COMPANY:", req.body.companyName);
@@ -1709,7 +1794,7 @@ const createTemplate = async (req, res, next) => {
       const invalids = ["n/a", "na", "none", "undefined", "null", "-"];
       if (invalids.includes(trimmed)) return "";
 
-      return trimmed.split("-")[0].replace(/\s+/g, "");
+      return trimmed.split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const resolvedCompanyName = resolveUsableCompanyName(
@@ -1793,6 +1878,7 @@ const createTemplate = async (req, res, next) => {
           title: String(req.body?.logoCarouselTitle || "").trim(),
           logos: [],
         },
+        aboutTitle: String(req.body?.aboutTitle || "").trim(),
         aboutPageIntro: String(req.body?.aboutPageIntro || "").trim(),
         aboutPageOverview: String(req.body?.aboutPageOverview || "").trim(),
         aboutPageStory: String(req.body?.aboutPageStory || "").trim(),
@@ -1832,6 +1918,11 @@ const createTemplate = async (req, res, next) => {
         contactBusinessHours: String(
           req.body?.contactBusinessHours || "",
         ).trim(),
+        openingHours: sanitizeOpeningHours(parseJsonField(req.body?.openingHours, [])),
+        reservation: sanitizeReservation(parseJsonField(req.body?.reservation, {})),
+        stayPolicy: sanitizeStayPolicy(parseJsonField(req.body?.stayPolicy, {})),
+        tourBooking: sanitizeTourBooking(parseJsonField(req.body?.tourBooking, {})),
+        templateContent: sanitizeTemplateContent(parseJsonField(req.body?.templateContent, {})),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -1930,6 +2021,7 @@ const createTemplate = async (req, res, next) => {
           title: String(req.body?.logoCarouselTitle || "").trim(),
           logos: [],
         },
+        aboutTitle: String(req.body?.aboutTitle || "").trim(),
         aboutPageIntro: String(req.body?.aboutPageIntro || "").trim(),
         aboutPageOverview: String(req.body?.aboutPageOverview || "").trim(),
         aboutPageStory: String(req.body?.aboutPageStory || "").trim(),
@@ -1969,6 +2061,11 @@ const createTemplate = async (req, res, next) => {
         contactBusinessHours: String(
           req.body?.contactBusinessHours || "",
         ).trim(),
+        openingHours: sanitizeOpeningHours(parseJsonField(req.body?.openingHours, [])),
+        reservation: sanitizeReservation(parseJsonField(req.body?.reservation, {})),
+        stayPolicy: sanitizeStayPolicy(parseJsonField(req.body?.stayPolicy, {})),
+        tourBooking: sanitizeTourBooking(parseJsonField(req.body?.tourBooking, {})),
+        templateContent: sanitizeTemplateContent(parseJsonField(req.body?.templateContent, {})),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -2118,6 +2215,25 @@ const createTemplate = async (req, res, next) => {
       return res.status(400).json({
         message: `Cannot exceed 5 hero images (received ${heroFiles.length}).`,
       });
+    }
+
+    // Sub-products per product page: max 12 sub-products, max 5 images each
+    for (let pIdx = 0; pIdx < (productDropdownPages || []).length; pIdx++) {
+      const pageSubProducts = productDropdownPages[pIdx]?.subProducts || [];
+      const pageLabel = productDropdownPages[pIdx]?.name || `Page ${pIdx + 1}`;
+      if (pageSubProducts.length > 12) {
+        return res.status(400).json({
+          message: `Max 12 products allowed per page (${pageLabel}).`,
+        });
+      }
+      for (let sIdx = 0; sIdx < pageSubProducts.length; sIdx++) {
+        const subFiles = filesByField[`subProductImages_${pIdx}_${sIdx}`] || [];
+        if (subFiles.length > 5) {
+          return res.status(400).json({
+            message: `Max 5 images allowed per product (${pageLabel}, product ${sIdx + 1}).`,
+          });
+        }
+      }
     }
 
     // Product images: max 10 per product
@@ -2322,6 +2438,18 @@ const createTemplate = async (req, res, next) => {
         );
         normalizedProductPages[i].homeCardImage = uploaded[0] || undefined;
       }
+
+      const pageSubProducts = normalizedProductPages[i].subProducts || [];
+      for (let j = 0; j < pageSubProducts.length; j++) {
+        const subFiles = filesByField[`subProductImages_${i}_${j}`] || [];
+        if (subFiles.length) {
+          pageSubProducts[j].images = await uploadImages(
+            subFiles,
+            `${baseFolder}/subProducts/${i}_${j}`,
+          );
+        }
+      }
+      normalizedProductPages[i].subProducts = pageSubProducts;
     }
     if (normalizedProductPages.length) {
       template.productDropdownPages = normalizedProductPages;
@@ -2367,6 +2495,7 @@ const createTemplate = async (req, res, next) => {
           name: item.name || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("menu", item),
         };
         if (uploadedImage) menuItemRecord.image = uploadedImage;
         template.menuItems.push(menuItemRecord);
@@ -2387,6 +2516,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("room", item),
           images: uploaded,
         });
       }
@@ -2406,6 +2536,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("meeting", item),
           images: uploaded,
         });
       }
@@ -2422,6 +2553,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("coLiving", item),
           images: uploaded,
         });
       }
@@ -2442,6 +2574,7 @@ const createTemplate = async (req, res, next) => {
           description: item.description || "",
           price: item.price || "",
           duration: item.duration || "",
+          ...sanitizeItemExtras("package", item),
           images: uploaded,
         });
       }
@@ -2462,6 +2595,7 @@ const createTemplate = async (req, res, next) => {
           description: item.description || "",
           capacity: Number(item.capacity) || 0,
           price: item.price || "",
+          ...sanitizeItemExtras("dorm", item),
           images: uploaded,
         });
       }
@@ -2627,7 +2761,7 @@ const getLiveTemplate = async (req, res) => {
 
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const searchKey = formatCompanyName(companyName);
@@ -2842,7 +2976,7 @@ const activateTemplate = async (req, res) => {
   }
 };
 
-const editTemplate = async (req, res, next) => {
+const editTemplateHandler = async (req, res, next) => {
   try {
     let {
       products,
@@ -2893,7 +3027,7 @@ const editTemplate = async (req, res, next) => {
     const parsedInclusions = safeParse(inclusions, null);
 
     const formatCompanyName = (name) =>
-      (name || "").toLowerCase().split("-")[0].replace(/\s+/g, "");
+      (name || "").toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     const bodySearchKey = String(req.body?.searchKey || "")
       .trim()
       .toLowerCase();
@@ -3229,6 +3363,10 @@ const editTemplate = async (req, res, next) => {
           ? template.logoCarousel.logos
           : [],
       },
+      aboutTitle:
+        req.body?.aboutTitle !== undefined
+          ? String(req.body.aboutTitle || "").trim()
+          : template.aboutTitle,
       aboutPageIntro:
         req.body?.aboutPageIntro !== undefined
           ? String(req.body.aboutPageIntro || "").trim()
@@ -3301,6 +3439,26 @@ const editTemplate = async (req, res, next) => {
         req.body?.contactBusinessHours !== undefined
           ? String(req.body.contactBusinessHours || "").trim()
           : template.contactBusinessHours,
+      openingHours:
+        req.body?.openingHours !== undefined
+          ? sanitizeOpeningHours(parseJsonField(req.body.openingHours, []))
+          : template.openingHours,
+      reservation:
+        req.body?.reservation !== undefined
+          ? sanitizeReservation(parseJsonField(req.body.reservation, {}))
+          : template.reservation,
+      stayPolicy:
+        req.body?.stayPolicy !== undefined
+          ? sanitizeStayPolicy(parseJsonField(req.body.stayPolicy, {}))
+          : template.stayPolicy,
+      tourBooking:
+        req.body?.tourBooking !== undefined
+          ? sanitizeTourBooking(parseJsonField(req.body.tourBooking, {}))
+          : template.tourBooking,
+      templateContent:
+        req.body?.templateContent !== undefined
+          ? sanitizeTemplateContent(parseJsonField(req.body.templateContent, {}))
+          : template.templateContent,
       contactPersonName:
         req.body?.contactPersonName !== undefined
           ? String(req.body.contactPersonName || "").trim()
@@ -3426,6 +3584,10 @@ const editTemplate = async (req, res, next) => {
         1,
       );
       template.companyLogo = uploaded[0];
+    } else if (String(req.body?.removeCompanyLogo || "").toLowerCase() === "true" && template.companyLogo?.url) {
+      // The logo was removed in the builder.
+      await deleteImagesFromS3([template.companyLogo]);
+      template.companyLogo = undefined;
     }
 
     // === MAIN HERO IMAGE (limit 1) ===
@@ -3668,6 +3830,41 @@ const editTemplate = async (req, res, next) => {
           );
           normalizedPages[i].homeCardImage = uploaded[0] || undefined;
         }
+
+        // Products belonging to this page - keep existing images unless the
+        // client sent new files for that exact slot (subProductImages_i_j).
+        const pageSubProducts = normalizedPages[i].subProducts || [];
+        if (pageSubProducts.length > 12) {
+          throw new Error(
+            `Max 12 products allowed per page (${normalizedPages[i].name || `Page ${i + 1}`}).`,
+          );
+        }
+        const existingSubProducts = existing?.subProducts || [];
+        for (let j = 0; j < pageSubProducts.length; j++) {
+          const existingSub = existingSubProducts[j];
+          const subFiles = filesByField[`subProductImages_${i}_${j}`] || [];
+          const keptImages = existingSub?.images || [];
+          const totalSubImageCount = keptImages.length + subFiles.length;
+          if (totalSubImageCount > 5) {
+            throw new Error(
+              `Max 5 images allowed per product (${normalizedPages[i].name || `Page ${i + 1}`}, product ${j + 1}, currently ${keptImages.length}).`,
+            );
+          }
+          if (subFiles.length) {
+            // Append newly uploaded images to whatever this sub-product
+            // already has - replacing here would wipe out previously-saved
+            // images every time the user adds just one more.
+            const newImages = await uploadImages(
+              subFiles,
+              `${baseFolder}/subProducts/${i}_${j}`,
+              5,
+            );
+            pageSubProducts[j].images = [...keptImages, ...newImages];
+          } else {
+            pageSubProducts[j].images = keptImages;
+          }
+        }
+        normalizedPages[i].subProducts = pageSubProducts;
       }
       template.productDropdownPages = normalizedPages;
     }
@@ -4078,7 +4275,7 @@ const getTemplate = async (req, res) => {
 
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const searchKey = formatCompanyName(companyName);
@@ -4135,7 +4332,7 @@ const publishTemplate = async (req, res, next) => {
   try {
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const rawSearchKey =
@@ -4254,6 +4451,18 @@ const deleteTemplate = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const { runExclusive } = require("../../utils/keyedMutex");
+
+// One website document per company: saves for the same company are queued, not interleaved.
+const websiteLockKey = (req) =>
+  String(req.body?.companyId || req.body?.workspaceId || req.body?.searchKey || req.params?.searchKey || "")
+    .trim()
+    .toLowerCase();
+
+const saveTemplateDraft = (req, res) => runExclusive(websiteLockKey(req), () => saveTemplateDraftHandler(req, res));
+const createTemplate = (req, res, next) => runExclusive(websiteLockKey(req), () => createTemplateHandler(req, res, next));
+const editTemplate = (req, res, next) => runExclusive(websiteLockKey(req), () => editTemplateHandler(req, res, next));
 
 module.exports = {
   saveTemplateDraft,

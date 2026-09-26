@@ -242,6 +242,7 @@ const useWebsiteTemplateData = () => {
     startDate: "",
     endDate: ""
   });
+  const [leadExtras, setLeadExtras] = useState({});
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewSubmitPending, setReviewSubmitPending] = useState(false);
@@ -430,7 +431,13 @@ const useWebsiteTemplateData = () => {
     if (!currentItemSlug || !selectedProductPage) return null;
     const contentItems = getProductContentItems(draft, selectedProductPage?.slug || selectedProductPage?.name || "", selectedProductPage);
     const pool = contentItems.length ? contentItems : [selectedProductPage];
-    return pool.find((item) => normalizeSlug(item?.title || item?.name || item?.heading || "") === currentItemSlug) || null;
+    const found = pool.find((item) => normalizeSlug(item?.title || item?.name || item?.heading || "") === currentItemSlug);
+    if (found) return found;
+    if (isMenuProductSlug(selectedProductPage?.slug || selectedProductPage?.name || "")) {
+      const dishes = Array.isArray(draft?.menuItems) ? draft.menuItems : [];
+      return dishes.find((item) => item?.enabled !== false && normalizeSlug(item?.name || item?.title || "") === currentItemSlug) || null;
+    }
+    return null;
   }, [currentItemSlug, selectedProductPage, draft]);
   const selectedProductContentItems = selectedProductPage ? getProductContentItems(draft, selectedProductPage?.slug || selectedProductPage?.name || "", selectedProductPage) : [];
   const selectedProductHeroImages = Array.isArray(selectedProductPage?.heroImages) ? selectedProductPage.heroImages : [];
@@ -457,6 +464,7 @@ const useWebsiteTemplateData = () => {
         setLeadSubmitted(false);
         setLeadSubmitError("");
         setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "" });
+        setLeadExtras({});
       }
     } else if (!selectedDetailItem) {
       prevDetailItemSlugRef.current = "";
@@ -657,11 +665,12 @@ const useWebsiteTemplateData = () => {
     if (!galleryItems.length) return;
     setGalleryViewerIndex((index % galleryItems.length + galleryItems.length) % galleryItems.length);
   };
-  const openLeadModal = (product) => {
+  const openLeadModal = (product, prefill) => {
     setSelectedLeadProduct(product);
     setLeadSubmitted(false);
     setLeadSubmitError("");
-    setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "" });
+    setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "", ...prefill?.form || {} });
+    setLeadExtras({ ...prefill?.extras || {} });
   };
   const closeLeadModal = () => setSelectedLeadProduct(null);
   const showSuccessPopup = (message) => {
@@ -670,8 +679,9 @@ const useWebsiteTemplateData = () => {
       setSuccessPopup((prev) => prev.message === message ? { open: false, message: "" } : prev);
     }, 2200);
   };
-  const submitLeadForm = async (event) => {
+  const submitLeadForm = async (event, overrides) => {
     event.preventDefault();
+    const extras = { ...leadExtras, ...overrides || {} };
     setLeadSubmitPending(true);
     setLeadSubmitError("");
     try {
@@ -698,8 +708,21 @@ const useWebsiteTemplateData = () => {
         stayDuration: leadForm.endDate ? `${leadForm.startDate || ""} to ${leadForm.endDate}` : "",
         startDate: leadForm.startDate,
         endDate: leadForm.endDate,
-        timeSlot: "",
-        inquiryType: slug.includes("cafe") ? "Cafe" : "",
+        ...extras,
+        // Surface free-text notes as the lead's message so they show in the leads list.
+        ...extras.notes ? { message: extras.notes } : {},
+        timeSlot: extras.time || "",
+        // How long a meeting-room booking is, worked out from its start and end time.
+        duration: (() => {
+          const [sh, sm] = String(extras.time || "").split(":").map(Number);
+          const [eh, em] = String(extras.endTime || "").split(":").map(Number);
+          const mins = eh * 60 + em - (sh * 60 + sm);
+          if (!(mins > 0)) return "";
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return [h ? `${h} hr${h > 1 ? "s" : ""}` : "", m ? `${m} min` : ""].filter(Boolean).join(" ");
+        })(),
+        inquiryType: extras.inquiryType || (slug.includes("cafe") ? "Cafe" : ""),
         websiteUrl: window.location.href
       });
       setLeadSubmitted(true);
@@ -874,6 +897,8 @@ const useWebsiteTemplateData = () => {
     selectedLeadProduct,
     leadForm,
     setLeadForm,
+    leadExtras,
+    setLeadExtras,
     leadSubmitted,
     setLeadSubmitted,
     leadSubmitPending,
@@ -942,6 +967,8 @@ export {
   FOOTER_SOCIAL_KEYS,
   getCareersJobMeta,
   getCareersJobTitle,
+  getMediaSrc,
+  getProductContentItems,
   isMenuProductSlug,
   normalizeSlug,
   resolveSectionFromSlug,

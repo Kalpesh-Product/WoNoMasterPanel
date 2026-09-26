@@ -6,7 +6,14 @@ const THEME_DEFAULTS = {
   "figma-make": { bg: "#4a6b96", text: "#ffffff", accent: "#ffffff" },
   "fresh-studio": { bg: "#0a0a12", text: "#ffffff", accent: "#d94b4b" },
   default: { bg: "#efefef", text: "#1f1f1f", accent: "#3b82f6" },
-  "warm-organic": { bg: "#f1e6d3", text: "#2b211a", accent: "#b85c38", surfaceUp: true }
+  "warm-organic": { bg: "#f1e6d3", text: "#2b211a", accent: "#b85c38", surfaceUp: true },
+  // The vertical-led templates start from the palette of the service the business sells
+  // (see verticalProfiles.js); these are the picker placeholders.
+  savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
+  wayfarer: { bg: "#f3fbfa", text: "#0c2a2e", accent: "#f26b3a", surfaceUp: true },
+  haven: { bg: "#f4f1ea", text: "#26312b", accent: "#5b7f6a", surfaceUp: true },
+  commons: { bg: "#f6f7f9", text: "#0b1f3a", accent: "#ffc21a", surfaceUp: true },
+  huddle: { bg: "#f5f6f8", text: "#14161a", accent: "#3b6cf0", surfaceUp: true }
 };
 const supportsThemeColors = (templateId) => Boolean(THEME_DEFAULTS[String(templateId || "").trim() || "default"]);
 const getThemeDefaults = (templateId) => THEME_DEFAULTS[String(templateId || "").trim() || "default"] || THEME_DEFAULTS.default;
