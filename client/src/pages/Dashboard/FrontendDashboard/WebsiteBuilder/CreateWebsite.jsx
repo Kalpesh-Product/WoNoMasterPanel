@@ -29,12 +29,60 @@ import MenuSection from "./MenuSection";
 import Skeleton from "../../../../components/ui/Skeleton";
 import { TEMPLATE_REGISTRY, DEFAULT_TEMPLATE_ID } from "./templates/templateRegistry";
 import TemplateChangeRequestControl from "./TemplateChangeRequestControl";
+import TemplateContentPanel from "./TemplateContentPanel";
+import { emptyTemplateContent, hasTemplateContent, normalizeTemplateContent } from "./templates/templateContent";
+import ItemExtraFields from "./ItemExtraFields";
+import { clearSelectedServices, readSelectedServices } from "./templates/serviceChoices";
+import { buildSampleContent, buildServiceSample, hasSampleContent, isSampleService, resolveSampleServices } from "./templates/sampleContent";
+import ServiceSettingsPanel from "./ServiceSettingsPanel";
+import {
+  defaultReservation,
+  defaultStayPolicy,
+  normalizeOpeningHours,
+  normalizeReservation,
+  normalizeStayPolicy,
+  normalizeTourBooking,
+  pickItemExtras
+} from "./templates/offeringFields";
 const defaultProduct = {
   type: "",
   name: "",
   cost: "",
   description: ""
 };
+const defaultSubProduct = {
+  name: "",
+  description: "",
+  cost: "",
+  images: []
+};
+const buildDefaultProductPage = (name = "Service Page 1") => {
+  const slug = toSlug(name || "service-page-1");
+  return {
+    name,
+    slug,
+    enabled: true,
+    heroEnabled: true,
+    inclusionsEnabled: true,
+    faqEnabled: true,
+    heroHeading: name,
+    heroSubHeading: "",
+    heroMode: "single",
+    heroImage: null,
+    heroImages: [],
+    heroButtonText: "View More",
+    homeCardHeading: name,
+    homeCardSubText: "",
+    homeCardImage: null,
+    leadEnabled: true,
+    leadFormLabel: "View More / Get Details",
+    faqs: [],
+    inclusions: [],
+    subProducts: [{ ...defaultSubProduct, images: [] }]
+  };
+};
+const MAX_SUB_PRODUCTS_PER_PAGE = 12;
+const MAX_SUB_PRODUCT_IMAGES = 5;
 const defaultTestimonial = {
   name: "",
   jobPosition: "",
@@ -143,18 +191,29 @@ const NOMAD_LISTING_STEPS = [
 const DEFAULT_PAGE_NAV_ITEMS = [
   "Home",
   "About Us",
-  "Products",
+  "Services",
   "Gallery",
   "Partner",
   "Careers",
   "Contact Us"
 ];
+const buildDefaultPageNavItems = () => DEFAULT_PAGE_NAV_ITEMS.map((name) => {
+  const slug = name === "Services" ? "products" : String(name).toLowerCase().replace(/\s+/g, "-");
+  return {
+    name,
+    slug,
+    enabled: slug === "home"
+  };
+});
 const migrateNavItems = (items) => {
   const migrated = items.map((item) => {
     const slug = String(item?.slug || "").trim().toLowerCase();
     const name = String(item?.name || "").trim().toLowerCase();
     if (slug === "testimonials" || name === "testimonials") {
       return { ...item, name: "Partner", slug: "partner" };
+    }
+    if (slug === "products" && name === "products") {
+      return { ...item, name: "Services" };
     }
     return item;
   });
@@ -332,7 +391,7 @@ const normalizeVerticalKey = (value) => {
   };
   return aliasMap[raw] || aliasMap[compact] || aliasMap[hyphen] || "co-working";
 };
-const toSearchKey = (value) => String(value || "").trim().toLowerCase().split("-")[0].replace(/\s+/g, "");
+const toSearchKey = (value) => String(value || "").trim().toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
 const toSlug = (value) => String(value || "").trim().toLowerCase().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
 const isMenuPageSlug = (slug = "") => {
   const normalized = String(slug || "").trim().toLowerCase();
@@ -481,39 +540,58 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
     category: String(item?.category || "").trim(),
     name: String(item?.name || "").trim(),
     price: String(item?.price || "").trim(),
-    description: String(item?.description || "").trim()
+    description: String(item?.description || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("menu", item)
   })) : [],
   meetingRooms: Array.isArray(formValues?.meetingRooms) ? formValues.meetingRooms.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
-    price: String(item?.price || "").trim()
+    price: String(item?.price || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("meeting", item)
   })) : Array.isArray(formValues?.rooms) ? formValues.rooms.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
-    price: String(item?.price || "").trim()
+    price: String(item?.price || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("meeting", item)
   })) : [],
   rooms: Array.isArray(formValues?.rooms) ? formValues.rooms.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
-    price: String(item?.price || "").trim()
+    price: String(item?.price || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("room", item)
   })) : [],
   coLivingRooms: Array.isArray(formValues?.coLivingRooms) ? formValues.coLivingRooms.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
-    price: String(item?.price || "").trim()
+    price: String(item?.price || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("coLiving", item)
   })) : [],
   packages: Array.isArray(formValues?.packages) ? formValues.packages.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
     price: String(item?.price || "").trim(),
-    duration: String(item?.duration || "").trim()
+    duration: String(item?.duration || "").trim(),
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("package", item)
   })) : [],
   dorms: Array.isArray(formValues?.dorms) ? formValues.dorms.map((item) => ({
     title: String(item?.title || "").trim(),
     description: String(item?.description || "").trim(),
     price: String(item?.price || "").trim(),
-    capacity: item?.capacity ?? ""
+    capacity: item?.capacity ?? "",
+    enabled: item?.enabled !== false,
+    ...pickItemExtras("dorm", item)
   })) : [],
+  openingHours: normalizeOpeningHours(formValues?.openingHours),
+  reservation: normalizeReservation(formValues?.reservation),
+  stayPolicy: normalizeStayPolicy(formValues?.stayPolicy),
+  tourBooking: normalizeTourBooking(formValues?.tourBooking),
+  templateContent: normalizeTemplateContent(formValues?.templateContent),
   galleryTitle: String(formValues?.galleryTitle || "").trim(),
   testimonialTitle: String(formValues?.testimonialTitle || "").trim(),
   testimonials: Array.isArray(formValues?.testimonials) ? formValues.testimonials.map((item) => ({
@@ -561,14 +639,22 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
     leadEnabled: item?.leadEnabled !== false,
     leadFormLabel: String(item?.leadFormLabel || "").trim(),
     faqs: Array.isArray(item?.faqs) ? item.faqs : [],
-    inclusions: Array.isArray(item?.inclusions) ? item.inclusions : []
+    inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+    subProducts: Array.isArray(item?.subProducts) ? item.subProducts.map((sp) => ({
+      name: String(sp?.name || "").trim(),
+      description: String(sp?.description || "").trim(),
+      cost: String(sp?.cost || "").trim(),
+      enabled: sp?.enabled !== false,
+      ...pickItemExtras("subProduct", sp),
+      images: Array.isArray(sp?.images) ? sp.images : []
+    })) : []
   })) : [],
   productPages: Array.isArray(formValues?.productDropdownPages) ? formValues.productDropdownPages.map((item, index) => ({
     name: String(item?.name || "").trim(),
     slug: String(item?.slug || "").trim().toLowerCase(),
     heading: String(item?.homeCardHeading || item?.name || "").trim(),
     subText: String(item?.homeCardSubText || "").trim(),
-    cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
+    cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(item?.heroImage) || getMediaUrlForPreview((item?.heroImages || [])[0]) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
     heroHeading: String(item?.heroHeading || "").trim(),
     heroSubHeading: String(item?.heroSubHeading || "").trim(),
     heroButtonText: String(item?.heroButtonText || "View More").trim(),
@@ -578,14 +664,22 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
     leadEnabled: item?.leadEnabled !== false,
     leadFormLabel: String(item?.leadFormLabel || "").trim(),
     faqs: Array.isArray(item?.faqs) ? item.faqs : [],
-    inclusions: Array.isArray(item?.inclusions) ? item.inclusions : []
+    inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+    subProducts: Array.isArray(item?.subProducts) ? item.subProducts.map((sp) => ({
+      name: String(sp?.name || "").trim(),
+      description: String(sp?.description || "").trim(),
+      cost: String(sp?.cost || "").trim(),
+      enabled: sp?.enabled !== false,
+      ...pickItemExtras("subProduct", sp),
+      images: (sp?.images || []).map((img) => getMediaUrlForPreview(img)).filter(Boolean)
+    })) : []
   })) : [],
   inclusions: Array.isArray(formValues?.inclusions) ? formValues.inclusions : [],
   faqs: Array.isArray(formValues?.faqs) ? formValues.faqs : [],
   logoCarousel: {
     enabled: formValues?.logoCarousel?.enabled === true,
     title: String(formValues?.logoCarousel?.title || "").trim(),
-    logos: Array.isArray(formValues?.logoCarousel?.logos) ? formValues.logoCarousel.logos : []
+    logos: (Array.isArray(formValues?.logoCarousel?.logos) ? formValues.logoCarousel.logos : []).map((item) => getMediaUrlForPreview(item)).filter(Boolean)
   },
   aboutPageIntro: String(formValues?.aboutPageIntro || "").trim(),
   aboutPageOverview: String(formValues?.aboutPageOverview || "").trim(),
@@ -618,6 +712,9 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
   partnerFormTitle: String(formValues?.partnerFormTitle || "").trim(),
   careersPageHeading: String(formValues?.careersPageHeading || "").trim(),
   careersPageIntro: String(formValues?.careersPageIntro || "").trim(),
+  careersClosingHeading: String(formValues?.careersClosingHeading || "").trim(),
+  careersClosingText: String(formValues?.careersClosingText || "").trim(),
+  careersApplyButtonText: String(formValues?.careersApplyButtonText || "").trim(),
   careersFormFields: Array.isArray(formValues?.careersFormFields) ? formValues.careersFormFields : tryParseJson(formValues?.careersFormFields, []),
   founders: Array.isArray(formValues?.founders) ? formValues.founders.map((item) => ({
     name: String(item?.name || "").trim(),
@@ -641,7 +738,10 @@ const buildDraftFormDataFromValues = (formValues, meta = {}) => ({
     productDropdownPages: Array.isArray(formValues?.productDropdownPages) ? formValues.productDropdownPages.map((item) => ({
       heroImage: toMediaToken(item?.heroImage),
       homeCardImage: toMediaToken(item?.homeCardImage),
-      heroImages: Array.isArray(item?.heroImages) ? item.heroImages.map((img) => toMediaToken(img)).filter(Boolean) : []
+      heroImages: Array.isArray(item?.heroImages) ? item.heroImages.map((img) => toMediaToken(img)).filter(Boolean) : [],
+      subProducts: Array.isArray(item?.subProducts) ? item.subProducts.map(
+        (sp) => Array.isArray(sp?.images) ? sp.images.map((img) => toMediaToken(img)).filter(Boolean) : []
+      ) : []
     })) : [],
     products: Array.isArray(formValues?.products) ? formValues.products.map((item) => ({
       images: Array.isArray(item?.files) ? item.files.map((img) => toMediaToken(img)).filter(Boolean) : []
@@ -716,6 +816,95 @@ const SectionToggle = ({ sectionKey, name, control, dataTour }) => (
   />
 );
 
+const ProductPageSubProducts = ({
+  control,
+  pageIndex,
+  pageName
+}) => {
+  const {
+    fields: subProductFields,
+    append: appendSubProduct,
+    remove: removeSubProduct
+  } = useFieldArray({ control, name: `productDropdownPages.${pageIndex}.subProducts` });
+  return <div className="mt-3 grid grid-cols-1 gap-4">
+      <p className="text-xs text-slate-500">
+        Services shown only on this page ("{pageName || "this page"}"). Add at least 3.
+      </p>
+      {subProductFields.map((field, index) => <div
+    key={field.id}
+    className="border-t border-borderGray pt-4 first:border-0 first:pt-0"
+  >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <span className="font-pmedium">Product {index + 1}</span>
+            <div className="flex items-center gap-3">
+              <SectionToggle
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}.enabled`}
+    control={control}
+  />
+              <button
+    type="button"
+    onClick={() => removeSubProduct(index)}
+    className="text-red-500 hover:text-red-700 text-xs font-semibold transition-all"
+  >
+                Remove
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Controller
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}.name`}
+    control={control}
+    render={({ field: field2 }) => <WebsiteFormField field={field2} label="Product Name" />}
+  />
+            <Controller
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}.cost`}
+    control={control}
+    render={({ field: field2 }) => <WebsiteFormField field={field2} label="Product Cost" />}
+  />
+            <Controller
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}.description`}
+    control={control}
+    render={({ field: field2 }) => <WebsiteFormField
+      field={field2}
+      label="Product Description"
+      maxLength={200}
+      helperText={`${String(field2.value || "").length}/200`}
+    />}
+  />
+          </div>
+          <div className="pt-3">
+            <Controller
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}.images`}
+    control={control}
+    render={({ field: field2 }) => <UploadMultipleFilesInput
+      {...field2}
+      label="Product Images"
+      maxFiles={MAX_SUB_PRODUCT_IMAGES}
+      allowedExtensions={["jpg", "jpeg", "png", "webp"]}
+      id={`page-product-${pageIndex}-${index}.images`}
+    />}
+  />
+          </div>
+          <ItemExtraFields
+    control={control}
+    register={control.register}
+    name={`productDropdownPages.${pageIndex}.subProducts.${index}`}
+    kind="subProduct"
+  />
+        </div>)}
+      <button
+    type="button"
+    onClick={() => appendSubProduct({ ...defaultSubProduct, images: [] })}
+    disabled={subProductFields.length >= MAX_SUB_PRODUCTS_PER_PAGE}
+    className="text-[#2563EB] text-sm font-semibold hover:underline inline-flex items-center gap-1 transition-all w-fit disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+  >
+        + Add Product
+      </button>
+      {subProductFields.length >= MAX_SUB_PRODUCTS_PER_PAGE && <p className="text-xs text-amber-600">
+          Limit of {MAX_SUB_PRODUCTS_PER_PAGE} products reached for this page.
+        </p>}
+    </div>;
+};
 const CreateWebsite = () => {
   const axios = useAxiosPrivate();
   const navigate = useNavigate();
@@ -784,10 +973,15 @@ const CreateWebsite = () => {
   // True while a draft-save request is on the wire; blocks a second autosave
   // (which would re-send the same not-yet-marked-uploaded files and race the
   // first on the same document, failing as "Draft save failed").
+  const draftAutosaveTimeoutRef = useRef(null);
   const draftSaveInFlightRef = useRef(false);
-  const pendingItemFilesRef = useRef({});
+  const draftHasDeferredFilesRef = useRef(false);
+  const draftFileByteBudgetRef = useRef(6 * 1024 * 1024);
+  const isSubmittingRef = useRef(false);
   const hasRedirectedToEditRef = useRef(false);
   const hasHydratedFromDbRef = useRef(false);
+  // Set once this session's autosave has sent a draft (see the guard in the existing-website lookup).
+  const sessionDraftStartedRef = useRef(false);
   const isCheckingWebsiteInFlightRef = useRef(false);
 
   // SelectWebsiteTemplate.jsx writes this before navigating here for a
@@ -859,11 +1053,7 @@ const CreateWebsite = () => {
       registeredCompanyName: "",
       copyrightText: "",
       socials: buildDefaultSocials(),
-      pageNavItems: DEFAULT_PAGE_NAV_ITEMS.map((name) => ({
-        name,
-        slug: String(name).toLowerCase().replace(/\s+/g, "-"),
-        enabled: String(name).toLowerCase().replace(/\s+/g, "-") === "home"
-      })),
+      pageNavItems: buildDefaultPageNavItems(),
       productDropdownPages: [],
       aboutPageIntro: "",
       aboutPageOverview: "",
@@ -886,6 +1076,11 @@ const CreateWebsite = () => {
       contactEnableInquiryForm: true,
       contactInquirySuccessMessage: "Thank you. Your inquiry has been submitted successfully.",
       contactBusinessHours: "",
+      openingHours: [],
+      reservation: defaultReservation(),
+      stayPolicy: defaultStayPolicy(),
+      tourBooking: { enabled: true },
+      templateContent: emptyTemplateContent(),
       contactPersonName: "",
       contactPersonRole: "",
       contactPersonEmail: "",
@@ -897,6 +1092,9 @@ const CreateWebsite = () => {
       // Careers page
       careersPageHeading: "",
       careersPageIntro: "",
+      careersClosingHeading: "",
+      careersClosingText: "",
+      careersApplyButtonText: "",
       careersFormFields: [],
       // Founders (about page)
       founders: [{ name: "", role: "", bio: "", highlights: "", image: null }]
@@ -1172,6 +1370,14 @@ const CreateWebsite = () => {
           (item) => String(item?.searchKey || "").trim().toLowerCase() === editWebsiteSearchKey
         ) : null) || null;
         if (found) {
+          // This session's own autosave has already created the draft record, and this lookup only
+          // re-ran because something else resolved late (business name, company identity...). The form
+          // holds everything the person and the sample content put in, including photos that have not
+          // uploaded yet, so loading the server copy over it would wipe those. Keep the form as it is.
+          if (!isEditModeRef.current && sessionDraftStartedRef.current && found?.isPublished !== true) {
+            hasHydratedFromDbRef.current = true;
+            return;
+          }
           // A DB record now exists, so its own themeVariant (set below) always
           // wins from here on — the localStorage hint has served its purpose.
           try {
@@ -1179,6 +1385,7 @@ const CreateWebsite = () => {
           } catch {
             // ignore
           }
+          clearSelectedServices();
           // An unpublished autosave draft record existing is NOT the same as
           // the site having actually been published before — hasExistingWebsite
           // drives whether Publish goes through create-website (free) or
@@ -1255,6 +1462,9 @@ const CreateWebsite = () => {
             menuItems: Array.isArray(found?.menuItems) ? found.menuItems : Array.isArray(draftData?.menuItems) ? draftData.menuItems : [],
             rooms: Array.isArray(found?.rooms) ? found.rooms : Array.isArray(draftData?.rooms) ? draftData.rooms : [],
             meetingRooms: Array.isArray(found?.meetingRooms) ? found.meetingRooms : Array.isArray(draftData?.meetingRooms) ? draftData.meetingRooms : Array.isArray(found?.rooms) ? found.rooms : Array.isArray(draftData?.rooms) ? draftData.rooms : [],
+            // Same precedence as rooms/packages/dorms: the saved template copy
+            // carries the uploaded images; the draft copy is text-only, so
+            // loading it alone dropped every co-living image on reload.
             coLivingRooms: Array.isArray(found?.coLivingRooms) ? found.coLivingRooms : Array.isArray(draftData?.coLivingRooms) ? draftData.coLivingRooms : [],
             packages: Array.isArray(found?.packages) ? found.packages : Array.isArray(draftData?.packages) ? draftData.packages : [],
             dorms: Array.isArray(found?.dorms) ? found.dorms : Array.isArray(draftData?.dorms) ? draftData.dorms : [],
@@ -1284,29 +1494,33 @@ const CreateWebsite = () => {
             ).trim(),
             copyrightText: String(draftData?.copyrightText || found?.copyrightText || "").trim(),
             socials: normalizeSocials(draftData?.socials || found?.socials),
-            pageNavItems: Array.isArray(draftData?.pageNavItems) && draftData.pageNavItems.length ? migrateNavItems(draftData.pageNavItems) : Array.isArray(found?.pageNavItems) && found.pageNavItems.length ? migrateNavItems(found.pageNavItems) : DEFAULT_PAGE_NAV_ITEMS.map((name) => ({
-              name,
-              slug: String(name).toLowerCase().replace(/\s+/g, "-"),
-              enabled: String(name).toLowerCase().replace(/\s+/g, "-") === "home"
-            })),
+            pageNavItems: Array.isArray(draftData?.pageNavItems) && draftData.pageNavItems.length ? migrateNavItems(draftData.pageNavItems) : Array.isArray(found?.pageNavItems) && found.pageNavItems.length ? migrateNavItems(found.pageNavItems) : buildDefaultPageNavItems(),
             productDropdownPages: (() => {
+              const reconcileSubProducts = (draftSubProducts, persistedSubProducts) => Array.isArray(draftSubProducts) ? draftSubProducts.map((sp, subIndex) => ({
+                ...sp,
+                images: Array.isArray(persistedSubProducts?.[subIndex]?.images) ? persistedSubProducts[subIndex].images : []
+              })) : [];
               const fromDraft = Array.isArray(draftData?.productDropdownPages) && draftData.productDropdownPages.length ? draftData.productDropdownPages.map((item, index) => {
                 const persistedPage = Array.isArray(found?.productDropdownPages) && found.productDropdownPages[index] ? found.productDropdownPages[index] : null;
                 return {
                   ...item,
                   heroImage: persistedPage?.heroImage || null,
                   heroImages: Array.isArray(persistedPage?.heroImages) ? persistedPage.heroImages : [],
-                  homeCardImage: persistedPage?.homeCardImage || null
+                  homeCardImage: persistedPage?.homeCardImage || null,
+                  subProducts: reconcileSubProducts(item?.subProducts, persistedPage?.subProducts)
                 };
               }) : Array.isArray(found?.productDropdownPages) && found.productDropdownPages.length ? found.productDropdownPages.map((item) => ({
                 ...item,
                 heroImage: item?.heroImage || null,
                 heroImages: Array.isArray(item?.heroImages) ? item.heroImages : [],
-                homeCardImage: item?.homeCardImage || null
+                homeCardImage: item?.homeCardImage || null,
+                subProducts: reconcileSubProducts(item?.subProducts, item?.subProducts)
               })) : null;
               if (fromDraft && fromDraft.length) return fromDraft;
               const sourceProducts = Array.isArray(found?.products) && found.products.length ? found.products : Array.isArray(draftData?.products) ? draftData.products : [];
-              return sourceProducts.filter((product) => String(product?.name || "").trim() || String(product?.type || "").trim()).map((product, index) => {
+              return sourceProducts.filter(
+                (product) => String(product?.name || "").trim() || String(product?.type || "").trim()
+              ).map((product, index) => {
                 const name = String(product?.name || product?.type || "").trim() || `Product ${index + 1}`;
                 const image = Array.isArray(product?.images) && product.images[0] ? product.images[0] : null;
                 return {
@@ -1334,7 +1548,13 @@ const CreateWebsite = () => {
             logoCarousel: {
               enabled: draftData?.logoCarousel?.enabled ?? found?.logoCarousel?.enabled ?? false,
               title: String(draftData?.logoCarousel?.title || found?.logoCarousel?.title || "").trim(),
-              logos: Array.isArray(draftData?.logoCarousel?.logos) && draftData.logoCarousel.logos.length ? draftData.logoCarousel.logos : Array.isArray(found?.logoCarousel?.logos) ? found.logoCarousel.logos : []
+              // Images always come from the persisted/published version, not
+              // the separately-stored draft snapshot — same reasoning as
+              // hero/sub-product images above. The draft snapshot can go
+              // stale relative to a more recent Update (e.g. an in-flight
+              // autosave resolving after a publish), and unlike text fields,
+              // a stale image list means deleted logos silently reappear.
+              logos: Array.isArray(found?.logoCarousel?.logos) && found.logoCarousel.logos.length ? found.logoCarousel.logos : Array.isArray(draftData?.logoCarousel?.logos) ? draftData.logoCarousel.logos : []
             },
             aboutPageIntro: String(draftData?.aboutPageIntro || found?.aboutPageIntro || "").trim(),
             aboutPageOverview: String(draftData?.aboutPageOverview || found?.aboutPageOverview || "").trim(),
@@ -1386,6 +1606,13 @@ const CreateWebsite = () => {
             contactBusinessHours: String(
               draftData?.contactBusinessHours || found?.contactBusinessHours || ""
             ).trim(),
+            openingHours: normalizeOpeningHours(
+              Array.isArray(draftData?.openingHours) ? draftData.openingHours : found?.openingHours
+            ),
+            reservation: normalizeReservation(draftData?.reservation ?? found?.reservation),
+            stayPolicy: normalizeStayPolicy(draftData?.stayPolicy ?? found?.stayPolicy),
+            tourBooking: normalizeTourBooking(draftData?.tourBooking ?? found?.tourBooking),
+            templateContent: normalizeTemplateContent(draftData?.templateContent ?? found?.templateContent),
             contactPersonName: String(
               draftData?.contactPersonName || found?.contactPersonName || ""
             ).trim(),
@@ -1412,6 +1639,15 @@ const CreateWebsite = () => {
             ).trim(),
             careersPageIntro: String(
               draftData?.careersPageIntro || found?.careersPageIntro || ""
+            ).trim(),
+            careersClosingHeading: String(
+              draftData?.careersClosingHeading || found?.careersClosingHeading || ""
+            ).trim(),
+            careersClosingText: String(
+              draftData?.careersClosingText || found?.careersClosingText || ""
+            ).trim(),
+            careersApplyButtonText: String(
+              draftData?.careersApplyButtonText || found?.careersApplyButtonText || ""
             ).trim(),
             careersFormFields: tryParseJson(
               draftData?.careersFormFields ?? found?.careersFormFields ?? "[]",
@@ -1547,6 +1783,8 @@ const CreateWebsite = () => {
   const [selectedProductPageOption, setSelectedProductPageOption] = useState("");
   const [pendingRemoveProductPageIndex, setPendingRemoveProductPageIndex] = useState(null);
   const submitCreateWebsite = (values2, e) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     console.log("SUBMITTING WITH VERTICAL:", selectedVertical);
     const normalizeMapUrl = (rawValue) => {
       const raw = String(rawValue || "").trim();
@@ -1559,6 +1797,7 @@ const CreateWebsite = () => {
     ).trim();
     if (!finalCompanyName) {
       toast.error("Please provide the company name.");
+      isSubmittingRef.current = false;
       return;
     }
     const formEl = e?.target || formRef.current;
@@ -1586,6 +1825,7 @@ const CreateWebsite = () => {
         subtitle: p.subtitle,
         cost: p.cost,
         description: p.description,
+        enabled: p?.enabled !== false,
         // imageIds tells the server which persisted images the user kept.
         // Only send it when every kept image resolved to an id — otherwise
         // the server would treat the unresolved ones as removals.
@@ -1612,6 +1852,8 @@ const CreateWebsite = () => {
     }
     fd.set("about", JSON.stringify(values2.about.map((p) => p.text)));
     appendFileIfPresent("companyLogo", values2.companyLogo);
+    // Without a logo in the form the saved one (if any) is removed on the server.
+    fd.set("removeCompanyLogo", values2.companyLogo ? "false" : "true");
     appendFileIfPresent("mainHeroImage", values2.mainHeroImage);
     fd.delete("heroImages");
     (values2.heroImages || []).forEach((file) => appendFileIfPresent("heroImages", file));
@@ -1692,6 +1934,11 @@ const CreateWebsite = () => {
         appendFileIfPresent(`productPageHeroImages_${index}`, file);
       });
       appendFileIfPresent(`productPageHomeCardImage_${index}`, item?.homeCardImage);
+      (item?.subProducts || []).forEach((subProduct, subIndex) => {
+        (subProduct?.images || []).forEach((file) => {
+          appendFileIfPresent(`subProductImages_${index}_${subIndex}`, file);
+        });
+      });
     });
     fd.set("aboutTitle", String(values2.aboutTitle || "").trim());
     fd.set("socials", JSON.stringify(normalizeSocials(values2.socials)));
@@ -1725,6 +1972,11 @@ const CreateWebsite = () => {
       values2.contactInquirySuccessMessage || "Thank you. Your inquiry has been submitted successfully."
     );
     fd.set("contactBusinessHours", values2.contactBusinessHours || "");
+    fd.set("openingHours", JSON.stringify(normalizeOpeningHours(values2.openingHours)));
+    fd.set("reservation", JSON.stringify(normalizeReservation(values2.reservation)));
+    fd.set("stayPolicy", JSON.stringify(normalizeStayPolicy(values2.stayPolicy)));
+    fd.set("tourBooking", JSON.stringify(normalizeTourBooking(values2.tourBooking)));
+    fd.set("templateContent", JSON.stringify(normalizeTemplateContent(values2.templateContent)));
     fd.set("contactPersonName", values2.contactPersonName || "");
     fd.set("contactPersonRole", values2.contactPersonRole || "");
     fd.set("contactPersonEmail", values2.contactPersonEmail || "");
@@ -1734,6 +1986,9 @@ const CreateWebsite = () => {
     fd.set("partnerFormTitle", values2.partnerFormTitle || "");
     fd.set("careersPageHeading", values2.careersPageHeading || "");
     fd.set("careersPageIntro", values2.careersPageIntro || "");
+    fd.set("careersClosingHeading", values2.careersClosingHeading || "");
+    fd.set("careersClosingText", values2.careersClosingText || "");
+    fd.set("careersApplyButtonText", values2.careersApplyButtonText || "");
     fd.set(
       "careersFormFields",
       JSON.stringify(
@@ -1769,7 +2024,8 @@ const CreateWebsite = () => {
       JSON.stringify(
         (values2.aboutPageImageCards || []).map((card) => ({
           title: card?.title || "",
-          description: card?.description || ""
+          description: card?.description || "",
+          enabled: card?.enabled !== false
         }))
       )
     );
@@ -1790,6 +2046,13 @@ const CreateWebsite = () => {
       "logoCarouselImageIds",
       JSON.stringify(keptImageIds(values2?.logoCarousel?.logos)),
     );
+    // Cancel any queued autosave - otherwise it can still fire right after
+    // this explicit save with data captured before this submit, overwriting
+    // what this save just persisted.
+    if (draftAutosaveTimeoutRef.current !== null) {
+      window.clearTimeout(draftAutosaveTimeoutRef.current);
+      draftAutosaveTimeoutRef.current = null;
+    }
     if (effectiveEditMode) {
       updateWebsite(fd);
       return;
@@ -1827,46 +2090,58 @@ const CreateWebsite = () => {
       aboutPageImageCards: (formValues?.aboutPageImageCards || []).map((card) => ({
         title: String(card?.title || "").trim(),
         description: String(card?.description || "").trim(),
-        image: getMediaUrlForPreview(card?.image)
+        image: getMediaUrlForPreview(card?.image),
+        enabled: card?.enabled !== false
       })),
-      productSectionTitle: String(formValues?.productTitle || "").trim() || "Our Products",
+      productSectionTitle: String(formValues?.productTitle || "").trim() || "Our Services",
       products: (formValues?.products || []).map((item) => ({
         name: String(item?.name || "").trim(),
         type: String(item?.type || "").trim(),
         cost: String(item?.cost || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.files || []).map((fileItem) => getMediaUrlForPreview(fileItem)).filter(Boolean)
       })),
       meetingRooms: (formValues?.meetingRooms || formValues?.rooms || []).map((item) => ({
+        ...pickItemExtras("meeting", item),
         title: String(item?.title || "").trim(),
         price: String(item?.price || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.images || []).map((imageItem) => getMediaUrlForPreview(imageItem)).filter(Boolean)
       })),
       rooms: (formValues?.rooms || []).map((item) => ({
+        ...pickItemExtras("room", item),
         title: String(item?.title || "").trim(),
         price: String(item?.price || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.images || []).map((imageItem) => getMediaUrlForPreview(imageItem)).filter(Boolean)
       })),
       coLivingRooms: (formValues?.coLivingRooms || []).map((item) => ({
+        ...pickItemExtras("coLiving", item),
         title: String(item?.title || "").trim(),
         price: String(item?.price || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.images || []).map((imageItem) => getMediaUrlForPreview(imageItem)).filter(Boolean)
       })),
       packages: (formValues?.packages || []).map((item) => ({
+        ...pickItemExtras("package", item),
         title: String(item?.title || "").trim(),
         price: String(item?.price || "").trim(),
         duration: String(item?.duration || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.images || []).map((imageItem) => getMediaUrlForPreview(imageItem)).filter(Boolean)
       })),
       dorms: (formValues?.dorms || []).map((item) => ({
+        ...pickItemExtras("dorm", item),
         title: String(item?.title || "").trim(),
         capacity: item?.capacity,
         price: String(item?.price || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         images: (item?.images || []).map((imageItem) => getMediaUrlForPreview(imageItem)).filter(Boolean)
       })),
       productPages: (formValues?.productDropdownPages || []).map((item, index) => ({
@@ -1878,7 +2153,7 @@ const CreateWebsite = () => {
         faqEnabled: item?.faqEnabled !== false,
         heading: String(item?.homeCardHeading || item?.name || "").trim(),
         subText: String(item?.homeCardSubText || "").trim(),
-        cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
+        cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(item?.heroImage) || getMediaUrlForPreview((item?.heroImages || [])[0]) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
         heroHeading: String(item?.heroHeading || "").trim(),
         heroSubHeading: String(item?.heroSubHeading || "").trim(),
         heroButtonText: String(item?.heroButtonText || "View More").trim(),
@@ -1888,7 +2163,15 @@ const CreateWebsite = () => {
         leadEnabled: item?.leadEnabled !== false,
         leadFormLabel: String(item?.leadFormLabel || "").trim(),
         faqs: Array.isArray(item?.faqs) ? item.faqs.map((faq) => ({ question: String(faq?.question || "").trim(), answer: String(faq?.answer || "").trim() })).filter((faq) => faq.question) : [],
-        inclusions: Array.isArray(item?.inclusions) ? item.inclusions : []
+        inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+        subProducts: Array.isArray(item?.subProducts) ? item.subProducts.map((sp) => ({
+          name: String(sp?.name || "").trim(),
+          description: String(sp?.description || "").trim(),
+          cost: String(sp?.cost || "").trim(),
+          enabled: sp?.enabled !== false,
+          ...pickItemExtras("subProduct", sp),
+          images: (sp?.images || []).map((img) => getMediaUrlForPreview(img)).filter(Boolean)
+        })) : []
       })),
       productDropdownPages: (formValues?.productDropdownPages || []).map((item, index) => ({
         name: String(item?.name || "").trim(),
@@ -1903,31 +2186,48 @@ const CreateWebsite = () => {
         heroButtonText: String(item?.heroButtonText || "").trim(),
         homeCardHeading: String(item?.homeCardHeading || item?.name || "").trim(),
         homeCardSubText: String(item?.homeCardSubText || "").trim(),
-        cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
+        cardImage: getMediaUrlForPreview(item?.homeCardImage) || getMediaUrlForPreview(item?.heroImage) || getMediaUrlForPreview((item?.heroImages || [])[0]) || getMediaUrlForPreview(formValues?.products?.[index]?.files?.[0]),
         homeCardImage: getMediaUrlForPreview(item?.homeCardImage),
         heroImage: getMediaUrlForPreview(item?.heroImage),
         heroImages: (item?.heroImages || []).map((heroItem) => getMediaUrlForPreview(heroItem)).filter(Boolean),
         leadEnabled: item?.leadEnabled !== false,
         leadFormLabel: String(item?.leadFormLabel || "").trim(),
         faqs: Array.isArray(item?.faqs) ? item.faqs.map((faq) => ({ question: String(faq?.question || "").trim(), answer: String(faq?.answer || "").trim() })).filter((faq) => faq.question) : [],
-        inclusions: Array.isArray(item?.inclusions) ? item.inclusions : []
+        inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+        subProducts: Array.isArray(item?.subProducts) ? item.subProducts.map((sp) => ({
+          name: String(sp?.name || "").trim(),
+          description: String(sp?.description || "").trim(),
+          cost: String(sp?.cost || "").trim(),
+          enabled: sp?.enabled !== false,
+          ...pickItemExtras("subProduct", sp),
+          images: (sp?.images || []).map((img) => getMediaUrlForPreview(img)).filter(Boolean)
+        })) : []
       })),
       menuItems: (formValues?.menuItems || []).map((item) => ({
+        ...pickItemExtras("menu", item),
         category: String(item?.category || "").trim(),
         name: String(item?.name || "").trim(),
         price: String(item?.price || "").trim(),
         description: String(item?.description || "").trim(),
+        enabled: item?.enabled !== false,
         image: getMediaUrlForPreview(item?.image)
       })),
+      openingHours: normalizeOpeningHours(formValues?.openingHours),
+      reservation: normalizeReservation(formValues?.reservation),
+      stayPolicy: normalizeStayPolicy(formValues?.stayPolicy),
+      tourBooking: normalizeTourBooking(formValues?.tourBooking),
+      templateContent: normalizeTemplateContent(formValues?.templateContent),
       galleryTitle: String(formValues?.galleryTitle || "Gallery").trim(),
       inclusions: Array.isArray(formValues?.inclusions) ? formValues.inclusions : [],
-      faqs: Array.isArray(formValues?.faqs) ? formValues.faqs.map((faq) => ({ question: String(faq?.question || "").trim(), answer: String(faq?.answer || "").trim() })).filter((faq) => faq.question) : [],
+      faqs: Array.isArray(formValues?.faqs) ? formValues.faqs.map((faq) => ({ question: String(faq?.question || "").trim(), answer: String(faq?.answer || "").trim(), enabled: faq?.enabled !== false })).filter((faq) => faq.question) : [],
       logoCarousel: {
         enabled: formValues?.logoCarousel?.enabled === true,
         title: String(formValues?.logoCarousel?.title || "").trim(),
         logos: (formValues?.logoCarousel?.logos || []).map((item) => getMediaUrlForPreview(item)).filter(Boolean)
       },
-      gallery: (formValues?.gallery || []).map((item) => getMediaUrlForPreview(item)).filter(Boolean),
+      // Disabled gallery images are dropped from the preview payload entirely, since
+      // the live site only ever needs a flat list of URLs to display.
+      gallery: (formValues?.gallery || []).filter((item) => item instanceof File || item?.enabled !== false).map((item) => getMediaUrlForPreview(item)).filter(Boolean),
       testimonialTitle: String(formValues?.testimonialTitle || "Testimonials").trim(),
       testimonials: (formValues?.testimonials || []).map((item) => ({
         name: String(item?.name || "").trim(),
@@ -1963,6 +2263,9 @@ const CreateWebsite = () => {
       partnerFormTitle: String(formValues?.partnerFormTitle || "").trim(),
       careersPageHeading: String(formValues?.careersPageHeading || "").trim(),
       careersPageIntro: String(formValues?.careersPageIntro || "").trim(),
+      careersClosingHeading: String(formValues?.careersClosingHeading || "").trim(),
+      careersClosingText: String(formValues?.careersClosingText || "").trim(),
+      careersApplyButtonText: String(formValues?.careersApplyButtonText || "").trim(),
       careersFormFields: Array.isArray(formValues?.careersFormFields) ? formValues.careersFormFields : tryParseJson(formValues?.careersFormFields, []),
       founders: (formValues?.founders || []).map((item) => ({
         name: String(item?.name || "").trim(),
@@ -1994,16 +2297,124 @@ const CreateWebsite = () => {
     localStorage.setItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY, JSON.stringify(payload));
     window.dispatchEvent(new Event("website-preview-draft-updated"));
   }, [getPreviewPayloadFromValues, values, prefillCompanyName]);
+  const mergeUploadedMediaField = (fieldName, savedItems, submittedFiles = []) => {
+    if (!submittedFiles.length || !Array.isArray(savedItems)) return;
+    const newlyUploaded = savedItems.slice(-submittedFiles.length);
+    if (newlyUploaded.length !== submittedFiles.length) return;
+    const fileToSaved = /* @__PURE__ */ new Map();
+    submittedFiles.forEach((file, idx) => fileToSaved.set(file, newlyUploaded[idx]));
+    const currentItems = getValues(fieldName) || [];
+    const merged = (Array.isArray(currentItems) ? currentItems : []).map(
+      (item) => item instanceof File && fileToSaved.has(item) ? fileToSaved.get(item) : item
+    );
+    setValue(fieldName, merged, { shouldDirty: false });
+  };
+  const syncSavedMediaIntoForm = (savedTemplate, pendingFieldFiles = {}) => {
+    if (!savedTemplate) return;
+    mergeUploadedMediaField(
+      "heroImages",
+      savedTemplate.heroImages,
+      pendingFieldFiles.heroImages
+    );
+    mergeUploadedMediaField("gallery", savedTemplate.gallery, pendingFieldFiles.gallery);
+    mergeUploadedMediaField(
+      "aboutPageImages",
+      savedTemplate.aboutPageImages,
+      pendingFieldFiles.aboutPageImages
+    );
+    const itemImageLists = [
+      ["rooms", "draftRoomImages_"],
+      ["meetingRooms", "draftMeetingRoomImages_"],
+      ["coLivingRooms", "draftCoLivingRoomImages_"],
+      ["packages", "draftPackageImages_"],
+      ["dorms", "draftDormImages_"]
+    ];
+    itemImageLists.forEach(([listName, fieldPrefix]) => {
+      const savedList = savedTemplate[listName];
+      if (!Array.isArray(savedList)) return;
+      const currentList = getValues(listName);
+      if (!Array.isArray(currentList)) return;
+      let changed = false;
+      const nextList = currentList.map((item, itemIdx) => {
+        const submitted = [];
+        Object.keys(pendingFieldFiles).filter((key) => new RegExp(`^${fieldPrefix}${itemIdx}_\\d+$`).test(key)).sort(
+          (a, b) => Number(a.split("_").pop()) - Number(b.split("_").pop())
+        ).forEach((key) => submitted.push(...pendingFieldFiles[key]));
+        const savedImages = savedList[itemIdx]?.images;
+        if (!submitted.length || !Array.isArray(savedImages)) return item;
+        const newlyUploaded = savedImages.slice(-submitted.length);
+        if (newlyUploaded.length !== submitted.length) return item;
+        const fileToSaved = /* @__PURE__ */ new Map();
+        submitted.forEach((file, idx) => fileToSaved.set(file, newlyUploaded[idx]));
+        changed = true;
+        return {
+          ...item,
+          images: (item?.images || []).map(
+            (img) => img instanceof File && fileToSaved.has(img) ? fileToSaved.get(img) : img
+          )
+        };
+      });
+      if (changed) setValue(listName, nextList, { shouldDirty: false });
+    });
+    if (Array.isArray(savedTemplate.founders) && savedTemplate.founders.length) {
+      const currentFounders = getValues("founders") || [];
+      const mergedFounders = currentFounders.map((founder, idx) => {
+        const savedFounder = savedTemplate.founders[idx];
+        if (savedFounder?.image?.url) {
+          return { ...founder, image: savedFounder.image };
+        }
+        return founder;
+      });
+      setValue("founders", mergedFounders, { shouldDirty: false });
+    }
+    if (Array.isArray(savedTemplate.logoCarousel?.logos)) {
+      const currentLogos = getValues("logoCarousel.logos") || [];
+      const savedLogos = savedTemplate.logoCarousel.logos;
+      const mergedLogos = currentLogos.map((current, idx) => {
+        if (current instanceof File) return current;
+        return savedLogos[idx] || current;
+      });
+      setValue("logoCarousel.logos", mergedLogos, { shouldDirty: false });
+    }
+    if (Array.isArray(savedTemplate.productDropdownPages) && savedTemplate.productDropdownPages.length) {
+      const currentPages = getValues("productDropdownPages") || [];
+      const mergedPages = currentPages.map((page, pageIdx) => {
+        const savedSubProducts = savedTemplate.productDropdownPages[pageIdx]?.subProducts;
+        if (!Array.isArray(savedSubProducts) || !savedSubProducts.length) return page;
+        const currentSubProducts = page?.subProducts || [];
+        const mergedSubProducts = currentSubProducts.map((sp, subIdx) => {
+          const savedImages = savedSubProducts[subIdx]?.images;
+          if (!Array.isArray(savedImages) || !savedImages.length) return sp;
+          // Swap the Files this request uploaded for their saved refs. Keeping the Files here meant the next
+          // autosave sent them as empty placeholders and the saved photos were wiped.
+          const submitted = pendingFieldFiles[`subProductImages_${pageIdx}_${subIdx}`] || [];
+          if (!submitted.length) return sp;
+          const newlyUploaded = savedImages.slice(-submitted.length);
+          if (newlyUploaded.length !== submitted.length) return sp;
+          const fileToSaved = new Map();
+          submitted.forEach((file, idx) => fileToSaved.set(file, newlyUploaded[idx]));
+          const currentImages = sp?.images || [];
+          return {
+            ...sp,
+            images: currentImages.map((img) => (img instanceof File && fileToSaved.has(img) ? fileToSaved.get(img) : img)),
+          };
+        });
+        return { ...page, subProducts: mergedSubProducts };
+      });
+      setValue("productDropdownPages", mergedPages, { shouldDirty: false });
+    }
+  };
   const { mutate: saveWebsiteDraft } = useMutation({
     mutationKey: ["save-website-draft", prefillCompanyId || prefillCompanyName || selectedVertical],
-    mutationFn: async (draftPayload) => {
-      const res = await axios.post("/api/editor/save-website-draft", draftPayload, {
+    mutationFn: async (payload) => {
+      const res = await axios.post("/api/editor/save-website-draft", payload.fd, {
         headers: { "Content-Type": "multipart/form-data" }
       });
       return res.data;
     },
-    onSuccess: (data) => {
-      lastDraftSnapshotRef.current = pendingDraftSnapshotRef.current;
+    onSuccess: (data, variables) => {
+      lastDraftSnapshotRef.current = draftHasDeferredFilesRef.current ? "" : pendingDraftSnapshotRef.current;
+      draftHasDeferredFilesRef.current = false;
       pendingDraftSnapshotRef.current = "";
       pendingDraftFileKeysRef.current.forEach(
         (key) => uploadedDraftFileKeysRef.current.add(key)
@@ -2012,103 +2423,17 @@ const CreateWebsite = () => {
       setDraftTemplateId(String(data?.template?._id || ""));
       setDraftUpdatedAt(data?.template?.draftUpdatedAt || null);
       setDraftStatus("saved");
-      const savedTemplate = data?.template;
-      if (savedTemplate) {
-        // Rooms / co-living spaces / packages / dorms / meeting rooms: swap the
-        // Files this request uploaded for their saved refs, per item. Without
-        // this the form keeps raw Files, and Submit then serialises them as
-        // empty `{}` objects that wipe the images just saved.
-        const pendingFieldFiles = pendingItemFilesRef.current || {};
-        [
-          ["rooms", "draftRoomImages_"],
-          ["meetingRooms", "draftMeetingRoomImages_"],
-          ["coLivingRooms", "draftCoLivingRoomImages_"],
-          ["packages", "draftPackageImages_"],
-          ["dorms", "draftDormImages_"]
-        ].forEach(([listName, fieldPrefix]) => {
-          const savedList = savedTemplate[listName];
-          const currentList = getValues(listName);
-          if (!Array.isArray(savedList) || !Array.isArray(currentList)) return;
-          let changed = false;
-          const nextList = currentList.map((item, itemIdx) => {
-            const submitted = [];
-            Object.keys(pendingFieldFiles)
-              .filter((key) => new RegExp(`^${fieldPrefix}${itemIdx}_\\d+$`).test(key))
-              .sort((a, b) => Number(a.split("_").pop()) - Number(b.split("_").pop()))
-              .forEach((key) => submitted.push(...pendingFieldFiles[key]));
-            const savedImages = savedList[itemIdx]?.images;
-            if (!submitted.length || !Array.isArray(savedImages)) return item;
-            const newlyUploaded = savedImages.slice(-submitted.length);
-            if (newlyUploaded.length !== submitted.length) return item;
-            const fileToSaved = new Map();
-            submitted.forEach((file, idx) => fileToSaved.set(file, newlyUploaded[idx]));
-            changed = true;
-            return {
-              ...item,
-              images: (item?.images || []).map(
-                (img) => img instanceof File && fileToSaved.has(img) ? fileToSaved.get(img) : img
-              )
-            };
-          });
-          if (changed) setValue(listName, nextList, { shouldDirty: false });
-        });
-        // Keep File objects if they're newer than saved; otherwise use saved S3
-        // object. Syncing back (rather than only appending) is what lets the next
-        // autosave tick correctly report which persisted images the user still
-        // wants kept — without it, a deleted image never actually gets removed
-        // server-side since the id list would be computed against stale form state.
-        if (Array.isArray(savedTemplate.heroImages)) {
-          const currentHero = getValues("heroImages") || [];
-          const mergedHero = savedTemplate.heroImages.map((saved, idx) => {
-            const current = currentHero[idx];
-            if (current instanceof File) return current;
-            return saved;
-          });
-          setValue("heroImages", mergedHero, { shouldDirty: false });
-        }
-        if (Array.isArray(savedTemplate.gallery)) {
-          const currentGallery = getValues("gallery") || [];
-          const mergedGallery = savedTemplate.gallery.map((saved, idx) => {
-            const current = currentGallery[idx];
-            if (current instanceof File) return current;
-            return saved;
-          });
-          setValue("gallery", mergedGallery, { shouldDirty: false });
-        }
-        if (Array.isArray(savedTemplate.aboutPageImages)) {
-          const currentAboutImages = getValues("aboutPageImages") || [];
-          const mergedAboutImages = savedTemplate.aboutPageImages.map((saved, idx) => {
-            const current = currentAboutImages[idx];
-            if (current instanceof File) return current;
-            return saved;
-          });
-          setValue("aboutPageImages", mergedAboutImages, { shouldDirty: false });
-        }
-        if (Array.isArray(savedTemplate.founders) && savedTemplate.founders.length) {
-          const currentFounders = getValues("founders") || [];
-          const mergedFounders = currentFounders.map((founder, idx) => {
-            const savedFounder = savedTemplate.founders[idx];
-            if (savedFounder?.image?.url) {
-              return { ...founder, image: savedFounder.image };
-            }
-            return founder;
-          });
-          setValue("founders", mergedFounders, { shouldDirty: false });
-        }
-        if (Array.isArray(savedTemplate.logoCarousel?.logos)) {
-          const currentLogos = getValues("logoCarousel.logos") || [];
-          const mergedLogos = savedTemplate.logoCarousel.logos.map((saved, idx) => {
-            const current = currentLogos[idx];
-            if (current instanceof File) return current;
-            return saved;
-          });
-          setValue("logoCarousel.logos", mergedLogos, { shouldDirty: false });
-        }
-      }
+      // Swap the Files this request uploaded for their saved refs (see syncSavedMediaIntoForm).
+      syncSavedMediaIntoForm(data?.template, variables?.pendingFieldFiles);
     },
-    onError: () => {
+    onError: (error) => {
+      // A proxy that rejects a large body answers 413: fall back to a much smaller batch next time.
+      if (error?.response?.status === 413) {
+        draftFileByteBudgetRef.current = 700 * 1024;
+      }
       pendingDraftSnapshotRef.current = "";
       pendingDraftFileKeysRef.current = [];
+      draftHasDeferredFilesRef.current = false;
       setDraftStatus("error");
     },
     onSettled: () => {
@@ -2141,17 +2466,26 @@ const CreateWebsite = () => {
       fd.set("searchKey", toSearchKey(companyName));
       fd.set("draftData", JSON.stringify(draftData));
       const pendingFileKeys = [];
-      const getFileKey = (file) => `${file.name}__${file.size}__${file.lastModified}`;
       // This request's Files per field, in send order — used after the save to
-      // swap them for their saved refs (see onSuccess).
+      // swap them for their saved refs (see syncSavedMediaIntoForm).
       const pendingFieldFiles = {};
-      pendingItemFilesRef.current = pendingFieldFiles;
+      const getFileKey = (file) => `${file.name}__${file.size}__${file.lastModified}`;
+      // Production sits behind a proxy that rejects request bodies over ~1MB
+      // (413), so a multi-select of several ~1MB images can't go in one
+      // request. Send only what fits; the rest stays un-marked and follows in
+      // the next autosave request.
+      let requestFileBytes = 0;
       const appendDraftFileOnce = (fieldName, file) => {
         // Item image lists mix saved {id,url} refs with fresh Files; only Files
         // are uploaded (a saved ref would go out as "[object Object]").
         if (!(file instanceof File)) return;
         const key = `${fieldName}::${getFileKey(file)}`;
         if (uploadedDraftFileKeysRef.current.has(key)) return;
+        if (pendingFileKeys.length > 0 && requestFileBytes + file.size > draftFileByteBudgetRef.current) {
+          draftHasDeferredFilesRef.current = true;
+          return;
+        }
+        requestFileBytes += file.size;
         fd.append(fieldName, file);
         pendingFileKeys.push(key);
         (pendingFieldFiles[fieldName] ||= []).push(file);
@@ -2198,6 +2532,11 @@ const CreateWebsite = () => {
         (page?.heroImages || []).forEach(
           (file) => appendDraftFileOnce(`productPageHeroImages_${index}`, file)
         );
+        (page?.subProducts || []).forEach((subProduct, subIndex) => {
+          (subProduct?.images || []).forEach(
+            (file) => appendDraftFileOnce(`subProductImages_${index}_${subIndex}`, file)
+          );
+        });
       });
       (values?.menuItems || []).forEach((item, i) => {
         appendDraftFileOnce(`draftMenuItemImage_${i}`, item?.image);
@@ -2241,8 +2580,10 @@ const CreateWebsite = () => {
       });
       pendingDraftFileKeysRef.current = pendingFileKeys;
       draftSaveInFlightRef.current = true;
-      saveWebsiteDraft(fd);
+      sessionDraftStartedRef.current = true;
+      saveWebsiteDraft({ fd, pendingFieldFiles });
     }, 1200);
+    draftAutosaveTimeoutRef.current = timeoutId;
     return () => window.clearTimeout(timeoutId);
   }, [
     values,
@@ -2254,7 +2595,7 @@ const CreateWebsite = () => {
     selectedVertical,
     getPreviewPayloadFromValues
   ]);
-  const { mutate: createWebsite, isLoading: isCreateWebsiteLoading } = useMutation({
+  const { mutate: createWebsite, isPending: isCreateWebsiteLoading } = useMutation({
     mutationKey: ["create-website"],
     mutationFn: async (fd) => {
       const res = await axios.post("/api/editor/create-website", fd, {
@@ -2263,6 +2604,7 @@ const CreateWebsite = () => {
       return res.data;
     },
     onSuccess: async (data) => {
+      isSubmittingRef.current = false;
       setIsRedirectingAfterCreate(true);
       setDraftStatus("idle");
       setDraftTemplateId("");
@@ -2270,6 +2612,7 @@ const CreateWebsite = () => {
       lastDraftSnapshotRef.current = "";
       uploadedDraftFileKeysRef.current.clear();
       pendingDraftFileKeysRef.current = [];
+      syncSavedMediaIntoForm(data?.template);
       const createdTemplateId = String(data?.template?._id || "").trim();
       const resolvedWorkspaceId = String(
         workspaceId || data?.template?.workspaceId || ""
@@ -2309,6 +2652,7 @@ const CreateWebsite = () => {
       );
     },
     onError: (err) => {
+      isSubmittingRef.current = false;
       setIsRedirectingAfterCreate(false);
       if (err?.response?.status === 403 && err?.response?.data?.error === "no_credits_remaining") {
         const resetDate = err?.response?.data?.resetDate ? new Date(err.response.data.resetDate).toLocaleDateString() : "-";
@@ -2334,7 +2678,7 @@ const CreateWebsite = () => {
       console.log(err?.response?.data?.message || err.message);
     }
   });
-  const { mutate: updateWebsite, isLoading: isUpdateWebsiteLoading } = useMutation({
+  const { mutate: updateWebsite, isPending: isUpdateWebsiteLoading } = useMutation({
     mutationKey: ["update-website"],
     mutationFn: async (fd) => {
       const res = await axios.patch("/api/editor/edit-website", fd, {
@@ -2343,6 +2687,7 @@ const CreateWebsite = () => {
       return res.data;
     },
     onSuccess: async (data) => {
+      isSubmittingRef.current = false;
       setIsRedirectingAfterCreate(true);
       setDraftStatus("idle");
       setDraftTemplateId("");
@@ -2350,6 +2695,7 @@ const CreateWebsite = () => {
       lastDraftSnapshotRef.current = "";
       uploadedDraftFileKeysRef.current.clear();
       pendingDraftFileKeysRef.current = [];
+      syncSavedMediaIntoForm(data?.template);
       const updatedTemplateId = String(data?.template?._id || "").trim();
       const resolvedWorkspaceId = String(
         workspaceId || data?.template?.workspaceId || ""
@@ -2382,6 +2728,7 @@ const CreateWebsite = () => {
       window.dispatchEvent(new Event("credits:refresh"));
     },
     onError: (err) => {
+      isSubmittingRef.current = false;
       setIsRedirectingAfterCreate(false);
       if (err?.response?.status === 403 && err?.response?.data?.error === "no_credits_remaining") {
         const resetDate = err?.response?.data?.resetDate ? new Date(err.response.data.resetDate).toLocaleDateString() : "-";
@@ -2425,8 +2772,11 @@ const CreateWebsite = () => {
       address: "",
       registeredCompanyName: "",
       copyrightText: "",
-      socials: buildDefaultSocials()
+      socials: buildDefaultSocials(),
+      pageNavItems: buildDefaultPageNavItems(),
+      productDropdownPages: [buildDefaultProductPage()]
     });
+    setActiveMainPageTab(0);
   };
   const daysLeftForRenew = creditsResetDate ? Math.max(0, Math.floor((() => {
     const reset2 = new Date(creditsResetDate);
@@ -2519,12 +2869,62 @@ const CreateWebsite = () => {
       homeCardHeading: trimmed,
       homeCardSubText: "",
       homeCardImage: null,
-      leadEnabled: !isMenuPageSlug(slug),
-      leadFormLabel: isMenuPageSlug(slug) ? "Menu Inquiry Disabled" : "View More / Get Details",
+      leadEnabled: !isMenuPageSlug(slug) || Boolean(TEMPLATE_REGISTRY[String(values?.themeVariant || "")]?.supportsBooking),
+      leadFormLabel: isMenuPageSlug(slug) && !TEMPLATE_REGISTRY[String(values?.themeVariant || "")]?.supportsBooking ? "Menu Inquiry Disabled" : "View More / Get Details",
       faqs: [],
       inclusions: DEFAULT_PRODUCT_PAGE_INCLUSION_KEYS.map((k) => ({ key: k, enabled: false }))
     });
     setActiveProductPageTab(productPageFields.length);
+    void fillServiceWithSample(trimmed, slug);
+  };
+
+  // A service page added from the list on a newer template comes with that service's sample text,
+  // photos and items (only where the site has none yet), so it looks finished like the rest.
+  const fillServiceWithSample = async (name, slug) => {
+    const theme = String(getValues("themeVariant") || "");
+    if (!hasSampleContent(theme) || !isSampleService(name)) return; // custom pages start blank
+    try {
+      const sample = await buildServiceSample({
+        themeVariant: theme,
+        serviceName: name,
+        companyName: String(getValues("companyName") || prefillCompanyName || "").trim()
+      });
+      const pages = getValues("productDropdownPages") || [];
+      const index = pages.findIndex((item) => String(item?.slug || "").trim().toLowerCase() === slug);
+      if (index < 0) return; // removed again while the photos were loading
+      // Never overwrite what the owner already typed on this page.
+      const page = pages[index] || {};
+      const blank = (value) => !String(value ?? "").trim();
+      const untouched = (value) => blank(value) || String(value).trim() === name;
+      const merged = {
+        ...page,
+        ...sample.page,
+        heroHeading: untouched(page.heroHeading) ? sample.page.heroHeading : page.heroHeading,
+        heroSubHeading: blank(page.heroSubHeading) ? sample.page.heroSubHeading : page.heroSubHeading,
+        homeCardHeading: untouched(page.homeCardHeading) ? sample.page.homeCardHeading : page.homeCardHeading,
+        homeCardSubText: blank(page.homeCardSubText) ? sample.page.homeCardSubText : page.homeCardSubText,
+        heroImages: page.heroImages?.length ? page.heroImages : sample.page.heroImages,
+        homeCardImage: page.homeCardImage || sample.page.homeCardImage,
+        faqs: page.faqs?.length ? page.faqs : sample.page.faqs,
+        subProducts: (page.subProducts || []).some((item) => String(item?.name || "").trim()) ? page.subProducts : sample.page.subProducts || page.subProducts
+      };
+      setValue("productDropdownPages", pages.map((item, i) => i === index ? merged : item));
+      // Lists shared by every service of this kind are filled only when still empty.
+      Object.entries(sample.lists).forEach(([key, list]) => {
+        const current = getValues(key);
+        const hasContent = Array.isArray(current) && current.some((entry) => String(entry?.title || entry?.name || "").trim());
+        if (!hasContent) setValue(key, list);
+      });
+      const { openingHours, reservation, stayPolicy, tourBooking } = sample.settings;
+      const hours = getValues("openingHours");
+      if (openingHours && !(Array.isArray(hours) && hours.length)) setValue("openingHours", normalizeOpeningHours(openingHours));
+      if (reservation && !getValues("reservation")?.enabled) setValue("reservation", normalizeReservation(reservation));
+      if (stayPolicy && !getValues("stayPolicy")?.checkInTime) setValue("stayPolicy", normalizeStayPolicy(stayPolicy));
+      if (tourBooking) setValue("tourBooking", normalizeTourBooking(tourBooking));
+      toast.info(`Sample content added for ${name}. Replace it with your own.`);
+    } catch {
+      // The page is still added; it just starts blank.
+    }
   };
 
   // "+ Add New Page" seeds a blank "Product N" page, incrementing past any name
@@ -2555,7 +2955,185 @@ const CreateWebsite = () => {
   const legacyHomeProductsEditorEnabled = Boolean(
     values?.__legacyHomeProductsEditorEnabled
   );
-  if (isCheckingExistingWebsite) {
+  const hasSeededDefaultServicesPageRef = useRef(false);
+
+  // Services the business ticked in the template picker become the starting pages.
+  // Cafe pages keep lead capture on only when the chosen template can take
+  // reservations; older templates have no reservation form.
+  const buildPickerServicePages = (names) => {
+    const supportsBooking = Boolean(TEMPLATE_REGISTRY[String(getValues("themeVariant") || "")]?.supportsBooking);
+    return names.map((name) => {
+      const page = buildDefaultProductPage(name);
+      const menu = isMenuPageSlug(page.slug);
+      const ownItems = /workation|hostel|co-living|coliving|meeting|cafe|menu/.test(page.slug);
+      return {
+        ...page,
+        leadEnabled: !menu || supportsBooking,
+        leadFormLabel: menu && !supportsBooking ? "Menu Inquiry Disabled" : page.leadFormLabel,
+        subProducts: ownItems ? [] : page.subProducts
+      };
+    });
+  };
+
+  useEffect(() => {
+    if (hasSeededDefaultServicesPageRef.current) return;
+    hasSeededDefaultServicesPageRef.current = true;
+    const currentPages = getValues("productDropdownPages");
+    if (Array.isArray(currentPages) && currentPages.length > 0) return;
+    const chosen = isEditMode ? [] : readSelectedServices();
+    if (!chosen.length) return;
+    setValue("productDropdownPages", buildPickerServicePages(chosen), { shouldDirty: false });
+    setActiveProductPageTab(0);
+  }, [getValues, setValue, setActiveProductPageTab]);
+
+  // "Start from sample content": a brand-new site with a newer template opens filled with that
+  // template's demo text and photos (real, editable form content) so it looks finished at once.
+  const [samplePending, setSamplePending] = useState(() => !isEditMode && hasSampleContent(initialThemeVariant));
+  const [sampleApplied, setSampleApplied] = useState(false);
+  const [sampleFilling, setSampleFilling] = useState(false);
+  const sampleStartedRef = useRef(false);
+
+  // Writes a built sample into the form: site-wide text and photos, opening hours and settings, every
+  // page except Careers switched on, and each service page filled from the sample for its service.
+  const applySampleValues = (sample, basePages) => {
+    const current = getValues();
+    const servicePages = basePages.map((page, index) => ({ ...page, ...sample.pages[index] || {} }));
+    reset({
+      ...current,
+      ...sample.values,
+      openingHours: normalizeOpeningHours(sample.values.openingHours),
+      ...sample.values.reservation ? { reservation: normalizeReservation(sample.values.reservation) } : {},
+      ...sample.values.stayPolicy ? { stayPolicy: normalizeStayPolicy(sample.values.stayPolicy) } : {},
+      ...sample.values.tourBooking ? { tourBooking: normalizeTourBooking(sample.values.tourBooking) } : {},
+      // Every page with sample content goes live, except Careers (no openings to show).
+      pageNavItems: buildDefaultPageNavItems().map((item) => ({ ...item, enabled: item.slug !== "careers" })),
+      productDropdownPages: servicePages
+    });
+    setActiveProductPageTab(0);
+    setSampleApplied(true);
+  };
+
+  useEffect(() => {
+    if (!samplePending || sampleStartedRef.current || isCheckingExistingWebsite) return;
+    // A saved website/draft always wins over sample content.
+    if (hasHydratedFromDbRef.current || hasExistingWebsite || !String(prefillCompanyName || "").trim()) {
+      setSamplePending(false);
+      return;
+    }
+    sampleStartedRef.current = true;
+    (async () => {
+      try {
+        const theme = String(getValues("themeVariant") || "");
+        if (!hasSampleContent(theme)) return;
+        const names = resolveSampleServices(theme, readSelectedServices());
+        const sample = await buildSampleContent({
+          themeVariant: theme,
+          services: names,
+          companyName: String(prefillCompanyName).trim()
+        });
+        const current = getValues();
+        const basePages = Array.isArray(current.productDropdownPages) && current.productDropdownPages.length ? current.productDropdownPages : buildPickerServicePages(names);
+        applySampleValues(sample, basePages);
+      } catch {
+        // A blank form is a fine fallback if the sample can't be built.
+      } finally {
+        setSamplePending(false);
+      }
+    })();
+  }, [samplePending, isCheckingExistingWebsite, hasExistingWebsite, prefillCompanyName, getValues, reset, setActiveProductPageTab]);
+
+  const clearSampleContent = () => {
+    if (!window.confirm("Remove all the sample text and photos and start with a blank website?")) return;
+    formRef.current?.reset();
+    const current = getValues();
+    const chosen = readSelectedServices();
+    reset({
+      ...current,
+      title: "",
+      subTitle: "",
+      CTAButtonText: "",
+      heroImages: [],
+      gallery: [],
+      about: [{ text: "" }],
+      aboutTitle: "",
+      aboutPageStory: "",
+      aboutPageMission: "",
+      aboutPageValues: "",
+      aboutPageTeamHeading: "",
+      aboutPageImages: [],
+      aboutPageImageCards: [{ title: "", description: "", image: null }],
+      founders: [{ name: "", role: "", bio: "", highlights: "", image: null }],
+      testimonials: [defaultTestimonial],
+      partnerPageContent: "",
+      partnerPageHeading: "",
+      productTitle: "",
+      contactTitle: "",
+      galleryTitle: "",
+      faqs: [],
+      inclusions: [],
+      menuItems: [],
+      rooms: [],
+      meetingRooms: [],
+      coLivingRooms: [],
+      packages: [],
+      dorms: [],
+      openingHours: [],
+      reservation: defaultReservation(),
+      stayPolicy: defaultStayPolicy(),
+      tourBooking: { enabled: true },
+      pageNavItems: buildDefaultPageNavItems(),
+      productDropdownPages: chosen.length ? buildPickerServicePages(chosen) : []
+    });
+    setActiveProductPageTab(0);
+    setSampleApplied(false);
+  };
+
+  // A saved website that was never filled in (an empty draft) can still be given the sample.
+  const websiteIsBlank = (v) => {
+    const text = (value) => String(value ?? "").trim();
+    const some = (list) => Array.isArray(list) && list.length > 0;
+    const pageHasContent = (page) =>
+      Boolean(text(page?.heroSubHeading) || some(page?.heroImages) || page?.homeCardImage) ||
+      (page?.subProducts || []).some((item) => text(item?.name) || text(item?.description) || some(item?.images));
+    return !(
+      text(v.title) ||
+      text(v.subTitle) ||
+      some(v.heroImages) ||
+      some(v.gallery) ||
+      (v.about || []).some((item) => text(item?.text)) ||
+      (v.testimonials || []).some((item) => text(item?.testimony) || text(item?.name)) ||
+      some(v.faqs) ||
+      ["menuItems", "rooms", "meetingRooms", "coLivingRooms", "packages", "dorms"].some((key) => some(v[key])) ||
+      (v.productDropdownPages || []).some(pageHasContent)
+    );
+  };
+  const canOfferSample =
+    hasSampleContent(String(values?.themeVariant || "")) &&
+    !sampleApplied &&
+    !sampleFilling &&
+    (hasHydratedFromDbRef.current || !effectiveEditMode) &&
+    websiteIsBlank(values || {});
+
+  const fillBlankWithSample = async () => {
+    if (sampleFilling) return;
+    setSampleFilling(true);
+    try {
+      const theme = String(getValues("themeVariant") || "");
+      const pages = getValues("productDropdownPages") || [];
+      // Keep service pages already named after a service; otherwise start from the template's own service.
+      const named = pages.map((page) => String(page?.name || "").trim()).filter(isSampleService);
+      const names = resolveSampleServices(theme, named);
+      const companyName = String(getValues("companyName") || prefillCompanyName || "").trim();
+      const sample = await buildSampleContent({ themeVariant: theme, services: names, companyName });
+      applySampleValues(sample, named.length ? pages : buildPickerServicePages(names));
+    } catch {
+      toast.error("Could not load the sample content. Please try again.");
+    } finally {
+      setSampleFilling(false);
+    }
+  };
+
+  if (isCheckingExistingWebsite || samplePending) {
     return <WebsiteBuilderEditorSkeleton />;
   }
   if (editingLockPending) {
@@ -2617,6 +3195,51 @@ const CreateWebsite = () => {
                 </p>
               </div>
             </div>
+
+            {canOfferSample ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900"
+              >
+                <p className="min-w-0 flex-1 leading-relaxed">
+                  <span className="font-semibold">This website is still empty.</span> Fill it with sample text, photos,
+                  rooms or menu, reviews and team members to see the finished look, then edit or replace anything with
+                  your own before publishing.
+                </p>
+                <button
+                  type="button"
+                  onClick={fillBlankWithSample}
+                  className="shrink-0 rounded-lg bg-[#2563EB] px-3 py-1.5 font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Fill with sample content
+                </button>
+              </div>
+            ) : null}
+            {sampleFilling ? (
+              <div role="status" className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-900">
+                Adding sample content and photos…
+              </div>
+            ) : null}
+
+            {sampleApplied ? (
+              <div
+                role="status"
+                className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs text-blue-900"
+              >
+                <p className="min-w-0 flex-1 leading-relaxed">
+                  <span className="font-semibold">Your website starts with sample content.</span> The text, photos,
+                  rooms or menu, reviews and team members are placeholders so you can see the finished look. Edit or
+                  replace anything below with your own before publishing.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearSampleContent}
+                  className="shrink-0 rounded-lg border border-blue-300 bg-white px-3 py-1.5 font-semibold text-blue-700 transition hover:bg-blue-100"
+                >
+                  Start from blank
+                </button>
+              </div>
+            ) : null}
 
             <form
     ref={formRef}
@@ -2939,7 +3562,10 @@ const CreateWebsite = () => {
     const isWorkationPage = currentProductPageSlug.includes("workation");
     const isHostelPage = currentProductPageSlug.includes("hostel");
     if (isCafePage) {
-      return <MenuSection control={control} register={register} />;
+      return <>
+                                  <MenuSection control={control} register={register} />
+                                  <ServiceSettingsPanel control={control} kind="cafe" />
+                                </>;
     }
     if (isMeetingRoomsPage) {
       return <RoomsSection
@@ -2953,7 +3579,8 @@ const CreateWebsite = () => {
       />;
     }
     if (isCoLivingPage) {
-      return <RoomsSection
+      return <>
+                                  <RoomsSection
         control={control}
         register={register}
         fieldName="coLivingRooms"
@@ -2961,13 +3588,33 @@ const CreateWebsite = () => {
         itemLabel="Space"
         imageLabel="Space Images"
         priceLabel="Price per night"
-      />;
+      />
+                                  <ServiceSettingsPanel control={control} kind="coLiving" />
+                                </>;
     }
     if (isWorkationPage) {
       return <PackagesSection control={control} register={register} />;
     }
     if (isHostelPage) {
-      return <DormsSection control={control} register={register} />;
+      return <>
+                                  <DormsSection control={control} register={register} />
+                                  <ServiceSettingsPanel control={control} kind="hostel" />
+                                </>;
+    }
+    // The newer templates (Savor, Wayfarer, Haven, Commons) keep each page's own items
+    // (co-working spaces and the like) on the service page itself.
+    if (hasSampleContent(watch("themeVariant"))) {
+      const isCoWorkingPage = currentProductPageSlug.includes("co-working") || currentProductPageSlug.includes("coworking");
+      const subProductsEditor = <ProductPageSubProducts
+        key={activeProductPageTab}
+        control={control}
+        pageIndex={activeProductPageTab}
+        pageName={watch(`productDropdownPages.${activeProductPageTab}.name`)}
+      />;
+      return isCoWorkingPage ? <>
+                                {subProductsEditor}
+                                <ServiceSettingsPanel control={control} kind="coWorking" />
+                              </> : subProductsEditor;
     }
     return <div className="mt-3 grid grid-cols-1 gap-4">
                                 <Controller
@@ -3211,6 +3858,18 @@ const CreateWebsite = () => {
                   </div> : null}
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-3">
+                  <div>
+                    <Controller
+    name="aboutTitle"
+    control={control}
+    render={({ field }) => <WebsiteFormField
+      field={{ ...field, value: field.value || "" }}
+      label="About Section Heading (Synced with Home)"
+      placeholder="About Our Vision"
+    />}
+  />
+                  </div>
+
                   <div>
                     <Controller
     name="aboutPageIntro"
@@ -3572,6 +4231,35 @@ const CreateWebsite = () => {
       minRows={6}
     />}
   />
+                  <Controller
+    name="careersClosingHeading"
+    control={control}
+    render={({ field }) => <WebsiteFormField
+      field={field}
+      label="Closing Box Heading"
+      placeholder="Don't see your role?"
+    />}
+  />
+                  <Controller
+    name="careersClosingText"
+    control={control}
+    render={({ field }) => <WebsiteFormField
+      field={field}
+      label="Closing Box Text"
+      placeholder="Send us a general application and tell us how you'd like to contribute."
+      multiline
+      minRows={3}
+    />}
+  />
+                  <Controller
+    name="careersApplyButtonText"
+    control={control}
+    render={({ field }) => <WebsiteFormField
+      field={field}
+      label="General Application Button"
+      placeholder="General application"
+    />}
+  />
                   <div data-tour="wb-editor-careers-page-form-layout">
                     <div className="border-b-default border-borderGray py-4">
                       <span className="text-subtitle font-pmedium inline-flex items-center gap-2">Apply Now Form Layout <SectionPreviewInfo section="applyForm" /></span>
@@ -3779,6 +4467,7 @@ const CreateWebsite = () => {
           </div>
           {activeMainPageSlug === "home" ? <div className="md:grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4" data-tour="wb-editor-home-content">
             {supportsThemeColors(watch("themeVariant")) && <ThemeColors control={control} templateId={watch("themeVariant")} />}
+            {hasTemplateContent(watch("themeVariant")) && <TemplateContentPanel control={control} templateId={watch("themeVariant")} />}
             {
     /* HERO / COMPANY */
   }
