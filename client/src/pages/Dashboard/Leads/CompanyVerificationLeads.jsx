@@ -17,10 +17,10 @@ import { statusPillClass } from "../../../lib/status-pill";
 import PageFrame from "../../../components/Pages/PageFrame";
 import VerificationLeadDetailModal from "../../../components/VerificationLeadDetailModal";
 import {
-  TIER_LABELS,
   formatDate,
   getInitials,
   getPaymentInfo,
+  getVerificationPlanLabel,
 } from "../../../constants/verificationTiers";
 
 const STATUSES = ["pending", "approved", "rejected"];
@@ -364,9 +364,7 @@ const CompanyVerificationLeads = () => {
                             </td>
                             <td className="px-5 py-4">
                               <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
-                                {TIER_LABELS[lead.requestedTier] ||
-                                  lead.requestedTier}{" "}
-                                · ${lead.requestedAmountUsd}
+                                {getVerificationPlanLabel(lead)}
                               </span>
                             </td>
                             <td className="px-5 py-4">
@@ -436,7 +434,9 @@ const CompanyVerificationLeads = () => {
                                     }
                                     title={
                                       lead.paymentStatus === "paid"
-                                        ? "Already paid — see Payment column"
+                                        ? lead.isFreePeriod
+                                          ? "Free period active — the host renews from HostPanel"
+                                          : "Already paid — see Payment column"
                                         : "Send payment link"
                                     }
                                     className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
@@ -485,8 +485,9 @@ const CompanyVerificationLeads = () => {
               </h3>
               <p className="text-[12px] font-pmedium text-slate-500">
                 {confirmApproveLead.businessName || confirmApproveLead.companyName}{" "}
-                will be cleared to pay for verification. This decision can't be
-                changed afterwards.
+                will get its verified badge free for 3 months, starting now. After
+                that the host renews (1 month or 1 year) from HostPanel. This
+                decision can't be changed afterwards.
               </p>
             </div>
             <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex gap-2">

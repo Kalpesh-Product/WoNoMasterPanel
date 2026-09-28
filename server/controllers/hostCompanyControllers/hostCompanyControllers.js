@@ -1839,6 +1839,102 @@ const bulkInsertLogos = async (req, res, next) => {
   }
 };
 
+// Listing product type (as stored on Nomads' Company) -> the industry label the
+// verification request uses.
+const CLAIM_TYPE_TO_INDUSTRY = {
+  coworking: "Co-working",
+  coliving: "Co-living",
+  hostel: "Hostel",
+  workation: "Workation",
+  meetingroom: "Meetings",
+  cafe: "Cafe",
+};
+
+// An "existing listings" request also carries the verified badge, so the ONE
+// approval (Transfer) links the listings AND turns the badge on. This creates
+// the company's verification request from the claim (contact + the documents
+// the host already gave at onboarding) and approves it, which — for a HostPanel
+// request — starts the free 3-month period on Nomads' side and lists the
+// company under Companies Verified. Returns { activated, reason? }.
+const activateVerifiedBadgeForClaim = async ({
+  claim,
+  sourceCompany,
+  hostLeadCompany,
+  nomadsCompanyId,
+  listings,
+}) => {
+  const base = String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(
+    /\/+$/,
+    "",
+  );
+  const client = axios.create({
+    baseURL: `${base}/admin/verification-requests`,
+    headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
+    timeout: 15000,
+  });
+
+  let request = (await client.get("/", { params: { companyId: nomadsCompanyId } })).data
+    ?.data?.[0];
+
+  if (!request) {
+    const proofDocuments = (claim.documents || [])
+      .filter((doc) => doc?.url)
+      .map(({ label, url, id }) => ({ label, url, id }));
+    if (!proofDocuments.length) {
+      return {
+        activated: false,
+        reason:
+          "the request had no documents, so the verified badge wasn't activated — do it from Company Verification Leads.",
+      };
+    }
+    const industry = [
+      ...new Set(
+        listings.map((l) => CLAIM_TYPE_TO_INDUSTRY[l.companyType]).filter(Boolean),
+      ),
+    ];
+    if (!industry.length) {
+      return {
+        activated: false,
+        reason:
+          "no listing types were found, so the verified badge wasn't activated — do it from Company Verification Leads.",
+      };
+    }
+    const country =
+      hostLeadCompany.companyCountry || sourceCompany.companyCountry || "-";
+    const created = await client.post("/", {
+      companyId: nomadsCompanyId,
+      companyName: sourceCompany.companyName,
+      businessName: sourceCompany.companyName,
+      verticalsSnapshot: listings.map((l) => ({
+        businessId: l.businessId,
+        companyType: l.companyType,
+        city: l.city,
+      })),
+      fullName: claim.fullName,
+      email: claim.email,
+      mobile: claim.mobile,
+      role: claim.role,
+      country,
+      industry,
+      registeredCompanyName: claim.registeredCompanyName || sourceCompany.companyName,
+      companyCountry: country,
+      companyState: hostLeadCompany.companyState || sourceCompany.companyState || "-",
+      companyCity: hostLeadCompany.companyCity || sourceCompany.companyCity || "-",
+      continent:
+        sourceCompany.companyContinent || hostLeadCompany.companyContinent || "Other",
+      websiteUrl: hostLeadCompany.websiteLink || "",
+      requestedTier: "1m",
+      proofDocuments,
+    });
+    request = created.data?.data;
+  }
+
+  if (request?.status !== "approved") {
+    await client.patch(`/${request._id}/status`, { status: "approved" });
+  }
+  return { activated: true };
+};
+
 // Links ALL of a Nomads company's listings to a staff-selected Host Company —
 // a reference only, no data is duplicated into our own DB.
 const transferNomadListing = async (req, res, next) => {
@@ -1930,6 +2026,22 @@ const transferNomadListing = async (req, res, next) => {
     }
 
     hostLeadCompany.linkedNomadsCompanyId = normalizedNomadsCompanyId;
+    // Copy what the badge step needs BEFORE the claim's status flips below.
+    const claimWasPending = hostLeadCompany.existingCompanyClaim?.status === "pending";
+    const claimForBadge = claimWasPending
+      ? {
+          fullName: hostLeadCompany.existingCompanyClaim.fullName,
+          email: hostLeadCompany.existingCompanyClaim.email,
+          mobile: hostLeadCompany.existingCompanyClaim.mobile,
+          role: hostLeadCompany.existingCompanyClaim.role,
+          registeredCompanyName: hostLeadCompany.existingCompanyClaim.registeredCompanyName,
+          documents: (hostLeadCompany.existingCompanyClaim.documents || []).map((doc) => ({
+            label: doc.label,
+            url: doc.url,
+            id: doc.id,
+          })),
+        }
+      : null;
     if (hostLeadCompany.existingCompanyClaim?.status === "pending") {
       hostLeadCompany.existingCompanyClaim.status = "approved";
       hostLeadCompany.existingCompanyClaim.reviewedAt = new Date();
@@ -1988,10 +2100,33 @@ const transferNomadListing = async (req, res, next) => {
         "Linked, but couldn't apply the plan's enabled-listing limit — check the host's enabled listings.";
     }
 
+    // One approval covers both: a host's existing-listings request also
+    // activates the verified badge (free for 3 months). A failure here must not
+    // undo the link that already went through — it's reported in the message.
+    let badgeNote = "";
+    if (claimForBadge) {
+      try {
+        const result = await activateVerifiedBadgeForClaim({
+          claim: claimForBadge,
+          sourceCompany,
+          hostLeadCompany,
+          nomadsCompanyId: normalizedNomadsCompanyId,
+          listings: await fetchNomadListings(normalizedNomadsCompanyId),
+        });
+        badgeNote = result.activated
+          ? " Verified badge activated for 3 months."
+          : ` Note: ${result.reason}`;
+      } catch (error) {
+        console.error("Failed to activate verified badge after claim approval:", error.message);
+        badgeNote =
+          " Note: linked, but the verified badge couldn't be activated — do it from Company Verification Leads.";
+      }
+    }
+
     return res.status(200).json({
       message: `All products linked to Host Company "${hostLeadCompany.companyName}"${
         disabledCount ? ` — ${disabledCount} listing(s) left disabled to fit the host's plan` : ""
-      }${capWarning ? `. ${capWarning}` : ""}`,
+      }${capWarning ? `. ${capWarning}` : ""}.${badgeNote}`,
       hostCompanyId: hostLeadCompany.companyId,
       hostCompanyName: hostLeadCompany.companyName,
     });
@@ -2338,9 +2473,11 @@ const getNomadCompanyListingsForClaim = async (req, res, next) => {
         .filter((l) => !l?.isDeleted)
         .map((l) => ({
           businessId: l.businessId,
+          companyName: l.companyName || company.companyName || "",
           companyTitle: l.companyTitle || l.companyName || "",
           companyType: l.companyType || "",
           city: l.city || "",
+          state: l.state || "",
           country: l.country || "",
           isActive: Boolean(l.isActive),
         })),

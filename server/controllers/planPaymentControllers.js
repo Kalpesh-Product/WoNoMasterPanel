@@ -10,6 +10,7 @@ const {
 } = require("../utils/emailTemplates");
 const {
   computeCustomPlanPrice,
+  computeCustomPlanMonthlyPrice,
   getCustomPlanPricingBreakdown,
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
@@ -158,7 +159,10 @@ const createAndSendPlanPaymentLink = async ({
     invoice_creation: { enabled: true },
     after_completion: {
       type: "redirect",
-      redirect: { url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing/payment-result` },
+      // Public page (a first-time payer has no account yet, so the old
+      // logged-in /profile/... target just bounced them to login). Stripe fills
+      // in the session id, which the page uses to poll the payment status.
+      redirect: { url: `${resolveHostPanelFrontendUrl()}/payment-success?session_id={CHECKOUT_SESSION_ID}` },
     },
   });
 
@@ -337,13 +341,75 @@ const sendPlanPaymentLink = async (req, res, next) => {
   }
 };
 
+// POST /api/hosts/plan-payments/custom-selection
+// { companyId, customModuleIds, email?, name?, companyName? }
+// Saves the modules staff chose for a Custom-plan signup lead WITHOUT sending
+// anything, so the quote can be built up (e.g. after a call) and the payment
+// link sent later. Creates the lead row the same way sending a link would.
+const saveLeadCustomSelection = async (req, res, next) => {
+  try {
+    const { companyId, customModuleIds, companyName, email, name } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+    if (!Array.isArray(customModuleIds)) {
+      return res.status(400).json({ message: "customModuleIds must be an array" });
+    }
+    const ids = [...new Set(customModuleIds.map((id) => String(id)).filter(Boolean))];
+
+    const resolvedCompanyId = String(companyId).trim();
+    let lead = await HostLeadCompany.findOne({ companyId: resolvedCompanyId });
+    if (!lead) {
+      if (!email) {
+        return res.status(400).json({ message: "email is required to create a new lead record" });
+      }
+      lead = await HostLeadCompany.create({
+        companyId: resolvedCompanyId,
+        companyName: companyName || "",
+        pocEmail: String(email).trim().toLowerCase(),
+        pocName: name || "",
+        plan: "basic",
+        status: "closed",
+        source: "signup-lead",
+      });
+    }
+
+    lead.customPlanModuleIds = ids;
+    await lead.save();
+
+    return res.status(200).json({
+      message: "Selection saved",
+      customModuleIds: ids,
+      monthlyPriceUsd: await computeCustomPlanMonthlyPrice(ids),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/hosts/plan-payments/custom-selections -> { [companyId]: moduleIds }
+// for leads that already have a saved Custom-plan selection (Signup Leads
+// shows "N modules" and pre-fills the picker from it).
+const getLeadCustomSelections = async (req, res, next) => {
+  try {
+    const rows = await HostLeadCompany.find({ "customPlanModuleIds.0": { $exists: true } })
+      .select("companyId customPlanModuleIds")
+      .lean();
+    const byCompanyId = {};
+    for (const row of rows) {
+      if (row.companyId) byCompanyId[row.companyId] = row.customPlanModuleIds;
+    }
+    return res.status(200).json(byCompanyId);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // GET /api/hosts/plan-payments  -> latest payment-link status per companyId,
 // for the Signup Leads / Upgrade Plan tables' Payment Status columns.
 const getPlanPaymentStatuses = async (req, res, next) => {
   try {
     const links = await PlanPaymentLink.find()
       .sort({ createdAt: -1 })
-      .select("companyId status amount currency plan billingCycle paidAt createdAt hostedInvoiceUrl")
+      .select("companyId status amount currency plan billingCycle paidAt createdAt hostedInvoiceUrl invoicePdfUrl")
       .lean();
 
     // Prefer a PAID link over a pending one for the same company — a
@@ -464,6 +530,62 @@ const applyPaidPlanToWorkspace = async (link) => {
 
 // Called from hostUserControllers.js's handleStripeWebhook dispatcher once
 // it's confirmed session.payment_link belongs to a PlanPaymentLink.
+// GET /api/public/plan-payment-status?session_id=cs_...
+// Public: the (unguessable) Stripe checkout session id from the payment-link
+// redirect is the only credential. Powers HostPanel's /payment-success page,
+// which polls until the webhook has confirmed the payment on our side.
+const getPublicPlanPaymentStatus = async (req, res, next) => {
+  try {
+    const sessionId = String(req.query.session_id || "").trim();
+    if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sessionId)) {
+      return res.status(400).json({ message: "A valid session_id is required" });
+    }
+
+    let session;
+    try {
+      session = await stripe.checkout.sessions.retrieve(sessionId);
+    } catch (error) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+    const link = session?.payment_link
+      ? await PlanPaymentLink.findOne({ stripePaymentLinkId: session.payment_link }).lean()
+      : null;
+    if (!link) return res.status(404).json({ message: "Payment not found" });
+
+    const confirmed = link.status === "paid";
+    const status = confirmed
+      ? "confirmed"
+      : session.payment_status === "paid"
+        ? "processing"
+        : "unpaid";
+
+    const [local = "", domain = ""] = String(link.leadEmail || "").split("@");
+    const maskedEmail = domain
+      ? `${local.slice(0, 2)}${"*".repeat(Math.max(local.length - 2, 1))}@${domain}`
+      : "";
+
+    return res.status(200).json({
+      status,
+      companyName: link.companyName || "",
+      plan: link.plan,
+      planLabel: PLAN_LABELS[link.plan] || link.plan,
+      billingCycle: link.billingCycle,
+      changeType: link.changeType,
+      amount: link.amount,
+      currency: link.currency,
+      paidAt: confirmed ? link.paidAt : null,
+      periodEnd: confirmed ? link.periodEnd : null,
+      hostedInvoiceUrl: confirmed ? link.hostedInvoiceUrl || null : null,
+      // false for a first-time payer whose account doesn't exist yet — they
+      // wait for the invite email rather than heading to login.
+      hasWorkspace: Boolean(link.workspaceId),
+      email: maskedEmail,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const handlePlanPaymentWebhookEvent = async (session) => {
   // Atomic "transition once" — a Stripe redelivery finds nothing left to
   // update on the second call.
@@ -570,8 +692,11 @@ const getHostPanelPlanInvoices = async (req, res, next) => {
 module.exports = {
   createAndSendPlanPaymentLink,
   sendPlanPaymentLink,
+  saveLeadCustomSelection,
+  getLeadCustomSelections,
   getPlanPaymentStatuses,
   getHostCompanyPlanHistory,
+  getPublicPlanPaymentStatus,
   handlePlanPaymentWebhookEvent,
   resolveWorkspaceForCompany,
   getHostPanelPlanInvoices,

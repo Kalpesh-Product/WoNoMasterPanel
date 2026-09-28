@@ -74,10 +74,12 @@ const {
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
+const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
 
 require("./listeners/logEventListener");
 require("./jobs/verificationRenewalReminders");
 require("./jobs/verificationExpiryNotices");
+require("./jobs/verificationTrialEndingNotices");
 require("./jobs/planExpiryReminders");
 require("./jobs/planExpiryDowngrade");
 const app = express();
@@ -123,6 +125,8 @@ app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
 // staff set on the Plan Pricing settings page, without exposing anything
 // else in the pricing model.
 app.get("/api/public/plan-pricing", getPublicPlanPricing);
+// Public: payment-confirmation polling for HostPanel's /payment-success page.
+app.get("/api/public/plan-payment-status", getPublicPlanPaymentStatus);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs

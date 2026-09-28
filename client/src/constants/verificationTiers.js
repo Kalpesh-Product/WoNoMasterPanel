@@ -71,6 +71,28 @@ export const getInitials = (value) =>
     .join("")
     .toUpperCase();
 
+// The plan a verification request is on. A HostPanel request gets its badge free
+// for the first 3 months once approved, so it shows as free (not as the $10
+// renewal default recorded on the request) until a renewal is actually paid.
+export const getVerificationPlanLabel = (lead) => {
+  if (lead.isFreePeriod) return "Free · 3 Months";
+  if (
+    lead.paymentStatus === "paid" &&
+    lead.activeTier &&
+    Number(lead.activeAmountUsd) > 0
+  ) {
+    return `${TIER_LABELS[lead.activeTier] || lead.activeTier} · $${lead.activeAmountUsd}`;
+  }
+  if (
+    lead.submittedVia === "host_panel" &&
+    !lead.activeTier &&
+    lead.paymentStatus !== "awaiting_payment"
+  ) {
+    return "Free · 3 Months";
+  }
+  return `${TIER_LABELS[lead.requestedTier] || lead.requestedTier} · $${lead.requestedAmountUsd}`;
+};
+
 export const getPaymentInfo = (lead) => {
   if (!lead.paymentStatus || lead.paymentStatus === "not_required") {
     return { label: "--", tone: "bg-slate-100 text-slate-500" };
@@ -85,7 +107,7 @@ export const getPaymentInfo = (lead) => {
     return { label: "Expired", tone: "bg-rose-50 text-rose-600" };
   }
   return {
-    label: `Paid · until ${formatDate(lead.verificationExpiresAt)}`,
+    label: `${lead.isFreePeriod ? "Free" : "Paid"} · until ${formatDate(lead.verificationExpiresAt)}`,
     tone: "bg-emerald-50 text-emerald-600",
   };
 };

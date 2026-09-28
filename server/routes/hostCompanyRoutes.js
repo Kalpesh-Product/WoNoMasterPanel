@@ -59,6 +59,8 @@ const {
 } = require("../controllers/hostCompanyControllers/unitManagementControllers");
 const {
   sendPlanPaymentLink,
+  saveLeadCustomSelection,
+  getLeadCustomSelections,
   getPlanPaymentStatuses,
   getHostCompanyPlanHistory,
 } = require("../controllers/planPaymentControllers");
@@ -95,6 +97,8 @@ router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPl
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
 router.post("/plan-payments/send", sendPlanPaymentLink);
+router.post("/plan-payments/custom-selection", saveLeadCustomSelection);
+router.get("/plan-payments/custom-selections", getLeadCustomSelections);
 router.get("/plan-payments", getPlanPaymentStatuses);
 router.get("/plan-pricing", getPlanPricing);
 router.get("/plan-pricing/catalog", getPricingCatalog);

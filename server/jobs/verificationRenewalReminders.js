@@ -20,6 +20,21 @@ const NOMADS_FRONTEND_BASE_URL = String(
   process.env.NOMADS_FRONTEND_BASE_URL || "https://www.wono.co",
 ).replace(/\/+$/, "");
 
+// HostPanel-submitted verifications have no Nomad login, so their reminder
+// must link to HostPanel's Verify Business page rather than wono.co's profile.
+const hostPanelBaseUrl = () =>
+  String(
+    process.env.NODE_ENV === "production"
+      ? process.env.HOST_PANEL_FRONTEND_URL || "https://hostpanel.wono.co"
+      : process.env.HOST_PANEL_FRONTEND_URL_DEV ||
+          process.env.HOST_PANEL_FRONTEND_URL_LOCAL ||
+          "http://localhost:3006",
+  ).replace(/\/+$/, "");
+const buildManageUrl = (request) =>
+  request.submittedVia === "host_panel"
+    ? `${hostPanelBaseUrl()}/key-apps/verify-business?requestId=${request._id}`
+    : `${NOMADS_FRONTEND_BASE_URL}/profile?tab=verification&requestId=${request._id}`;
+
 const nomadsAdminClient = axios.create({
   baseURL: `${NOMADS_BASE_URL}/admin/verification-requests`,
   headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
@@ -47,7 +62,7 @@ schedule.scheduleJob({ rule: "0 6 * * *", tz: "UTC" }, async () => {
             companyName: request.companyName,
             tierLabel: VERIFICATION_TIER_LABELS[tier] || tier,
             expiresOnLabel: formatLongDate(request.verificationExpiresAt),
-            manageUrl: `${NOMADS_FRONTEND_BASE_URL}/profile?tab=verification&requestId=${request._id}`,
+            manageUrl: buildManageUrl(request),
           }),
         });
         await nomadsAdminClient.post(`/${request._id}/mark-reminder-sent`);

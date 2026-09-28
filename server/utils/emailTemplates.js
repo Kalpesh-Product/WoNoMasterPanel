@@ -521,6 +521,38 @@ const buildVerificationRenewalReminderEmail = ({
   }),
 });
 
+// Sent by the trial-ending cron ~1 month before a free verified-badge period
+// ends (the badge is free for the first 3 months after approval).
+const buildVerificationTrialEndingEmail = ({
+  customerName,
+  companyName,
+  startsOnLabel,
+  expiresOnLabel,
+  daysLeft,
+  manageUrl,
+}) => ({
+  subject: "Your Free Verified Badge Ends in 1 Month",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Verified Badge Ends Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Ends ${expiresOnLabel}</span><br/>Renew to keep your verified badge.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">The free verified badge for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${expiresOnLabel}</b> (${daysLeft} day${daysLeft === 1 ? "" : "s"} left). Renew for 1 month or 1 year to keep it live on your listings without a break.</p>
+      `,
+    detailsTitle: "Your Verified Badge",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", "Free · 3 months"],
+      ["Started", startsOnLabel],
+      ["Ends", expiresOnLabel],
+    ],
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: manageUrl, label: "View Details" },
+    ]),
+  }),
+});
+
 // Sent by the expiry-day cron, once verificationExpiresAt has passed and the
 // badge has actually lapsed (distinct from the 5-day-before reminder above).
 const buildVerificationExpiredEmail = ({ customerName, companyName, manageUrl }) => ({
@@ -779,6 +811,7 @@ module.exports.buildVerificationConfirmationEmail =
 module.exports.buildVerificationRenewalReminderEmail =
   buildVerificationRenewalReminderEmail;
 module.exports.buildVerificationExpiredEmail = buildVerificationExpiredEmail;
+module.exports.buildVerificationTrialEndingEmail = buildVerificationTrialEndingEmail;
 module.exports.buildPlanPaymentEmail = buildPlanPaymentEmail;
 module.exports.buildPlanPaymentConfirmationEmail = buildPlanPaymentConfirmationEmail;
 module.exports.buildPlanStartedEmail = buildPlanStartedEmail;

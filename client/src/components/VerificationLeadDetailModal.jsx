@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
   TIER_LABELS,
+  getVerificationPlanLabel,
   formatDate,
   getInitials,
   getPaymentInfo,
@@ -225,8 +226,7 @@ const VerificationLeadDetailModal = ({
                   Plan
                 </p>
                 <p className="text-[12px] font-pmedium text-slate-900">
-                  {TIER_LABELS[lead.requestedTier] || lead.requestedTier} · $
-                  {lead.requestedAmountUsd}
+                  {getVerificationPlanLabel(lead)}
                 </p>
               </div>
               <div>

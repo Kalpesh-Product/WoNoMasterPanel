@@ -183,6 +183,37 @@ const hostLeadCompanySchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // The wono.co company this lead asked to verify (from the listing's Verify
+    // Business button). A suggestion only — linkedNomadsCompanyId is what links.
+    suggestedNomadsCompanyId: { type: String, trim: true, default: "" },
+    // Agreement PDF staff attached to the invite email. HostPanel shows it (with
+    // an "I agree" checkbox) on the Create Business Location step, so it is the
+    // agreement the host accepts — see agreementAcceptance below.
+    agreementDocument: {
+      url: { type: String, trim: true, default: "" },
+      id: { type: String, trim: true, default: "" },
+      name: { type: String, trim: true, default: "" },
+      sentAt: { type: Date, default: null },
+    },
+    // Written by HostPanel's completeWorkspaceSetup when the host finishes
+    // Create Business Location: the checkbox acceptance plus whatever they
+    // uploaded (signed copy of the agreement, any business documents).
+    agreementAcceptance: {
+      accepted: { type: Boolean, default: false },
+      acceptedAt: { type: Date, default: null },
+      acceptedByName: { type: String, trim: true, default: "" },
+      acceptedByEmail: { type: String, trim: true, default: "" },
+      agreementUrl: { type: String, trim: true, default: "" },
+      signedDocument: {
+        url: { type: String, trim: true, default: "" },
+        id: { type: String, trim: true, default: "" },
+        name: { type: String, trim: true, default: "" },
+      },
+      businessDocuments: {
+        type: [{ url: String, id: String, name: String }],
+        default: [],
+      },
+    },
     // Set when the host requests staff to create a matching Companies-page
     // entry for the listing(s) they've already added themselves from HostPanel.
     companiesListingRequestedAt: {

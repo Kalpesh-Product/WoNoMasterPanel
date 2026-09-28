@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
+const axios = require("axios");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
+const HostInviteSettings = require("../models/hostCompany/HostInviteSettings");
 const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
 const PlanPaymentLink = require("../models/PlanPaymentLink");
 const {
@@ -28,6 +30,7 @@ const {
   referenceDateStamp,
   formatLongDate,
 } = require("../utils/emailTemplates");
+const { uploadFileToS3 } = require("../config/s3config");
 const { generateBookingId } = require("../utils/generateBookingId");
 const { generateRegistrationId } = require("../utils/generateRegistrationId");
 
@@ -172,6 +175,7 @@ const buildSignupInviteEmail = ({
   companyName,
   inviteLink,
   requestId,
+  agreementName,
 }) => ({
   subject: "You're Invited to WONO",
   html: renderNotificationEmail({
@@ -186,6 +190,7 @@ const buildSignupInviteEmail = ({
       ["Company / Brand", companyName || "-"],
       ["Request Status", "Approved &#10003;"],
       ["Request ID", requestId],
+      ...(agreementName ? [["Agreement", "Attached to this email"]] : []),
     ],
     ctaButton: {
       label: "Complete Your Signup",
@@ -195,6 +200,12 @@ const buildSignupInviteEmail = ({
     whatNextTitle: "What Happens Next?",
     whatNextItems: [
       "Complete your signup",
+      ...(agreementName
+        ? [
+            "Read and fill in the attached agreement",
+            "Upload it, along with any business document, when you create your business location",
+          ]
+        : []),
       "Set up your account details",
       "Access the WONO platform",
       "Start using your available services and features",
@@ -2118,8 +2129,17 @@ const getInviteStatuses = async (req, res, next) => {
       .lean();
 
     const inviteStatusDocs = await HostInviteStatus.find(query)
-      .select("email inviteStatus inviteSentAt registeredAt joinedAt updatedAt")
+      .select(
+        "email inviteStatus inviteSentAt registeredAt joinedAt updatedAt inviteCount lastInviteSentAt",
+      )
       .lean();
+
+    const inviteMeta = new Map(
+      inviteStatusDocs.map((doc) => [
+        String(doc.email || "").trim().toLowerCase(),
+        { inviteCount: doc.inviteCount || 0, lastInviteSentAt: doc.lastInviteSentAt || null },
+      ]),
+    );
 
     const statusSource = new Map();
 
@@ -2163,6 +2183,36 @@ const getInviteStatuses = async (req, res, next) => {
       statusSource.set(key, mergeInviteRecords(existing, doc));
     }
 
+    const agreementByEmail = new Map();
+    const leadCompanies = await HostLeadCompany.find(
+      emails.length
+        ? { pocEmail: { $in: emails } }
+        : { "agreementDocument.url": { $ne: "" } },
+    )
+      .select("pocEmail agreementDocument agreementAcceptance updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+    for (const company of leadCompanies) {
+      const key = String(company.pocEmail || "").trim().toLowerCase();
+      // Newest row wins when the same POC email has several lead companies.
+      if (!key || agreementByEmail.has(key)) continue;
+      agreementByEmail.set(key, {
+        sent: company.agreementDocument?.url
+          ? {
+              url: company.agreementDocument.url,
+              name: company.agreementDocument.name || "Agreement",
+              sentAt: company.agreementDocument.sentAt || null,
+            }
+          : null,
+        accepted: Boolean(company.agreementAcceptance?.accepted),
+        acceptedAt: company.agreementAcceptance?.acceptedAt || null,
+        signedDocument: company.agreementAcceptance?.signedDocument?.url
+          ? company.agreementAcceptance.signedDocument
+          : null,
+        businessDocuments: company.agreementAcceptance?.businessDocuments || [],
+      });
+    }
+
     const statuses = {};
     for (const [email, data] of statusSource.entries()) {
       statuses[email] = {
@@ -2170,6 +2220,9 @@ const getInviteStatuses = async (req, res, next) => {
         inviteSentAt: data.inviteSentAt || null,
         registeredAt: data.registeredAt || null,
         joinedAt: data.joinedAt || null,
+        agreement: agreementByEmail.get(email) || null,
+        inviteCount: inviteMeta.get(email)?.inviteCount || 0,
+        lastInviteSentAt: inviteMeta.get(email)?.lastInviteSentAt || null,
       };
     }
 
@@ -2204,6 +2257,9 @@ const createHostInvite = async ({
   comment,
   isUpgradeRequest,
   nomadsCompanyId,
+  suggestedNomadsCompanyId,
+  agreementFile,
+  useDefaultAgreement,
 }) => {
   const normalizeMultiValue = (value) => {
     if (Array.isArray(value)) {
@@ -2281,6 +2337,48 @@ const createHostInvite = async ({
     leadId?.trim() ||
     `lead-${randomUUID()}`;
   const normalizedVerticals = normalizeVerticalType(verticalType);
+
+  // Agreement PDF for the host to fill in. Stored on the lead row so HostPanel
+  // can show it (and its "I agree" checkbox) at Create Business Location, and
+  // attached to the invite email itself. It is either a file uploaded with this
+  // one invite, or — the usual case — the saved default agreement.
+  let agreementDocument = null;
+  let agreementBuffer = null;
+  let agreementMime = "application/pdf";
+  if (agreementFile?.buffer) {
+    const safeName =
+      String(agreementFile.originalname || "agreement.pdf")
+        .replace(/[^A-Za-z0-9._-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "agreement.pdf";
+    const uploaded = await uploadFileToS3(
+      `host-agreements/${companyId}/${Date.now()}_${safeName}`,
+      agreementFile,
+    );
+    agreementDocument = {
+      url: uploaded.url,
+      id: uploaded.id,
+      name: safeName,
+      sentAt: new Date(),
+    };
+    agreementBuffer = agreementFile.buffer;
+    agreementMime = agreementFile.mimetype || agreementMime;
+  } else if (useDefaultAgreement) {
+    const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+    const saved = settings?.agreement;
+    if (saved?.url) {
+      const download = await axios.get(saved.url, {
+        responseType: "arraybuffer",
+        timeout: 20000,
+      });
+      agreementBuffer = Buffer.from(download.data);
+      agreementDocument = {
+        url: saved.url,
+        id: saved.id,
+        name: saved.name || "Agreement.pdf",
+        sentAt: new Date(),
+      };
+    }
+  }
   // The DB row (once it exists) is the authoritative record of what was
   // actually paid for — it's what the plan-payment webhook writes to. The
   // caller-supplied selectedPlan/goals is only a fallback for a brand-new
@@ -2316,6 +2414,12 @@ const createHostInvite = async ({
         pocEmail: email?.trim()?.toLowerCase() || "",
         pocPhone: mobile?.trim() || "",
         invitedAt: new Date(),
+        ...(agreementDocument ? { agreementDocument } : {}),
+        // Not a link — just the company the lead clicked "Verify Business" on,
+        // so HostPanel can pre-select it when they request their listings.
+        ...(suggestedNomadsCompanyId
+          ? { suggestedNomadsCompanyId: String(suggestedNomadsCompanyId).trim() }
+          : {}),
         ...(isUpgradeRequest
           ? {
               upgradeInviteSentAt: new Date(),
@@ -2374,8 +2478,23 @@ const createHostInvite = async ({
     companyName,
     inviteLink,
     requestId,
+    agreementName: agreementDocument?.name,
   });
-  await sendMail({ to: email, ...signupMail });
+  await sendMail({
+    to: email,
+    ...signupMail,
+    ...(agreementDocument
+      ? {
+          attachments: [
+            {
+              filename: agreementDocument.name,
+              content: agreementBuffer,
+              contentType: agreementMime,
+            },
+          ],
+        }
+      : {}),
+  });
 
   const normalizedEmail = String(email).trim().toLowerCase();
   const hostUser = await HostUser.findOne({
@@ -2417,7 +2536,9 @@ const createHostInvite = async ({
           inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
             ? inviteStatusDoc?.inviteSentAt || new Date()
             : new Date(),
+        lastInviteSentAt: new Date(),
       },
+      $inc: { inviteCount: 1 },
     },
     { upsert: true },
   );
@@ -2437,7 +2558,7 @@ const sendInviteEmail = async (req, res, next) => {
 
     if ((status || "").toLowerCase() !== "closed") {
       return res.status(400).json({
-        message: "Invite can only be sent when the lead status is closed",
+        message: "Invite can only be sent when the lead is approved (status: closed)",
       });
     }
 
@@ -2453,7 +2574,7 @@ const sendInviteEmail = async (req, res, next) => {
     const rawPlan = String(lead?.plan || req.body.selectedPlan || req.body.goals || "basic")
       .trim()
       .toLowerCase();
-    const normalizedPlan = ["custom", "customize", "customised", "customized"].includes(rawPlan)
+    const normalizedPlan = ["custom", "customise", "customize", "customised", "customized"].includes(rawPlan)
       ? "custom"
       : rawPlan === "professional"
         ? "professional"
@@ -2465,9 +2586,137 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    await createHostInvite(req.body);
+    // Multipart bodies (invite sent with an agreement PDF) arrive as strings,
+    // so structured fields come JSON-encoded.
+    const body = { ...req.body };
+    if (typeof body.verticalType === "string") {
+      try {
+        const parsed = JSON.parse(body.verticalType);
+        if (Array.isArray(parsed)) body.verticalType = parsed;
+      } catch {
+        /* plain string value — leave as is */
+      }
+    }
+
+    if (req.file && req.file.mimetype !== "application/pdf") {
+      return res
+        .status(400)
+        .json({ message: "The agreement must be a PDF file" });
+    }
+
+    // The agreement is compulsory: every invite carries one — the saved default
+    // unless a file is uploaded with this request.
+    if (!req.file) {
+      const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+      if (!settings?.agreement?.url) {
+        return res.status(400).json({
+          message: "Attach the agreement before sending an invite.",
+        });
+      }
+    }
+    await createHostInvite({
+      ...body,
+      agreementFile: req.file,
+      useDefaultAgreement: true,
+    });
 
     return res.status(200).json({ message: "Invite email sent successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/host-user/verify-clicks — interest from wono.co listings' "Verify
+// Business" button, relayed from Nomads (which holds the click records).
+const getVerifyBusinessClicks = async (req, res, next) => {
+  try {
+    const base = String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(
+      /\/+$/,
+      "",
+    );
+    const { data } = await axios.get(`${base}/admin/verify-business-clicks`, {
+      headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
+      timeout: 15000,
+    });
+    return res.status(200).json(data);
+  } catch (error) {
+    return res
+      .status(error.response?.status || 502)
+      .json({ message: error.response?.data?.message || "Failed to load click data" });
+  }
+};
+
+// GET /api/host-user/invite-agreement — the saved default agreement, if any.
+const getDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+    const agreement = settings?.agreement?.url
+      ? {
+          url: settings.agreement.url,
+          name: settings.agreement.name || "Agreement.pdf",
+          updatedAt: settings.agreement.updatedAt || null,
+        }
+      : null;
+    return res.status(200).json({ agreement });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/host-user/invite-agreement (multipart "agreement", PDF) — sets or
+// replaces the default. Earlier files are kept in storage: hosts who were
+// invited with them still open their copy from HostPanel.
+const setDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Choose a PDF to upload" });
+    }
+    if (req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ message: "The agreement must be a PDF file" });
+    }
+    const safeName =
+      String(req.file.originalname || "agreement.pdf")
+        .replace(/[^A-Za-z0-9._-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "agreement.pdf";
+    const uploaded = await uploadFileToS3(
+      `host-agreements/default/${Date.now()}_${safeName}`,
+      req.file,
+    );
+    const settings = await HostInviteSettings.findOneAndUpdate(
+      { key: "default" },
+      {
+        $set: {
+          agreement: {
+            url: uploaded.url,
+            id: uploaded.id,
+            name: safeName,
+            updatedAt: new Date(),
+          },
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean();
+    return res.status(200).json({
+      message: "Default agreement saved",
+      agreement: {
+        url: settings.agreement.url,
+        name: settings.agreement.name,
+        updatedAt: settings.agreement.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/host-user/invite-agreement — stop attaching a default.
+const removeDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    await HostInviteSettings.findOneAndUpdate(
+      { key: "default" },
+      { $set: { agreement: { url: "", id: "", name: "", updatedAt: null } } },
+    );
+    return res.status(200).json({ message: "Default agreement removed" });
   } catch (error) {
     next(error);
   }
@@ -3901,6 +4150,10 @@ module.exports = {
   bulkInsertPoc,
   getInviteStatuses,
   getCompanyMembers,
+  getDefaultInviteAgreement,
+  setDefaultInviteAgreement,
+  removeDefaultInviteAgreement,
+  getVerifyBusinessClicks,
   sendInviteEmail,
   createHostInvite,
   updateHostUserAccountStatus,

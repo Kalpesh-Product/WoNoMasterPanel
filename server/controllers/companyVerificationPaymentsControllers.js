@@ -85,7 +85,11 @@ const createAndSendVerificationPaymentLink = async ({ nomadsRequestId, tier }) =
   const amount = VERIFICATION_TIER_AMOUNTS_USD[tier];
   if (!amount) throw new Error("Invalid tier");
 
-  const changeType = computeChangeType(request.activeTier, tier);
+  // The first paid plan after the free 3 months is a renewal (not an
+  // up/downgrade from the free "3m" stretch, which is not a purchased tier).
+  const changeType = request.isFreePeriod
+    ? "renewal"
+    : computeChangeType(request.activeTier, tier);
   const isRenewal = changeType !== "initial";
   const { start: projectedStart, end: projectedEnd } = computeProjectedPeriod(
     request.verificationExpiresAt,

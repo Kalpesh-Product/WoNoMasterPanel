@@ -19,6 +19,16 @@ const hostInviteStatusSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Every send (first invite and each resend) bumps these, so staff can see
+    // an invite went out more than once and when the latest one was sent.
+    lastInviteSentAt: {
+      type: Date,
+      default: null,
+    },
+    inviteCount: {
+      type: Number,
+      default: 0,
+    },
     registeredAt: {
       type: Date,
       default: null,

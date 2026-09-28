@@ -24,7 +24,13 @@ const CustomPlanModulePicker = ({
   initialSelectedModuleIds = [],
   submitLabel = "Generate & Send",
   submittingLabel = "Sending...",
+  // "annual" shows what will actually be charged (12x the monthly figure).
+  billingCycle = "monthly",
+  // Optional: lets staff keep the selection without sending a link yet.
+  onSave,
+  isSaving = false,
 }) => {
+  const isAnnual = String(billingCycle || "").toLowerCase() === "annual";
   const axios = useAxiosPrivate();
   const [selectedModuleIds, setSelectedModuleIds] = useState(initialSelectedModuleIds);
 
@@ -144,9 +150,21 @@ const CustomPlanModulePicker = ({
               </p>
             )}
           </div>
-          <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
-            <span>Total monthly price</span>
-            <span>${totalUsd}/mo</span>
+          <div className="rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
+            <div className="flex items-center justify-between px-3 py-2.5">
+              <span>{isAnnual ? "Total per year (billed annually)" : "Total monthly price"}</span>
+              <span>
+                {isAnnual
+                  ? `$${Math.round(totalUsd * 12 * 100) / 100}/yr`
+                  : `$${totalUsd}/mo`}
+              </span>
+            </div>
+            {isAnnual && (
+              <p className="px-3 pb-2.5 text-[10px] text-blue-600">
+                This lead is on annual billing — the payment link charges 12 × the monthly price
+                (${totalUsd}/mo).
+              </p>
+            )}
           </div>
         </div>
         <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 shrink-0 flex gap-2.5">
@@ -157,6 +175,16 @@ const CustomPlanModulePicker = ({
           >
             Cancel
           </button>
+          {onSave && (
+            <button
+              type="button"
+              onClick={() => onSave(selectedModuleIds, totalUsd)}
+              disabled={isSaving || isSubmitting || !selectedModuleIds.length}
+              className="flex-1 py-2.5 bg-white border border-[#2563EB]/40 text-[#2563EB] rounded-xl font-pmedium text-[12px] hover:bg-blue-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSaving ? "Saving..." : "Save selection"}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onSubmit(selectedModuleIds, totalUsd)}
