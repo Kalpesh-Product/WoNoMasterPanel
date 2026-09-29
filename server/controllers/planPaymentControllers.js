@@ -542,8 +542,18 @@ const applyPaidPlanToWorkspace = async (link) => {
   if (workspaceId) {
     const workspace = await Workspace.findById(workspaceId);
     if (workspace) {
+      // For Custom, the specific add-on modules staff priced and the host
+      // actually paid for (link.customModuleIds) must be part of what's
+      // ENABLED, not just recorded for billing — otherwise a host who paid
+      // for e.g. the HR/Finance department bundles never actually gets them
+      // after logging in, since the plan's own default set doesn't include
+      // any paid add-ons.
       const restoredModuleIds = Array.from(
-        new Set([...defaultModuleIds, ...(workspace.preDowngradeEnabledModuleIds || [])]),
+        new Set([
+          ...defaultModuleIds,
+          ...(workspace.preDowngradeEnabledModuleIds || []),
+          ...(link.plan === "custom" ? link.customModuleIds || [] : []),
+        ]),
       );
       await Workspace.updateOne(
         { _id: workspace._id },
