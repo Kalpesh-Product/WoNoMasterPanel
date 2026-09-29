@@ -77,11 +77,11 @@ const CONTENT_COLUMNS = [
 ];
 
 const LISTING_COLUMNS = [
-  { label: "Coworking", countKey: "coworkingCount" },
-  { label: "Coliving", countKey: "colivingCount" },
-  { label: "Hostels", countKey: "hostelCount" },
-  { label: "Meeting Rooms", countKey: "meetingRoomCount" },
-  { label: "Cafes", countKey: "cafeCount" },
+  { label: "Coworking", countKey: "coworkingCount", type: "coworking" },
+  { label: "Coliving", countKey: "colivingCount", type: "coliving" },
+  { label: "Hostels", countKey: "hostelCount", type: "hostel" },
+  { label: "Meeting Rooms", countKey: "meetingRoomCount", type: "meetingroom" },
+  { label: "Cafes", countKey: "cafeCount", type: "cafe" },
 ];
 
 const EMPTY_COUNTS = {
@@ -132,6 +132,22 @@ const pickFirst = (obj, keys, fallback = "-") => {
 
 const normalizeKey = (value) =>
   `${value}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const slugify = (str = "") =>
+  str
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "listing";
+
+const LISTING_DETAIL_TYPES = new Set([
+  "coworking",
+  "coliving",
+  "hostel",
+  "meetingroom",
+  "cafe",
+]);
 
 const levenshteinDistance = (a, b) => {
   const rows = a.length + 1;
@@ -335,6 +351,7 @@ const DestinationsData = () => {
         const t = locationType.substring(dashIndex + 1);
         setSelectedLocation(loc);
         setDetailType(t);
+        setActiveSummaryTab(LISTING_DETAIL_TYPES.has(t) ? "listings" : "content");
         setCurrentView("detail");
       }
     } else {
@@ -481,6 +498,7 @@ const DestinationsData = () => {
     states: [],
     cities: [],
   };
+  const isListingDetail = LISTING_DETAIL_TYPES.has(detailType);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -554,6 +572,29 @@ const DestinationsData = () => {
     enabled:
       currentView === "detail" &&
       detailType === "restaurant" &&
+      Boolean(selectedLocation),
+  });
+
+  const {
+    data: destinationListings = [],
+    isPending: isDestinationListingsPending,
+    isError: isDestinationListingsError,
+  } = useQuery({
+    queryKey: ["destination-listings", selectedLocation, detailType, searchQuery],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/destinations-data", {
+        params: {
+          tab: "listings",
+          detailType,
+          destination: selectedLocation,
+          search: searchQuery.trim(),
+        },
+      });
+      return Array.isArray(response.data?.items) ? response.data.items : toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      isListingDetail &&
       Boolean(selectedLocation),
   });
 
@@ -835,9 +876,11 @@ const DestinationsData = () => {
   );
 
   const handleBackToSummary = () => {
+    const previousTab = isListingDetail ? "listings" : "content";
     setCurrentView("summary");
     setSelectedLocation("All");
     setDetailType("blog");
+    setActiveSummaryTab(previousTab);
     setSearchQuery("");
     navigate("/dashboard/destinations-data");
   };
@@ -845,7 +888,8 @@ const DestinationsData = () => {
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
     let source;
-    if (detailType === "event") source = destinationEvents;
+    if (isListingDetail) source = destinationListings;
+    else if (detailType === "event") source = destinationEvents;
     else if (detailType === "place") source = destinationPlaces;
     else if (detailType === "restaurant") source = destinationRestaurants;
     else if (detailType === "blog")
@@ -870,6 +914,8 @@ const DestinationsData = () => {
           item.placeName ||
           item.restaurantName ||
           item.eventName ||
+          item.companyTitle ||
+          item.companyName ||
           item.mainTitle ||
           "";
         return name.toLowerCase().includes(q);
@@ -886,11 +932,23 @@ const DestinationsData = () => {
     destinationEvents,
     destinationPlaces,
     destinationRestaurants,
+    destinationListings,
+    isListingDetail,
     searchQuery,
   ]);
 
   const detailLabel =
-    detailType === "blog"
+    detailType === "coworking"
+      ? "Coworking"
+      : detailType === "coliving"
+        ? "Coliving"
+        : detailType === "hostel"
+          ? "Hostels"
+          : detailType === "meetingroom"
+            ? "Meeting Rooms"
+            : detailType === "cafe"
+              ? "Cafes"
+              : detailType === "blog"
       ? "Blogs"
       : detailType === "news"
         ? "News"
@@ -901,7 +959,9 @@ const DestinationsData = () => {
             : "Events";
 
   const detailNameField =
-    detailType === "place"
+    isListingDetail
+      ? "companyTitle"
+      : detailType === "place"
       ? "placeName"
       : detailType === "restaurant"
         ? "restaurantName"
@@ -910,7 +970,9 @@ const DestinationsData = () => {
           : "mainTitle";
 
   const detailSecondaryField =
-    detailType === "place"
+    isListingDetail
+      ? "companyType"
+      : detailType === "place"
       ? "category"
       : detailType === "restaurant"
         ? "restaurantType"
@@ -919,7 +981,9 @@ const DestinationsData = () => {
           : "author";
 
   const detailThirdField =
-    detailType === "place"
+    isListingDetail
+      ? "city"
+      : detailType === "place"
       ? "rating"
       : detailType === "restaurant"
         ? "rating"
@@ -928,7 +992,9 @@ const DestinationsData = () => {
           : "source";
 
   const detailFourthField =
-    detailType === "place" || detailType === "restaurant"
+    isListingDetail
+      ? "address"
+      : detailType === "place" || detailType === "restaurant"
       ? "address"
       : detailType === "event"
         ? "venue"
@@ -951,14 +1017,43 @@ const DestinationsData = () => {
     (detailType === "news" && isDestinationNewsPending) ||
     (detailType === "event" && isDestinationEventsPending) ||
     (detailType === "place" && isDestinationPlacesPending) ||
-    (detailType === "restaurant" && isDestinationRestaurantsPending);
+    (detailType === "restaurant" && isDestinationRestaurantsPending) ||
+    (isListingDetail && isDestinationListingsPending);
 
   const hasError =
     isDestinationBlogsError ||
     isDestinationNewsError ||
     isDestinationEventsError ||
     isDestinationPlacesError ||
-    isDestinationRestaurantsError;
+    isDestinationRestaurantsError ||
+    isDestinationListingsError;
+
+  const detailThirdValue = (item) =>
+    isListingDetail
+      ? [item.city, item.state, item.country].filter(Boolean).join(", ") || "-"
+      : item[detailThirdField] || "-";
+
+  const detailNameValue = (item) =>
+    isListingDetail
+      ? item.companyTitle || item.companyName || "-"
+      : item[detailNameField] || "-";
+
+  const editListing = (item) => {
+    const companyId = item?.companyId || "";
+    const companyName = item?.companyName || item?.companyTitle || "company";
+    sessionStorage.setItem("companyId", companyId);
+    sessionStorage.setItem("companyName", companyName);
+    sessionStorage.setItem("businessId", item?.businessId || "");
+    navigate(
+      `/dashboard/companies/${slugify(companyName)}/nomad-listings/${slugify(companyName)}`,
+      {
+        state: {
+          website: item,
+          companyId,
+        },
+      },
+    );
+  };
 
   if (currentView === "summary" && isSummaryLoading && !summaryData) {
     return <DestinationsDataSkeleton />;
@@ -992,7 +1087,7 @@ const DestinationsData = () => {
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
               </p>
             </div>
-            {currentView === "detail" && (
+            {currentView === "detail" && !isListingDetail && (
               <button
                 type="button"
                 onClick={() =>
@@ -1018,13 +1113,13 @@ const DestinationsData = () => {
 
           {currentView === "summary" && (
             <div className="flex flex-col gap-3 mb-3 shrink-0">
-              <div className="inline-flex w-fit rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+              <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden">
                 {SUMMARY_TABS.map((tab) => (
                   <button
                     key={tab.key}
                     type="button"
                     onClick={() => handleSummaryTabChange(tab.key)}
-                    className={`px-4 py-2 rounded-xl text-[11px] font-pmedium uppercase tracking-widest transition-all ${
+                    className={`flex-1 shrink-0 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center whitespace-nowrap ${
                       activeSummaryTab === tab.key
                         ? "bg-[#2563EB] text-white shadow-sm"
                         : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
@@ -1190,8 +1285,8 @@ const DestinationsData = () => {
                     <tr>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Name</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Category" : detailType === "restaurant" ? "Type" : "Category"}</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Month" : "Rating"}</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" || isListingDetail ? "Type" : detailType === "restaurant" ? "Type" : "Category"}</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{isListingDetail ? "Location" : detailType === "event" ? "Month" : "Rating"}</th>
                       {detailFourthField && (
                         <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Venue" : "Address"}</th>
                       )}
@@ -1206,11 +1301,11 @@ const DestinationsData = () => {
                       </tr>
                     ) : (
                       filteredDetailData.map((item, index) => (
-                        <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
+                        <tr key={item._id || item.businessId || `${item.companyId}-${index}`} className="hover:bg-slate-50/50 transition-colors group">
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{index + 1}</td>
-                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px] truncate max-w-[200px]">{item[detailNameField] || "-"}</td>
+                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px] truncate max-w-[200px]">{detailNameValue(item)}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailSecondaryField] || "-"}</td>
-                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailThirdField] || "-"}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{detailThirdValue(item)}</td>
                           {detailFourthField && (
                             <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[200px]">{item[detailFourthField] || "-"}</td>
                           )}
@@ -1224,16 +1319,18 @@ const DestinationsData = () => {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  navigate(
-                                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                                    {
-                                      state: {
-                                        item,
-                                        type: detailType,
-                                        destinations: availableDestinations,
-                                      },
-                                    },
-                                  )
+                                  isListingDetail
+                                    ? editListing(item)
+                                    : navigate(
+                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                                        {
+                                          state: {
+                                            item,
+                                            type: detailType,
+                                            destinations: availableDestinations,
+                                          },
+                                        },
+                                      )
                                 }
                                 title="Edit"
                                 data-tour={index === 0 ? "destinations-data-action-edit" : undefined}
@@ -1241,30 +1338,32 @@ const DestinationsData = () => {
                               >
                                 <Edit3 size={15} strokeWidth={2.5} />
                               </button>
-                              <button
-                                type="button"
-                                disabled={isTogglePending}
-                                onClick={() =>
-                                  toggleStatus({
-                                    id: item._id,
-                                    currentStatus: item.isActive !== false,
-                                    itemType: detailType,
-                                  })
-                                }
-                                title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
-                                data-tour={index === 0 ? "destinations-data-action-toggle" : undefined}
-                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
-                                  item.isActive !== false
-                                    ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
-                                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                }`}
-                              >
-                                {item.isActive !== false ? (
-                                  <XCircle size={15} />
-                                ) : (
-                                  <CheckCircle2 size={15} />
-                                )}
-                              </button>
+                              {!isListingDetail && (
+                                <button
+                                  type="button"
+                                  disabled={isTogglePending}
+                                  onClick={() =>
+                                    toggleStatus({
+                                      id: item._id,
+                                      currentStatus: item.isActive !== false,
+                                      itemType: detailType,
+                                    })
+                                  }
+                                  title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
+                                  data-tour={index === 0 ? "destinations-data-action-toggle" : undefined}
+                                  className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
+                                    item.isActive !== false
+                                      ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                      : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                  }`}
+                                >
+                                  {item.isActive !== false ? (
+                                    <XCircle size={15} />
+                                  ) : (
+                                    <CheckCircle2 size={15} />
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
