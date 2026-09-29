@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -45,6 +45,65 @@ const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
+const SUMMARY_TABS = [
+  { key: "content", label: "Content Data", path: "content-data" },
+  { key: "listings", label: "Nomad Listings", path: "nomad-listings" },
+];
+
+const SUMMARY_TAB_BY_PATH = SUMMARY_TABS.reduce(
+  (tabs, tab) => ({ ...tabs, [tab.path]: tab }),
+  {},
+);
+const DESTINATIONS_DATA_BASE_PATH = "/dashboard/destinations-data";
+
+const CONTENT_STATS = [
+  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  { label: "Total Blogs", valueKey: "blogs", textColor: "text-blue-600", borderColor: "border-l-blue-500" },
+  { label: "Total News", valueKey: "news", textColor: "text-amber-600", borderColor: "border-l-amber-500" },
+  { label: "Total Events", valueKey: "events", textColor: "text-violet-600", borderColor: "border-l-violet-500" },
+  { label: "Total Places", valueKey: "places", textColor: "text-emerald-600", borderColor: "border-l-emerald-500" },
+  { label: "Total Restaurants", valueKey: "restaurants", textColor: "text-rose-600", borderColor: "border-l-rose-500" },
+];
+
+const LISTING_STATS = [
+  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  { label: "Coworking", valueKey: "coworking", textColor: "text-sky-600", borderColor: "border-l-sky-500" },
+  { label: "Coliving", valueKey: "coliving", textColor: "text-teal-600", borderColor: "border-l-teal-500" },
+  { label: "Hostels", valueKey: "hostels", textColor: "text-indigo-600", borderColor: "border-l-indigo-500" },
+  { label: "Meeting Rooms", valueKey: "meetingRooms", textColor: "text-fuchsia-600", borderColor: "border-l-fuchsia-500" },
+  { label: "Cafes", valueKey: "cafes", textColor: "text-orange-600", borderColor: "border-l-orange-500" },
+];
+
+const CONTENT_COLUMNS = [
+  { label: "Blogs", countKey: "blogCount", type: "blog" },
+  { label: "News", countKey: "newsCount", type: "news" },
+  { label: "Events", countKey: "eventCount", type: "event" },
+  { label: "Places", countKey: "placeCount", type: "place" },
+  { label: "Restaurants", countKey: "restaurantCount", type: "restaurant" },
+];
+
+const LISTING_COLUMNS = [
+  { label: "Coworking", countKey: "coworkingCount", type: "coworking" },
+  { label: "Coliving", countKey: "colivingCount", type: "coliving" },
+  { label: "Hostels", countKey: "hostelCount", type: "hostel" },
+  { label: "Meeting Rooms", countKey: "meetingRoomCount", type: "meetingroom" },
+  { label: "Cafes", countKey: "cafeCount", type: "cafe" },
+];
+
+const EMPTY_COUNTS = {
+  destinations: 0,
+  blogs: 0,
+  news: 0,
+  events: 0,
+  places: 0,
+  restaurants: 0,
+  coworking: 0,
+  coliving: 0,
+  hostels: 0,
+  meetingRooms: 0,
+  cafes: 0,
+};
+
 const selectClassName =
   "min-w-[140px] flex-1 px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400";
 
@@ -79,6 +138,22 @@ const pickFirst = (obj, keys, fallback = "-") => {
 
 const normalizeKey = (value) =>
   `${value}`.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const slugify = (str = "") =>
+  str
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "listing";
+
+const LISTING_DETAIL_TYPES = new Set([
+  "coworking",
+  "coliving",
+  "hostel",
+  "meetingroom",
+  "cafe",
+]);
 
 const levenshteinDistance = (a, b) => {
   const rows = a.length + 1;
@@ -260,6 +335,7 @@ const DestinationsDataSkeleton = () => (
 
 const DestinationsData = () => {
   const { locationType } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
 
@@ -271,16 +347,35 @@ const DestinationsData = () => {
   const [countryFilter, setCountryFilter] = React.useState("");
   const [stateFilter, setStateFilter] = React.useState("");
   const [cityFilter, setCityFilter] = React.useState("");
+  const [activeSummaryTab, setActiveSummaryTab] = React.useState("content");
   const loadMoreRef = useRef(null);
 
+  const routeTab = React.useMemo(() => {
+    const tabPath = location.pathname
+      .replace(`${DESTINATIONS_DATA_BASE_PATH}/`, "")
+      .split("/")[0];
+    return SUMMARY_TAB_BY_PATH[tabPath]?.key || null;
+  }, [location.pathname]);
+  const effectiveSummaryTab = routeTab || activeSummaryTab;
+
   useEffect(() => {
-    if (locationType) {
+    if (routeTab) {
+      setCurrentView("summary");
+      setSelectedLocation("All");
+      setDetailType("blog");
+      setActiveSummaryTab(routeTab);
+      setCountryFilter("");
+      setStateFilter("");
+      setCityFilter("");
+      setSearchQuery("");
+    } else if (locationType) {
       const dashIndex = locationType.lastIndexOf("-");
       if (dashIndex !== -1) {
         const loc = locationType.substring(0, dashIndex);
         const t = locationType.substring(dashIndex + 1);
         setSelectedLocation(loc);
         setDetailType(t);
+        setActiveSummaryTab(LISTING_DETAIL_TYPES.has(t) ? "listings" : "content");
         setCurrentView("detail");
       }
     } else {
@@ -288,7 +383,7 @@ const DestinationsData = () => {
       setSelectedLocation("All");
       setDetailType("blog");
     }
-  }, [locationType]);
+  }, [locationType, routeTab]);
   useEffect(() => {
     const timeout = setTimeout(
       () => setDebouncedSearch(searchQuery.trim()),
@@ -306,6 +401,14 @@ const DestinationsData = () => {
   const handleStateFilterChange = (value) => {
     setStateFilter(value);
     setCityFilter("");
+  };
+
+  const handleSummaryTabChange = (tabKey) => {
+    setActiveSummaryTab(tabKey);
+    setCountryFilter("");
+    setStateFilter("");
+    setCityFilter("");
+    setSearchQuery("");
   };
 
   const {
@@ -378,6 +481,7 @@ const DestinationsData = () => {
   } = useInfiniteQuery({
     queryKey: [
       "destinations-data-summary",
+      effectiveSummaryTab,
       debouncedSearch,
       countryFilter,
       stateFilter,
@@ -391,6 +495,7 @@ const DestinationsData = () => {
         params: {
           page: pageParam,
           limit: PAGE_SIZE,
+          tab: effectiveSummaryTab,
           search: debouncedSearch,
           country: countryFilter,
           state: stateFilter,
@@ -408,20 +513,16 @@ const DestinationsData = () => {
     [summaryData],
   );
   const summaryFirstPage = summaryData?.pages?.[0];
-  const summaryCounts = summaryFirstPage?.counts ?? {
-    destinations: 0,
-    blogs: 0,
-    news: 0,
-    events: 0,
-    places: 0,
-    restaurants: 0,
-  };
+  const summaryCounts = summaryFirstPage?.counts ?? EMPTY_COUNTS;
+  const summaryStats = effectiveSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
+  const summaryColumns = effectiveSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
   const summaryTotal = summaryFirstPage?.total ?? 0;
   const filterOptions = summaryFirstPage?.filterOptions ?? {
     countries: [],
     states: [],
     cities: [],
   };
+  const isListingDetail = LISTING_DETAIL_TYPES.has(detailType);
 
   useEffect(() => {
     const node = loadMoreRef.current;
@@ -495,6 +596,29 @@ const DestinationsData = () => {
     enabled:
       currentView === "detail" &&
       detailType === "restaurant" &&
+      Boolean(selectedLocation),
+  });
+
+  const {
+    data: destinationListings = [],
+    isPending: isDestinationListingsPending,
+    isError: isDestinationListingsError,
+  } = useQuery({
+    queryKey: ["destination-listings", selectedLocation, detailType, searchQuery],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/destinations-data", {
+        params: {
+          tab: "listings",
+          detailType,
+          destination: selectedLocation,
+          search: searchQuery.trim(),
+        },
+      });
+      return Array.isArray(response.data?.items) ? response.data.items : toArray(response.data);
+    },
+    enabled:
+      currentView === "detail" &&
+      isListingDetail &&
       Boolean(selectedLocation),
   });
 
@@ -776,17 +900,22 @@ const DestinationsData = () => {
   );
 
   const handleBackToSummary = () => {
+    const previousTab = isListingDetail ? "listings" : "content";
     setCurrentView("summary");
     setSelectedLocation("All");
     setDetailType("blog");
+    setActiveSummaryTab(previousTab);
     setSearchQuery("");
-    navigate("/dashboard/destinations-data");
+    const previousTabPath =
+      SUMMARY_TABS.find((tab) => tab.key === previousTab)?.path || "content-data";
+    navigate(`${DESTINATIONS_DATA_BASE_PATH}/${previousTabPath}`);
   };
 
   const filteredDetailData = useMemo(() => {
     if (currentView !== "detail" || !selectedLocation) return [];
     let source;
-    if (detailType === "event") source = destinationEvents;
+    if (isListingDetail) source = destinationListings;
+    else if (detailType === "event") source = destinationEvents;
     else if (detailType === "place") source = destinationPlaces;
     else if (detailType === "restaurant") source = destinationRestaurants;
     else if (detailType === "blog")
@@ -811,6 +940,8 @@ const DestinationsData = () => {
           item.placeName ||
           item.restaurantName ||
           item.eventName ||
+          item.companyTitle ||
+          item.companyName ||
           item.mainTitle ||
           "";
         return name.toLowerCase().includes(q);
@@ -827,11 +958,23 @@ const DestinationsData = () => {
     destinationEvents,
     destinationPlaces,
     destinationRestaurants,
+    destinationListings,
+    isListingDetail,
     searchQuery,
   ]);
 
   const detailLabel =
-    detailType === "blog"
+    detailType === "coworking"
+      ? "Coworking"
+      : detailType === "coliving"
+        ? "Coliving"
+        : detailType === "hostel"
+          ? "Hostels"
+          : detailType === "meetingroom"
+            ? "Meeting Rooms"
+            : detailType === "cafe"
+              ? "Cafes"
+              : detailType === "blog"
       ? "Blogs"
       : detailType === "news"
         ? "News"
@@ -842,7 +985,9 @@ const DestinationsData = () => {
             : "Events";
 
   const detailNameField =
-    detailType === "place"
+    isListingDetail
+      ? "companyTitle"
+      : detailType === "place"
       ? "placeName"
       : detailType === "restaurant"
         ? "restaurantName"
@@ -851,7 +996,9 @@ const DestinationsData = () => {
           : "mainTitle";
 
   const detailSecondaryField =
-    detailType === "place"
+    isListingDetail
+      ? "companyType"
+      : detailType === "place"
       ? "category"
       : detailType === "restaurant"
         ? "restaurantType"
@@ -860,7 +1007,9 @@ const DestinationsData = () => {
           : "author";
 
   const detailThirdField =
-    detailType === "place"
+    isListingDetail
+      ? "city"
+      : detailType === "place"
       ? "rating"
       : detailType === "restaurant"
         ? "rating"
@@ -869,7 +1018,9 @@ const DestinationsData = () => {
           : "source";
 
   const detailFourthField =
-    detailType === "place" || detailType === "restaurant"
+    isListingDetail
+      ? "address"
+      : detailType === "place" || detailType === "restaurant"
       ? "address"
       : detailType === "event"
         ? "venue"
@@ -892,14 +1043,53 @@ const DestinationsData = () => {
     (detailType === "news" && isDestinationNewsPending) ||
     (detailType === "event" && isDestinationEventsPending) ||
     (detailType === "place" && isDestinationPlacesPending) ||
-    (detailType === "restaurant" && isDestinationRestaurantsPending);
+    (detailType === "restaurant" && isDestinationRestaurantsPending) ||
+    (isListingDetail && isDestinationListingsPending);
 
   const hasError =
     isDestinationBlogsError ||
     isDestinationNewsError ||
     isDestinationEventsError ||
     isDestinationPlacesError ||
-    isDestinationRestaurantsError;
+    isDestinationRestaurantsError ||
+    isDestinationListingsError;
+
+  const detailThirdValue = (item) =>
+    isListingDetail
+      ? [item.city, item.state, item.country].filter(Boolean).join(", ") || "-"
+      : item[detailThirdField] || "-";
+
+  const detailNameValue = (item) =>
+    isListingDetail
+      ? item.companyTitle || item.companyName || "-"
+      : item[detailNameField] || "-";
+
+  const editListing = (item) => {
+    const companyId = item?.companyId || "";
+    const businessId = item?.businessId || "";
+    const companyName = item?.companyName || item?.companyTitle || "company";
+    const companyType = item?.companyType || "";
+
+    if (!companyId || !businessId) {
+      toast.error("This listing is missing required edit details.");
+      return;
+    }
+
+    sessionStorage.setItem("companyId", companyId);
+    sessionStorage.setItem("companyName", companyName);
+    sessionStorage.setItem("businessId", businessId);
+    sessionStorage.setItem("companyType", companyType);
+    navigate(
+      `/dashboard/companies/${slugify(companyName)}/nomad-listings/${slugify(companyName)}`,
+      {
+        state: {
+          website: item,
+          companyId,
+          isLoading: false,
+        },
+      },
+    );
+  };
 
   if (currentView === "summary" && isSummaryLoading && !summaryData) {
     return <DestinationsDataSkeleton />;
@@ -927,11 +1117,13 @@ const DestinationsData = () => {
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
                 {currentView === "summary"
-                  ? "Overview of content across all destinations like blogs, news, places, restaurants, and events."
+                  ? effectiveSummaryTab === "listings"
+                    ? "Overview of Nomad listing categories across all destinations."
+                    : "Overview of content across all destinations like blogs, news, places, restaurants, and events."
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
               </p>
             </div>
-            {currentView === "detail" && (
+            {currentView === "detail" && !isListingDetail && (
               <button
                 type="button"
                 onClick={() =>
@@ -956,42 +1148,37 @@ const DestinationsData = () => {
           </div>
 
           {currentView === "summary" && (
-            <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Destinations</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.destinations}</p>
-                </div>
+            <div className="flex flex-col gap-3 mb-3 shrink-0">
+              <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                {SUMMARY_TABS.map((tab) => (
+                  <NavLink
+                    key={tab.key}
+                    to={`${DESTINATIONS_DATA_BASE_PATH}/${tab.path}`}
+                    onClick={() => handleSummaryTabChange(tab.key)}
+                    className={() =>
+                      `flex-1 shrink-0 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                        effectiveSummaryTab === tab.key
+                          ? "bg-[#2563EB] text-white shadow-sm"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    {tab.label}
+                  </NavLink>
+                ))}
               </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Total Blogs</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.blogs}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-amber-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-amber-600 uppercase tracking-widest mb-1">Total News</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.news}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">Total Events</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.events}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Total Places</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.places}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Total Restaurants</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.restaurants}</p>
-                </div>
+              <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                {summaryStats.map((stat) => (
+                  <div
+                    key={stat.valueKey}
+                    className={`bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 ${stat.borderColor}`}
+                  >
+                    <div className="min-w-0">
+                      <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${stat.textColor}`}>{stat.label}</p>
+                      <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts[stat.valueKey] || 0}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1077,17 +1264,20 @@ const DestinationsData = () => {
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Destination</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Blogs</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">News</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Events</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Places</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Restaurants</th>
+                      {summaryColumns.map((column) => (
+                        <th
+                          key={column.countKey}
+                          className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center"
+                        >
+                          {column.label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {summaryItems.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
+                        <td colSpan={4 + summaryColumns.length} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
                       </tr>
                     ) : (
                       summaryItems.map((row, index) => (
@@ -1096,27 +1286,27 @@ const DestinationsData = () => {
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.continent}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.country}</td>
                           <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px]">{row.destination}</td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" data-tour={index === 0 ? "destinations-data-count-button" : undefined} onClick={() => handleViewDetail(row.destination, "blog")}>{row.blogCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "news")}>{row.newsCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "event")}>{row.eventCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "place")}>{row.placeCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "restaurant")}>{row.restaurantCount}</button>
-                          </td>
+                          {summaryColumns.map((column, columnIndex) => (
+                            <td key={column.countKey} className="px-5 py-4 align-top text-center">
+                              {column.type ? (
+                                <button
+                                  className="text-blue-600 hover:underline font-pmedium"
+                                  data-tour={index === 0 && columnIndex === 0 ? "destinations-data-count-button" : undefined}
+                                  onClick={() => handleViewDetail(row.destination, column.type)}
+                                >
+                                  {row[column.countKey] || 0}
+                                </button>
+                              ) : (
+                                <span className="font-pmedium text-slate-700">{row[column.countKey] || 0}</span>
+                              )}
+                            </td>
+                          ))}
                         </tr>
                       ))
                     )}
                     {hasNextPage ? (
                       <tr ref={loadMoreRef}>
-                        <td colSpan={9} className="py-4 text-center">
+                        <td colSpan={4 + summaryColumns.length} className="py-4 text-center">
                           {isFetchingNextPage ? (
                             <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
                               Loading more destinations...
@@ -1133,8 +1323,8 @@ const DestinationsData = () => {
                     <tr>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Name</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Category" : detailType === "restaurant" ? "Type" : "Category"}</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Month" : "Rating"}</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" || isListingDetail ? "Type" : detailType === "restaurant" ? "Type" : "Category"}</th>
+                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{isListingDetail ? "Location" : detailType === "event" ? "Month" : "Rating"}</th>
                       {detailFourthField && (
                         <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">{detailType === "event" ? "Venue" : "Address"}</th>
                       )}
@@ -1149,11 +1339,11 @@ const DestinationsData = () => {
                       </tr>
                     ) : (
                       filteredDetailData.map((item, index) => (
-                        <tr key={item._id} className="hover:bg-slate-50/50 transition-colors group">
+                        <tr key={item._id || item.businessId || `${item.companyId}-${index}`} className="hover:bg-slate-50/50 transition-colors group">
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{index + 1}</td>
-                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px] truncate max-w-[200px]">{item[detailNameField] || "-"}</td>
+                          <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px] truncate max-w-[200px]">{detailNameValue(item)}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailSecondaryField] || "-"}</td>
-                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{item[detailThirdField] || "-"}</td>
+                          <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{detailThirdValue(item)}</td>
                           {detailFourthField && (
                             <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[200px]">{item[detailFourthField] || "-"}</td>
                           )}
@@ -1167,16 +1357,18 @@ const DestinationsData = () => {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  navigate(
-                                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
-                                    {
-                                      state: {
-                                        item,
-                                        type: detailType,
-                                        destinations: availableDestinations,
-                                      },
-                                    },
-                                  )
+                                  isListingDetail
+                                    ? editListing(item)
+                                    : navigate(
+                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                                        {
+                                          state: {
+                                            item,
+                                            type: detailType,
+                                            destinations: availableDestinations,
+                                          },
+                                        },
+                                      )
                                 }
                                 title="Edit"
                                 data-tour={index === 0 ? "destinations-data-action-edit" : undefined}
@@ -1184,30 +1376,32 @@ const DestinationsData = () => {
                               >
                                 <Edit3 size={15} strokeWidth={2.5} />
                               </button>
-                              <button
-                                type="button"
-                                disabled={isTogglePending}
-                                onClick={() =>
-                                  toggleStatus({
-                                    id: item._id,
-                                    currentStatus: item.isActive !== false,
-                                    itemType: detailType,
-                                  })
-                                }
-                                title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
-                                data-tour={index === 0 ? "destinations-data-action-toggle" : undefined}
-                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
-                                  item.isActive !== false
-                                    ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
-                                    : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
-                                }`}
-                              >
-                                {item.isActive !== false ? (
-                                  <XCircle size={15} />
-                                ) : (
-                                  <CheckCircle2 size={15} />
-                                )}
-                              </button>
+                              {!isListingDetail && (
+                                <button
+                                  type="button"
+                                  disabled={isTogglePending}
+                                  onClick={() =>
+                                    toggleStatus({
+                                      id: item._id,
+                                      currentStatus: item.isActive !== false,
+                                      itemType: detailType,
+                                    })
+                                  }
+                                  title={item.isActive !== false ? "Mark as inactive" : "Mark as active"}
+                                  data-tour={index === 0 ? "destinations-data-action-toggle" : undefined}
+                                  className={`p-1.5 rounded-lg transition-all disabled:opacity-50 ${
+                                    item.isActive !== false
+                                      ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                      : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                  }`}
+                                >
+                                  {item.isActive !== false ? (
+                                    <XCircle size={15} />
+                                  ) : (
+                                    <CheckCircle2 size={15} />
+                                  )}
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
