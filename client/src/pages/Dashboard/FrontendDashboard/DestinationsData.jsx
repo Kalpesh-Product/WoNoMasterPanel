@@ -45,6 +45,59 @@ const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
+const SUMMARY_TABS = [
+  { key: "content", label: "Content Data" },
+  { key: "listings", label: "Nomad Listings" },
+];
+
+const CONTENT_STATS = [
+  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  { label: "Total Blogs", valueKey: "blogs", textColor: "text-blue-600", borderColor: "border-l-blue-500" },
+  { label: "Total News", valueKey: "news", textColor: "text-amber-600", borderColor: "border-l-amber-500" },
+  { label: "Total Events", valueKey: "events", textColor: "text-violet-600", borderColor: "border-l-violet-500" },
+  { label: "Total Places", valueKey: "places", textColor: "text-emerald-600", borderColor: "border-l-emerald-500" },
+  { label: "Total Restaurants", valueKey: "restaurants", textColor: "text-rose-600", borderColor: "border-l-rose-500" },
+];
+
+const LISTING_STATS = [
+  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  { label: "Coworking", valueKey: "coworking", textColor: "text-sky-600", borderColor: "border-l-sky-500" },
+  { label: "Coliving", valueKey: "coliving", textColor: "text-teal-600", borderColor: "border-l-teal-500" },
+  { label: "Hostels", valueKey: "hostels", textColor: "text-indigo-600", borderColor: "border-l-indigo-500" },
+  { label: "Meeting Rooms", valueKey: "meetingRooms", textColor: "text-fuchsia-600", borderColor: "border-l-fuchsia-500" },
+  { label: "Cafes", valueKey: "cafes", textColor: "text-orange-600", borderColor: "border-l-orange-500" },
+];
+
+const CONTENT_COLUMNS = [
+  { label: "Blogs", countKey: "blogCount", type: "blog" },
+  { label: "News", countKey: "newsCount", type: "news" },
+  { label: "Events", countKey: "eventCount", type: "event" },
+  { label: "Places", countKey: "placeCount", type: "place" },
+  { label: "Restaurants", countKey: "restaurantCount", type: "restaurant" },
+];
+
+const LISTING_COLUMNS = [
+  { label: "Coworking", countKey: "coworkingCount" },
+  { label: "Coliving", countKey: "colivingCount" },
+  { label: "Hostels", countKey: "hostelCount" },
+  { label: "Meeting Rooms", countKey: "meetingRoomCount" },
+  { label: "Cafes", countKey: "cafeCount" },
+];
+
+const EMPTY_COUNTS = {
+  destinations: 0,
+  blogs: 0,
+  news: 0,
+  events: 0,
+  places: 0,
+  restaurants: 0,
+  coworking: 0,
+  coliving: 0,
+  hostels: 0,
+  meetingRooms: 0,
+  cafes: 0,
+};
+
 const selectClassName =
   "min-w-[140px] flex-1 px-3 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all disabled:bg-slate-50 disabled:text-slate-400";
 
@@ -271,6 +324,7 @@ const DestinationsData = () => {
   const [countryFilter, setCountryFilter] = React.useState("");
   const [stateFilter, setStateFilter] = React.useState("");
   const [cityFilter, setCityFilter] = React.useState("");
+  const [activeSummaryTab, setActiveSummaryTab] = React.useState("content");
   const loadMoreRef = useRef(null);
 
   useEffect(() => {
@@ -306,6 +360,14 @@ const DestinationsData = () => {
   const handleStateFilterChange = (value) => {
     setStateFilter(value);
     setCityFilter("");
+  };
+
+  const handleSummaryTabChange = (tabKey) => {
+    setActiveSummaryTab(tabKey);
+    setCountryFilter("");
+    setStateFilter("");
+    setCityFilter("");
+    setSearchQuery("");
   };
 
   const {
@@ -378,6 +440,7 @@ const DestinationsData = () => {
   } = useInfiniteQuery({
     queryKey: [
       "destinations-data-summary",
+      activeSummaryTab,
       debouncedSearch,
       countryFilter,
       stateFilter,
@@ -391,6 +454,7 @@ const DestinationsData = () => {
         params: {
           page: pageParam,
           limit: PAGE_SIZE,
+          tab: activeSummaryTab,
           search: debouncedSearch,
           country: countryFilter,
           state: stateFilter,
@@ -408,14 +472,9 @@ const DestinationsData = () => {
     [summaryData],
   );
   const summaryFirstPage = summaryData?.pages?.[0];
-  const summaryCounts = summaryFirstPage?.counts ?? {
-    destinations: 0,
-    blogs: 0,
-    news: 0,
-    events: 0,
-    places: 0,
-    restaurants: 0,
-  };
+  const summaryCounts = summaryFirstPage?.counts ?? EMPTY_COUNTS;
+  const summaryStats = activeSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
+  const summaryColumns = activeSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
   const summaryTotal = summaryFirstPage?.total ?? 0;
   const filterOptions = summaryFirstPage?.filterOptions ?? {
     countries: [],
@@ -927,7 +986,9 @@ const DestinationsData = () => {
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
                 {currentView === "summary"
-                  ? "Overview of content across all destinations like blogs, news, places, restaurants, and events."
+                  ? activeSummaryTab === "listings"
+                    ? "Overview of Nomad listing categories across all destinations."
+                    : "Overview of content across all destinations like blogs, news, places, restaurants, and events."
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
               </p>
             </div>
@@ -956,42 +1017,35 @@ const DestinationsData = () => {
           </div>
 
           {currentView === "summary" && (
-            <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Destinations</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.destinations}</p>
-                </div>
+            <div className="flex flex-col gap-3 mb-3 shrink-0">
+              <div className="inline-flex w-fit rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+                {SUMMARY_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => handleSummaryTabChange(tab.key)}
+                    className={`px-4 py-2 rounded-xl text-[11px] font-pmedium uppercase tracking-widest transition-all ${
+                      activeSummaryTab === tab.key
+                        ? "bg-[#2563EB] text-white shadow-sm"
+                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Total Blogs</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.blogs}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-amber-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-amber-600 uppercase tracking-widest mb-1">Total News</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.news}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">Total Events</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.events}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Total Places</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.places}</p>
-                </div>
-              </div>
-              <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Total Restaurants</p>
-                  <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts.restaurants}</p>
-                </div>
+              <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                {summaryStats.map((stat) => (
+                  <div
+                    key={stat.valueKey}
+                    className={`bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 ${stat.borderColor}`}
+                  >
+                    <div className="min-w-0">
+                      <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${stat.textColor}`}>{stat.label}</p>
+                      <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts[stat.valueKey] || 0}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -1077,17 +1131,20 @@ const DestinationsData = () => {
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Destination</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Blogs</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">News</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Events</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Places</th>
-                      <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Restaurants</th>
+                      {summaryColumns.map((column) => (
+                        <th
+                          key={column.countKey}
+                          className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center"
+                        >
+                          {column.label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {summaryItems.length === 0 ? (
                       <tr>
-                        <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
+                        <td colSpan={4 + summaryColumns.length} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
                       </tr>
                     ) : (
                       summaryItems.map((row, index) => (
@@ -1096,27 +1153,27 @@ const DestinationsData = () => {
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.continent}</td>
                           <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{row.country}</td>
                           <td className="px-5 py-4 align-top font-pmedium text-[#0F172A] text-[13px]">{row.destination}</td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" data-tour={index === 0 ? "destinations-data-count-button" : undefined} onClick={() => handleViewDetail(row.destination, "blog")}>{row.blogCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "news")}>{row.newsCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "event")}>{row.eventCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "place")}>{row.placeCount}</button>
-                          </td>
-                          <td className="px-5 py-4 align-top text-center">
-                            <button className="text-blue-600 hover:underline font-pmedium" onClick={() => handleViewDetail(row.destination, "restaurant")}>{row.restaurantCount}</button>
-                          </td>
+                          {summaryColumns.map((column, columnIndex) => (
+                            <td key={column.countKey} className="px-5 py-4 align-top text-center">
+                              {column.type ? (
+                                <button
+                                  className="text-blue-600 hover:underline font-pmedium"
+                                  data-tour={index === 0 && columnIndex === 0 ? "destinations-data-count-button" : undefined}
+                                  onClick={() => handleViewDetail(row.destination, column.type)}
+                                >
+                                  {row[column.countKey] || 0}
+                                </button>
+                              ) : (
+                                <span className="font-pmedium text-slate-700">{row[column.countKey] || 0}</span>
+                              )}
+                            </td>
+                          ))}
                         </tr>
                       ))
                     )}
                     {hasNextPage ? (
                       <tr ref={loadMoreRef}>
-                        <td colSpan={9} className="py-4 text-center">
+                        <td colSpan={4 + summaryColumns.length} className="py-4 text-center">
                           {isFetchingNextPage ? (
                             <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
                               Loading more destinations...

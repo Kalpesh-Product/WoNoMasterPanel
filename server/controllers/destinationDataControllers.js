@@ -1,5 +1,6 @@
 const axios = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
+const { fetchAllNomadListings } = require("./hostListingControllers");
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 // Some Nomads collections are abnormally slow to query right now — `blogs`
@@ -51,6 +52,23 @@ const normalizeKey = (value) =>
   String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const normalizeSearchValue = (value) => String(value || "").trim().toLowerCase();
+
+const normalizeListingTypeKey = (value) =>
+  normalizeSearchValue(value).replace(/[^a-z0-9]/g, "");
+
+const listingTypeCountField = (value) => {
+  const key = normalizeListingTypeKey(value);
+  if (key === "coworking" || key === "coworkingspace" || key === "coworkingspaces") {
+    return "coworkingCount";
+  }
+  if (key === "coliving" || key === "colivingspace" || key === "colivingspaces") {
+    return "colivingCount";
+  }
+  if (key === "hostel" || key === "hostels") return "hostelCount";
+  if (key === "meetingroom" || key === "meetingrooms") return "meetingRoomCount";
+  if (key === "cafe" || key === "cafes") return "cafeCount";
+  return null;
+};
 
 const levenshteinDistance = (left, right) => {
   const rows = left.length + 1;
@@ -152,7 +170,7 @@ const fetchNomadsRows = async (path) => {
 };
 
 const buildDestinationStats = async () => {
-  const [companies, blogs, news, events, places, restaurants] = await Promise.all([
+  const [companies, blogs, news, events, places, restaurants, listings] = await Promise.all([
     HostCompany.find()
       .select("companyCountry companyState companyCity companyContinent")
       .lean(),
@@ -164,6 +182,7 @@ const buildDestinationStats = async () => {
     fetchNomadsRows("/events"),
     fetchNomadsRows("/places"),
     fetchNomadsRows("/restaurants"),
+    fetchAllNomadListings(),
   ]);
 
   const destinationMap = new Map();
@@ -226,6 +245,11 @@ const buildDestinationStats = async () => {
         eventCount: 0,
         placeCount: 0,
         restaurantCount: 0,
+        coworkingCount: 0,
+        colivingCount: 0,
+        hostelCount: 0,
+        meetingRoomCount: 0,
+        cafeCount: 0,
       };
       destinationEntries.push(entry);
     } else if (destination.length > entry.destination.length) {
@@ -254,6 +278,13 @@ const buildDestinationStats = async () => {
       if (entry) entry[countField] += row?.count || 1;
     });
   });
+  listings.forEach((listing) => {
+    if (listing?.isActive === false || listing?.isDeleted === true) return;
+    const countField = listingTypeCountField(listing?.companyType);
+    if (!countField) return;
+    const entry = ensureDestination(listing);
+    if (entry) entry[countField] += 1;
+  });
 
   return destinationEntries
     .filter(
@@ -262,7 +293,12 @@ const buildDestinationStats = async () => {
           row.newsCount +
           row.eventCount +
           row.placeCount +
-          row.restaurantCount >
+          row.restaurantCount +
+          row.coworkingCount +
+          row.colivingCount +
+          row.hostelCount +
+          row.meetingRoomCount +
+          row.cafeCount >
         0,
     )
     .map((row) => ({
@@ -315,21 +351,58 @@ const summarize = (items) =>
       events: counts.events + item.eventCount,
       places: counts.places + item.placeCount,
       restaurants: counts.restaurants + item.restaurantCount,
+      coworking: counts.coworking + item.coworkingCount,
+      coliving: counts.coliving + item.colivingCount,
+      hostels: counts.hostels + item.hostelCount,
+      meetingRooms: counts.meetingRooms + item.meetingRoomCount,
+      cafes: counts.cafes + item.cafeCount,
     }),
-    { destinations: 0, blogs: 0, news: 0, events: 0, places: 0, restaurants: 0 },
+    {
+      destinations: 0,
+      blogs: 0,
+      news: 0,
+      events: 0,
+      places: 0,
+      restaurants: 0,
+      coworking: 0,
+      coliving: 0,
+      hostels: 0,
+      meetingRooms: 0,
+      cafes: 0,
+    },
   );
+
+const hasContentData = (item) =>
+  item.blogCount +
+    item.newsCount +
+    item.eventCount +
+    item.placeCount +
+    item.restaurantCount >
+  0;
+
+const hasListingData = (item) =>
+  item.coworkingCount +
+    item.colivingCount +
+    item.hostelCount +
+    item.meetingRoomCount +
+    item.cafeCount >
+  0;
 
 const getDestinationsData = async (req, res, next) => {
   try {
     const allItems = await getCachedDestinationStats();
+    const activeTab = normalizeSearchValue(req.query.tab) === "listings" ? "listings" : "content";
+    const scopedItems = allItems.filter((item) =>
+      activeTab === "listings" ? hasListingData(item) : hasContentData(item),
+    );
     const country = normalizeSearchValue(req.query.country);
     const state = normalizeSearchValue(req.query.state);
     const city = normalizeSearchValue(req.query.city);
     const search = normalizeSearchValue(req.query.search);
 
     const countryScoped = country
-      ? allItems.filter((item) => normalizeSearchValue(item.country) === country)
-      : allItems;
+      ? scopedItems.filter((item) => normalizeSearchValue(item.country) === country)
+      : scopedItems;
     const stateScoped = state
       ? countryScoped.filter((item) =>
           item.states.some((value) => normalizeSearchValue(value) === state),
@@ -360,7 +433,7 @@ const getDestinationsData = async (req, res, next) => {
     const total = filtered.length;
 
     const countries = Array.from(
-      new Set(allItems.map((item) => item.country).filter(Boolean)),
+      new Set(scopedItems.map((item) => item.country).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
     const states = Array.from(
       new Set(countryScoped.flatMap((item) => item.states).filter(Boolean)),
@@ -378,7 +451,7 @@ const getDestinationsData = async (req, res, next) => {
       limit,
       total,
       hasMore: page * limit < total,
-      counts: summarize(allItems),
+      counts: summarize(scopedItems),
       filterOptions: { countries, states, cities },
     });
   } catch (error) {
