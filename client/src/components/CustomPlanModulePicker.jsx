@@ -6,10 +6,11 @@ import useAxiosPrivate from "../hooks/useAxiosPrivate";
 // Shared by Signup Leads (new Custom-plan signups) and Upgrade Plan
 // (existing workspaces requesting a Custom upgrade) — module/department
 // checkboxes with a live total price, both reading the exact same Plan
-// Pricing settings live from MasterPanel (nothing typed by hand). The
-// caller gets back the selected ids + computed total and decides what to do
-// with them (create a lead + send a link, or send a link to an existing
-// company).
+// Pricing settings live from MasterPanel (nothing typed by hand, apart from
+// the optional negotiated-price/overall-discount fields below). The
+// caller gets back the selected ids + computed total (plus the raw
+// discount inputs) and decides what to do with them (create a lead + send
+// a link, or send a link to an existing company).
 const CustomPlanModulePicker = ({
   open,
   title = "Send Custom Plan Payment Link",
@@ -19,9 +20,11 @@ const CustomPlanModulePicker = ({
   onSubmit,
   isSubmitting = false,
   // Pre-fills the picker — e.g. with the host's own selection submitted
-  // from HostPanel's upgrade request — so staff review/adjust it rather
-  // than re-picking from scratch. Staff can still change it before sending.
+  // from HostPanel's upgrade request, or a quote staff already saved —
+  // so staff review/adjust it rather than re-picking from scratch.
   initialSelectedModuleIds = [],
+  initialPriceOverrides = {},
+  initialOverallDiscountUsd = 0,
   submitLabel = "Generate & Send",
   submittingLabel = "Sending...",
   // "annual" shows what will actually be charged (12x the monthly figure).
@@ -33,9 +36,20 @@ const CustomPlanModulePicker = ({
   const isAnnual = String(billingCycle || "").toLowerCase() === "annual";
   const axios = useAxiosPrivate();
   const [selectedModuleIds, setSelectedModuleIds] = useState(initialSelectedModuleIds);
+  // Per-line negotiated price overrides, keyed by itemId — the value staff
+  // typed in, kept as a string while editing so a field can be blanked
+  // without snapping back to the listed price mid-edit.
+  const [priceOverrides, setPriceOverrides] = useState(initialPriceOverrides || {});
+  const [overallDiscountInput, setOverallDiscountInput] = useState(
+    initialOverallDiscountUsd ? String(initialOverallDiscountUsd) : "",
+  );
 
   useEffect(() => {
-    if (open) setSelectedModuleIds(initialSelectedModuleIds);
+    if (open) {
+      setSelectedModuleIds(initialSelectedModuleIds);
+      setPriceOverrides(initialPriceOverrides || {});
+      setOverallDiscountInput(initialOverallDiscountUsd ? String(initialOverallDiscountUsd) : "");
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, contactEmail]);
 
@@ -48,18 +62,38 @@ const CustomPlanModulePicker = ({
     enabled: open,
   });
 
-  const totalUsd = useMemo(() => {
-    const base = Number(planPricing?.settings?.professionalPlanPriceUsd || 0);
+  // Mirrors the server's buildCustomPlanPricingBreakdownFromRows
+  // (modulePricingService.js) exactly, so the number shown here is the
+  // number that will actually be charged.
+  const breakdown = useMemo(() => {
+    const basePriceUsd = Number(planPricing?.settings?.professionalPlanPriceUsd || 0);
     const rows = planPricing?.rows || [];
     const selected = new Set(selectedModuleIds);
     const departments = rows.filter((r) => r.itemType === "department");
     const modules = rows.filter((r) => r.itemType === "module");
     const covered = new Set();
-    let extra = 0;
+    const lineItems = [];
+    let subtotal = basePriceUsd;
+
+    const effectivePriceFor = (itemId, listedPriceUsd) => {
+      const raw = priceOverrides[itemId];
+      const parsed = Number(raw);
+      return raw !== "" && raw != null && Number.isFinite(parsed) ? Math.max(0, parsed) : listedPriceUsd;
+    };
+
     for (const dept of departments) {
       const ids = dept.includesModuleIds || [];
       if (selected.has(dept.itemId) || (ids.length && ids.every((id) => selected.has(id)))) {
-        extra += dept.priceUsd;
+        const effectivePriceUsd = effectivePriceFor(dept.itemId, dept.priceUsd);
+        lineItems.push({
+          itemId: dept.itemId,
+          label: dept.label,
+          itemType: "department",
+          priceUsd: dept.priceUsd,
+          effectivePriceUsd,
+          discountUsd: Math.round((dept.priceUsd - effectivePriceUsd) * 100) / 100,
+        });
+        subtotal += effectivePriceUsd;
         ids.forEach((id) => covered.add(id));
         covered.add(dept.itemId);
       }
@@ -67,10 +101,41 @@ const CustomPlanModulePicker = ({
     for (const id of selected) {
       if (covered.has(id)) continue;
       const row = modules.find((m) => m.itemId === id);
-      if (row) extra += row.priceUsd;
+      if (!row) continue;
+      const effectivePriceUsd = effectivePriceFor(row.itemId, row.priceUsd);
+      lineItems.push({
+        itemId: row.itemId,
+        label: row.label,
+        itemType: "module",
+        priceUsd: row.priceUsd,
+        effectivePriceUsd,
+        discountUsd: Math.round((row.priceUsd - effectivePriceUsd) * 100) / 100,
+      });
+      subtotal += effectivePriceUsd;
     }
-    return base + extra;
-  }, [planPricing, selectedModuleIds]);
+
+    subtotal = Math.round(subtotal * 100) / 100;
+    const lineDiscountTotal = Math.round(
+      lineItems.reduce((sum, item) => sum + (item.discountUsd || 0), 0) * 100,
+    ) / 100;
+    const requestedOverallDiscount = Number(overallDiscountInput);
+    const overallDiscountUsd = Math.min(
+      Math.max(0, Number.isFinite(requestedOverallDiscount) ? requestedOverallDiscount : 0),
+      subtotal,
+    );
+    const totalUsd = Math.round((subtotal - overallDiscountUsd) * 100) / 100;
+
+    return {
+      contributingItemIds: new Set(lineItems.map((item) => item.itemId)),
+      lineItems,
+      subtotal,
+      lineDiscountTotal,
+      overallDiscountUsd,
+      totalUsd,
+    };
+  }, [planPricing, selectedModuleIds, priceOverrides, overallDiscountInput]);
+
+  const totalUsd = breakdown.totalUsd;
 
   if (!open) return null;
 
@@ -102,7 +167,8 @@ const CustomPlanModulePicker = ({
           <p className="text-[11px] font-pmedium text-slate-500">
             Select the extra modules this Custom plan includes on top of
             everything in Professional. Price is computed automatically from
-            Master Panel's Plan Pricing settings — nothing is typed by hand.
+            Master Panel's Plan Pricing settings — negotiate a lower price for
+            a selected module/bundle, or apply an overall discount below.
           </p>
           {initialSelectedModuleIds.length > 0 && (
             <p className="text-[10px] text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
@@ -110,47 +176,106 @@ const CustomPlanModulePicker = ({
             </p>
           )}
           <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-            {(planPricing?.rows || []).map((row) => (
-              <label
-                key={row.itemId}
-                className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer text-[12px] font-pmedium text-slate-700"
-              >
-                <span className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedModuleIds.includes(row.itemId)}
-                    onChange={(e) =>
-                      setSelectedModuleIds((prev) => {
-                        const relatedIds = row.itemType === "department"
-                          ? [row.itemId, ...(row.includesModuleIds || [])]
-                          : [row.itemId];
-                        const next = new Set(prev);
-                        if (e.target.checked) {
-                          relatedIds.forEach((id) => next.add(id));
-                        } else {
-                          relatedIds.forEach((id) => next.delete(id));
+            {(planPricing?.rows || []).map((row) => {
+              const isChecked = selectedModuleIds.includes(row.itemId);
+              // Only rows that actually contribute to the subtotal (a
+              // department, or a standalone module not already covered by a
+              // selected department bundle) get a discount field — a module
+              // row ticked only because its parent bundle covers it has no
+              // price of its own to discount.
+              const isDiscountable = isChecked && breakdown.contributingItemIds.has(row.itemId);
+              const overrideValue = priceOverrides[row.itemId];
+              return (
+                <div
+                  key={row.itemId}
+                  className="rounded-xl border border-slate-200 hover:bg-slate-50/60 transition-colors"
+                >
+                  <label className="flex items-center justify-between gap-2 px-3 py-2 cursor-pointer text-[12px] font-pmedium text-slate-700">
+                    <span className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) =>
+                          setSelectedModuleIds((prev) => {
+                            const relatedIds = row.itemType === "department"
+                              ? [row.itemId, ...(row.includesModuleIds || [])]
+                              : [row.itemId];
+                            const next = new Set(prev);
+                            if (e.target.checked) {
+                              relatedIds.forEach((id) => next.add(id));
+                            } else {
+                              relatedIds.forEach((id) => next.delete(id));
+                            }
+                            return Array.from(next);
+                          })
                         }
-                        return Array.from(next);
-                      })
-                    }
-                  />
-                  {row.label}
-                  {row.itemType === "department" && (
-                    <span className="text-[9px] uppercase tracking-wider text-blue-500">
-                      bundle
+                      />
+                      {row.label}
+                      {row.itemType === "department" && (
+                        <span className="text-[9px] uppercase tracking-wider text-blue-500">
+                          bundle
+                        </span>
+                      )}
                     </span>
+                    <span className="text-slate-500">${row.priceUsd}/mo</span>
+                  </label>
+                  {isDiscountable && (
+                    <div className="flex items-center justify-between gap-2 px-3 pb-2.5 -mt-0.5">
+                      <span className="text-[10px] text-slate-400">Negotiated price</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] text-slate-400">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder={String(row.priceUsd)}
+                          value={overrideValue ?? ""}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) =>
+                            setPriceOverrides((prev) => ({ ...prev, [row.itemId]: e.target.value }))
+                          }
+                          className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                        />
+                        <span className="text-[10px] text-slate-400">/mo</span>
+                      </div>
+                    </div>
                   )}
-                </span>
-                <span className="text-slate-500">${row.priceUsd}/mo</span>
-              </label>
-            ))}
+                </div>
+              );
+            })}
             {!(planPricing?.rows || []).length && (
               <p className="text-[11px] text-slate-400">
                 No priced add-on modules configured yet in Plan Pricing settings.
               </p>
             )}
           </div>
-          <div className="rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800">
+          <div className="rounded-xl bg-blue-50/60 border border-blue-100 text-[12px] font-pmedium text-blue-800 divide-y divide-blue-100/70">
+            <div className="flex items-center justify-between px-3 py-2">
+              <span>Subtotal</span>
+              <span>${breakdown.subtotal}/mo</span>
+            </div>
+            {breakdown.lineDiscountTotal > 0 && (
+              <div className="flex items-center justify-between px-3 py-2 text-emerald-700">
+                <span>Module discounts</span>
+                <span>-${breakdown.lineDiscountTotal}/mo</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between px-3 py-2">
+              <span>Overall discount</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-blue-700/70">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="0"
+                  value={overallDiscountInput}
+                  onChange={(e) => setOverallDiscountInput(e.target.value)}
+                  className="w-20 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                />
+                <span className="text-[10px] text-blue-700/70">/mo</span>
+              </div>
+            </div>
             <div className="flex items-center justify-between px-3 py-2.5">
               <span>{isAnnual ? "Total per year (billed annually)" : "Total monthly price"}</span>
               <span>
@@ -160,7 +285,7 @@ const CustomPlanModulePicker = ({
               </span>
             </div>
             {isAnnual && (
-              <p className="px-3 pb-2.5 text-[10px] text-blue-600">
+              <p className="px-3 py-2.5 text-[10px] text-blue-600">
                 This lead is on annual billing — the payment link charges 12 × the monthly price
                 (${totalUsd}/mo).
               </p>
@@ -178,7 +303,9 @@ const CustomPlanModulePicker = ({
           {onSave && (
             <button
               type="button"
-              onClick={() => onSave(selectedModuleIds, totalUsd)}
+              onClick={() =>
+                onSave(selectedModuleIds, totalUsd, priceOverrides, breakdown.overallDiscountUsd)
+              }
               disabled={isSaving || isSubmitting || !selectedModuleIds.length}
               className="flex-1 py-2.5 bg-white border border-[#2563EB]/40 text-[#2563EB] rounded-xl font-pmedium text-[12px] hover:bg-blue-50 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -187,7 +314,9 @@ const CustomPlanModulePicker = ({
           )}
           <button
             type="button"
-            onClick={() => onSubmit(selectedModuleIds, totalUsd)}
+            onClick={() =>
+              onSubmit(selectedModuleIds, totalUsd, priceOverrides, breakdown.overallDiscountUsd)
+            }
             disabled={isSubmitting || !selectedModuleIds.length}
             className="flex-1 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >

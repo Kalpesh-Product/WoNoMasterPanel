@@ -608,20 +608,67 @@ const PLAN_CHANGE_TYPE_COPY = {
 };
 
 const formatUsdMonthly = (value) => `$${Number(value || 0).toFixed(2)} USD / month`;
+const formatUsd = (value) => `$${Number(value || 0).toFixed(2)}`;
 
-const buildCustomPlanDetailRows = (customPricingBreakdown) => {
+// A real 4-column table (Module / Price / Discount / Final) for a Custom
+// plan's per-module breakdown — every listed price, the discount staff gave
+// that specific line (if any), the overall discount, and a final total that
+// always equals customPricingBreakdown.totalMonthlyPriceUsd, i.e. exactly the
+// Amount Due / Amount Paid figure shown above it. Returns "" when this isn't
+// a Custom plan (nothing to break down).
+const buildCustomPlanBreakdownTableHtml = (customPricingBreakdown, finalLabel = "Final Monthly Amount") => {
   const lineItems = Array.isArray(customPricingBreakdown?.lineItems)
     ? customPricingBreakdown.lineItems
     : [];
-  if (!customPricingBreakdown || !lineItems.length) return [];
-  return [
-    ["Professional Base", formatUsdMonthly(customPricingBreakdown.basePriceUsd)],
-    ...lineItems.map((item) => [
-      `${item.label || item.itemId}${item.itemType === "department" ? " Bundle" : ""}`,
-      formatUsdMonthly(item.priceUsd),
-    ]),
-    ["Final Monthly Amount", formatUsdMonthly(customPricingBreakdown.totalMonthlyPriceUsd)],
-  ];
+  if (!customPricingBreakdown || !lineItems.length) return "";
+
+  const moduleRow = (label, price, discount, final) => `
+    <tr>
+      <td style="padding:7px 6px;border-top:1px solid #eef2f8;">${label}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;">${price}</td>
+      <td style="padding:7px 6px;text-align:right;color:#059669;border-top:1px solid #eef2f8;">${discount}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;">${final}</td>
+    </tr>`;
+
+  const summaryRow = (label, value, bold = false) => `
+    <tr>
+      <td colspan="3" style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;${bold ? "font-weight:700;" : ""}">${label}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;${bold ? "font-weight:700;" : ""}">${value}</td>
+    </tr>`;
+
+  const headerCell = (label, alignRight) => `
+    <td style="padding:0 6px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#8a93a3;${alignRight ? "text-align:right;" : ""}">${label}</td>`;
+
+  const subtotalUsd = customPricingBreakdown.subtotalBeforeOverallDiscountUsd ?? customPricingBreakdown.totalMonthlyPriceUsd;
+  const overallDiscountUsd = Number(customPricingBreakdown.overallDiscountUsd || 0);
+
+  const itemRowsHtml = lineItems
+    .map((item) => {
+      const effectivePriceUsd = item.effectivePriceUsd ?? item.priceUsd;
+      const discountUsd = Number(item.discountUsd || 0);
+      return moduleRow(
+        `${item.label || item.itemId}${item.itemType === "department" ? " Bundle" : ""}`,
+        formatUsd(item.priceUsd),
+        discountUsd > 0 ? `-${formatUsd(discountUsd)}` : "—",
+        formatUsd(effectivePriceUsd),
+      );
+    })
+    .join("");
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;color:#344054;">
+      <tr>
+        ${headerCell("Module")}
+        ${headerCell("Price", true)}
+        ${headerCell("Discount", true)}
+        ${headerCell("Final", true)}
+      </tr>
+      ${moduleRow("Professional Base", formatUsd(customPricingBreakdown.basePriceUsd), "—", formatUsd(customPricingBreakdown.basePriceUsd))}
+      ${itemRowsHtml}
+      ${summaryRow("Subtotal", formatUsd(subtotalUsd))}
+      ${overallDiscountUsd > 0 ? summaryRow("Overall Discount", `-${formatUsd(overallDiscountUsd)}`) : ""}
+      ${summaryRow(finalLabel, formatUsd(customPricingBreakdown.totalMonthlyPriceUsd), true)}
+    </table>`;
 };
 
 const buildPlanPaymentEmail = ({
@@ -660,15 +707,18 @@ const buildPlanPaymentEmail = ({
             ? "Annual"
             : "Monthly",
         ],
-        ["Amount Due", amountLabel],
-        ...buildCustomPlanDetailRows(customPricingBreakdown),
         ...(projectedStart && projectedEnd
           ? [
               ["Cycle Starts", formatLongDate(projectedStart)],
               ["Cycle Ends", formatLongDate(projectedEnd)],
             ]
           : []),
+        ["Amount Due", amountLabel],
       ],
+      noteTitle: customPricingBreakdown ? "Module Breakdown" : undefined,
+      noteHtml: customPricingBreakdown
+        ? buildCustomPlanBreakdownTableHtml(customPricingBreakdown, "Final Monthly Amount")
+        : undefined,
       ctaButton: { href: paymentLinkUrl, label: "Complete Payment" },
     }),
   };
@@ -697,16 +747,19 @@ const buildPlanPaymentConfirmationEmail = ({
     detailRows: [
       ["Company", companyName],
       ["Plan", planLabel],
+      ["Payment Date", formatLongDate(paidAt || new Date())],
+      ["Renews On", formatLongDate(periodEnd)],
       [
         "Amount Paid",
         new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
           amount || 0,
         ),
       ],
-      ...buildCustomPlanDetailRows(customPricingBreakdown),
-      ["Payment Date", formatLongDate(paidAt || new Date())],
-      ["Renews On", formatLongDate(periodEnd)],
     ],
+    noteTitle: customPricingBreakdown ? "Module Breakdown" : undefined,
+    noteHtml: customPricingBreakdown
+      ? buildCustomPlanBreakdownTableHtml(customPricingBreakdown, "Amount Paid")
+      : undefined,
     ctaButton: invoiceUrl ? { href: invoiceUrl, label: "View Invoice" } : undefined,
   }),
 });

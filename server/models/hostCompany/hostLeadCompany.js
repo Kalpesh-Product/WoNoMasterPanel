@@ -133,6 +133,19 @@ const hostLeadCompanySchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // A staff-granted extra trial window for THIS company specifically —
+    // separate from the normal one-time freeTrialEnabled/hasUsedTrial flow,
+    // so it still works after hasUsedTrial is already permanently true.
+    // Surfaced on the host's dashboard as a claimable offer while `active`
+    // is true and `claimedAt` is unset; claiming extends trialEndAt by
+    // `durationDays` and flips it back off so it can't be claimed twice.
+    bonusTrialOffer: {
+      active: { type: Boolean, default: false },
+      durationDays: { type: Number, default: 30 },
+      setAt: { type: Date, default: null },
+      setByEmail: { type: String, trim: true, default: "" },
+      claimedAt: { type: Date, default: null },
+    },
     // Set the moment invite becomes eligible: at lead-approval time for
     // Basic (no payment required), at plan-payment-webhook time for
     // Professional/Custom. The invite gate checks THIS, not paymentStatus
@@ -147,6 +160,22 @@ const hostLeadCompanySchema = new mongoose.Schema(
     customPlanModuleIds: {
       type: [String],
       default: [],
+    },
+    // Per-line price overrides staff can enter for a Custom-plan quote
+    // (e.g. HR bundle priced at $50 but negotiated down to $40) — keyed by
+    // the same itemId used in customPlanModuleIds/ModulePricing. Plain
+    // object (not Schema.Types.Map) so it survives .lean() reads unchanged.
+    // Only affects THIS lead's payment link/invoice, never the shared Plan
+    // Pricing settings.
+    customPlanModulePriceOverrides: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    // Flat $ discount applied on top of the (already line-discounted)
+    // subtotal for this lead's Custom-plan quote.
+    customPlanOverallDiscountUsd: {
+      type: Number,
+      default: 0,
     },
     comment: {
       type: String,

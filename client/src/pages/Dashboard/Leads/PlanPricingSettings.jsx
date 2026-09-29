@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { toast } from "sonner";
-import { Plus, Trash2, Save } from "lucide-react";
+import { Plus, Trash2, Save, Users } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
+import TrialCompaniesModal from "../../../components/TrialCompaniesModal";
 
 // Lets staff change every dollar amount that drives Custom-plan pricing —
 // nothing here is a hardcoded constant in code. There is only ONE base
@@ -18,6 +19,7 @@ const PlanPricingSettings = () => {
   const [annualPrice, setAnnualPrice] = useState("");
   const [freeTrialEnabled, setFreeTrialEnabled] = useState(false);
   const [freeTrialDurationDays, setFreeTrialDurationDays] = useState("30");
+  const [isTrialCompaniesOpen, setIsTrialCompaniesOpen] = useState(false);
   const [newItemType, setNewItemType] = useState("module");
   const [selectedCatalogId, setSelectedCatalogId] = useState("");
   const [newPriceUsd, setNewPriceUsd] = useState("");
@@ -127,7 +129,7 @@ const PlanPricingSettings = () => {
       <div className="space-y-6 pb-10">
         <div>
           <h1 className="text-lg font-pmedium text-slate-800">Plan Pricing</h1>
-          <p className="text-[12px] text-slate-500 mt-1">
+          <p className="text-[12px] font-pmedium text-slate-500 mt-1">
             Every amount here is live-editable and takes effect on the next
             payment link generated — never on an already-sent or already-paid
             link/invoice.
@@ -136,7 +138,7 @@ const PlanPricingSettings = () => {
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
           <h2 className="text-[13px] font-pmedium text-slate-700">Professional Plan Price</h2>
-          <p className="text-[11px] text-slate-500 max-w-2xl">
+          <p className="text-[11px] font-pmedium text-slate-500 max-w-2xl">
             There's only one base price. Custom plan always includes
             everything in Professional, so it costs this same amount plus
             whatever add-on modules/departments are priced below — there's no
@@ -189,30 +191,44 @@ const PlanPricingSettings = () => {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-          <h2 className="text-[13px] font-pmedium text-slate-700">Professional Free Trial</h2>
-          <p className="text-[11px] text-slate-500 max-w-2xl">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-[13px] font-pmedium text-slate-700">Professional Free Trial</h2>
+            <button
+              type="button"
+              onClick={() => setIsTrialCompaniesOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-pmedium bg-slate-100 text-slate-700 hover:bg-slate-200"
+            >
+              <Users size={12} />
+              View Trial Companies
+            </button>
+          </div>
+          <p className="text-[11px] font-pmedium text-slate-500 max-w-2xl">
             When on, a host who has never claimed a trial before sees a "Start
             Free Trial" option on the Professional plan card. Changing the
             duration only affects trials started after the change — a trial
             already running keeps the day count it started with. Turning the
             offer off stops new claims but does not end a trial already in
-            progress.
+            progress. "View Trial Companies" shows who's claimed it, when it
+            ends, and lets you grant a specific company an extra trial window
+            on top of the normal one-time trial (e.g. once theirs is over).
           </p>
           <div className="flex flex-wrap items-end gap-3">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={freeTrialEnabled}
-                onChange={(e) => {
-                  setPriceTouched(true);
-                  setFreeTrialEnabled(e.target.checked);
-                }}
-                className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-[11px] font-pmedium text-slate-700">
-                Offer active
-              </span>
-            </label>
+            <div className="self-stretch flex items-center">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={freeTrialEnabled}
+                  onChange={(e) => {
+                    setPriceTouched(true);
+                    setFreeTrialEnabled(e.target.checked);
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-[11px] font-pmedium text-slate-700">
+                  Offer active
+                </span>
+              </label>
+            </div>
             <div className="max-w-[160px] w-full">
               <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
                 Trial Length (days)
@@ -244,7 +260,7 @@ const PlanPricingSettings = () => {
           <h2 className="text-[13px] font-pmedium text-slate-700">
             Custom Plan Add-Ons — Modules &amp; Department Bundles
           </h2>
-          <p className="text-[11px] text-slate-500 max-w-3xl">
+          <p className="text-[11px] font-pmedium text-slate-500 max-w-3xl">
             "Module" prices a single module id. "Department" prices a whole
             department bundle at a discounted flat rate, charged once instead
             of summing every tab id listed in "Includes" — only when every one
@@ -252,9 +268,9 @@ const PlanPricingSettings = () => {
           </p>
 
           {isLoading ? (
-            <p className="text-[12px] text-slate-400">Loading…</p>
+            <p className="text-[12px] font-pmedium text-slate-400">Loading…</p>
           ) : rows.length ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+            <div className="grid font-pmedium grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
               {rows.map((row) => (
                 <PricingRow
                   key={row.itemId}
@@ -265,7 +281,7 @@ const PlanPricingSettings = () => {
               ))}
             </div>
           ) : (
-            <p className="text-[12px] text-slate-400">
+            <p className="text-[12px] font-pmedium text-slate-400">
               No pricing items yet — add one below.
             </p>
           )}
@@ -338,6 +354,11 @@ const PlanPricingSettings = () => {
           </div>
         </div>
       </div>
+
+      <TrialCompaniesModal
+        open={isTrialCompaniesOpen}
+        onClose={() => setIsTrialCompaniesOpen(false)}
+      />
     </PageFrame>
   );
 };

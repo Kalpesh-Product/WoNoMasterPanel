@@ -103,29 +103,53 @@ const getFreeTrialConfig = async () => {
 // Multiplier applied to a monthly figure when billing annually.
 const MONTHS_PER_BILLING_CYCLE = 12;
 
-const buildCustomPlanPricingBreakdownFromRows = ({ moduleIds = [], settings, pricingRows }) => {
+// priceOverrides: optional { [itemId]: negotiatedPriceUsd } staff can set
+// per lead — replaces that line's listed price for THIS quote only, never
+// the shared Plan Pricing settings. overallDiscountUsd: a flat $ amount
+// taken off the subtotal after line-item overrides, clamped so it can never
+// push the total below $0 or exceed the subtotal itself.
+const buildCustomPlanPricingBreakdownFromRows = ({
+  moduleIds = [],
+  settings,
+  pricingRows,
+  priceOverrides = {},
+  overallDiscountUsd = 0,
+}) => {
   const uniqueIds = new Set((Array.isArray(moduleIds) ? moduleIds : []).map(String));
   const departmentRows = pricingRows.filter((row) => row.itemType === "department");
   const moduleRows = pricingRows.filter((row) => row.itemType === "module");
   const moduleById = new Map(moduleRows.map((row) => [row.itemId, row]));
 
+  const overrideFor = (itemId, listedPriceUsd) => {
+    const raw = priceOverrides && priceOverrides[itemId];
+    const overridden = Number(raw);
+    return raw != null && raw !== "" && Number.isFinite(overridden)
+      ? Math.max(0, overridden)
+      : listedPriceUsd;
+  };
+
   const idsCoveredByDepartmentBundle = new Set();
   const lineItems = [];
-  let total = Number(settings.professionalPlanPriceUsd || 0);
+  let basePriceUsd = Number(settings.professionalPlanPriceUsd || 0);
+  let subtotalBeforeOverallDiscountUsd = basePriceUsd;
 
   for (const dept of departmentRows) {
     const bundleIds = dept.includesModuleIds || [];
     const isDirectlySelected = uniqueIds.has(dept.itemId);
     const isFullySelected = bundleIds.length > 0 && bundleIds.every((id) => uniqueIds.has(id));
     if (isDirectlySelected || isFullySelected) {
+      const listedPriceUsd = Number(dept.priceUsd || 0);
+      const effectivePriceUsd = overrideFor(dept.itemId, listedPriceUsd);
       lineItems.push({
         itemId: dept.itemId,
         label: dept.label || dept.itemId,
         itemType: "department",
-        priceUsd: Number(dept.priceUsd || 0),
+        priceUsd: listedPriceUsd,
+        effectivePriceUsd,
+        discountUsd: Math.round((listedPriceUsd - effectivePriceUsd) * 100) / 100,
         includesModuleIds: bundleIds,
       });
-      total += Number(dept.priceUsd || 0);
+      subtotalBeforeOverallDiscountUsd += effectivePriceUsd;
       bundleIds.forEach((id) => idsCoveredByDepartmentBundle.add(id));
       idsCoveredByDepartmentBundle.add(dept.itemId);
     }
@@ -135,20 +159,34 @@ const buildCustomPlanPricingBreakdownFromRows = ({ moduleIds = [], settings, pri
     if (idsCoveredByDepartmentBundle.has(id)) continue;
     const row = moduleById.get(id);
     if (!row) continue;
+    const listedPriceUsd = Number(row.priceUsd || 0);
+    const effectivePriceUsd = overrideFor(row.itemId, listedPriceUsd);
     lineItems.push({
       itemId: row.itemId,
       label: row.label || row.itemId,
       itemType: "module",
-      priceUsd: Number(row.priceUsd || 0),
+      priceUsd: listedPriceUsd,
+      effectivePriceUsd,
+      discountUsd: Math.round((listedPriceUsd - effectivePriceUsd) * 100) / 100,
       includesModuleIds: [],
     });
-    total += Number(row.priceUsd || 0);
+    subtotalBeforeOverallDiscountUsd += effectivePriceUsd;
   }
 
+  subtotalBeforeOverallDiscountUsd = Math.round(subtotalBeforeOverallDiscountUsd * 100) / 100;
+  const requestedOverallDiscountUsd = Number(overallDiscountUsd);
+  const clampedOverallDiscountUsd = Math.min(
+    Math.max(0, Number.isFinite(requestedOverallDiscountUsd) ? requestedOverallDiscountUsd : 0),
+    subtotalBeforeOverallDiscountUsd,
+  );
+
   return {
-    basePriceUsd: Number(settings.professionalPlanPriceUsd || 0),
+    basePriceUsd,
     lineItems,
-    totalMonthlyPriceUsd: Math.round(total * 100) / 100,
+    subtotalBeforeOverallDiscountUsd,
+    overallDiscountUsd: Math.round(clampedOverallDiscountUsd * 100) / 100,
+    totalMonthlyPriceUsd:
+      Math.round((subtotalBeforeOverallDiscountUsd - clampedOverallDiscountUsd) * 100) / 100,
   };
 };
 
@@ -162,28 +200,47 @@ const buildCustomPlanPricingBreakdownFromRows = ({ moduleIds = [], settings, pri
 // the Professional price or any add-on) is reflected the next time this is
 // called (e.g. for the next renewal link), never retroactively on a
 // payment link/invoice that's already been created.
-const computeCustomPlanMonthlyPrice = async (moduleIds = []) => {
+const computeCustomPlanMonthlyPrice = async (moduleIds = [], priceOverrides = {}, overallDiscountUsd = 0) => {
   const [settings, pricingRows] = await Promise.all([
     getOrCreatePlanPricingSettings(),
     ModulePricing.find().lean(),
   ]);
 
-  return buildCustomPlanPricingBreakdownFromRows({ moduleIds, settings, pricingRows })
-    .totalMonthlyPriceUsd;
+  return buildCustomPlanPricingBreakdownFromRows({
+    moduleIds,
+    settings,
+    pricingRows,
+    priceOverrides,
+    overallDiscountUsd,
+  }).totalMonthlyPriceUsd;
 };
 
-const getCustomPlanPricingBreakdown = async (moduleIds = []) => {
+const getCustomPlanPricingBreakdown = async (moduleIds = [], priceOverrides = {}, overallDiscountUsd = 0) => {
   const [settings, pricingRows] = await Promise.all([
     getOrCreatePlanPricingSettings(),
     ModulePricing.find().lean(),
   ]);
-  return buildCustomPlanPricingBreakdownFromRows({ moduleIds, settings, pricingRows });
+  return buildCustomPlanPricingBreakdownFromRows({
+    moduleIds,
+    settings,
+    pricingRows,
+    priceOverrides,
+    overallDiscountUsd,
+  });
 };
 
 // Total due for a single billing cycle of a Custom plan: the monthly figure
 // for monthly billing, or 12× that when the host picked yearly billing.
-const computeCustomPlanPrice = async (moduleIds = [], billingCycle = "monthly") => {
-  const monthly = await computeCustomPlanMonthlyPrice(moduleIds);
+// Discounts (priceOverrides/overallDiscountUsd) are applied to the monthly
+// figure BEFORE the annual multiplier, so "annual = 12x monthly" still holds
+// for a discounted quote.
+const computeCustomPlanPrice = async (
+  moduleIds = [],
+  billingCycle = "monthly",
+  priceOverrides = {},
+  overallDiscountUsd = 0,
+) => {
+  const monthly = await computeCustomPlanMonthlyPrice(moduleIds, priceOverrides, overallDiscountUsd);
   return String(billingCycle || "").toLowerCase() === "annual"
     ? Math.round(monthly * MONTHS_PER_BILLING_CYCLE * 100) / 100
     : monthly;

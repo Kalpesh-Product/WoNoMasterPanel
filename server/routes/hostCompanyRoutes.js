@@ -26,6 +26,9 @@ const {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  getTrialCompanies,
+  setBonusTrialOffer,
+  claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
@@ -93,6 +96,9 @@ router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/start-trial", startTrial);
+router.get("/trial-companies", getTrialCompanies);
+router.patch("/trial-companies/:companyId/bonus-offer", setBonusTrialOffer);
+router.patch("/claim-bonus-trial", claimBonusTrial);
 router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPlanModules);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);

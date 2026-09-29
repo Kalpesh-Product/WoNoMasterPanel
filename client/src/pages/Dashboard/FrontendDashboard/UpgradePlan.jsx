@@ -156,7 +156,7 @@ const UpgradePlan = () => {
     },
   });
 const sendPlanPaymentLinkMutation = useMutation({
-    mutationFn: async ({ company, plan, customModuleIds }) => {
+    mutationFn: async ({ company, plan, customModuleIds, customPriceOverrides, customOverallDiscountUsd }) => {
       const response = await axiosPrivate.post("/api/hosts/plan-payments/send", {
         companyId: company.companyId,
         email: company?.pocEmail,
@@ -164,6 +164,8 @@ const sendPlanPaymentLinkMutation = useMutation({
         companyName: company?.companyName,
         plan,
         customModuleIds,
+        customPriceOverrides,
+        customOverallDiscountUsd,
         billingCycle: company?.billingCycle || "monthly",
       });
       return response.data;
@@ -219,12 +221,14 @@ const sendPlanPaymentLinkMutation = useMutation({
     sendPlanPaymentLinkMutation.mutate({ company, plan: "professional" });
   };
 
-  const handleSubmitCustomPayment = (selectedModuleIds) => {
+  const handleSubmitCustomPayment = (selectedModuleIds, _totalUsd, priceOverrides, overallDiscountUsd) => {
     setSendingPaymentCompanyId(customPaymentCompany.companyId);
     sendPlanPaymentLinkMutation.mutate({
       company: customPaymentCompany,
       plan: "custom",
       customModuleIds: selectedModuleIds,
+      customPriceOverrides: priceOverrides,
+      customOverallDiscountUsd: overallDiscountUsd,
     });
   };
 
@@ -768,9 +772,13 @@ const sendPlanPaymentLinkMutation = useMutation({
         contactName={customPaymentCompany?.pocName}
         contactEmail={customPaymentCompany?.pocEmail}
         onClose={() => setCustomPaymentCompany(null)}
-        onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
+        onSubmit={(selectedModuleIds, totalUsd, priceOverrides, overallDiscountUsd) =>
+          handleSubmitCustomPayment(selectedModuleIds, totalUsd, priceOverrides, overallDiscountUsd)
+        }
         isSubmitting={sendPlanPaymentLinkMutation.isPending}
         initialSelectedModuleIds={customPaymentCompany?.customPlanModuleIds || []}
+        initialPriceOverrides={customPaymentCompany?.customPlanModulePriceOverrides || {}}
+        initialOverallDiscountUsd={customPaymentCompany?.customPlanOverallDiscountUsd || 0}
       />
       <CustomPlanModulePicker
         open={Boolean(customModuleEditCompany)}

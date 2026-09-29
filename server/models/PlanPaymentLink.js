@@ -72,6 +72,17 @@ const planPaymentLinkSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Raw staff-entered discount inputs for this quote (kept alongside the
+    // computed customPricingBreakdown below so a repeat "Send" click can be
+    // matched against an identical still-pending link).
+    customPriceOverrides: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    customOverallDiscountUsd: {
+      type: Number,
+      default: 0,
+    },
     customPricingBreakdown: {
       basePriceUsd: { type: Number, default: 0 },
       lineItems: {
@@ -81,11 +92,17 @@ const planPaymentLinkSchema = new mongoose.Schema(
             label: { type: String, trim: true },
             itemType: { type: String, enum: ["module", "department"], default: "module" },
             priceUsd: { type: Number, default: 0 },
+            // Listed price minus any per-line override staff entered for
+            // this specific quote — equals priceUsd when not discounted.
+            effectivePriceUsd: { type: Number, default: 0 },
+            discountUsd: { type: Number, default: 0 },
             includesModuleIds: { type: [String], default: [] },
           },
         ],
         default: [],
       },
+      subtotalBeforeOverallDiscountUsd: { type: Number, default: 0 },
+      overallDiscountUsd: { type: Number, default: 0 },
       totalMonthlyPriceUsd: { type: Number, default: 0 },
     },
     amount: {

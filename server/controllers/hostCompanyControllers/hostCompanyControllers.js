@@ -1162,6 +1162,142 @@ const startTrial = async (req, res, next) => {
   }
 };
 
+// GET /api/hosts/trial-companies — every company that has ever started the
+// free trial (trialStartAt set), for the Plan Pricing page's "who's on
+// trial" view. Not the full company list — only ones with trial history.
+const getTrialCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostLeadCompany.find({ trialStartAt: { $ne: null } })
+      .select(
+        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer",
+      )
+      .sort({ isTrialActive: -1, trialEndAt: -1 })
+      .lean();
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/trial-companies/:companyId/bonus-offer  { active, durationDays }
+// Staff grants (or revokes) a one-off extra trial window for a SPECIFIC
+// company — separate from the normal one-time freeTrialEnabled/hasUsedTrial
+// flow above, so it still works after hasUsedTrial is already permanently
+// true. Turning it on only makes it show up as a claimable offer on that
+// company's own dashboard (see claimBonusTrial below) — it's never applied
+// automatically.
+const setBonusTrialOffer = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { active, durationDays } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+
+    const resolvedDurationDays = Number(durationDays);
+    if (active && (!Number.isFinite(resolvedDurationDays) || resolvedDurationDays <= 0)) {
+      return res.status(400).json({ message: "durationDays must be a positive number" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          "bonusTrialOffer.active": Boolean(active),
+          "bonusTrialOffer.durationDays": resolvedDurationDays > 0 ? resolvedDurationDays : 30,
+          "bonusTrialOffer.setAt": new Date(),
+          "bonusTrialOffer.setByEmail": req.user?.email || "",
+          // Re-activating clears any earlier claim so it can be claimed again.
+          ...(active ? { "bonusTrialOffer.claimedAt": null } : {}),
+        },
+      },
+      { new: true },
+    );
+    if (!company) return res.status(404).json({ message: "Host lead company not found" });
+
+    return res.status(200).json({ message: "Bonus trial offer updated", company });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/claim-bonus-trial  { companyId }
+// Self-serve, hit from HostPanel once the host sees the offer on their own
+// dashboard. Only works while staff has bonusTrialOffer.active === true and
+// it hasn't been claimed yet. Extends from the current trialEndAt when the
+// trial is still running, or starts fresh from now if it already ended —
+// either way the company ends up on an active Professional trial for
+// durationDays more, same shape of update as startTrial above.
+const claimBonusTrial = async (req, res, next) => {
+  try {
+    const { companyId } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+    const normalizedCompanyId = String(companyId).trim();
+
+    const leadCompany = await HostLeadCompany.findOne({ companyId: normalizedCompanyId });
+    if (!leadCompany) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+    if (!leadCompany.bonusTrialOffer?.active || leadCompany.bonusTrialOffer?.claimedAt) {
+      return res.status(409).json({ message: "No bonus trial offer is available for this company." });
+    }
+
+    // Never let a bonus trial (a courtesy extension) overwrite a real paid
+    // subscription's planExpiryDate/isTrialing — that would let the
+    // downgrade cron later "expire" a paying customer as if it were a
+    // trial. Only companies currently on Basic, or already trialing, are
+    // eligible; a genuinely paid Professional/Custom workspace is not.
+    const hasActivePaidWorkspace = await Workspace.exists({
+      companyId: normalizedCompanyId,
+      selectedPlan: { $in: ["professional", "custom"] },
+      isTrialing: { $ne: true },
+      planStatus: "active",
+    });
+    if (hasActivePaidWorkspace) {
+      return res
+        .status(409)
+        .json({ message: "This company already has an active paid plan — the bonus trial doesn't apply." });
+    }
+
+    const durationDays = Number(leadCompany.bonusTrialOffer.durationDays) || 30;
+    const now = new Date();
+    const base =
+      leadCompany.isTrialActive && leadCompany.trialEndAt && new Date(leadCompany.trialEndAt) > now
+        ? new Date(leadCompany.trialEndAt)
+        : now;
+    const trialEndAt = new Date(base.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+    leadCompany.trialStartAt = leadCompany.trialStartAt || now;
+    leadCompany.trialEndAt = trialEndAt;
+    leadCompany.isTrialActive = true;
+    leadCompany.hasUsedTrial = true;
+    leadCompany.subscriptionStatus = "trialing";
+    leadCompany.bonusTrialOffer.active = false;
+    leadCompany.bonusTrialOffer.claimedAt = now;
+    await leadCompany.save();
+
+    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
+    await Workspace.updateMany(
+      { companyId: normalizedCompanyId },
+      {
+        $set: {
+          selectedPlan: "professional",
+          planStatus: "active",
+          planExpiryDate: trialEndAt,
+          planExpiryWarningSentAt: null,
+          isTrialing: true,
+          enabledModuleIds: professionalModuleIds,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      message: "Bonus trial claimed",
+      trialEndAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // PATCH /api/hosts/host-companies/:companyId/custom-plan-modules
 // Lets staff remove modules from a Custom plan request the host submitted
 // (e.g. if the host over-selected) without restarting the whole review
@@ -2635,6 +2771,9 @@ module.exports = {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  getTrialCompanies,
+  setBonusTrialOffer,
+  claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,

@@ -341,6 +341,7 @@ const CompanyVerified = () => {
                         <th className="px-5 py-4">Plan</th>
                         <th className="px-5 py-4">Start Date</th>
                         <th className="px-5 py-4">End Date</th>
+                        <th className="px-5 py-4">Days Left</th>
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4 text-center">Action</th>
                       </tr>
@@ -383,6 +384,17 @@ const CompanyVerified = () => {
                             </td>
                             <td className="px-5 py-4 text-[11px] font-pmedium text-slate-600">
                               {formatDate(lead.verificationExpiresAt)}
+                            </td>
+                            <td className="px-5 py-4 text-[11px] font-pmedium text-slate-600 whitespace-nowrap">
+                              {days !== null && lead.paidAt
+                                ? `${Math.max(0, Math.ceil(days))} / ${Math.max(
+                                    1,
+                                    Math.round(
+                                      (new Date(lead.verificationExpiresAt) - new Date(lead.paidAt)) /
+                                        (1000 * 60 * 60 * 24),
+                                    ),
+                                  )} days`
+                                : "--"}
                             </td>
                             <td className="px-5 py-4">
                               <span

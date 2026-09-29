@@ -222,7 +222,7 @@ const SignupLeads = () => {
   });
 
   const saveSelectionMutation = useMutation({
-    mutationFn: async ({ lead, customModuleIds }) =>
+    mutationFn: async ({ lead, customModuleIds, priceOverrides, overallDiscountUsd }) =>
       (
         await axios.post("/api/hosts/plan-payments/custom-selection", {
           companyId: lead?._id,
@@ -230,6 +230,8 @@ const SignupLeads = () => {
           email: lead?.email,
           name: lead?.name,
           customModuleIds,
+          priceOverrides,
+          overallDiscountUsd,
         })
       ).data,
     onSuccess: (data) => {
@@ -368,7 +370,7 @@ const SignupLeads = () => {
   };
 
   const sendPlanPaymentLinkMutation = useMutation({
-    mutationFn: async ({ lead, plan, customModuleIds }) => {
+    mutationFn: async ({ lead, plan, customModuleIds, customPriceOverrides, customOverallDiscountUsd }) => {
       const response = await axios.post("/api/hosts/plan-payments/send", {
         companyId: lead?._id,
         email: lead?.email,
@@ -376,6 +378,8 @@ const SignupLeads = () => {
         companyName: lead?.companyName,
         plan,
         customModuleIds,
+        customPriceOverrides,
+        customOverallDiscountUsd,
         billingCycle: lead?.billingCycle || "monthly",
       });
       return response.data;
@@ -413,12 +417,14 @@ const SignupLeads = () => {
     setCustomPaymentLead(lead);
   };
 
-  const handleSubmitCustomPayment = (selectedModuleIds) => {
+  const handleSubmitCustomPayment = (selectedModuleIds, _totalUsd, priceOverrides, overallDiscountUsd) => {
     setSendingPaymentLeadId(customPaymentLead._id);
     sendPlanPaymentLinkMutation.mutate({
       lead: customPaymentLead,
       plan: "custom",
       customModuleIds: selectedModuleIds,
+      customPriceOverrides: priceOverrides,
+      customOverallDiscountUsd: overallDiscountUsd,
     });
   };
 
@@ -770,20 +776,21 @@ const SignupLeads = () => {
                 <div className="overflow-x-auto flex-1">
                   <table
                     data-tour="signup-leads-table"
-                    className="w-full text-left min-w-[1450px]"
+                    className="w-full text-left min-w-[1600px]"
                   >
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
-                        <th className="px-5 py-4">Sr No</th>
-                        <th className="px-5 py-4">Lead</th>
-                        <th className="px-5 py-4">Company</th>
-                        <th className="px-5 py-4">Plan</th>
-                        <th className="px-5 py-4">Status</th>
-                        <th className="px-5 py-4">Invite Status</th>
-                        <th className="px-5 py-4">Invite</th>
-                        <th className="px-5 py-4">Payment Status</th>
-                        <th className="px-5 py-4">Payment Link</th>
-                        <th className="px-5 py-4 text-center">Action</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Sr No</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Lead</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Company</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Plan</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Billing</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Status</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Invite Status</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Invite</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Payment Status</th>
+                        <th className="px-5 py-4 whitespace-nowrap">Payment Link</th>
+                        <th className="px-5 py-4 whitespace-nowrap text-center">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/60">
@@ -814,18 +821,24 @@ const SignupLeads = () => {
                                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
                                   {getInitials(lead.name)}
                                 </div>
-                                <div>
-                                  <p className="text-[12px] font-pmedium text-slate-900 truncate max-w-[160px]">
+                                <div className="min-w-0 max-w-[210px]">
+                                  <p
+                                    className="text-[12px] font-pmedium text-slate-900 truncate"
+                                    title={lead.name}
+                                  >
                                     {lead.name || "--"}
                                   </p>
-                                  <p className="text-[10px] font-pmedium text-slate-500 truncate max-w-[160px]">
+                                  <p
+                                    className="text-[10px] font-pmedium text-slate-500 truncate"
+                                    title={lead.email}
+                                  >
                                     {lead.email || ""}
                                   </p>
                                 </div>
                               </div>
                             </td>
                             <td
-                              className="px-5 py-4 text-[12px] font-pmedium text-slate-700 truncate max-w-[140px]"
+                              className="px-5 py-4 text-[12px] font-pmedium text-slate-700 truncate max-w-[220px]"
                               title={lead.companyName}
                             >
                               {lead.companyName || "--"}
@@ -847,10 +860,20 @@ const SignupLeads = () => {
                                   </option>
                                 ))}
                               </select>
-                              {planVal !== "basic" && (
-                                <p className="mt-1 text-[10px] font-pmedium text-slate-500">
-                                  {lead.billingCycle === "annual" ? "Annual billing" : "Monthly billing"}
-                                </p>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              {planVal === "basic" ? (
+                                <span className="text-[12px] font-pmedium text-slate-300">—</span>
+                              ) : (
+                                <span
+                                  className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${
+                                    lead.billingCycle === "annual"
+                                      ? "bg-indigo-50 text-indigo-700"
+                                      : "bg-slate-100 text-slate-600"
+                                  }`}
+                                >
+                                  {lead.billingCycle === "annual" ? "Annual" : "Monthly"}
+                                </span>
                               )}
                             </td>
                             <td
@@ -886,7 +909,7 @@ const SignupLeads = () => {
                                 const sentAt = meta?.lastInviteSentAt || meta?.inviteSentAt;
                                 if (!sentAt || inviteStatus === "not_invited") return null;
                                 return (
-                                  <p className="mt-1 text-[10px] font-pmedium text-slate-500">
+                                  <p className="mt-1 text-[10px] font-pmedium text-slate-500 whitespace-nowrap">
                                     Sent {formatDate(sentAt)}
                                     {meta?.inviteCount > 1 ? ` · ${meta.inviteCount}×` : ""}
                                   </p>
@@ -921,12 +944,12 @@ const SignupLeads = () => {
                               className="px-5 py-4"
                             >
                               {planVal === "basic" ? (
-                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
+                                <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan
                                 </span>
                               ) : (
                                 <span
-                                  className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${paymentInfo.isPaid ? "bg-emerald-50 text-emerald-700" : paymentInfo.status === "Pending" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}
+                                  className={`inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${paymentInfo.isPaid ? "bg-emerald-50 text-emerald-700" : paymentInfo.status === "Pending" ? "bg-amber-50 text-amber-700" : "bg-slate-100 text-slate-600"}`}
                                 >
                                   {paymentInfo.label}
                                 </span>
@@ -937,11 +960,11 @@ const SignupLeads = () => {
                               className="px-5 py-4 text-center"
                             >
                               {planVal === "basic" ? (
-                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
+                                <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan
                                 </span>
                               ) : paymentInfo.isPaid ? (
-                                <span className="inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-emerald-50 text-emerald-700">
+                                <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-emerald-50 text-emerald-700">
                                   {paymentInfo.label}
                                 </span>
                               ) : (
@@ -949,7 +972,7 @@ const SignupLeads = () => {
                                   type="button"
                                   disabled={isSendingPayment}
                                   onClick={() => handleSendPlanPayment(lead)}
-                                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                  className="inline-flex items-center gap-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   {isSendingPayment
                                     ? "Sending..."
@@ -957,8 +980,8 @@ const SignupLeads = () => {
                                       ? `Send $${lead?.billingCycle === "annual"
                                           ? planPricing?.settings?.professionalAnnualPlanPriceUsd ?? "..."
                                           : planPricing?.settings?.professionalPlanPriceUsd ?? "..."} Link`
-                                      : (savedSelections[String(lead._id)] || []).length
-                                        ? `Send Link · ${savedSelections[String(lead._id)].length} modules`
+                                      : (savedSelections[String(lead._id)]?.moduleIds || []).length
+                                        ? `Send Link · ${savedSelections[String(lead._id)].moduleIds.length} modules`
                                         : "Select Modules & Send Link"}
                                 </button>
                               )}
@@ -1635,14 +1658,27 @@ const SignupLeads = () => {
         contactName={customPaymentLead?.name}
         contactEmail={customPaymentLead?.email}
         onClose={() => setCustomPaymentLead(null)}
-        onSubmit={(selectedModuleIds) => handleSubmitCustomPayment(selectedModuleIds)}
+        onSubmit={(selectedModuleIds, totalUsd, priceOverrides, overallDiscountUsd) =>
+          handleSubmitCustomPayment(selectedModuleIds, totalUsd, priceOverrides, overallDiscountUsd)
+        }
         isSubmitting={sendPlanPaymentLinkMutation.isPending}
         billingCycle={customPaymentLead?.billingCycle}
         initialSelectedModuleIds={
-          savedSelections[String(customPaymentLead?._id || "")] || []
+          savedSelections[String(customPaymentLead?._id || "")]?.moduleIds || []
         }
-        onSave={(customModuleIds) =>
-          saveSelectionMutation.mutate({ lead: customPaymentLead, customModuleIds })
+        initialPriceOverrides={
+          savedSelections[String(customPaymentLead?._id || "")]?.priceOverrides || {}
+        }
+        initialOverallDiscountUsd={
+          savedSelections[String(customPaymentLead?._id || "")]?.overallDiscountUsd || 0
+        }
+        onSave={(customModuleIds, _totalUsd, priceOverrides, overallDiscountUsd) =>
+          saveSelectionMutation.mutate({
+            lead: customPaymentLead,
+            customModuleIds,
+            priceOverrides,
+            overallDiscountUsd,
+          })
         }
         isSaving={saveSelectionMutation.isPending}
       />

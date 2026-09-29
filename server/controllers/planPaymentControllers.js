@@ -36,6 +36,25 @@ const sameIdList = (a = [], b = []) => {
   return first.length === second.length && first.every((id, index) => id === second[index]);
 };
 
+const normalizePriceOverrides = (value) => {
+  const source = value && typeof value === "object" ? value : {};
+  const entries = Object.entries(source)
+    .map(([itemId, priceUsd]) => [String(itemId).trim(), Number(priceUsd)])
+    .filter(([itemId, priceUsd]) => itemId && Number.isFinite(priceUsd));
+  return Object.fromEntries(entries);
+};
+
+const samePriceOverrides = (a, b) => {
+  const first = normalizePriceOverrides(a);
+  const second = normalizePriceOverrides(b);
+  const firstKeys = Object.keys(first).sort();
+  const secondKeys = Object.keys(second).sort();
+  return (
+    firstKeys.length === secondKeys.length &&
+    firstKeys.every((key, index) => key === secondKeys[index] && first[key] === second[key])
+  );
+};
+
 // Same prefix/name-fallback matching convention already used in
 // hostCompanyControllers.js's updateUpgradePaymentStatus.
 const resolveWorkspaceForCompany = async ({ companyId, companyName }) => {
@@ -108,6 +127,8 @@ const createAndSendPlanPaymentLink = async ({
   plan,
   previousPlan = null,
   customModuleIds = [],
+  customPriceOverrides = {},
+  customOverallDiscountUsd = 0,
   billingCycle = "monthly",
 }) => {
   const normalizedPlan = String(plan || "").toLowerCase();
@@ -121,7 +142,9 @@ const createAndSendPlanPaymentLink = async ({
   const changeType = computeChangeType(previousPlan, normalizedPlan);
 
   const customPricingBreakdown =
-    normalizedPlan === "custom" ? await getCustomPlanPricingBreakdown(customModuleIds) : null;
+    normalizedPlan === "custom"
+      ? await getCustomPlanPricingBreakdown(customModuleIds, customPriceOverrides, customOverallDiscountUsd)
+      : null;
   // monthly → the monthly rate once. annual → the annual total
   // (professionalAnnualPlanPriceUsd is the FULL yearly price, e.g. $1,999/yr
   // charged once for a single 12-month cycle) or the custom yearly total.
@@ -130,7 +153,7 @@ const createAndSendPlanPaymentLink = async ({
       ? cycle === "annual"
         ? await getProfessionalAnnualPlanPriceUsd()
         : await getProfessionalPlanPriceUsd()
-      : await computeCustomPlanPrice(customModuleIds, cycle);
+      : await computeCustomPlanPrice(customModuleIds, cycle, customPriceOverrides, customOverallDiscountUsd);
 
   const { start: projectedStart, end: projectedEnd } = computeProjectedPeriod(
     workspace?.planExpiryDate,
@@ -180,6 +203,8 @@ const createAndSendPlanPaymentLink = async ({
     changeType,
     billingCycle: cycle,
     customModuleIds: normalizedPlan === "custom" ? customModuleIds : [],
+    customPriceOverrides: normalizedPlan === "custom" ? customPriceOverrides || {} : {},
+    customOverallDiscountUsd: normalizedPlan === "custom" ? Number(customOverallDiscountUsd) || 0 : 0,
     customPricingBreakdown: customPricingBreakdown || undefined,
     amount,
     currency: "usd",
@@ -217,8 +242,17 @@ const createAndSendPlanPaymentLink = async ({
 // companyId there).
 const sendPlanPaymentLink = async (req, res, next) => {
   try {
-    const { companyId, plan, customModuleIds, companyName, email, name, billingCycle } =
-      req.body || {};
+    const {
+      companyId,
+      plan,
+      customModuleIds,
+      customPriceOverrides,
+      customOverallDiscountUsd,
+      companyName,
+      email,
+      name,
+      billingCycle,
+    } = req.body || {};
     if (!companyId) return res.status(400).json({ message: "companyId is required" });
     if (!["professional", "custom"].includes(String(plan || "").toLowerCase())) {
       return res.status(400).json({ message: "plan must be 'professional' or 'custom'" });
@@ -255,6 +289,20 @@ const sendPlanPaymentLink = async (req, res, next) => {
           ? customModuleIds
           : lead.customPlanModuleIds || []
         : [];
+    // Discount inputs from this request, falling back to whatever staff last
+    // saved for this lead (mirrors the customModuleIds fallback above).
+    const resolvedCustomPriceOverrides =
+      normalizedPlan === "custom"
+        ? customPriceOverrides && Object.keys(customPriceOverrides || {}).length
+          ? normalizePriceOverrides(customPriceOverrides)
+          : normalizePriceOverrides(lead.customPlanModulePriceOverrides)
+        : {};
+    const resolvedCustomOverallDiscountUsd =
+      normalizedPlan === "custom"
+        ? Number.isFinite(Number(customOverallDiscountUsd))
+          ? Math.max(0, Number(customOverallDiscountUsd))
+          : Number(lead.customPlanOverallDiscountUsd) || 0
+        : 0;
 
     // Reuse an already-outstanding pending link for this exact company+plan
     // instead of minting a new Stripe Payment Link on every click — without
@@ -269,7 +317,9 @@ const sendPlanPaymentLink = async (req, res, next) => {
     }).sort({ createdAt: -1 });
     const existingPending = pendingCandidates.find((link) =>
       normalizedPlan === "custom"
-        ? sameIdList(link.customModuleIds, resolvedCustomModuleIds)
+        ? sameIdList(link.customModuleIds, resolvedCustomModuleIds) &&
+          samePriceOverrides(link.customPriceOverrides, resolvedCustomPriceOverrides) &&
+          Number(link.customOverallDiscountUsd || 0) === resolvedCustomOverallDiscountUsd
         : true,
     );
 
@@ -308,6 +358,8 @@ const sendPlanPaymentLink = async (req, res, next) => {
         plan: normalizedPlan,
         previousPlan: lead.plan || null,
         customModuleIds: resolvedCustomModuleIds,
+        customPriceOverrides: resolvedCustomPriceOverrides,
+        customOverallDiscountUsd: resolvedCustomOverallDiscountUsd,
         billingCycle: cycle,
       }));
     }
@@ -316,6 +368,8 @@ const sendPlanPaymentLink = async (req, res, next) => {
     lead.billingCycle = cycle;
     if (normalizedPlan === "custom" && resolvedCustomModuleIds.length) {
       lead.customPlanModuleIds = resolvedCustomModuleIds;
+      lead.customPlanModulePriceOverrides = resolvedCustomPriceOverrides;
+      lead.customPlanOverallDiscountUsd = resolvedCustomOverallDiscountUsd;
     }
     lead.paymentLinkUrl = paymentLinkUrl;
     lead.paymentLinkSentAt = new Date();
@@ -348,12 +402,15 @@ const sendPlanPaymentLink = async (req, res, next) => {
 // link sent later. Creates the lead row the same way sending a link would.
 const saveLeadCustomSelection = async (req, res, next) => {
   try {
-    const { companyId, customModuleIds, companyName, email, name } = req.body || {};
+    const { companyId, customModuleIds, priceOverrides, overallDiscountUsd, companyName, email, name } =
+      req.body || {};
     if (!companyId) return res.status(400).json({ message: "companyId is required" });
     if (!Array.isArray(customModuleIds)) {
       return res.status(400).json({ message: "customModuleIds must be an array" });
     }
     const ids = [...new Set(customModuleIds.map((id) => String(id)).filter(Boolean))];
+    const resolvedPriceOverrides = normalizePriceOverrides(priceOverrides);
+    const resolvedOverallDiscountUsd = Math.max(0, Number(overallDiscountUsd) || 0);
 
     const resolvedCompanyId = String(companyId).trim();
     let lead = await HostLeadCompany.findOne({ companyId: resolvedCompanyId });
@@ -373,29 +430,40 @@ const saveLeadCustomSelection = async (req, res, next) => {
     }
 
     lead.customPlanModuleIds = ids;
+    lead.customPlanModulePriceOverrides = resolvedPriceOverrides;
+    lead.customPlanOverallDiscountUsd = resolvedOverallDiscountUsd;
     await lead.save();
 
     return res.status(200).json({
       message: "Selection saved",
       customModuleIds: ids,
-      monthlyPriceUsd: await computeCustomPlanMonthlyPrice(ids),
+      priceOverrides: resolvedPriceOverrides,
+      overallDiscountUsd: resolvedOverallDiscountUsd,
+      monthlyPriceUsd: await computeCustomPlanMonthlyPrice(ids, resolvedPriceOverrides, resolvedOverallDiscountUsd),
     });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /api/hosts/plan-payments/custom-selections -> { [companyId]: moduleIds }
-// for leads that already have a saved Custom-plan selection (Signup Leads
-// shows "N modules" and pre-fills the picker from it).
+// GET /api/hosts/plan-payments/custom-selections
+// -> { [companyId]: { moduleIds, priceOverrides, overallDiscountUsd } } for
+// leads that already have a saved Custom-plan selection (Signup Leads shows
+// "N modules" and pre-fills the picker, discounts included, from it).
 const getLeadCustomSelections = async (req, res, next) => {
   try {
     const rows = await HostLeadCompany.find({ "customPlanModuleIds.0": { $exists: true } })
-      .select("companyId customPlanModuleIds")
+      .select("companyId customPlanModuleIds customPlanModulePriceOverrides customPlanOverallDiscountUsd")
       .lean();
     const byCompanyId = {};
     for (const row of rows) {
-      if (row.companyId) byCompanyId[row.companyId] = row.customPlanModuleIds;
+      if (row.companyId) {
+        byCompanyId[row.companyId] = {
+          moduleIds: row.customPlanModuleIds || [],
+          priceOverrides: row.customPlanModulePriceOverrides || {},
+          overallDiscountUsd: row.customPlanOverallDiscountUsd || 0,
+        };
+      }
     }
     return res.status(200).json(byCompanyId);
   } catch (error) {
