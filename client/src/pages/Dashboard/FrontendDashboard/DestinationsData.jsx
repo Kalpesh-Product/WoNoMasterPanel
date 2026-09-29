@@ -1066,16 +1066,26 @@ const DestinationsData = () => {
 
   const editListing = (item) => {
     const companyId = item?.companyId || "";
+    const businessId = item?.businessId || "";
     const companyName = item?.companyName || item?.companyTitle || "company";
+    const companyType = item?.companyType || "";
+
+    if (!companyId || !businessId) {
+      toast.error("This listing is missing required edit details.");
+      return;
+    }
+
     sessionStorage.setItem("companyId", companyId);
     sessionStorage.setItem("companyName", companyName);
-    sessionStorage.setItem("businessId", item?.businessId || "");
+    sessionStorage.setItem("businessId", businessId);
+    sessionStorage.setItem("companyType", companyType);
     navigate(
       `/dashboard/companies/${slugify(companyName)}/nomad-listings/${slugify(companyName)}`,
       {
         state: {
           website: item,
           companyId,
+          isLoading: false,
         },
       },
     );
