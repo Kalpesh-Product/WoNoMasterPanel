@@ -25,6 +25,8 @@ const destinationRefreshPromises = {
   content: null,
   listings: null,
 };
+const nomadsCompanyListingsCache = { items: null, fetchedAt: 0 };
+let nomadsCompanyListingsRefreshPromise = null;
 
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -180,10 +182,44 @@ const fetchNomadsRows = async (path) => {
   }
 };
 
+const refreshNomadsCompanyListingsCache = () => {
+  if (!nomadsCompanyListingsRefreshPromise) {
+    nomadsCompanyListingsRefreshPromise = (async () => {
+      const directListings = await fetchNomadsRows("/company/companies");
+      const items = directListings.length ? directListings : await fetchAllNomadListings();
+      const previousItems = nomadsCompanyListingsCache.items;
+
+      if (items.length === 0 && previousItems?.length) {
+        nomadsCompanyListingsCache.fetchedAt = Date.now();
+        return previousItems;
+      }
+
+      nomadsCompanyListingsCache.items = items;
+      nomadsCompanyListingsCache.fetchedAt = Date.now();
+      return items;
+    })().finally(() => {
+      nomadsCompanyListingsRefreshPromise = null;
+    });
+  }
+
+  return nomadsCompanyListingsRefreshPromise;
+};
+
 const fetchNomadsCompanyListings = async () => {
-  const directListings = await fetchNomadsRows("/company/companies");
-  if (directListings.length) return directListings;
-  return fetchAllNomadListings();
+  const isFresh =
+    nomadsCompanyListingsCache.items &&
+    Date.now() - nomadsCompanyListingsCache.fetchedAt < CACHE_TTL_MS;
+
+  if (isFresh) return nomadsCompanyListingsCache.items;
+
+  if (nomadsCompanyListingsCache.items) {
+    refreshNomadsCompanyListingsCache().catch((error) => {
+      console.error("Background Nomads company listings refresh failed:", error.message);
+    });
+    return nomadsCompanyListingsCache.items;
+  }
+
+  return refreshNomadsCompanyListingsCache();
 };
 
 const buildDestinationStats = async ({ includeListings = false } = {}) => {
