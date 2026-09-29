@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -46,9 +46,15 @@ const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
 const SUMMARY_TABS = [
-  { key: "content", label: "Content Data" },
-  { key: "listings", label: "Nomad Listings" },
+  { key: "content", label: "Content Data", path: "content-data" },
+  { key: "listings", label: "Nomad Listings", path: "nomad-listings" },
 ];
+
+const SUMMARY_TAB_BY_PATH = SUMMARY_TABS.reduce(
+  (tabs, tab) => ({ ...tabs, [tab.path]: tab }),
+  {},
+);
+const DESTINATIONS_DATA_BASE_PATH = "/dashboard/destinations-data";
 
 const CONTENT_STATS = [
   { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
@@ -329,6 +335,7 @@ const DestinationsDataSkeleton = () => (
 
 const DestinationsData = () => {
   const { locationType } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
 
@@ -343,8 +350,25 @@ const DestinationsData = () => {
   const [activeSummaryTab, setActiveSummaryTab] = React.useState("content");
   const loadMoreRef = useRef(null);
 
+  const routeTab = React.useMemo(() => {
+    const tabPath = location.pathname
+      .replace(`${DESTINATIONS_DATA_BASE_PATH}/`, "")
+      .split("/")[0];
+    return SUMMARY_TAB_BY_PATH[tabPath]?.key || null;
+  }, [location.pathname]);
+  const effectiveSummaryTab = routeTab || activeSummaryTab;
+
   useEffect(() => {
-    if (locationType) {
+    if (routeTab) {
+      setCurrentView("summary");
+      setSelectedLocation("All");
+      setDetailType("blog");
+      setActiveSummaryTab(routeTab);
+      setCountryFilter("");
+      setStateFilter("");
+      setCityFilter("");
+      setSearchQuery("");
+    } else if (locationType) {
       const dashIndex = locationType.lastIndexOf("-");
       if (dashIndex !== -1) {
         const loc = locationType.substring(0, dashIndex);
@@ -359,7 +383,7 @@ const DestinationsData = () => {
       setSelectedLocation("All");
       setDetailType("blog");
     }
-  }, [locationType]);
+  }, [locationType, routeTab]);
   useEffect(() => {
     const timeout = setTimeout(
       () => setDebouncedSearch(searchQuery.trim()),
@@ -457,7 +481,7 @@ const DestinationsData = () => {
   } = useInfiniteQuery({
     queryKey: [
       "destinations-data-summary",
-      activeSummaryTab,
+      effectiveSummaryTab,
       debouncedSearch,
       countryFilter,
       stateFilter,
@@ -471,7 +495,7 @@ const DestinationsData = () => {
         params: {
           page: pageParam,
           limit: PAGE_SIZE,
-          tab: activeSummaryTab,
+          tab: effectiveSummaryTab,
           search: debouncedSearch,
           country: countryFilter,
           state: stateFilter,
@@ -490,8 +514,8 @@ const DestinationsData = () => {
   );
   const summaryFirstPage = summaryData?.pages?.[0];
   const summaryCounts = summaryFirstPage?.counts ?? EMPTY_COUNTS;
-  const summaryStats = activeSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
-  const summaryColumns = activeSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
+  const summaryStats = effectiveSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
+  const summaryColumns = effectiveSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
   const summaryTotal = summaryFirstPage?.total ?? 0;
   const filterOptions = summaryFirstPage?.filterOptions ?? {
     countries: [],
@@ -882,7 +906,9 @@ const DestinationsData = () => {
     setDetailType("blog");
     setActiveSummaryTab(previousTab);
     setSearchQuery("");
-    navigate("/dashboard/destinations-data");
+    const previousTabPath =
+      SUMMARY_TABS.find((tab) => tab.key === previousTab)?.path || "content-data";
+    navigate(`${DESTINATIONS_DATA_BASE_PATH}/${previousTabPath}`);
   };
 
   const filteredDetailData = useMemo(() => {
@@ -1081,7 +1107,7 @@ const DestinationsData = () => {
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
                 {currentView === "summary"
-                  ? activeSummaryTab === "listings"
+                  ? effectiveSummaryTab === "listings"
                     ? "Overview of Nomad listing categories across all destinations."
                     : "Overview of content across all destinations like blogs, news, places, restaurants, and events."
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
@@ -1115,18 +1141,20 @@ const DestinationsData = () => {
             <div className="flex flex-col gap-3 mb-3 shrink-0">
               <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm overflow-x-auto [&::-webkit-scrollbar]:hidden">
                 {SUMMARY_TABS.map((tab) => (
-                  <button
+                  <NavLink
                     key={tab.key}
-                    type="button"
+                    to={`${DESTINATIONS_DATA_BASE_PATH}/${tab.path}`}
                     onClick={() => handleSummaryTabChange(tab.key)}
-                    className={`flex-1 shrink-0 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center whitespace-nowrap ${
-                      activeSummaryTab === tab.key
-                        ? "bg-[#2563EB] text-white shadow-sm"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    }`}
+                    className={() =>
+                      `flex-1 shrink-0 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center whitespace-nowrap ${
+                        effectiveSummaryTab === tab.key
+                          ? "bg-[#2563EB] text-white shadow-sm"
+                          : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                      }`
+                    }
                   >
                     {tab.label}
-                  </button>
+                  </NavLink>
                 ))}
               </div>
               <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3">
