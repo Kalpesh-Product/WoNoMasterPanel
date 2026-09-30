@@ -120,11 +120,14 @@ const buildCustomPlanPricingBreakdownFromRows = ({
   const moduleRows = pricingRows.filter((row) => row.itemType === "module");
   const moduleById = new Map(moduleRows.map((row) => [row.itemId, row]));
 
+  // A per-line override can only ever discount — never push a line's price
+  // ABOVE its listed rate (that would be a markup, not a discount) — and
+  // never below $0.
   const overrideFor = (itemId, listedPriceUsd) => {
     const raw = priceOverrides && priceOverrides[itemId];
     const overridden = Number(raw);
     return raw != null && raw !== "" && Number.isFinite(overridden)
-      ? Math.max(0, overridden)
+      ? Math.min(Math.max(0, overridden), listedPriceUsd)
       : listedPriceUsd;
   };
 

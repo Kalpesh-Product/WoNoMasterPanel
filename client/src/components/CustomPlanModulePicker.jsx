@@ -75,10 +75,15 @@ const CustomPlanModulePicker = ({
     const lineItems = [];
     let subtotal = basePriceUsd;
 
+    // A negotiated price can only discount — never exceed the module's own
+    // listed rate (that would be a markup) — and never go below $0. Mirrors
+    // modulePricingService.js's overrideFor on the server.
     const effectivePriceFor = (itemId, listedPriceUsd) => {
       const raw = priceOverrides[itemId];
       const parsed = Number(raw);
-      return raw !== "" && raw != null && Number.isFinite(parsed) ? Math.max(0, parsed) : listedPriceUsd;
+      return raw !== "" && raw != null && Number.isFinite(parsed)
+        ? Math.min(Math.max(0, parsed), listedPriceUsd)
+        : listedPriceUsd;
     };
 
     for (const dept of departments) {
@@ -227,6 +232,7 @@ const CustomPlanModulePicker = ({
                         <input
                           type="number"
                           min="0"
+                          max={row.priceUsd}
                           step="1"
                           placeholder={String(row.priceUsd)}
                           value={overrideValue ?? ""}
@@ -234,6 +240,14 @@ const CustomPlanModulePicker = ({
                           onChange={(e) =>
                             setPriceOverrides((prev) => ({ ...prev, [row.itemId]: e.target.value }))
                           }
+                          onBlur={(e) => {
+                            const parsed = Number(e.target.value);
+                            if (e.target.value === "" || !Number.isFinite(parsed)) return;
+                            const clamped = String(Math.min(Math.max(0, parsed), row.priceUsd));
+                            if (clamped !== e.target.value) {
+                              setPriceOverrides((prev) => ({ ...prev, [row.itemId]: clamped }));
+                            }
+                          }}
                           className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
                         />
                         <span className="text-[10px] text-slate-400">/mo</span>
@@ -267,10 +281,17 @@ const CustomPlanModulePicker = ({
                 <input
                   type="number"
                   min="0"
+                  max={breakdown.subtotal}
                   step="1"
                   placeholder="0"
                   value={overallDiscountInput}
                   onChange={(e) => setOverallDiscountInput(e.target.value)}
+                  onBlur={(e) => {
+                    const parsed = Number(e.target.value);
+                    if (e.target.value === "" || !Number.isFinite(parsed)) return;
+                    const clamped = String(Math.min(Math.max(0, parsed), breakdown.subtotal));
+                    if (clamped !== e.target.value) setOverallDiscountInput(clamped);
+                  }}
                   className="w-20 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
                 />
                 <span className="text-[10px] text-blue-700/70">/mo</span>
