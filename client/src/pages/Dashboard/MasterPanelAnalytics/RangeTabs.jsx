@@ -10,7 +10,7 @@ export const RANGE_OPTIONS = [
 ];
 
 const RangeTabs = ({ value, onChange }) => (
-  <div className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm shrink-0">
+  <div data-tour="master-panel-analytics-range" className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm shrink-0">
     {RANGE_OPTIONS.map((option) => (
       <button
         type="button"

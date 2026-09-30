@@ -64,24 +64,27 @@ const BASIC_PLAN_MODULE_IDS = [
   "visitors_standard_type_standard",
   "wono-nomad",
   "website-builder",
-  "tech-website-builder",
+  // Basic has no department access at all, so neither the Tech Department's
+  // Website Builder ("tech-website-builder") nor the Organization Management
+  // Departments tab (and its actions) belong here — both are Professional+.
   "website-leads",
   "organization-management",
   "org_tab_users",
-  "org_tab_departments",
   "org_users_invite_member",
   "org_users_change_role",
   "org_users_toggle_access",
-  "org_departments_create",
-  "org_departments_edit",
-  "org_departments_assign_manager",
-  "org_departments_assign_acting_manager",
-  "org_departments_remove_acting_manager",
   "access-grants",
 ];
 
 const PROFESSIONAL_PLAN_MODULE_IDS = [
   ...BASIC_PLAN_MODULE_IDS,
+  "tech-website-builder",
+  "org_tab_departments",
+  "org_departments_create",
+  "org_departments_edit",
+  "org_departments_assign_manager",
+  "org_departments_assign_acting_manager",
+  "org_departments_remove_acting_manager",
   "visitors_manage_external_clients",
   "visitors_tab_bookings",
   "visitors_tab_clients",
@@ -1153,8 +1156,19 @@ const ModuleAccess = () => {
   const activeModuleSections = useMemo(() => {
     const parsedModules = parseWorkspaceModules(selectedWorkspace?.modules);
     const fromWorkspace = normalizeModulesTree(parsedModules);
-    return fromWorkspace.length ? fromWorkspace : [];
-  }, [selectedWorkspace?.modules]);
+    if (!fromWorkspace.length) return [];
+    // Basic has no department access, so the Tech Department group isn't
+    // shown at all for Basic workspaces.
+    if (String(selectedWorkspace?.selectedPlan || "basic").trim().toLowerCase() !== "basic") {
+      return fromWorkspace;
+    }
+    return fromWorkspace.map((section) => ({
+      ...section,
+      children: (section.children || []).filter(
+        (child) => child.moduleId !== "tech-department",
+      ),
+    }));
+  }, [selectedWorkspace?.modules, selectedWorkspace?.selectedPlan]);
 
   const workspaceEnabledPlanState = useMemo(() => {
     if (!activeModuleSections.length) return {};

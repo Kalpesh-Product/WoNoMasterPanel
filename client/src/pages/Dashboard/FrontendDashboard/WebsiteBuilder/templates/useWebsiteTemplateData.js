@@ -103,6 +103,16 @@ const getSocialHref = (key, link) => {
   }
   return /^https?:\/\//i.test(value) ? value : `https://${value}`;
 };
+const isUsableSocialHref = (key, href) => {
+  if (!href) return false;
+  if (key === "whatsapp") return /^https:\/\/wa\.me\/\d{7,}$/.test(href);
+  try {
+    const url = new URL(href);
+    return /^https?:$/.test(url.protocol) && /\.[a-z]{2,}$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+};
 const getCareersJobTitle = (job) => String(job?.title || job?.designation || job?.name || "Untitled Role").trim();
 const formatCareersMetaValue = (value, mode = "generic") => {
   const raw = String(value || "").trim().toLowerCase();
@@ -232,6 +242,7 @@ const useWebsiteTemplateData = () => {
     startDate: "",
     endDate: ""
   });
+  const [leadExtras, setLeadExtras] = useState({});
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [reviewSubmitPending, setReviewSubmitPending] = useState(false);
@@ -338,7 +349,9 @@ const useWebsiteTemplateData = () => {
   const navItems = useMemo(() => {
     const fromDraft = sourceNavItems.filter((item) => item?.enabled !== false).map((item) => {
       const slug = normalizeSlug(item?.slug || item?.name || "page");
-      return { name: slug === "products" ? "Services" : item?.name || "Page", slug };
+      const rawName = String(item?.name || "").trim();
+      const name = slug === "products" && (!rawName || rawName.toLowerCase() === "products") ? "Services" : rawName || "Page";
+      return { name, slug };
     });
     return fromDraft.length ? fromDraft : FALLBACK_NAV;
   }, [sourceNavItems]);
@@ -372,7 +385,7 @@ const useWebsiteTemplateData = () => {
         if (!productImageBySlug[s]) productImageBySlug[s] = url;
       });
     });
-    const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || getMediaSrc(
+    const resolveCardImage = (item, index) => getMediaSrc(item?.cardImage) || getMediaSrc(item?.homeCardImage) || getMediaSrc((Array.isArray(item?.heroImages) ? item.heroImages : [])[0]) || getMediaSrc(item?.heroImage) || getMediaSrc(
       (Array.isArray(item?.subProducts) ? item.subProducts : []).find(
         (sp) => sp?.enabled !== false && getMediaSrc(sp?.images?.[0])
       )?.images?.[0]
@@ -418,7 +431,13 @@ const useWebsiteTemplateData = () => {
     if (!currentItemSlug || !selectedProductPage) return null;
     const contentItems = getProductContentItems(draft, selectedProductPage?.slug || selectedProductPage?.name || "", selectedProductPage);
     const pool = contentItems.length ? contentItems : [selectedProductPage];
-    return pool.find((item) => normalizeSlug(item?.title || item?.name || item?.heading || "") === currentItemSlug) || null;
+    const found = pool.find((item) => normalizeSlug(item?.title || item?.name || item?.heading || "") === currentItemSlug);
+    if (found) return found;
+    if (isMenuProductSlug(selectedProductPage?.slug || selectedProductPage?.name || "")) {
+      const dishes = Array.isArray(draft?.menuItems) ? draft.menuItems : [];
+      return dishes.find((item) => item?.enabled !== false && normalizeSlug(item?.name || item?.title || "") === currentItemSlug) || null;
+    }
+    return null;
   }, [currentItemSlug, selectedProductPage, draft]);
   const selectedProductContentItems = selectedProductPage ? getProductContentItems(draft, selectedProductPage?.slug || selectedProductPage?.name || "", selectedProductPage) : [];
   const selectedProductHeroImages = Array.isArray(selectedProductPage?.heroImages) ? selectedProductPage.heroImages : [];
@@ -445,6 +464,7 @@ const useWebsiteTemplateData = () => {
         setLeadSubmitted(false);
         setLeadSubmitError("");
         setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "" });
+        setLeadExtras({});
       }
     } else if (!selectedDetailItem) {
       prevDetailItemSlugRef.current = "";
@@ -524,7 +544,7 @@ const useWebsiteTemplateData = () => {
   }, [careersJobs]);
   const heroImage = heroImages[heroIndex] || heroImages[0] || "";
   const mainHeroImage = getMediaSrc(draft?.mainHeroImage) || heroImage || "";
-  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.map((item) => getMediaSrc(item)).filter(Boolean) : [];
+  const galleryItems = Array.isArray(draft?.gallery) ? draft.gallery.filter((item) => item?.enabled !== false).map((item) => getMediaSrc(item)).filter(Boolean) : [];
   const homeGalleryItems = galleryItems.slice(0, 6);
   const draftTestimonials = (Array.isArray(draft?.testimonials) ? draft.testimonials : []).map((item, index) => ({
     key: `draft-${index}`,
@@ -591,8 +611,7 @@ const useWebsiteTemplateData = () => {
     const entry = draft?.socials?.[key];
     if (entry?.enabled !== true) return null;
     const href = getSocialHref(key, entry?.link);
-    if (!href) return null;
-    return { key, href };
+    return { key, href: isUsableSocialHref(key, href) ? href : "" };
   }).filter(Boolean);
   const resolvedHomeHeroImage = heroImage || galleryItems[0] || "";
   const showHeroCarousel = heroImages.length > 1;
@@ -646,11 +665,12 @@ const useWebsiteTemplateData = () => {
     if (!galleryItems.length) return;
     setGalleryViewerIndex((index % galleryItems.length + galleryItems.length) % galleryItems.length);
   };
-  const openLeadModal = (product) => {
+  const openLeadModal = (product, prefill) => {
     setSelectedLeadProduct(product);
     setLeadSubmitted(false);
     setLeadSubmitError("");
-    setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "" });
+    setLeadForm({ fullName: "", people: "", mobile: "", email: "", startDate: "", endDate: "", ...prefill?.form || {} });
+    setLeadExtras({ ...prefill?.extras || {} });
   };
   const closeLeadModal = () => setSelectedLeadProduct(null);
   const showSuccessPopup = (message) => {
@@ -659,8 +679,9 @@ const useWebsiteTemplateData = () => {
       setSuccessPopup((prev) => prev.message === message ? { open: false, message: "" } : prev);
     }, 2200);
   };
-  const submitLeadForm = async (event) => {
+  const submitLeadForm = async (event, overrides) => {
     event.preventDefault();
+    const extras = { ...leadExtras, ...overrides || {} };
     setLeadSubmitPending(true);
     setLeadSubmitError("");
     try {
@@ -687,8 +708,21 @@ const useWebsiteTemplateData = () => {
         stayDuration: leadForm.endDate ? `${leadForm.startDate || ""} to ${leadForm.endDate}` : "",
         startDate: leadForm.startDate,
         endDate: leadForm.endDate,
-        timeSlot: "",
-        inquiryType: slug.includes("cafe") ? "Cafe" : "",
+        ...extras,
+        // Surface free-text notes as the lead's message so they show in the leads list.
+        ...extras.notes ? { message: extras.notes } : {},
+        timeSlot: extras.time || "",
+        // How long a meeting-room booking is, worked out from its start and end time.
+        duration: (() => {
+          const [sh, sm] = String(extras.time || "").split(":").map(Number);
+          const [eh, em] = String(extras.endTime || "").split(":").map(Number);
+          const mins = eh * 60 + em - (sh * 60 + sm);
+          if (!(mins > 0)) return "";
+          const h = Math.floor(mins / 60);
+          const m = mins % 60;
+          return [h ? `${h} hr${h > 1 ? "s" : ""}` : "", m ? `${m} min` : ""].filter(Boolean).join(" ");
+        })(),
+        inquiryType: extras.inquiryType || (slug.includes("cafe") ? "Cafe" : ""),
         websiteUrl: window.location.href
       });
       setLeadSubmitted(true);
@@ -863,6 +897,8 @@ const useWebsiteTemplateData = () => {
     selectedLeadProduct,
     leadForm,
     setLeadForm,
+    leadExtras,
+    setLeadExtras,
     leadSubmitted,
     setLeadSubmitted,
     leadSubmitPending,
@@ -931,6 +967,8 @@ export {
   FOOTER_SOCIAL_KEYS,
   getCareersJobMeta,
   getCareersJobTitle,
+  getMediaSrc,
+  getProductContentItems,
   isMenuProductSlug,
   normalizeSlug,
   resolveSectionFromSlug,

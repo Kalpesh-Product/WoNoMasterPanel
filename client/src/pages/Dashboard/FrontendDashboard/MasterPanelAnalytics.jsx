@@ -123,6 +123,7 @@ const MasterPanelAnalytics = () => {
             return (
               <section
                 key={section.key}
+                data-tour="master-panel-analytics-overall"
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
               >
                 <div className="flex flex-col md:flex-row justify-between md:items-center gap-2 px-5 py-4 bg-slate-50/50 border-b border-slate-100">
@@ -166,6 +167,7 @@ const MasterPanelAnalytics = () => {
             return (
               <div
                 key={module.key}
+                data-tour="master-panel-analytics-modules"
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden"
               >
                 <button

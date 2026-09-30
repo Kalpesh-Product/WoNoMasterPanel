@@ -145,7 +145,6 @@ const BASIC_DEFAULT_IDS = new Set([
   "visitor-management",
   "wono-nomad",
   "website-builder",
-  "tech-website-builder",
   "website-leads",
   "website-review",
   "organization-management",
@@ -155,6 +154,9 @@ const BASIC_DEFAULT_IDS = new Set([
 
 const PROFESSIONAL_DEFAULT_IDS = new Set([
   ...Array.from(BASIC_DEFAULT_IDS),
+  // Basic has no department access — Tech Department's Website Builder is
+  // Professional+.
+  "tech-website-builder",
   "tickets",
   "meeting-room-system",
   "printouts",

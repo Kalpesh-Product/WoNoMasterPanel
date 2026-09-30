@@ -372,7 +372,7 @@ const PublishListings = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div data-tour="publish-stats" className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <StatTile label="Total Listings" value={globalCounts.total} icon={Layers} />
             <StatTile label="Active" value={globalCounts.active} icon={CheckCircle2} tone="emerald" />
             <StatTile label="Inactive" value={globalCounts.inactive} icon={XCircle} tone="rose" />
@@ -381,7 +381,7 @@ const PublishListings = () => {
           </div>
 
           {categoryCounts.length > 0 && (
-            <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-4">
+            <div data-tour="publish-category-counts" className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-4">
               <span className="block text-[9px] uppercase tracking-widest text-slate-500 font-pmedium mb-2.5">
                 Listings by Category
               </span>
@@ -403,7 +403,7 @@ const PublishListings = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div data-tour="publish-location-filters" className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest">
                 Country
@@ -547,7 +547,7 @@ const PublishListings = () => {
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col mt-1">
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
               <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3">
-                <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                <div data-tour="publish-status-filter" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                   {["all", "active", "inactive"].map((filter) => (
                     <button
                       key={filter}
@@ -560,7 +560,7 @@ const PublishListings = () => {
                   ))}
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
+                <div data-tour="publish-visibility-filter" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
                   {["all", "public", "private"].map((filter) => (
                     <button
                       key={filter}
@@ -576,6 +576,7 @@ const PublishListings = () => {
 
               <div className="flex items-center gap-2 w-full flex-wrap">
                 <select
+                  data-tour="publish-type-filter"
                   className={`${selectClassName} !w-auto min-w-[140px]`}
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
@@ -588,7 +589,7 @@ const PublishListings = () => {
                   ))}
                 </select>
 
-                <div className="relative flex-1 min-w-[180px]">
+                <div data-tour="publish-search" className="relative flex-1 min-w-[180px]">
                   <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
                     type="text"
@@ -607,7 +608,7 @@ const PublishListings = () => {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div data-tour="publish-table" className="overflow-x-auto">
               <table className="w-full text-left min-w-[1180px]">
                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                   <tr>
@@ -681,6 +682,7 @@ const PublishListings = () => {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
+                              data-tour="publish-row-view"
                               onClick={() => setViewListing(item)}
                               title="View listing"
                               className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
@@ -689,6 +691,7 @@ const PublishListings = () => {
                             </button>
                             <button
                               type="button"
+                              data-tour="publish-row-status-toggle"
                               disabled={isRowPending}
                               onClick={() => setRowAction({ item, action: item.isActive ? "inactive" : "active" })}
                               title={item.isActive ? "Mark as inactive" : "Mark as active"}
@@ -698,6 +701,7 @@ const PublishListings = () => {
                             </button>
                             <button
                               type="button"
+                              data-tour="publish-row-visibility-toggle"
                               disabled={isRowPending}
                               onClick={() => setRowAction({ item, action: item.isPublic ? "private" : "public" })}
                               title={item.isPublic ? "Make private" : "Make public"}

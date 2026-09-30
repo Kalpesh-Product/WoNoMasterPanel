@@ -25,6 +25,15 @@ const {
   pagesFromChanges,
 } = require("../../utils/websiteChangeTracker");
 const { assertWebsiteEditLock } = require("./websiteEditLockControllers");
+const {
+  parseJsonField,
+  sanitizeItemExtras,
+  sanitizeOpeningHours,
+  sanitizeReservation,
+  sanitizeStayPolicy,
+  sanitizeTourBooking,
+  sanitizeTemplateContent,
+} = require("../../utils/websiteOfferingFields");
 
 const VALID_VERTICALS = new Set([
   "co-working",
@@ -121,7 +130,7 @@ const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const normalizeSearchKeyFromName = (name = "") =>
-  String(name).toLowerCase().split("-")[0].replace(/\s+/g, "");
+  String(name).toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
 
 const toBool = (value, fallback = false) => {
   if (typeof value === "boolean") return value;
@@ -196,6 +205,23 @@ const normalizeProductDropdownPages = (items = []) =>
       leadFormLabel: String(item?.leadFormLabel || "").trim(),
       faqs: Array.isArray(item?.faqs) ? item.faqs : [],
       inclusions: Array.isArray(item?.inclusions) ? item.inclusions : [],
+      subProducts: Array.isArray(item?.subProducts)
+        ? item.subProducts.map((sp) => ({
+            name: String(sp?.name || "").trim(),
+            description: String(sp?.description || "").trim(),
+            cost: String(sp?.cost || "").trim(),
+            enabled: toBool(sp?.enabled, true),
+            ...sanitizeItemExtras("subProduct", sp),
+            images: Array.isArray(sp?.images)
+              ? sp.images
+                  .map((img) => ({
+                    id: String(img?.id || "").trim(),
+                    url: String(img?.url || "").trim(),
+                  }))
+                  .filter((img) => img.id || img.url)
+              : [],
+          }))
+        : [],
     };
 
     if (item?.heroImage && typeof item.heroImage === "object") {
@@ -462,10 +488,24 @@ const parseIdList = (value) => {
   }
 };
 
-const deleteImagesFromS3ForDraft = async (images = []) => {
+// URLs the live site (publishedData snapshot) still points at. Draft edits
+// must not purge these from S3, or the hosted website shows broken images
+// until the next submit.
+const collectMediaUrls = (value, out = new Set()) => {
+  if (!value || typeof value !== "object") return out;
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectMediaUrls(item, out));
+    return out;
+  }
+  if (typeof value.url === "string" && value.url) out.add(value.url);
+  Object.values(value).forEach((item) => collectMediaUrls(item, out));
+  return out;
+};
+
+const deleteImagesFromS3ForDraft = async (images = [], protectedUrls = new Set()) => {
   await Promise.all(
     (Array.isArray(images) ? images : []).map(async (img) => {
-      if (img?.url) {
+      if (img?.url && !protectedUrls.has(img.url)) {
         try {
           await deleteFileFromS3ByUrl(img.url);
         } catch (err) {
@@ -481,12 +521,16 @@ const deleteImagesFromS3ForDraft = async (images = []) => {
 // didn't send an id list for this field at all (older client, field not in play)
 // — in that case the array is left untouched rather than being wiped, since an
 // absent list is not the same as an explicit empty list.
-const reconcileImageArrayByKeepIds = async (existingArr, keepIdsField) => {
+const reconcileImageArrayByKeepIds = async (
+  existingArr,
+  keepIdsField,
+  protectedUrls = new Set(),
+) => {
   const arr = Array.isArray(existingArr) ? existingArr : [];
   if (keepIdsField === undefined) return arr;
   const keepIds = new Set(parseIdList(keepIdsField));
   const toDelete = arr.filter((img) => !keepIds.has(String(img?.id || "")));
-  if (toDelete.length) await deleteImagesFromS3ForDraft(toDelete);
+  if (toDelete.length) await deleteImagesFromS3ForDraft(toDelete, protectedUrls);
   return arr.filter((img) => keepIds.has(String(img?.id || "")));
 };
 
@@ -592,7 +636,7 @@ const ensureNomadsCompanyRecord = async ({
   }
 };
 
-const saveTemplateDraft = async (req, res) => {
+const saveTemplateDraftHandler = async (req, res) => {
   try {
     const parsedDraftData =
       typeof req.body?.draftData === "string"
@@ -754,6 +798,10 @@ const saveTemplateDraft = async (req, res) => {
         const existing = template.productDropdownPages?.[index] || {};
         return {
           ...page,
+          // A sub-product whose photos arrive empty (the client still holds them as Files) keeps the ones already saved.
+          subProducts: (page.subProducts || []).map((sp, subIndex) =>
+            sp?.images?.length ? sp : { ...sp, images: existing?.subProducts?.[subIndex]?.images || [] },
+          ),
           ...(page?.heroImage?.url
             ? { heroImage: page.heroImage }
             : existing?.heroImage
@@ -771,6 +819,10 @@ const saveTemplateDraft = async (req, res) => {
         };
       });
     }
+    template.aboutTitle =
+      draftData?.aboutTitle !== undefined
+        ? String(draftData.aboutTitle || "").trim()
+        : template.aboutTitle;
     template.aboutPageIntro =
       draftData?.aboutPageIntro !== undefined
         ? String(draftData.aboutPageIntro || "").trim()
@@ -851,6 +903,21 @@ const saveTemplateDraft = async (req, res) => {
       draftData?.contactInquirySuccessMessage !== undefined
         ? String(draftData.contactInquirySuccessMessage || "").trim()
         : template.contactInquirySuccessMessage;
+    if (draftData?.openingHours !== undefined) {
+      template.openingHours = sanitizeOpeningHours(draftData.openingHours);
+    }
+    if (draftData?.reservation !== undefined) {
+      template.reservation = sanitizeReservation(draftData.reservation);
+    }
+    if (draftData?.stayPolicy !== undefined) {
+      template.stayPolicy = sanitizeStayPolicy(draftData.stayPolicy);
+    }
+    if (draftData?.tourBooking !== undefined) {
+      template.tourBooking = sanitizeTourBooking(draftData.tourBooking);
+    }
+    if (draftData?.templateContent !== undefined) {
+      template.templateContent = sanitizeTemplateContent(draftData.templateContent);
+    }
     template.products = Array.isArray(draftData?.products)
       ? draftData.products.map((item, index) => {
           const existing = template.products?.[index];
@@ -872,6 +939,7 @@ const saveTemplateDraft = async (req, res) => {
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
             enabled: item?.enabled !== false,
+            ...sanitizeItemExtras("menu", item),
           };
           if (existing?.image) nextItem.image = existing.image;
           return nextItem;
@@ -881,6 +949,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.rooms.map((item, index) => {
           const existing = template.rooms?.[index];
           return {
+          ...sanitizeItemExtras("room", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -893,6 +962,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.meetingRooms.map((item, index) => {
           const existing = template.meetingRooms?.[index];
           return {
+          ...sanitizeItemExtras("meeting", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -904,6 +974,7 @@ const saveTemplateDraft = async (req, res) => {
         ? draftData.rooms.map((item, index) => {
             const existing = template.meetingRooms?.[index];
             return {
+            ...sanitizeItemExtras("meeting", item),
               title: String(item?.title || "").trim(),
               description: String(item?.description || "").trim(),
               price: String(item?.price || "").trim(),
@@ -916,6 +987,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.coLivingRooms.map((item, index) => {
           const existing = template.coLivingRooms?.[index];
           return {
+          ...sanitizeItemExtras("coLiving", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -928,6 +1000,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.packages.map((item, index) => {
           const existing = template.packages?.[index];
           return {
+          ...sanitizeItemExtras("package", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -941,6 +1014,7 @@ const saveTemplateDraft = async (req, res) => {
       ? draftData.dorms.map((item, index) => {
           const existing = template.dorms?.[index];
           return {
+          ...sanitizeItemExtras("dorm", item),
             title: String(item?.title || "").trim(),
             description: String(item?.description || "").trim(),
             price: String(item?.price || "").trim(),
@@ -1089,6 +1163,15 @@ const saveTemplateDraft = async (req, res) => {
         1,
       );
       template.companyLogo = uploaded[0] || template.companyLogo;
+    } else if (
+      // The builder tells us the logo was removed by sending an empty signature for it.
+      draftData?.mediaSignature &&
+      draftData.mediaSignature.companyLogo === "" &&
+      template.companyLogo?.url
+    ) {
+      // The live (published) copy may still show this logo until the next publish, so keep the file.
+      await deleteImagesFromS3ForDraft([template.companyLogo], collectMediaUrls(template.publishedData));
+      template.companyLogo = undefined;
     }
 
     if (filesByField.mainHeroImage?.[0]) {
@@ -1115,9 +1198,11 @@ const saveTemplateDraft = async (req, res) => {
     // getting handed back on the next load. The client sends the id list of images
     // it still wants kept (req.body.*ImageIds); anything persisted but missing from
     // that list gets removed here and purged from S3.
+    const publishedMediaUrls = collectMediaUrls(template.publishedData);
     template.heroImages = await reconcileImageArrayByKeepIds(
       template.heroImages,
       req.body.heroImageIds,
+      publishedMediaUrls,
     );
     if (filesByField.heroImages?.length) {
       const uploaded = await uploadImagesForDraft(
@@ -1131,6 +1216,7 @@ const saveTemplateDraft = async (req, res) => {
     template.gallery = await reconcileImageArrayByKeepIds(
       template.gallery,
       req.body.galleryImageIds,
+      publishedMediaUrls,
     );
     if (filesByField.gallery?.length) {
       const uploaded = await uploadImagesForDraft(
@@ -1146,6 +1232,7 @@ const saveTemplateDraft = async (req, res) => {
     template.logoCarousel.logos = await reconcileImageArrayByKeepIds(
       template.logoCarousel.logos,
       req.body.logoCarouselImageIds,
+      publishedMediaUrls,
     );
     if (filesByField.logoCarouselLogos?.length) {
       const uploaded = await uploadImagesForDraft(
@@ -1162,6 +1249,7 @@ const saveTemplateDraft = async (req, res) => {
     template.aboutPageImages = await reconcileImageArrayByKeepIds(
       template.aboutPageImages,
       req.body.aboutPageImageIds,
+      publishedMediaUrls,
     );
     if (filesByField.aboutPageImages?.length) {
       const uploaded = await uploadImagesForDraft(
@@ -1233,6 +1321,26 @@ const saveTemplateDraft = async (req, res) => {
           template.productDropdownPages[i].homeCardImage =
             uploaded[0] || undefined;
         }
+
+        const pageSubProducts = template.productDropdownPages[i].subProducts || [];
+        for (let j = 0; j < pageSubProducts.length; j++) {
+          const subImages = filesByField[`subProductImages_${i}_${j}`] || [];
+          if (subImages.length) {
+            // Cumulative cap, same reasoning as the logo carousel above.
+            const existingCount = (pageSubProducts[j].images || []).length;
+            const roomLeft = Math.max(0, 5 - existingCount);
+            const filesToUpload = subImages.slice(0, roomLeft);
+            if (filesToUpload.length) {
+              const uploaded = await uploadImagesForDraft(
+                filesToUpload,
+                `${baseFolder}/subProducts/${i}_${j}`,
+                5,
+              );
+              pageSubProducts[j].images = [...(pageSubProducts[j].images || []), ...uploaded];
+            }
+          }
+        }
+        template.productDropdownPages[i].subProducts = pageSubProducts;
       }
     }
 
@@ -1438,7 +1546,7 @@ const saveTemplateDraft = async (req, res) => {
   }
 };
 
-const createTemplate = async (req, res, next) => {
+const createTemplateHandler = async (req, res, next) => {
   try {
     console.log("REQ BODY VERTICAL:", req.body.vertical);
     console.log("REQ BODY COMPANY:", req.body.companyName);
@@ -1686,7 +1794,7 @@ const createTemplate = async (req, res, next) => {
       const invalids = ["n/a", "na", "none", "undefined", "null", "-"];
       if (invalids.includes(trimmed)) return "";
 
-      return trimmed.split("-")[0].replace(/\s+/g, "");
+      return trimmed.split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const resolvedCompanyName = resolveUsableCompanyName(
@@ -1714,6 +1822,9 @@ const createTemplate = async (req, res, next) => {
       Boolean(template) &&
       template.isDraft === true &&
       template.isPublished !== true;
+    // What the draft holds before publishing resets it (see restoring further down).
+    let promotedDraft = null;
+    const asRef = (img) => (img && img.url ? { id: String(img.id || ""), url: String(img.url) } : null);
 
     if (template && !canPromoteExistingDraft) {
       return res.status(400).json({
@@ -1770,6 +1881,7 @@ const createTemplate = async (req, res, next) => {
           title: String(req.body?.logoCarouselTitle || "").trim(),
           logos: [],
         },
+        aboutTitle: String(req.body?.aboutTitle || "").trim(),
         aboutPageIntro: String(req.body?.aboutPageIntro || "").trim(),
         aboutPageOverview: String(req.body?.aboutPageOverview || "").trim(),
         aboutPageStory: String(req.body?.aboutPageStory || "").trim(),
@@ -1809,6 +1921,11 @@ const createTemplate = async (req, res, next) => {
         contactBusinessHours: String(
           req.body?.contactBusinessHours || "",
         ).trim(),
+        openingHours: sanitizeOpeningHours(parseJsonField(req.body?.openingHours, [])),
+        reservation: sanitizeReservation(parseJsonField(req.body?.reservation, {})),
+        stayPolicy: sanitizeStayPolicy(parseJsonField(req.body?.stayPolicy, {})),
+        tourBooking: sanitizeTourBooking(parseJsonField(req.body?.tourBooking, {})),
+        templateContent: sanitizeTemplateContent(parseJsonField(req.body?.templateContent, {})),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -1864,6 +1981,7 @@ const createTemplate = async (req, res, next) => {
         testimonials: [],
       });
     } else {
+      promotedDraft = template.toObject();
       Object.assign(template, {
         companyId: req.body?.companyId,
         workspaceId: req.body?.workspaceId || null,
@@ -1907,6 +2025,7 @@ const createTemplate = async (req, res, next) => {
           title: String(req.body?.logoCarouselTitle || "").trim(),
           logos: [],
         },
+        aboutTitle: String(req.body?.aboutTitle || "").trim(),
         aboutPageIntro: String(req.body?.aboutPageIntro || "").trim(),
         aboutPageOverview: String(req.body?.aboutPageOverview || "").trim(),
         aboutPageStory: String(req.body?.aboutPageStory || "").trim(),
@@ -1946,6 +2065,11 @@ const createTemplate = async (req, res, next) => {
         contactBusinessHours: String(
           req.body?.contactBusinessHours || "",
         ).trim(),
+        openingHours: sanitizeOpeningHours(parseJsonField(req.body?.openingHours, [])),
+        reservation: sanitizeReservation(parseJsonField(req.body?.reservation, {})),
+        stayPolicy: sanitizeStayPolicy(parseJsonField(req.body?.stayPolicy, {})),
+        tourBooking: sanitizeTourBooking(parseJsonField(req.body?.tourBooking, {})),
+        templateContent: sanitizeTemplateContent(parseJsonField(req.body?.templateContent, {})),
         contactPersonName: String(req.body?.contactPersonName || "").trim(),
         contactPersonRole: String(req.body?.contactPersonRole || "").trim(),
         contactPersonEmail: String(req.body?.contactPersonEmail || "").trim(),
@@ -2095,6 +2219,25 @@ const createTemplate = async (req, res, next) => {
       return res.status(400).json({
         message: `Cannot exceed 5 hero images (received ${heroFiles.length}).`,
       });
+    }
+
+    // Sub-products per product page: max 12 sub-products, max 5 images each
+    for (let pIdx = 0; pIdx < (productDropdownPages || []).length; pIdx++) {
+      const pageSubProducts = productDropdownPages[pIdx]?.subProducts || [];
+      const pageLabel = productDropdownPages[pIdx]?.name || `Page ${pIdx + 1}`;
+      if (pageSubProducts.length > 12) {
+        return res.status(400).json({
+          message: `Max 12 products allowed per page (${pageLabel}).`,
+        });
+      }
+      for (let sIdx = 0; sIdx < pageSubProducts.length; sIdx++) {
+        const subFiles = filesByField[`subProductImages_${pIdx}_${sIdx}`] || [];
+        if (subFiles.length > 5) {
+          return res.status(400).json({
+            message: `Max 5 images allowed per product (${pageLabel}, product ${sIdx + 1}).`,
+          });
+        }
+      }
     }
 
     // Product images: max 10 per product
@@ -2268,37 +2411,65 @@ const createTemplate = async (req, res, next) => {
       }
     }
 
-    const normalizedProductPages =
-      normalizeProductDropdownPages(productDropdownPages);
+    const normalizedProductPages = normalizeProductDropdownPages(productDropdownPages);
     for (let i = 0; i < normalizedProductPages.length; i++) {
-      const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] ||
-        [])[0];
+      // A draft that is being published already has the photos its autosave uploaded. The form swapped
+      // those Files for saved refs (or, if that hasn't happened yet, sends an empty placeholder for each),
+      // so they must be kept here rather than replaced by only what this request uploads.
+      const draftPage = promotedDraft?.productDropdownPages?.[i] || null;
+      const rawPage = (Array.isArray(productDropdownPages) ? productDropdownPages : [])[i] || {};
+      const isPlaceholder = (value) => Boolean(value) && typeof value === "object" && !value.url;
+
+      const singleHeroFile = (filesByField[`productPageHeroImage_${i}`] || [])[0];
       if (singleHeroFile) {
         const uploaded = await uploadImages(
           [singleHeroFile],
           `${baseFolder}/productPageHeroImage/${i}`,
         );
         normalizedProductPages[i].heroImage = uploaded[0] || undefined;
+      } else if (!normalizedProductPages[i].heroImage?.url) {
+        normalizedProductPages[i].heroImage = isPlaceholder(rawPage.heroImage) ? asRef(draftPage?.heroImage) || undefined : undefined;
       }
-      const heroCarouselFiles =
-        filesByField[`productPageHeroImages_${i}`] || [];
-      if (heroCarouselFiles.length) {
-        normalizedProductPages[i].heroImages = await uploadImages(
-          heroCarouselFiles.slice(0, 5),
-          `${baseFolder}/productPageHeroImages/${i}`,
-        );
-      } else {
-        normalizedProductPages[i].heroImages = [];
-      }
-      const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] ||
-        [])[0];
+
+      const heroCarouselFiles = filesByField[`productPageHeroImages_${i}`] || [];
+      const keptHero = normalizedProductPages[i].heroImages || [];
+      const keptHeroUrls = new Set(keptHero.map((img) => img.url));
+      const heroPlaceholders = (Array.isArray(rawPage.heroImages) ? rawPage.heroImages.length : 0) - keptHero.length;
+      const heroUploadedNow = heroCarouselFiles.length
+        ? await uploadImages(heroCarouselFiles.slice(0, 5), `${baseFolder}/productPageHeroImages/${i}`)
+        : [];
+      const heroEarlier = ((draftPage?.heroImages || []).map(asRef).filter(Boolean))
+        .filter((img) => !keptHeroUrls.has(img.url))
+        .slice(0, Math.max(0, heroPlaceholders - heroUploadedNow.length));
+      normalizedProductPages[i].heroImages = [...keptHero, ...heroEarlier, ...heroUploadedNow].slice(0, 5);
+
+      const homeCardFile = (filesByField[`productPageHomeCardImage_${i}`] || [])[0];
       if (homeCardFile) {
         const uploaded = await uploadImages(
           [homeCardFile],
           `${baseFolder}/productPageHomeCardImage/${i}`,
         );
         normalizedProductPages[i].homeCardImage = uploaded[0] || undefined;
+      } else if (!normalizedProductPages[i].homeCardImage?.url) {
+        normalizedProductPages[i].homeCardImage = isPlaceholder(rawPage.homeCardImage) ? asRef(draftPage?.homeCardImage) || undefined : undefined;
       }
+
+      const pageSubProducts = normalizedProductPages[i].subProducts || [];
+      for (let j = 0; j < pageSubProducts.length; j++) {
+        const subFiles = filesByField[`subProductImages_${i}_${j}`] || [];
+        const keptSub = pageSubProducts[j].images || [];
+        const keptSubUrls = new Set(keptSub.map((img) => img.url));
+        const rawSubImages = rawPage.subProducts?.[j]?.images;
+        const subPlaceholders = (Array.isArray(rawSubImages) ? rawSubImages.length : 0) - keptSub.length;
+        const subUploadedNow = subFiles.length
+          ? await uploadImages(subFiles, `${baseFolder}/subProducts/${i}_${j}`)
+          : [];
+        const subEarlier = ((draftPage?.subProducts?.[j]?.images || []).map(asRef).filter(Boolean))
+          .filter((img) => !keptSubUrls.has(img.url))
+          .slice(0, Math.max(0, subPlaceholders - subUploadedNow.length));
+        pageSubProducts[j].images = [...keptSub, ...subEarlier, ...subUploadedNow].slice(0, 5);
+      }
+      normalizedProductPages[i].subProducts = pageSubProducts;
     }
     if (normalizedProductPages.length) {
       template.productDropdownPages = normalizedProductPages;
@@ -2344,6 +2515,7 @@ const createTemplate = async (req, res, next) => {
           name: item.name || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("menu", item),
         };
         if (uploadedImage) menuItemRecord.image = uploadedImage;
         template.menuItems.push(menuItemRecord);
@@ -2364,6 +2536,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("room", item),
           images: uploaded,
         });
       }
@@ -2383,6 +2556,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("meeting", item),
           images: uploaded,
         });
       }
@@ -2399,6 +2573,7 @@ const createTemplate = async (req, res, next) => {
           title: item.title || "",
           description: item.description || "",
           price: item.price || "",
+          ...sanitizeItemExtras("coLiving", item),
           images: uploaded,
         });
       }
@@ -2419,6 +2594,7 @@ const createTemplate = async (req, res, next) => {
           description: item.description || "",
           price: item.price || "",
           duration: item.duration || "",
+          ...sanitizeItemExtras("package", item),
           images: uploaded,
         });
       }
@@ -2439,6 +2615,7 @@ const createTemplate = async (req, res, next) => {
           description: item.description || "",
           capacity: Number(item.capacity) || 0,
           price: item.price || "",
+          ...sanitizeItemExtras("dorm", item),
           images: uploaded,
         });
       }
@@ -2491,6 +2668,50 @@ const createTemplate = async (req, res, next) => {
       testimony: t.testimony,
       rating: t.rating,
     }));
+
+    // A draft that is being published was reset above, but its autosave had already uploaded photos, and
+    // the form (which swapped those Files for saved refs) does not send them again. Bring them back by slot.
+    if (promotedDraft) {
+      const listBodies = { rooms, meetingRooms, coLivingRooms, packages, dorms };
+      for (const key of Object.keys(listBodies)) {
+        const bodyItems = Array.isArray(listBodies[key]) ? listBodies[key] : [];
+        (template[key] || []).forEach((item, i) => {
+          const bodyImages = Array.isArray(bodyItems[i]?.images) ? bodyItems[i].images : [];
+          const refs = bodyImages.map(asRef).filter(Boolean);
+          const refUrls = new Set(refs.map((img) => img.url));
+          const uploadedNow = (Array.isArray(item.images) ? item.images : []).map(asRef).filter(Boolean);
+          const earlier = ((promotedDraft[key] || [])[i]?.images || [])
+            .map(asRef)
+            .filter((img) => img && !refUrls.has(img.url))
+            .slice(0, Math.max(0, bodyImages.length - refs.length - uploadedNow.length));
+          item.images = [...refs, ...earlier, ...uploadedNow].slice(0, 10);
+        });
+      }
+      const bodyMenu = Array.isArray(menuItems) ? menuItems : [];
+      (template.menuItems || []).forEach((item, i) => {
+        if (item?.image?.url) return;
+        const raw = bodyMenu[i]?.image;
+        const ref = asRef(raw) || (raw && typeof raw === "object" ? asRef((promotedDraft.menuItems || [])[i]?.image) : null);
+        if (ref) item.image = ref;
+      });
+      (template.founders || []).forEach((founder, i) => {
+        if (founder?.image?.url) return;
+        const ref = asRef((promotedDraft.founders || [])[i]?.image);
+        if (ref) founder.image = ref;
+      });
+      (template.aboutPageImageCards || []).forEach((card, i) => {
+        if (card?.image?.url) return;
+        const ref = asRef((promotedDraft.aboutPageImageCards || [])[i]?.image);
+        if (ref) card.image = ref;
+      });
+      if (template.logoCarousel) {
+        const keepIds = new Set((safeParse(req.body.logoCarouselImageIds, []) || []).map(String));
+        const draftLogos = ((promotedDraft.logoCarousel || {}).logos || [])
+          .map(asRef)
+          .filter((img) => img && keepIds.has(img.id));
+        if (draftLogos.length) template.logoCarousel.logos = [...draftLogos, ...(template.logoCarousel.logos || [])].slice(0, 12);
+      }
+    }
 
     const templateSnapshot = template.toObject({
       depopulate: true,
@@ -2604,7 +2825,7 @@ const getLiveTemplate = async (req, res) => {
 
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const searchKey = formatCompanyName(companyName);
@@ -2819,7 +3040,7 @@ const activateTemplate = async (req, res) => {
   }
 };
 
-const editTemplate = async (req, res, next) => {
+const editTemplateHandler = async (req, res, next) => {
   try {
     let {
       products,
@@ -2870,7 +3091,7 @@ const editTemplate = async (req, res, next) => {
     const parsedInclusions = safeParse(inclusions, null);
 
     const formatCompanyName = (name) =>
-      (name || "").toLowerCase().split("-")[0].replace(/\s+/g, "");
+      (name || "").toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     const bodySearchKey = String(req.body?.searchKey || "")
       .trim()
       .toLowerCase();
@@ -3061,10 +3282,11 @@ const editTemplate = async (req, res, next) => {
       return arr;
     };
 
+    const publishedMediaUrls = collectMediaUrls(template.publishedData);
     const deleteImagesFromS3 = async (images = []) => {
       await Promise.all(
         images.map(async (img) => {
-          if (img?.url) {
+          if (img?.url && !publishedMediaUrls.has(img.url)) {
             try {
               await deleteFileFromS3ByUrl(img.url);
             } catch (err) {
@@ -3077,6 +3299,54 @@ const editTemplate = async (req, res, next) => {
 
     const filesByField = {};
     for (const f of req.files || []) (filesByField[f.fieldname] ||= []).push(f);
+
+    // Rooms / co-living spaces / packages / dorms arrive as JSON where each
+    // item's `images` is the client's form state: saved {id,url} refs, plus
+    // File objects that JSON.stringify turns into empty `{}` placeholders.
+    // Taking that array as-is wiped every image the client still held as a
+    // File, and files sent alongside were never uploaded by this handler.
+    // Rebuild each item's images from: saved refs the client still has,
+    // images the draft autosave already uploaded for that slot, and files
+    // that arrived with this request.
+    const mergeItemImages = async (bodyItems, existingItems, filePrefix, folder) => {
+      if (!Array.isArray(bodyItems)) return existingItems;
+      const merged = [];
+      for (let i = 0; i < bodyItems.length; i++) {
+        const item = bodyItems[i] || {};
+        const existingImages = Array.isArray(existingItems?.[i]?.images)
+          ? existingItems[i].images
+          : [];
+        const bodyImages = Array.isArray(item.images) ? item.images : [];
+        const refs = bodyImages.filter(
+          (img) => img && typeof img === "object" && img.url,
+        );
+        const refIds = new Set(refs.map((img) => String(img.id || img.url)));
+        const newFiles = filesByField[`${filePrefix}_${i}`] || [];
+        const placeholderCount = bodyImages.length - refs.length;
+        const uploadedEarlier = existingImages
+          .filter((img) => img?.url && !refIds.has(String(img.id || img.url)))
+          .slice(0, Math.max(0, placeholderCount - newFiles.length));
+        const uploadedNow = newFiles.length
+          ? await uploadImages(newFiles.slice(0, 10), `${folder}/${i}`, 10)
+          : [];
+        merged.push({
+          ...item,
+          images: [...refs, ...uploadedEarlier, ...uploadedNow].slice(0, 10),
+        });
+      }
+      return merged;
+    };
+    const baseFolderForItems = `hosts/template/${template.searchKey}`;
+    const mergedRooms = await mergeItemImages(rooms, template.rooms, "roomImages", `${baseFolderForItems}/rooms`);
+    const mergedMeetingRooms = await mergeItemImages(
+      Array.isArray(meetingRooms) ? meetingRooms : rooms,
+      template.meetingRooms,
+      "meetingRoomImages",
+      `${baseFolderForItems}/meetingRooms`,
+    );
+    const mergedCoLivingRooms = await mergeItemImages(coLivingRooms, template.coLivingRooms, "coLivingRoomImages", `${baseFolderForItems}/coLivingRooms`);
+    const mergedPackages = await mergeItemImages(packages, template.packages, "packageImages", `${baseFolderForItems}/packages`);
+    const mergedDorms = await mergeItemImages(dorms, template.dorms, "dormImages", `${baseFolderForItems}/dorms`);
 
     Object.assign(template, {
       workspaceId: req.body?.workspaceId ?? template.workspaceId ?? null,
@@ -3157,6 +3427,10 @@ const editTemplate = async (req, res, next) => {
           ? template.logoCarousel.logos
           : [],
       },
+      aboutTitle:
+        req.body?.aboutTitle !== undefined
+          ? String(req.body.aboutTitle || "").trim()
+          : template.aboutTitle,
       aboutPageIntro:
         req.body?.aboutPageIntro !== undefined
           ? String(req.body.aboutPageIntro || "").trim()
@@ -3229,6 +3503,26 @@ const editTemplate = async (req, res, next) => {
         req.body?.contactBusinessHours !== undefined
           ? String(req.body.contactBusinessHours || "").trim()
           : template.contactBusinessHours,
+      openingHours:
+        req.body?.openingHours !== undefined
+          ? sanitizeOpeningHours(parseJsonField(req.body.openingHours, []))
+          : template.openingHours,
+      reservation:
+        req.body?.reservation !== undefined
+          ? sanitizeReservation(parseJsonField(req.body.reservation, {}))
+          : template.reservation,
+      stayPolicy:
+        req.body?.stayPolicy !== undefined
+          ? sanitizeStayPolicy(parseJsonField(req.body.stayPolicy, {}))
+          : template.stayPolicy,
+      tourBooking:
+        req.body?.tourBooking !== undefined
+          ? sanitizeTourBooking(parseJsonField(req.body.tourBooking, {}))
+          : template.tourBooking,
+      templateContent:
+        req.body?.templateContent !== undefined
+          ? sanitizeTemplateContent(parseJsonField(req.body.templateContent, {}))
+          : template.templateContent,
       contactPersonName:
         req.body?.contactPersonName !== undefined
           ? String(req.body.contactPersonName || "").trim()
@@ -3317,17 +3611,15 @@ const editTemplate = async (req, res, next) => {
           : Array.isArray(menuItems)
             ? menuItems
             : template.menuItems,
-      rooms: Array.isArray(rooms) ? rooms : template.rooms,
-      meetingRooms: Array.isArray(meetingRooms)
-        ? meetingRooms
-        : Array.isArray(rooms)
-          ? rooms
-          : template.meetingRooms,
+      rooms: Array.isArray(rooms) ? mergedRooms : template.rooms,
+      meetingRooms: Array.isArray(meetingRooms) || Array.isArray(rooms)
+        ? mergedMeetingRooms
+        : template.meetingRooms,
       coLivingRooms: Array.isArray(coLivingRooms)
-        ? coLivingRooms
+        ? mergedCoLivingRooms
         : template.coLivingRooms,
-      packages: Array.isArray(packages) ? packages : template.packages,
-      dorms: Array.isArray(dorms) ? dorms : template.dorms,
+      packages: Array.isArray(packages) ? mergedPackages : template.packages,
+      dorms: Array.isArray(dorms) ? mergedDorms : template.dorms,
     });
     template.isDraft = false;
     template.draftData = null;
@@ -3356,6 +3648,10 @@ const editTemplate = async (req, res, next) => {
         1,
       );
       template.companyLogo = uploaded[0];
+    } else if (String(req.body?.removeCompanyLogo || "").toLowerCase() === "true" && template.companyLogo?.url) {
+      // The logo was removed in the builder.
+      await deleteImagesFromS3([template.companyLogo]);
+      template.companyLogo = undefined;
     }
 
     // === MAIN HERO IMAGE (limit 1) ===
@@ -3598,6 +3894,41 @@ const editTemplate = async (req, res, next) => {
           );
           normalizedPages[i].homeCardImage = uploaded[0] || undefined;
         }
+
+        // Products belonging to this page - keep existing images unless the
+        // client sent new files for that exact slot (subProductImages_i_j).
+        const pageSubProducts = normalizedPages[i].subProducts || [];
+        if (pageSubProducts.length > 12) {
+          throw new Error(
+            `Max 12 products allowed per page (${normalizedPages[i].name || `Page ${i + 1}`}).`,
+          );
+        }
+        const existingSubProducts = existing?.subProducts || [];
+        for (let j = 0; j < pageSubProducts.length; j++) {
+          const existingSub = existingSubProducts[j];
+          const subFiles = filesByField[`subProductImages_${i}_${j}`] || [];
+          const keptImages = existingSub?.images || [];
+          const totalSubImageCount = keptImages.length + subFiles.length;
+          if (totalSubImageCount > 5) {
+            throw new Error(
+              `Max 5 images allowed per product (${normalizedPages[i].name || `Page ${i + 1}`}, product ${j + 1}, currently ${keptImages.length}).`,
+            );
+          }
+          if (subFiles.length) {
+            // Append newly uploaded images to whatever this sub-product
+            // already has - replacing here would wipe out previously-saved
+            // images every time the user adds just one more.
+            const newImages = await uploadImages(
+              subFiles,
+              `${baseFolder}/subProducts/${i}_${j}`,
+              5,
+            );
+            pageSubProducts[j].images = [...keptImages, ...newImages];
+          } else {
+            pageSubProducts[j].images = keptImages;
+          }
+        }
+        normalizedPages[i].subProducts = pageSubProducts;
       }
       template.productDropdownPages = normalizedPages;
     }
@@ -4008,7 +4339,7 @@ const getTemplate = async (req, res) => {
 
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const searchKey = formatCompanyName(companyName);
@@ -4019,7 +4350,20 @@ const getTemplate = async (req, res) => {
       .sort({ publishedAt: -1, version: -1 })
       .lean();
 
-    if (latestPublished?.templateSnapshot) {
+    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
+
+    // A version snapshot is only authoritative until the website builder
+    // publishes again: builder Submit refreshes the live document's
+    // publishedData/publishedAt but never creates a new version, so an older
+    // version would otherwise shadow every later publish forever.
+    const builderPublishIsNewer =
+      template?.isPublished === true &&
+      template?.publishedData &&
+      (!latestPublished ||
+        new Date(template.publishedAt || 0).getTime() >
+          new Date(latestPublished.publishedAt || 0).getTime());
+
+    if (latestPublished?.templateSnapshot && !builderPublishIsNewer) {
       return res.json({
         ...latestPublished.templateSnapshot,
         isPublished: true,
@@ -4028,7 +4372,6 @@ const getTemplate = async (req, res) => {
       });
     }
 
-    const template = await WebsiteTemplate.findOne({ searchKey }).lean();
     if (!template) {
       return res.status(200).json([]);
     }
@@ -4053,7 +4396,7 @@ const publishTemplate = async (req, res, next) => {
   try {
     const formatCompanyName = (name) => {
       if (!name) return "";
-      return name.toLowerCase().split("-")[0].replace(/\s+/g, "");
+      return name.toLowerCase().split("-")[0].replace(/[^a-z0-9_]/g, "");
     };
 
     const rawSearchKey =
@@ -4172,6 +4515,18 @@ const deleteTemplate = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const { runExclusive } = require("../../utils/keyedMutex");
+
+// One website document per company: saves for the same company are queued, not interleaved.
+const websiteLockKey = (req) =>
+  String(req.body?.companyId || req.body?.workspaceId || req.body?.searchKey || req.params?.searchKey || "")
+    .trim()
+    .toLowerCase();
+
+const saveTemplateDraft = (req, res) => runExclusive(websiteLockKey(req), () => saveTemplateDraftHandler(req, res));
+const createTemplate = (req, res, next) => runExclusive(websiteLockKey(req), () => createTemplateHandler(req, res, next));
+const editTemplate = (req, res, next) => runExclusive(websiteLockKey(req), () => editTemplateHandler(req, res, next));
 
 module.exports = {
   saveTemplateDraft,

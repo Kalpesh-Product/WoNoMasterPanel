@@ -15,6 +15,11 @@ const DEFAULT_SETTINGS = {
     { templateId: "warm-organic", enabled: true, visible: true, allowedPlans: ["professional", "custom"], disabledReason: "" },
     { templateId: "emerald-studio", enabled: true, visible: true, allowedPlans: ["custom"], disabledReason: "" },
     { templateId: "minimal-swiss", enabled: false, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "Coming soon" },
+    { templateId: "savor", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "wayfarer", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "haven", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "commons", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "huddle", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
   ],
 };
 
@@ -32,9 +37,12 @@ const getActor = async (req) => {
 };
 
 const normalizeSettings = (stored) => {
-  const templates = Array.isArray(stored?.templates) && stored.templates.length
+  const storedTemplates = Array.isArray(stored?.templates) && stored.templates.length
     ? stored.templates
     : DEFAULT_SETTINGS.templates;
+  // Templates added after the settings were last saved show up with their defaults.
+  const knownIds = new Set(storedTemplates.map((row) => normalizeTemplateId(row.templateId)));
+  const templates = [...storedTemplates, ...DEFAULT_SETTINGS.templates.filter((row) => !knownIds.has(row.templateId))];
   return {
     limitPeriod: stored?.limitPeriod === "lifetime" ? "lifetime" : "monthly",
     planChangeLimits: {
@@ -228,7 +236,26 @@ const createMasterTemplateChangeRequest = async (req, res, next) => {
   }
 };
 
+// Which templates the first-time picker may show. Plans are not enforced here (that only applies
+// to changing the template of an existing website); this is just visible / enabled.
+const getMasterTemplateAvailability = async (_req, res, next) => {
+  try {
+    const settings = await getSettings();
+    return res.status(200).json({
+      templates: settings.templates.map((row) => ({
+        templateId: row.templateId,
+        enabled: row.enabled,
+        visible: row.visible,
+        disabledReason: row.disabledReason,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMasterTemplateChangeSummary,
   createMasterTemplateChangeRequest,
+  getMasterTemplateAvailability,
 };

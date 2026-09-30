@@ -604,37 +604,88 @@ const PAGE_TOURS = [
   },
   {
     id: "publish-listings",
-    version: 2,
+    version: 3,
     title: "Publish Listings",
     description:
       "Control the public visibility of Nomads listings across the website. Review listings, toggle them public or private and run bulk actions per location.",
     replayHint: true,
     steps: [
       {
-        text: "Search by name, type, city...",
-        title: "Find a listing",
+        selector: '[data-tour="publish-stats"]',
+        title: "Listings at a glance",
         description:
-          "Search the listings by business name, accommodation type or city.",
+          "Total, Active, Inactive, Public and Private counts across every listing on Wono Nomads.",
+        side: "bottom",
       },
       {
-        textOnly: true,
+        selector: '[data-tour="publish-category-counts"]',
+        title: "Listings by category",
+        description:
+          "How many listings fall under each accommodation type, like Co-working, Co-living or Hostel.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="publish-location-filters"]',
         title: "Narrow by location",
         description:
           "Pick a Country, then State and optionally City. The counters below update to show how many listings in that location are active, inactive, public and private.",
       },
       {
         selector: '[data-tour="publish-bulk-actions"]',
-        textOnly: true,
         title: "Bulk actions for this location",
         description:
           "When a location is selected, these buttons flip every listing in it at once — Make Active, Make Inactive, Make Public or Make Private. Each opens a confirmation popup before anything changes.",
       },
       {
-        selector: 'button[title="Make public"], button[title="Make private"]',
-        textOnly: true,
+        selector: '[data-tour="publish-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Switch the table between all listings, only active ones or only inactive ones.",
+      },
+      {
+        selector: '[data-tour="publish-visibility-filter"]',
+        title: "Filter by visibility",
+        description:
+          "Switch the table between all listings, only public ones or only private ones.",
+      },
+      {
+        selector: '[data-tour="publish-type-filter"]',
+        title: "Filter by type",
+        description:
+          "Show only one accommodation type at a time, such as Co-working or Hostel.",
+      },
+      {
+        selector: '[data-tour="publish-search"]',
+        title: "Find a listing",
+        description:
+          "Search the listings by business name, accommodation type or city.",
+      },
+      {
+        selector: '[data-tour="publish-table"]',
+        title: "The listings table",
+        description:
+          "Every listing with its type, location, current status and visibility. Use the icons on the right to act on a single row.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="publish-row-view"]',
+        title: "View full details",
+        description:
+          "Opens this listing's full profile — images, ratings, cost, address and inclusions.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="publish-row-status-toggle"]',
+        title: "Toggle active / inactive",
+        description:
+          "Marks this one listing active or inactive for internal Wono review. Doesn't change its public/private visibility.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="publish-row-visibility-toggle"]',
         title: "Toggle a single listing",
         description:
-          "The globe icon on each listing card switches just that listing — Make public when it is private, Make private when it is public.",
+          "Switches just this listing between public and private on the Wono Nomads site.",
         side: "left",
       },
     ],
@@ -661,7 +712,7 @@ const PAGE_TOURS = [
   },
   {
     id: "nomad-click-analytics",
-    version: 1,
+    version: 2,
     title: "Nomad Click Analytics",
     description:
       "Traffic and click-through performance for the WoNo Nomads site — Today, This Month or a Custom Range.",
@@ -670,16 +721,44 @@ const PAGE_TOURS = [
       "Charts and tables rank the pages and destinations receiving the most engagement for the selected period.",
     steps: [
       {
-        textOnly: true,
-        title: "Change the date range",
+        selector: '[data-tour="nomad-click-analytics-table-tabs"]',
+        title: "Switch analytics view",
         description:
-          "Switch between Today, This Month and Custom Range at the top of the page — every chart and table below updates to the chosen window.",
+          "Clicks tracks Nomads destination clicks; Pages tracks page traffic on wono.co via Google Analytics.",
+        side: "bottom",
       },
       {
-        textOnly: true,
+        selector: '[data-tour="nomad-click-analytics-stats"]',
+        title: "Snapshot",
+        description:
+          "Key totals for the selected view — clicks and audience split on the Clicks tab, or visitor volume on the Pages tab.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="nomad-click-analytics-search"]',
+        title: "Find a destination or page",
+        description:
+          "Search the table below by destination, country or continent on the Clicks tab, or by page title on the Pages tab.",
+      },
+      {
+        selector: '[data-tour="nomad-click-analytics-date-filters"]',
+        title: "Change the date range",
+        description:
+          "Switch between Today, This Month, All Time or a Custom Range — every stat and the table below updates to the chosen window.",
+      },
+      {
+        selector: '[data-tour="nomad-click-analytics-table"]',
+        title: "The analytics table",
+        description:
+          "Ranked destinations by clicks (Clicks tab) or ranked pages by unique visitors (Pages tab) for the selected period.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="nomad-click-analytics-row-view"]',
         title: "Drill into a destination",
         description:
-          "Select a destination row to open a drill-down panel with its listing-level analytics, breaking clicks down to individual businesses.",
+          "Opens a breakdown panel for this destination — its own click totals, the individual listings clicked, and the guest/logged-in users who clicked it.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/nomad-click-analytics"),
@@ -967,7 +1046,7 @@ const PAGE_TOURS = [
   },
   {
     id: "host-panel-analytics",
-    version: 1,
+    version: 2,
     title: "Host Panel Analytics",
     description:
       "Usage analytics across every host company — module adoption, active users and feature engagement.",
@@ -976,23 +1055,52 @@ const PAGE_TOURS = [
       "Companies are ranked in a searchable table; open one to see its module-level analytics.",
     steps: [
       {
-        text: "Search company, plan, city...",
+        selector: '[data-tour="host-panel-analytics-stats"]',
+        title: "Platform snapshot",
+        description:
+          "Total and active companies, activity in the last 30 days, and users/workspaces across every host.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="host-panel-analytics-summary"]',
+        title: "Trends and rankings",
+        description:
+          "Six-month activity trend alongside the top companies and top modules by engagement.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="host-panel-analytics-search"]',
         title: "Find a company",
         description:
           "Search the ranked list by company, plan or city to locate a specific host.",
       },
       {
-        textOnly: true,
+        selector: '[data-tour="host-panel-analytics-table"]',
+        title: "Company activity",
+        description:
+          "Every company ranked by recent activity, with plan, users, workspaces and health at a glance.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="host-panel-analytics-row-view"]',
+        title: "Quick summary",
+        description:
+          "Opens a read-only popup with this company's key metrics and status — for the full breakdown, use the analytics icon instead.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="host-panel-analytics-row-drill"]',
         title: "Drill into a company",
         description:
-          "Open a company row to see its per-module usage, units and engagement trends.",
+          "Opens this company's full analytics — per-module usage, units and engagement trends.",
+        side: "left",
       },
     ],
     matches: startsWith("/dashboard/host-panel-analytics"),
   },
   {
     id: "master-panel-analytics",
-    version: 1,
+    version: 2,
     title: "Master Panel Analytics",
     description:
       "Analytics for the Master Panel itself — which modules and pages your team uses the most.",
@@ -1001,10 +1109,39 @@ const PAGE_TOURS = [
       "Usage is summarized in charts and ranked tables for the selected period.",
     steps: [
       {
-        textOnly: true,
-        title: "Read the overview",
+        selector: '[data-tour="master-panel-analytics-range"]',
+        title: "Change the time range",
         description:
-          "The charts rank module usage across your team. Use them to spot which areas drive the work and which are ignored.",
+          "Switch between Last 7, 30, 90 Days or Overall — every stat and chart on this page updates to match.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="master-panel-analytics-live-users"]',
+        title: "Live right now",
+        description:
+          "Real-time active visitors on wono.co, broken down by country and page, via Google Analytics.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="master-panel-analytics-traffic"]',
+        title: "Traffic and audience",
+        description:
+          "Top pages, where visitors come from, and when traffic peaks for the selected range.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="master-panel-analytics-overall"]',
+        title: "Overall panel activity",
+        description:
+          "Activity volume, top modules, who is doing what, and the weekday/hourly rhythm across the whole master panel. Open Page jumps to the full activity log.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="master-panel-analytics-modules"]',
+        title: "Module deep-dive",
+        description:
+          "Every module from the sidebar gets its own section here — open a module, pick a category, then a tab for that area's full charts. Open Page jumps straight to that page.",
+        side: "top",
       },
     ],
     matches: exact("/dashboard/master-panel-analytics"),
@@ -1065,7 +1202,7 @@ const PAGE_TOURS = [
   },
   {
     id: "website-templates",
-    version: 1,
+    version: 2,
     title: "Website Template Requests",
     description:
       "Companies ask for new or different website templates here. Approve or reject each request with a reason.",
@@ -1074,20 +1211,43 @@ const PAGE_TOURS = [
       "Requests load with their company, requested template and status. Open one to act on it.",
     steps: [
       {
-        text: "Approve request",
-        exactText: true,
-        title: "Approve a request",
+        selector: '[data-tour="website-templates-stats"]',
+        title: "Requests at a glance",
         description:
-          "Approving queues the template change for the company's website build.",
+          "Total, Pending, Approved and Completed counts across every template-change request.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="website-templates-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Narrow the table to All, Pending, Approved, Completed or Rejected requests.",
+      },
+      {
+        selector: '[data-tour="website-templates-search"]',
+        title: "Find a request",
+        description: "Search by company name or the person who requested the change.",
+      },
+      {
+        selector: '[data-tour="website-templates-settings"]',
+        title: "Template settings",
+        description:
+          "Control how many template changes each plan gets, and which templates are enabled or visible in HostPanel.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="website-templates-table"]',
+        title: "The requests table",
+        description:
+          "Every request with its company, requester, unit, source, plan and status.",
         side: "top",
       },
       {
-        text: "Reject",
-        exactText: true,
-        title: "Reject with a reason",
+        selector: '[data-tour="website-templates-row-view"]',
+        title: "Review a request",
         description:
-          "Rejection asks for a reason which is shared with the company so they can adjust and resubmit.",
-        side: "top",
+          "Opens the request — approve it, reject it with a reason, or, once approved, confirm the template change.",
+        side: "left",
       },
     ],
     matches: exact("/dashboard/website-templates"),
@@ -1149,7 +1309,7 @@ const PAGE_TOURS = [
   },
   {
     id: "value-adds-partners",
-    version: 1,
+    version: 3,
     title: "Value-Adds Partners",
     description:
       "The partner network that delivers value-added services — visa consultants, activation agents, setup firms and contributors.",
@@ -1158,12 +1318,6 @@ const PAGE_TOURS = [
       "Each tab lists its partner pool in a searchable table with assignment and edit actions.",
     steps: [
       {
-        selector: '[data-tour="tab-layout-heading"]',
-        title: "Partner pools by service",
-        description:
-          "VISA Support, Activation Support, Company Setup, Consultation, Workation and Contributor partners are managed separately.",
-      },
-      {
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch partner pools",
         description:
@@ -1171,9 +1325,50 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
+        selector: '[data-tour="value-adds-partners-stats"]',
+        title: "Partner pool at a glance",
+        description:
+          "Total, Active and Inactive counts for this partner pool.",
+        side: "bottom",
+      },
+      {
         selector: '[data-tour="ag-search"]',
         title: "Search partners",
         description: "Locate a partner by name or contact details.",
+      },
+      {
+        selector: '[data-tour="value-adds-partners-filters"]',
+        title: "Narrow the list",
+        description:
+          "Where available, filter partners by Continent, Country or State — Clear filters resets them.",
+      },
+      {
+        selector: '[data-tour="value-adds-partners-table"]',
+        title: "The partner list",
+        description:
+          "Every partner with their contact details, status and when they were last updated.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="value-adds-partners-row-view"]',
+        title: "View full details",
+        description:
+          "Opens a read-only summary with this partner's full profile and notes.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="value-adds-partners-row-edit"]',
+        title: "Edit the partner",
+        description:
+          "Opens the editor for this partner's details, where available for this pool.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="value-adds-partners-row-toggle"]',
+        title: "Toggle Active / Inactive",
+        description:
+          "Flips this partner's status directly from the row, where available for this pool.",
+        side: "left",
       },
     ],
     matches: startsWith("/dashboard/value-adds-partners"),

@@ -11,11 +11,13 @@ const {
 const {
   getMasterTemplateChangeSummary,
   createMasterTemplateChangeRequest,
+  getMasterTemplateAvailability,
 } = require("../controllers/websiteControllers/masterTemplateChangeRequestCreateController");
 
 router.use(verifyJwt);
 router.get("/requests", getTemplateChangeRequests);
 router.get("/summary", getMasterTemplateChangeSummary);
+router.get("/availability", getMasterTemplateAvailability);
 router.post("/requests", createMasterTemplateChangeRequest);
 router.patch("/requests/:requestId/approve", approveTemplateChangeRequest);
 router.patch("/requests/:requestId/reject", rejectTemplateChangeRequest);
