@@ -141,6 +141,10 @@ const CustomPlanModulePicker = ({
   }, [planPricing, selectedModuleIds, priceOverrides, overallDiscountInput]);
 
   const totalUsd = breakdown.totalUsd;
+  const overallDiscountExceedsSubtotal =
+    overallDiscountInput !== "" &&
+    Number.isFinite(Number(overallDiscountInput)) &&
+    Number(overallDiscountInput) > breakdown.subtotal;
 
   if (!open) return null;
 
@@ -190,6 +194,11 @@ const CustomPlanModulePicker = ({
               // price of its own to discount.
               const isDiscountable = isChecked && breakdown.contributingItemIds.has(row.itemId);
               const overrideValue = priceOverrides[row.itemId];
+              const overrideExceedsListed =
+                overrideValue !== undefined &&
+                overrideValue !== "" &&
+                Number.isFinite(Number(overrideValue)) &&
+                Number(overrideValue) > row.priceUsd;
               return (
                 <div
                   key={row.itemId}
@@ -225,33 +234,44 @@ const CustomPlanModulePicker = ({
                     <span className="text-slate-500">${row.priceUsd}/mo</span>
                   </label>
                   {isDiscountable && (
-                    <div className="flex items-center justify-between gap-2 px-3 pb-2.5 -mt-0.5">
-                      <span className="text-[10px] text-slate-400">Negotiated price</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[11px] text-slate-400">$</span>
-                        <input
-                          type="number"
-                          min="0"
-                          max={row.priceUsd}
-                          step="1"
-                          placeholder={String(row.priceUsd)}
-                          value={overrideValue ?? ""}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) =>
-                            setPriceOverrides((prev) => ({ ...prev, [row.itemId]: e.target.value }))
-                          }
-                          onBlur={(e) => {
-                            const parsed = Number(e.target.value);
-                            if (e.target.value === "" || !Number.isFinite(parsed)) return;
-                            const clamped = String(Math.min(Math.max(0, parsed), row.priceUsd));
-                            if (clamped !== e.target.value) {
-                              setPriceOverrides((prev) => ({ ...prev, [row.itemId]: clamped }));
+                    <div className="px-3 pb-2.5 -mt-0.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] text-slate-400">Negotiated price</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[11px] text-slate-400">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={row.priceUsd}
+                            step="1"
+                            placeholder={String(row.priceUsd)}
+                            value={overrideValue ?? ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) =>
+                              setPriceOverrides((prev) => ({ ...prev, [row.itemId]: e.target.value }))
                             }
-                          }}
-                          className="w-20 rounded-lg border border-slate-200 px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
-                        />
-                        <span className="text-[10px] text-slate-400">/mo</span>
+                            onBlur={(e) => {
+                              const parsed = Number(e.target.value);
+                              if (e.target.value === "" || !Number.isFinite(parsed)) return;
+                              const clamped = String(Math.min(Math.max(0, parsed), row.priceUsd));
+                              if (clamped !== e.target.value) {
+                                setPriceOverrides((prev) => ({ ...prev, [row.itemId]: clamped }));
+                              }
+                            }}
+                            className={`w-20 rounded-lg border px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 ${
+                              overrideExceedsListed
+                                ? "border-rose-300 focus:ring-rose-300"
+                                : "border-slate-200 focus:ring-blue-300"
+                            }`}
+                          />
+                          <span className="text-[10px] text-slate-400">/mo</span>
+                        </div>
                       </div>
+                      {overrideExceedsListed && (
+                        <p className="mt-1 text-right text-[10px] text-rose-600">
+                          Discount can't be more than this module's price (${row.priceUsd}/mo) — it'll be capped when you leave this field.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -274,28 +294,39 @@ const CustomPlanModulePicker = ({
                 <span>-${breakdown.lineDiscountTotal}/mo</span>
               </div>
             )}
-            <div className="flex items-center justify-between px-3 py-2">
-              <span>Overall discount</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-blue-700/70">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  max={breakdown.subtotal}
-                  step="1"
-                  placeholder="0"
-                  value={overallDiscountInput}
-                  onChange={(e) => setOverallDiscountInput(e.target.value)}
-                  onBlur={(e) => {
-                    const parsed = Number(e.target.value);
-                    if (e.target.value === "" || !Number.isFinite(parsed)) return;
-                    const clamped = String(Math.min(Math.max(0, parsed), breakdown.subtotal));
-                    if (clamped !== e.target.value) setOverallDiscountInput(clamped);
-                  }}
-                  className="w-20 rounded-lg border border-blue-200 bg-white px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
-                />
-                <span className="text-[10px] text-blue-700/70">/mo</span>
+            <div className="px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span>Overall discount</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-blue-700/70">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={breakdown.subtotal}
+                    step="1"
+                    placeholder="0"
+                    value={overallDiscountInput}
+                    onChange={(e) => setOverallDiscountInput(e.target.value)}
+                    onBlur={(e) => {
+                      const parsed = Number(e.target.value);
+                      if (e.target.value === "" || !Number.isFinite(parsed)) return;
+                      const clamped = String(Math.min(Math.max(0, parsed), breakdown.subtotal));
+                      if (clamped !== e.target.value) setOverallDiscountInput(clamped);
+                    }}
+                    className={`w-20 rounded-lg border bg-white px-2 py-1 text-[11px] text-slate-700 focus:outline-none focus:ring-1 ${
+                      overallDiscountExceedsSubtotal
+                        ? "border-rose-300 focus:ring-rose-300"
+                        : "border-blue-200 focus:ring-blue-300"
+                    }`}
+                  />
+                  <span className="text-[10px] text-blue-700/70">/mo</span>
+                </div>
               </div>
+              {overallDiscountExceedsSubtotal && (
+                <p className="mt-1 text-right text-[10px] text-rose-600">
+                  Discount can't be more than the subtotal (${breakdown.subtotal}/mo) — it'll be capped when you leave this field.
+                </p>
+              )}
             </div>
             <div className="flex items-center justify-between px-3 py-2.5">
               <span>{isAnnual ? "Total per year (billed annually)" : "Total monthly price"}</span>
