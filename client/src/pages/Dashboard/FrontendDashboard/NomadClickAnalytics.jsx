@@ -713,7 +713,7 @@ const NomadClickAnalytics = () => {
             </button> */}
           </div>
 
-          <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-1 shadow-sm [&::-webkit-scrollbar]:hidden">
+          <div data-tour="nomad-click-analytics-table-tabs" className="flex gap-1.5 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-1 shadow-sm [&::-webkit-scrollbar]:hidden">
             {ANALYTICS_TABLE_TABS.map((tab) => {
               const isActive = analyticsTableTab === tab.key;
               return (
@@ -737,7 +737,7 @@ const NomadClickAnalytics = () => {
           </div>
 
           {analyticsTableTab === "clicks" && (
-            <div className="flex flex-col gap-3">
+            <div data-tour="nomad-click-analytics-stats" className="flex flex-col gap-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {topSummaryCards.map(renderSummaryCard)}
               </div>
@@ -748,7 +748,7 @@ const NomadClickAnalytics = () => {
           )}
 
           {analyticsTableTab === "pages" && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div data-tour="nomad-click-analytics-stats" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {pageSummaryCards.map(renderSummaryCard)}
             </div>
           )}
@@ -759,7 +759,7 @@ const NomadClickAnalytics = () => {
           >
             <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
               <div className="flex flex-wrap items-center gap-3">
-                <div className="relative w-full min-w-[220px] flex-1">
+                <div data-tour="nomad-click-analytics-search" className="relative w-full min-w-[220px] flex-1">
                   <Search
                     className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     size={15}
@@ -777,7 +777,7 @@ const NomadClickAnalytics = () => {
                   />
                 </div>
 
-                <div className="relative flex flex-wrap items-center gap-1.5">
+                <div data-tour="nomad-click-analytics-date-filters" className="relative flex flex-wrap items-center gap-1.5">
                   {DATE_FILTER_OPTIONS.map((option) => (
                     <button
                       key={option.key}
@@ -842,7 +842,7 @@ const NomadClickAnalytics = () => {
                   </p>
                 </div>
               ) : (
-                <div className="flex-1 overflow-x-auto">
+                <div data-tour="nomad-click-analytics-table" className="flex-1 overflow-x-auto">
                   <table className="w-full min-w-[760px] table-fixed text-left">
                     <colgroup>
                       <col className="w-[10%]" />
@@ -918,7 +918,7 @@ const NomadClickAnalytics = () => {
                 </p>
               </div>
             ) : (
-              <div className="flex-1 overflow-x-auto">
+              <div data-tour="nomad-click-analytics-table" className="flex-1 overflow-x-auto">
                 <table className="w-full min-w-[1120px] table-fixed text-left">
                   <colgroup>
                     <col className="w-[7%]" />
@@ -998,6 +998,7 @@ const NomadClickAnalytics = () => {
                           <td className="px-5 py-4 text-center">
                             <button
                               type="button"
+                              data-tour="nomad-click-analytics-row-view"
                               onClick={() => openDestinationDetails(item)}
                               title="View listing analytics"
                               aria-label={`View listing analytics for ${getDestinationLabel(item)}`}

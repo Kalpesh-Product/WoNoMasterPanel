@@ -6,6 +6,7 @@ import { MdOutlineWorkHistory } from "react-icons/md";
 import { Loader2 } from "lucide-react";
 import Card from "../../../../components/Card";
 import PageFrame from "../../../../components/Pages/PageFrame";
+import { TemplatePicker } from "./SelectWebsiteTemplate";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -35,6 +36,7 @@ const WebsiteBuilderHome = () => {
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const [existingWebsite, setExistingWebsite] = useState(null);
   const [isCheckingWebsite, setIsCheckingWebsite] = useState(true);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const hasCheckedWebsiteRef = useRef(false);
 
   const companyId = String(
@@ -103,9 +105,8 @@ const WebsiteBuilderHome = () => {
       });
       return;
     }
-    // Brand-new website: pick a template first, then land in the builder —
-    // mirrors HostPanel's WebsiteBuilderTypeActions selectTemplateRoute flow.
-    navigate("select-template");
+    // Brand-new website: pick a template in a popup, then land in the builder.
+    setTemplatePickerOpen(true);
   };
 
   return (
@@ -151,6 +152,7 @@ const WebsiteBuilderHome = () => {
           </div>
         </div>
       </PageFrame>
+      {templatePickerOpen ? <TemplatePicker onClose={() => setTemplatePickerOpen(false)} /> : null}
     </div>
   );
 };

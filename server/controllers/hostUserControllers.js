@@ -1322,12 +1322,12 @@ const sanitizeEnabledModuleIds = (enabledIds = [], workspaceModules = []) => {
 
 // Previously linked ["visitor-management", "visitors-management"] so
 // toggling either kept both in sync (they're the same underlying
-// /visitors/visitor-management page). Kept unlinked: even though
-// "visitors-management" (Administration Department tab) is now a
-// Professional+ default just like "visitor-management" (Key Apps), staff
-// can still independently disable the Administration Department tab for a
-// specific workspace without also pulling the always-on Key Apps entry down
-// with it. Empty for now; add groups back here only for ids that should
+// /visitors/visitor-management page). Removed: "visitors-management" is now
+// deliberately Custom-only (Administration Department), while
+// "visitor-management" (Key Apps) stays on at every plan — linking them
+// meant enabling the always-on Key Apps entry silently re-enabled the
+// Administration Department tab on every read/save, undoing that
+// restriction. Empty for now; add groups back here only for ids that should
 // genuinely always move together.
 const LINKED_MODULE_ID_GROUPS = [];
 
@@ -2017,11 +2017,7 @@ const bulkInsertPoc = async (req, res, next) => {
     }
 
     const companyIds = [
-      ...new Set(
-        pocs
-          .map((poc) => poc?.companyId?.trim())
-          .filter(Boolean),
-      ),
+      ...new Set(pocs.map((poc) => poc?.companyId?.trim()).filter(Boolean)),
     ];
 
     // Fetch only companies referenced by this upload.
@@ -2275,13 +2271,13 @@ const createHostInvite = async ({
         .join(", ");
     }
 
-    if (typeof value === "string") {
-      return value.trim();
-    }
+      if (typeof value === "string") {
+        return value.trim();
+      }
 
-    if (value && typeof value === "object") {
-      return String(value.label || value.value || value.name || "").trim();
-    }
+      if (value && typeof value === "object") {
+        return String(value.label || value.value || value.name || "").trim();
+      }
 
     return "";
   };
@@ -2461,11 +2457,11 @@ const createHostInvite = async ({
     businessType: normalizedVerticals,
   };
 
-  const inviteToken = jwt.sign(
-    invitePayload,
-    process.env.HOST_INVITE_TOKEN_SECRET || process.env.ACCESS_TOKEN_SECRET,
-    { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
-  );
+    const inviteToken = jwt.sign(
+      invitePayload,
+      process.env.HOST_INVITE_TOKEN_SECRET || process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
+    );
 
   const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
   const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
@@ -2496,35 +2492,35 @@ const createHostInvite = async ({
       : {}),
   });
 
-  const normalizedEmail = String(email).trim().toLowerCase();
-  const hostUser = await HostUser.findOne({
-    email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
-  });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const hostUser = await HostUser.findOne({
+      email: { $regex: `^${escapeRegex(normalizedEmail)}$`, $options: "i" },
+    });
 
-  if (hostUser) {
-    const currentStatus = await syncInviteLifecycle(hostUser);
+    if (hostUser) {
+      const currentStatus = await syncInviteLifecycle(hostUser);
 
-    hostUser.country = country || hostUser.country || "";
-    hostUser.state = state || hostUser.state || "";
-    hostUser.city = city || hostUser.city || "";
-    hostUser.verticalType = normalizedVerticals.length
-      ? normalizedVerticals
-      : hostUser.verticalType || [];
+      hostUser.country = country || hostUser.country || "";
+      hostUser.state = state || hostUser.state || "";
+      hostUser.city = city || hostUser.city || "";
+      hostUser.verticalType = normalizedVerticals.length
+        ? normalizedVerticals
+        : hostUser.verticalType || [];
 
-    if (!["registered", "joined"].includes(currentStatus)) {
-      hostUser.inviteStatus = "invite_sent";
-      hostUser.inviteSentAt = new Date();
+      if (!["registered", "joined"].includes(currentStatus)) {
+        hostUser.inviteStatus = "invite_sent";
+        hostUser.inviteSentAt = new Date();
+      }
+
+      await hostUser.save();
     }
 
-    await hostUser.save();
-  }
-
-  const inviteStatusDoc = await HostInviteStatus.findOne({
-    email: normalizedEmail,
-  }).lean();
-  const docStatus = normalizeInviteStatus(inviteStatusDoc?.inviteStatus);
-  const shouldKeepHigherStatus =
-    docStatus === "registered" || docStatus === "joined";
+    const inviteStatusDoc = await HostInviteStatus.findOne({
+      email: normalizedEmail,
+    }).lean();
+    const docStatus = normalizeInviteStatus(inviteStatusDoc?.inviteStatus);
+    const shouldKeepHigherStatus =
+      docStatus === "registered" || docStatus === "joined";
 
   await HostInviteStatus.updateOne(
     { email: normalizedEmail },
@@ -4155,7 +4151,6 @@ module.exports = {
   removeDefaultInviteAgreement,
   getVerifyBusinessClicks,
   sendInviteEmail,
-  createHostInvite,
   updateHostUserAccountStatus,
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,

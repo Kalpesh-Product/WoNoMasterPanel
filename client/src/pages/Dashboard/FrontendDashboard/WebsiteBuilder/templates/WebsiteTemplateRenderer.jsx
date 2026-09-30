@@ -32,7 +32,8 @@ const WebsiteTemplateRenderer = () => {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  const { component: TemplateComponent } = resolveTemplate(themeVariant);
+  const previewOverride = new URLSearchParams(window.location.search).get("previewTemplate");
+  const { component: TemplateComponent } = resolveTemplate(previewOverride || themeVariant);
   return <TemplateComponent />;
 };
 

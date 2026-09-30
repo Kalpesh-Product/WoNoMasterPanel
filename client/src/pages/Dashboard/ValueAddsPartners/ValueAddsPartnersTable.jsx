@@ -115,7 +115,7 @@ const ValueAddsPartnersTable = ({
 
   return (
     <div className="flex flex-col gap-4 text-slate-700 font-sans">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
+      <div data-tour="value-adds-partners-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
         {[
           { label: `Total ${title}`, value: rows.length, icon: Target, accent: "border-l-slate-400", textColor: "text-slate-500", bgColor: "bg-slate-50" },
           { label: "Active", value: activeCount, icon: Users, accent: "border-l-emerald-500", textColor: "text-emerald-600", bgColor: "bg-emerald-50" },
@@ -147,6 +147,7 @@ const ValueAddsPartnersTable = ({
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
               type="text"
+              data-tour="ag-search"
               placeholder={`Search ${title.toLowerCase()} partners...`}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -156,7 +157,7 @@ const ValueAddsPartnersTable = ({
         </div>
 
         {dropdownFilters.length ? (
-          <div className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
+          <div data-tour="value-adds-partners-filters" className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
             {dropdownFilters.map((filter) => (
               <select
                 key={filter.field}
@@ -202,7 +203,7 @@ const ValueAddsPartnersTable = ({
             ) : null}
           </div>
         ) : (
-        <div className="overflow-x-auto flex-1">
+        <div data-tour="value-adds-partners-table" className="overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
               {exactTableColumns ? (
@@ -289,6 +290,7 @@ const ValueAddsPartnersTable = ({
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
+                              data-tour="value-adds-partners-row-view"
                               onClick={() => setSelectedRow(row)}
                               title="View details"
                               className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
@@ -298,6 +300,7 @@ const ValueAddsPartnersTable = ({
                             {onEditRow ? (
                               <button
                                 type="button"
+                                data-tour="value-adds-partners-row-edit"
                                 onClick={() => onEditRow(row)}
                                 title="Edit partner"
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
@@ -308,6 +311,7 @@ const ValueAddsPartnersTable = ({
                             {onToggleStatus ? (
                               <button
                                 type="button"
+                                data-tour="value-adds-partners-row-toggle"
                                 onClick={() => onToggleStatus(row)}
                                 disabled={togglingStatusRowId === row.id}
                                 title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
@@ -391,6 +395,7 @@ const ValueAddsPartnersTable = ({
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
+                              data-tour="value-adds-partners-row-view"
                               onClick={() => setSelectedRow(row)}
                               title="View details"
                               className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
@@ -400,6 +405,7 @@ const ValueAddsPartnersTable = ({
                             {onEditRow ? (
                               <button
                                 type="button"
+                                data-tour="value-adds-partners-row-edit"
                                 onClick={() => onEditRow(row)}
                                 title="Edit partner"
                                 className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
@@ -410,6 +416,7 @@ const ValueAddsPartnersTable = ({
                             {onToggleStatus ? (
                               <button
                                 type="button"
+                                data-tour="value-adds-partners-row-toggle"
                                 onClick={() => onToggleStatus(row)}
                                 disabled={togglingStatusRowId === row.id}
                                 title={isActiveStatus(row.status) ? "Mark as Inactive" : "Mark as Active"}
