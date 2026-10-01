@@ -139,8 +139,10 @@ import CreateWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/C
 import SelectWebsiteTemplate from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/SelectWebsiteTemplate";
 import EditWebsite from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/EditWebsite";
 import Companies from "../pages/Dashboard/FrontendDashboard/Companies";
+import CompanyVerified from "../pages/Dashboard/FrontendDashboard/CompanyVerified";
 import CompaniesLayout from "../pages/Dashboard/FrontendDashboard/CompaniesLayout";
 import CompaniesRequests from "../pages/Dashboard/FrontendDashboard/CompaniesRequests";
+import ExistingCompanyClaims from "../pages/Dashboard/FrontendDashboard/ExistingCompanyClaims";
 import CompanyLeads from "../pages/Dashboard/FrontendDashboard/CompanyLeads";
 import WebsiteBuilderReviews from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderReviews";
 import WebsiteBuilderHome from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/WebsiteBuilderHome";
@@ -154,6 +156,8 @@ import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/C
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
+import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
+import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
 import ValueAddsLeads from "../pages/Dashboard/Leads/ValueAddsLeads";
 import RequestedServices from "../pages/Dashboard/Services/RequestedServices";
 import RequestedServicesDetails from "../pages/Dashboard/Services/RequestedServicesDetails";
@@ -227,6 +231,7 @@ import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/Wono
 import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadReviews";
 import NomadsLeads from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadsLeads";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
+import HostCompanyPlanHistory from "../pages/Dashboard/FrontendDashboard/HostCompanyPlanHistory";
 import UnitsManagement from "../pages/Dashboard/FrontendDashboard/UnitsManagement";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
@@ -285,6 +290,18 @@ export const routes = createBrowserRouter([
                   {
                     path: "signup-leads",
                     element: <SignupLeads />,
+                  },
+                  {
+                    path: "plan-pricing",
+                    element: <PlanPricingSettings />,
+                  },
+                  {
+                    path: "company-verification-leads",
+                    element: <CompanyVerificationLeads />,
+                  },
+                  {
+                    path: "companies-verified",
+                    element: <CompanyVerified />,
                   },
                   {
                     path: "all-leads",
@@ -609,6 +626,7 @@ export const routes = createBrowserRouter([
                           { index: true, element: <Navigate to="list" replace /> },
                           { path: "list", element: <Companies /> },
                           { path: "requests", element: <CompaniesRequests /> },
+                          { path: "claims", element: <ExistingCompanyClaims /> },
                         ],
                       },
                       {
@@ -771,6 +789,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/upgrade-plan",
                         element: <UpgradePlan />,
+                      },
+                      {
+                        path: ":companyId/plan-history",
+                        element: <HostCompanyPlanHistory />,
                       },
                       {
                         path: ":companyId/module-access",

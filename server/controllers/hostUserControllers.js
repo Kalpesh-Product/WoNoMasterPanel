@@ -1,11 +1,18 @@
 const mongoose = require("mongoose");
+const axios = require("axios");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
 const TestHostUser = require("../models/hostCompany/TestHostUser");
 const HostInviteStatus = require("../models/hostCompany/HostInviteStatus");
+const HostInviteSettings = require("../models/hostCompany/HostInviteSettings");
 const BookingPaymentLink = require("../models/hostCompany/BookingPaymentLink");
+const PlanPaymentLink = require("../models/PlanPaymentLink");
+const {
+  handleVerificationPaymentWebhookEvent,
+} = require("./companyVerificationPaymentsControllers");
+const { handlePlanPaymentWebhookEvent } = require("./planPaymentControllers");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -23,6 +30,7 @@ const {
   referenceDateStamp,
   formatLongDate,
 } = require("../utils/emailTemplates");
+const { uploadFileToS3 } = require("../config/s3config");
 const { generateBookingId } = require("../utils/generateBookingId");
 const { generateRegistrationId } = require("../utils/generateRegistrationId");
 
@@ -167,6 +175,7 @@ const buildSignupInviteEmail = ({
   companyName,
   inviteLink,
   requestId,
+  agreementName,
 }) => ({
   subject: "You're Invited to WONO",
   html: renderNotificationEmail({
@@ -181,6 +190,7 @@ const buildSignupInviteEmail = ({
       ["Company / Brand", companyName || "-"],
       ["Request Status", "Approved &#10003;"],
       ["Request ID", requestId],
+      ...(agreementName ? [["Agreement", "Attached to this email"]] : []),
     ],
     ctaButton: {
       label: "Complete Your Signup",
@@ -190,6 +200,12 @@ const buildSignupInviteEmail = ({
     whatNextTitle: "What Happens Next?",
     whatNextItems: [
       "Complete your signup",
+      ...(agreementName
+        ? [
+            "Read and fill in the attached agreement",
+            "Upload it, along with any business document, when you create your business location",
+          ]
+        : []),
       "Set up your account details",
       "Access the WONO platform",
       "Start using your available services and features",
@@ -209,6 +225,7 @@ const PLAN_INFO = {
   professional: {
     label: "Professional",
     priceLabel: "$199/month",
+    annualPriceLabel: "$1,999/year billed annually",
     billingCycle: "Monthly",
     amount: 199,
   },
@@ -220,18 +237,24 @@ const PLAN_INFO = {
   },
 };
 
-function planInfo(plan) {
+function planInfo(plan, billingCycle = "monthly") {
   const key = String(plan || "")
     .trim()
     .toLowerCase();
-  return (
-    PLAN_INFO[key] || {
-      label: plan || "-",
-      priceLabel: "-",
-      billingCycle: "-",
-      amount: null,
-    }
-  );
+  const base = PLAN_INFO[key] || {
+    label: plan || "-",
+    priceLabel: "-",
+    billingCycle: "-",
+    amount: null,
+  };
+  if (String(billingCycle || "").trim().toLowerCase() === "annual") {
+    return {
+      ...base,
+      priceLabel: base.annualPriceLabel || base.priceLabel,
+      billingCycle: "Annual",
+    };
+  }
+  return base;
 }
 
 const buildUpgradeSummaryBody = ({
@@ -344,11 +367,12 @@ const buildUpgradePaymentEmail = ({
   companyName,
   currentPlan,
   selectedPlan,
+  billingCycle = "monthly",
   paymentLinkUrl,
   requestId,
 }) => {
-  const currentPlanData = planInfo(currentPlan);
-  const newPlanData = planInfo(selectedPlan);
+  const currentPlanData = planInfo(currentPlan, billingCycle);
+  const newPlanData = planInfo(selectedPlan, billingCycle);
   const amountDueLabel =
     newPlanData.amount != null ? `$${newPlanData.amount.toFixed(2)} USD` : "-";
 
@@ -456,11 +480,12 @@ const buildUpgradeSuccessEmail = ({
   companyName,
   previousPlan,
   selectedPlan,
+  billingCycle = "monthly",
   effectiveDate,
   dashboardUrl,
 }) => {
-  const previousPlanData = planInfo(previousPlan);
-  const newPlanData = planInfo(selectedPlan);
+  const previousPlanData = planInfo(previousPlan, billingCycle);
+  const newPlanData = planInfo(selectedPlan, billingCycle);
   const effectiveDateLabel = formatLongDate(effectiveDate || new Date());
 
   return {
@@ -2100,8 +2125,17 @@ const getInviteStatuses = async (req, res, next) => {
       .lean();
 
     const inviteStatusDocs = await HostInviteStatus.find(query)
-      .select("email inviteStatus inviteSentAt registeredAt joinedAt updatedAt")
+      .select(
+        "email inviteStatus inviteSentAt registeredAt joinedAt updatedAt inviteCount lastInviteSentAt",
+      )
       .lean();
+
+    const inviteMeta = new Map(
+      inviteStatusDocs.map((doc) => [
+        String(doc.email || "").trim().toLowerCase(),
+        { inviteCount: doc.inviteCount || 0, lastInviteSentAt: doc.lastInviteSentAt || null },
+      ]),
+    );
 
     const statusSource = new Map();
 
@@ -2145,6 +2179,36 @@ const getInviteStatuses = async (req, res, next) => {
       statusSource.set(key, mergeInviteRecords(existing, doc));
     }
 
+    const agreementByEmail = new Map();
+    const leadCompanies = await HostLeadCompany.find(
+      emails.length
+        ? { pocEmail: { $in: emails } }
+        : { "agreementDocument.url": { $ne: "" } },
+    )
+      .select("pocEmail agreementDocument agreementAcceptance updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+    for (const company of leadCompanies) {
+      const key = String(company.pocEmail || "").trim().toLowerCase();
+      // Newest row wins when the same POC email has several lead companies.
+      if (!key || agreementByEmail.has(key)) continue;
+      agreementByEmail.set(key, {
+        sent: company.agreementDocument?.url
+          ? {
+              url: company.agreementDocument.url,
+              name: company.agreementDocument.name || "Agreement",
+              sentAt: company.agreementDocument.sentAt || null,
+            }
+          : null,
+        accepted: Boolean(company.agreementAcceptance?.accepted),
+        acceptedAt: company.agreementAcceptance?.acceptedAt || null,
+        signedDocument: company.agreementAcceptance?.signedDocument?.url
+          ? company.agreementAcceptance.signedDocument
+          : null,
+        businessDocuments: company.agreementAcceptance?.businessDocuments || [],
+      });
+    }
+
     const statuses = {};
     for (const [email, data] of statusSource.entries()) {
       statuses[email] = {
@@ -2152,6 +2216,9 @@ const getInviteStatuses = async (req, res, next) => {
         inviteSentAt: data.inviteSentAt || null,
         registeredAt: data.registeredAt || null,
         joinedAt: data.joinedAt || null,
+        agreement: agreementByEmail.get(email) || null,
+        inviteCount: inviteMeta.get(email)?.inviteCount || 0,
+        lastInviteSentAt: inviteMeta.get(email)?.lastInviteSentAt || null,
       };
     }
 
@@ -2161,40 +2228,48 @@ const getInviteStatuses = async (req, res, next) => {
   }
 };
 
-const sendInviteEmail = async (req, res, next) => {
-  try {
-    const {
-      leadId,
-      email,
-      name,
-      mobile,
-      companyName,
-      status,
-      fullName,
-      selectedPlan,
-      country,
-      state,
-      city,
-      verticalType,
-      source,
-      goals,
-      comment,
-      isUpgradeRequest,
-    } = req.body;
-
-    const normalizeMultiValue = (value) => {
-      if (Array.isArray(value)) {
-        return value
-          .map((item) => {
-            if (typeof item === "string") return item.trim();
-            if (item && typeof item === "object") {
-              return String(item.label || item.value || item.name || "").trim();
-            }
-            return "";
-          })
-          .filter(Boolean)
-          .join(", ");
-      }
+// Upserts/reuses a HostLeadCompany row, mints a signed HostPanel invite
+// link, emails it, and syncs HostUser/HostInviteStatus lifecycle bookkeeping.
+// Shared by sendInviteEmail (the CRM "invite this closed lead" action) and
+// the verification-payment success path (companyVerificationPaymentsControllers.js),
+// which calls this directly — not over HTTP — to avoid a circular require
+// between the two controller files (that file requires this one lazily
+// inside its own function body for the same reason).
+const createHostInvite = async ({
+  leadId,
+  email,
+  name,
+  mobile,
+  companyName,
+  status,
+  fullName,
+  selectedPlan,
+  country,
+  state,
+  city,
+  verticalType,
+  source,
+  goals,
+  comment,
+  isUpgradeRequest,
+  nomadsCompanyId,
+  suggestedNomadsCompanyId,
+  agreementFile,
+  useDefaultAgreement,
+}) => {
+  const normalizeMultiValue = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (item && typeof item === "object") {
+            return String(item.label || item.value || item.name || "").trim();
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .join(", ");
+    }
 
       if (typeof value === "string") {
         return value.trim();
@@ -2204,127 +2279,183 @@ const sendInviteEmail = async (req, res, next) => {
         return String(value.label || value.value || value.name || "").trim();
       }
 
-      return "";
-    };
+    return "";
+  };
 
-    if (!email || !name) {
-      return res
-        .status(400)
-        .json({ message: "Lead email and name are required" });
-    }
-
-    if ((status || "").toLowerCase() !== "closed") {
-      return res.status(400).json({
-        message: "Invite can only be sent when the lead status is closed",
-      });
-    }
-
-    const normalizedEmailForLookup = String(email || "")
-      .trim()
-      .toLowerCase();
-    const normalizedCompanyNameForLookup = String(companyName || "").trim();
-    const normalizedCityForLookup = String(city || "").trim();
-    const normalizedStateForLookup = String(state || "").trim();
-    const normalizedCountryForLookup = String(country || "").trim();
-    // A CRM lead can get re-submitted/duplicated upstream (each with its own
-    // _id) — sometimes under the same POC email (a repeat invite), sometimes
-    // under a different one (the same business resubmitted with a different
-    // contact). Keying purely on leadId would create a second HostLeadCompany
-    // row in either case, so reuse the existing row instead of minting a new
-    // companyId: first try matching by POC email, then fall back to an exact
-    // company name + city/state/country match (all four together, to avoid
-    // merging unrelated companies that just happen to share a common name).
-    const existingLeadCompany = normalizedEmailForLookup
+  const normalizedEmailForLookup = String(email || "")
+    .trim()
+    .toLowerCase();
+  const normalizedCompanyNameForLookup = String(companyName || "").trim();
+  const normalizedCityForLookup = String(city || "").trim();
+  const normalizedStateForLookup = String(state || "").trim();
+  const normalizedCountryForLookup = String(country || "").trim();
+  // A CRM lead can get re-submitted/duplicated upstream (each with its own
+  // _id) — sometimes under the same POC email (a repeat invite), sometimes
+  // under a different one (the same business resubmitted with a different
+  // contact). Keying purely on leadId would create a second HostLeadCompany
+  // row in either case, so reuse the existing row instead of minting a new
+  // companyId: first try matching by POC email, then fall back to an exact
+  // company name + city/state/country match (all four together, to avoid
+  // merging unrelated companies that just happen to share a common name).
+  const existingLeadCompany = normalizedEmailForLookup
+    ? await HostLeadCompany.findOne({
+        pocEmail: normalizedEmailForLookup,
+      }).lean()
+    : null;
+  const existingLeadCompanyByLocation =
+    !existingLeadCompany &&
+    normalizedCompanyNameForLookup &&
+    normalizedCityForLookup &&
+    normalizedStateForLookup &&
+    normalizedCountryForLookup
       ? await HostLeadCompany.findOne({
-          pocEmail: normalizedEmailForLookup,
+          companyName: {
+            $regex: `^${escapeRegex(normalizedCompanyNameForLookup)}$`,
+            $options: "i",
+          },
+          companyCity: {
+            $regex: `^${escapeRegex(normalizedCityForLookup)}$`,
+            $options: "i",
+          },
+          companyState: {
+            $regex: `^${escapeRegex(normalizedStateForLookup)}$`,
+            $options: "i",
+          },
+          companyCountry: {
+            $regex: `^${escapeRegex(normalizedCountryForLookup)}$`,
+            $options: "i",
+          },
         }).lean()
       : null;
-    const existingLeadCompanyByLocation =
-      !existingLeadCompany &&
-      normalizedCompanyNameForLookup &&
-      normalizedCityForLookup &&
-      normalizedStateForLookup &&
-      normalizedCountryForLookup
-        ? await HostLeadCompany.findOne({
-            companyName: {
-              $regex: `^${escapeRegex(normalizedCompanyNameForLookup)}$`,
-              $options: "i",
-            },
-            companyCity: {
-              $regex: `^${escapeRegex(normalizedCityForLookup)}$`,
-              $options: "i",
-            },
-            companyState: {
-              $regex: `^${escapeRegex(normalizedStateForLookup)}$`,
-              $options: "i",
-            },
-            companyCountry: {
-              $regex: `^${escapeRegex(normalizedCountryForLookup)}$`,
-              $options: "i",
-            },
-          }).lean()
-        : null;
-    const companyId =
-      existingLeadCompany?.companyId ||
-      existingLeadCompanyByLocation?.companyId ||
-      leadId?.trim() ||
-      `lead-${randomUUID()}`;
-    const normalizedVerticals = normalizeVerticalType(verticalType);
-    const normalizedPlan = String(selectedPlan || goals || "basic")
-      .trim()
-      .toLowerCase();
+  const companyId =
+    existingLeadCompany?.companyId ||
+    existingLeadCompanyByLocation?.companyId ||
+    leadId?.trim() ||
+    `lead-${randomUUID()}`;
+  const normalizedVerticals = normalizeVerticalType(verticalType);
 
-    await HostLeadCompany.findOneAndUpdate(
-      { companyId },
-      {
-        $set: {
-          leadId: leadId?.trim() || undefined,
-          companyId,
-          companyName: companyName?.trim() || "Unknown Company",
-          industry: normalizeMultiValue(verticalType),
-          companyCountry: country?.trim() || "",
-          companyState: state?.trim() || "",
-          companyCity: city?.trim() || "",
-          isRegistered: true,
-          status: status?.trim()?.toLowerCase() || "closed",
-          plan: normalizedPlan,
-          comment: comment?.trim() || "",
-          source: source?.trim() || "signup-lead",
-          pocName: name?.trim() || "",
-          pocEmail: email?.trim()?.toLowerCase() || "",
-          pocPhone: mobile?.trim() || "",
-          invitedAt: new Date(),
-          ...(isUpgradeRequest
-            ? {
-                upgradeInviteSentAt: new Date(),
-                upgradeStatus: "payment_link_sent",
-              }
-            : {}),
-        },
-      },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+  // Agreement PDF for the host to fill in. Stored on the lead row so HostPanel
+  // can show it (and its "I agree" checkbox) at Create Business Location, and
+  // attached to the invite email itself. It is either a file uploaded with this
+  // one invite, or — the usual case — the saved default agreement.
+  let agreementDocument = null;
+  let agreementBuffer = null;
+  let agreementMime = "application/pdf";
+  if (agreementFile?.buffer) {
+    const safeName =
+      String(agreementFile.originalname || "agreement.pdf")
+        .replace(/[^A-Za-z0-9._-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "agreement.pdf";
+    const uploaded = await uploadFileToS3(
+      `host-agreements/${companyId}/${Date.now()}_${safeName}`,
+      agreementFile,
     );
-
-    const invitePayload = {
-      fullName: fullName || name,
-      name: fullName || name,
-      email,
-      // Without this, HostPanel registration has no way to link back to the
-      // lead row upserted above and mints its own companyId on setup —
-      // leaving this row orphaned and creating a second, duplicate company
-      // for the same host (visible in Host Companies with mismatched plans).
-      companyId,
-      leadId: companyId,
-      selectedPlan: normalizedPlan,
-      goals: normalizedPlan,
-      companyName: companyName || "",
-      businessName: companyName || "",
-      country: country || "",
-      state: state || "",
-      city: city || "",
-      verticalType: normalizedVerticals,
-      businessType: normalizedVerticals,
+    agreementDocument = {
+      url: uploaded.url,
+      id: uploaded.id,
+      name: safeName,
+      sentAt: new Date(),
     };
+    agreementBuffer = agreementFile.buffer;
+    agreementMime = agreementFile.mimetype || agreementMime;
+  } else if (useDefaultAgreement) {
+    const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+    const saved = settings?.agreement;
+    if (saved?.url) {
+      const download = await axios.get(saved.url, {
+        responseType: "arraybuffer",
+        timeout: 20000,
+      });
+      agreementBuffer = Buffer.from(download.data);
+      agreementDocument = {
+        url: saved.url,
+        id: saved.id,
+        name: saved.name || "Agreement.pdf",
+        sentAt: new Date(),
+      };
+    }
+  }
+  // The DB row (once it exists) is the authoritative record of what was
+  // actually paid for — it's what the plan-payment webhook writes to. The
+  // caller-supplied selectedPlan/goals is only a fallback for a brand-new
+  // lead's very first invite, when no HostLeadCompany row exists yet to read
+  // from. Trusting the caller's value even when a DB row exists let a stale
+  // or missing selectedPlan in the invite request silently downgrade an
+  // already-paid Professional/Custom lead back to "basic" the moment the
+  // invite was sent — exactly the bug where a paid host ends up on Basic
+  // after registering.
+  const normalizedPlan = String(
+    existingLeadCompany?.plan || existingLeadCompanyByLocation?.plan || selectedPlan || goals || "basic",
+  )
+    .trim()
+    .toLowerCase();
+
+  await HostLeadCompany.findOneAndUpdate(
+    { companyId },
+    {
+      $set: {
+        leadId: leadId?.trim() || undefined,
+        companyId,
+        companyName: companyName?.trim() || "Unknown Company",
+        industry: normalizeMultiValue(verticalType),
+        companyCountry: country?.trim() || "",
+        companyState: state?.trim() || "",
+        companyCity: city?.trim() || "",
+        isRegistered: true,
+        status: status?.trim()?.toLowerCase() || "closed",
+        plan: normalizedPlan,
+        comment: comment?.trim() || "",
+        source: source?.trim() || "signup-lead",
+        pocName: name?.trim() || "",
+        pocEmail: email?.trim()?.toLowerCase() || "",
+        pocPhone: mobile?.trim() || "",
+        invitedAt: new Date(),
+        ...(agreementDocument ? { agreementDocument } : {}),
+        // Not a link — just the company the lead clicked "Verify Business" on,
+        // so HostPanel can pre-select it when they request their listings.
+        ...(suggestedNomadsCompanyId
+          ? { suggestedNomadsCompanyId: String(suggestedNomadsCompanyId).trim() }
+          : {}),
+        ...(isUpgradeRequest
+          ? {
+              upgradeInviteSentAt: new Date(),
+              upgradeStatus: "payment_link_sent",
+            }
+          : {}),
+        // Cross-references this HostLeadCompany row to the Nomads directory
+        // company it came from, so HostPanel's existing
+        // effectiveNomadsCompanyId resolution automatically pulls the right
+        // Nomad Listings once the invite is completed — see Part E.
+        ...(nomadsCompanyId ? { linkedNomadsCompanyId: nomadsCompanyId } : {}),
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  const invitePayload = {
+    fullName: fullName || name,
+    name: fullName || name,
+    email,
+    // Without this, HostPanel registration has no way to link back to the
+    // lead row upserted above and mints its own companyId on setup —
+    // leaving this row orphaned and creating a second, duplicate company
+    // for the same host (visible in Host Companies with mismatched plans).
+    companyId,
+    leadId: companyId,
+    selectedPlan: normalizedPlan,
+    goals: normalizedPlan,
+    // Same DB-first precedence as normalizedPlan above — the finalize-setup
+    // page needs this to show the annual price/label for a host who paid
+    // annually, instead of always assuming monthly.
+    billingCycle: existingLeadCompany?.billingCycle || existingLeadCompanyByLocation?.billingCycle || "monthly",
+    companyName: companyName || "",
+    businessName: companyName || "",
+    country: country || "",
+    state: state || "",
+    city: city || "",
+    verticalType: normalizedVerticals,
+    businessType: normalizedVerticals,
+  };
 
     const inviteToken = jwt.sign(
       invitePayload,
@@ -2332,19 +2463,34 @@ const sendInviteEmail = async (req, res, next) => {
       { expiresIn: process.env.HOST_INVITE_TOKEN_EXPIRY || "7d" },
     );
 
-    const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
-    const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
-    const totalInvites = await HostLeadCompany.countDocuments({});
-    const requestId = `WN-ACT-${referenceDateStamp()}-${String(
-      totalInvites,
-    ).padStart(5, "0")}`;
-    const signupMail = buildSignupInviteEmail({
-      name,
-      companyName,
-      inviteLink,
-      requestId,
-    });
-    await sendMail({ to: email, ...signupMail });
+  const hostPanelBaseUrl = resolveHostPanelFrontendUrl();
+  const inviteLink = `${hostPanelBaseUrl}/register/${inviteToken}`;
+  const totalInvites = await HostLeadCompany.countDocuments({});
+  const requestId = `WN-ACT-${referenceDateStamp()}-${String(
+    totalInvites,
+  ).padStart(5, "0")}`;
+  const signupMail = buildSignupInviteEmail({
+    name,
+    companyName,
+    inviteLink,
+    requestId,
+    agreementName: agreementDocument?.name,
+  });
+  await sendMail({
+    to: email,
+    ...signupMail,
+    ...(agreementDocument
+      ? {
+          attachments: [
+            {
+              filename: agreementDocument.name,
+              content: agreementBuffer,
+              contentType: agreementMime,
+            },
+          ],
+        }
+      : {}),
+  });
 
     const normalizedEmail = String(email).trim().toLowerCase();
     const hostUser = await HostUser.findOne({
@@ -2376,22 +2522,197 @@ const sendInviteEmail = async (req, res, next) => {
     const shouldKeepHigherStatus =
       docStatus === "registered" || docStatus === "joined";
 
-    await HostInviteStatus.updateOne(
-      { email: normalizedEmail },
-      {
-        $set: {
-          email: normalizedEmail,
-          inviteStatus: shouldKeepHigherStatus ? docStatus : "invite_sent",
-          inviteSentAt:
-            inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
-              ? inviteStatusDoc?.inviteSentAt || new Date()
-              : new Date(),
-        },
+  await HostInviteStatus.updateOne(
+    { email: normalizedEmail },
+    {
+      $set: {
+        email: normalizedEmail,
+        inviteStatus: shouldKeepHigherStatus ? docStatus : "invite_sent",
+        inviteSentAt:
+          inviteStatusDoc?.inviteSentAt || inviteStatusDoc?.joinedAt
+            ? inviteStatusDoc?.inviteSentAt || new Date()
+            : new Date(),
+        lastInviteSentAt: new Date(),
       },
-      { upsert: true },
-    );
+      $inc: { inviteCount: 1 },
+    },
+    { upsert: true },
+  );
+
+  return { inviteLink, companyId };
+};
+
+const sendInviteEmail = async (req, res, next) => {
+  try {
+    const { email, name, status } = req.body;
+
+    if (!email || !name) {
+      return res
+        .status(400)
+        .json({ message: "Lead email and name are required" });
+    }
+
+    if ((status || "").toLowerCase() !== "closed") {
+      return res.status(400).json({
+        message: "Invite can only be sent when the lead is approved (status: closed)",
+      });
+    }
+
+    // Payment gate: Basic is free and skips this entirely (approval alone is
+    // enough). Professional/Custom require a confirmed plan payment first —
+    // inviteUnlockedAt is set by the plan-payment webhook the moment
+    // handlePlanPaymentWebhookEvent applies a paid PlanPaymentLink (see
+    // planPaymentControllers.js), never by the client.
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const lead = await HostLeadCompany.findOne({ pocEmail: normalizedEmail })
+      .sort({ updatedAt: -1 })
+      .lean();
+    const rawPlan = String(lead?.plan || req.body.selectedPlan || req.body.goals || "basic")
+      .trim()
+      .toLowerCase();
+    const normalizedPlan = ["custom", "customise", "customize", "customised", "customized"].includes(rawPlan)
+      ? "custom"
+      : rawPlan === "professional"
+        ? "professional"
+        : "basic";
+
+    if (normalizedPlan !== "basic" && !lead?.inviteUnlockedAt) {
+      return res.status(400).json({
+        message: "Invite can only be sent after the plan payment has been confirmed",
+      });
+    }
+
+    // Multipart bodies (invite sent with an agreement PDF) arrive as strings,
+    // so structured fields come JSON-encoded.
+    const body = { ...req.body };
+    if (typeof body.verticalType === "string") {
+      try {
+        const parsed = JSON.parse(body.verticalType);
+        if (Array.isArray(parsed)) body.verticalType = parsed;
+      } catch {
+        /* plain string value — leave as is */
+      }
+    }
+
+    if (req.file && req.file.mimetype !== "application/pdf") {
+      return res
+        .status(400)
+        .json({ message: "The agreement must be a PDF file" });
+    }
+
+    // The agreement is compulsory: every invite carries one — the saved default
+    // unless a file is uploaded with this request.
+    if (!req.file) {
+      const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+      if (!settings?.agreement?.url) {
+        return res.status(400).json({
+          message: "Attach the agreement before sending an invite.",
+        });
+      }
+    }
+    await createHostInvite({
+      ...body,
+      agreementFile: req.file,
+      useDefaultAgreement: true,
+    });
 
     return res.status(200).json({ message: "Invite email sent successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/host-user/verify-clicks — interest from wono.co listings' "Verify
+// Business" button, relayed from Nomads (which holds the click records).
+const getVerifyBusinessClicks = async (req, res, next) => {
+  try {
+    const base = String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(
+      /\/+$/,
+      "",
+    );
+    const { data } = await axios.get(`${base}/admin/verify-business-clicks`, {
+      headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
+      timeout: 15000,
+    });
+    return res.status(200).json(data);
+  } catch (error) {
+    return res
+      .status(error.response?.status || 502)
+      .json({ message: error.response?.data?.message || "Failed to load click data" });
+  }
+};
+
+// GET /api/host-user/invite-agreement — the saved default agreement, if any.
+const getDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    const settings = await HostInviteSettings.findOne({ key: "default" }).lean();
+    const agreement = settings?.agreement?.url
+      ? {
+          url: settings.agreement.url,
+          name: settings.agreement.name || "Agreement.pdf",
+          updatedAt: settings.agreement.updatedAt || null,
+        }
+      : null;
+    return res.status(200).json({ agreement });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PUT /api/host-user/invite-agreement (multipart "agreement", PDF) — sets or
+// replaces the default. Earlier files are kept in storage: hosts who were
+// invited with them still open their copy from HostPanel.
+const setDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Choose a PDF to upload" });
+    }
+    if (req.file.mimetype !== "application/pdf") {
+      return res.status(400).json({ message: "The agreement must be a PDF file" });
+    }
+    const safeName =
+      String(req.file.originalname || "agreement.pdf")
+        .replace(/[^A-Za-z0-9._-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "agreement.pdf";
+    const uploaded = await uploadFileToS3(
+      `host-agreements/default/${Date.now()}_${safeName}`,
+      req.file,
+    );
+    const settings = await HostInviteSettings.findOneAndUpdate(
+      { key: "default" },
+      {
+        $set: {
+          agreement: {
+            url: uploaded.url,
+            id: uploaded.id,
+            name: safeName,
+            updatedAt: new Date(),
+          },
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    ).lean();
+    return res.status(200).json({
+      message: "Default agreement saved",
+      agreement: {
+        url: settings.agreement.url,
+        name: settings.agreement.name,
+        updatedAt: settings.agreement.updatedAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// DELETE /api/host-user/invite-agreement — stop attaching a default.
+const removeDefaultInviteAgreement = async (req, res, next) => {
+  try {
+    await HostInviteSettings.findOneAndUpdate(
+      { key: "default" },
+      { $set: { agreement: { url: "", id: "", name: "", updatedAt: null } } },
+    );
+    return res.status(200).json({ message: "Default agreement removed" });
   } catch (error) {
     next(error);
   }
@@ -3435,6 +3756,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
       companyName,
       currentPlan,
       selectedPlan,
+      billingCycle,
       paymentLinkUrl,
     } = req.body || {};
 
@@ -3454,6 +3776,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
       companyName,
       currentPlan,
       selectedPlan: String(selectedPlan || "requested").trim(),
+      billingCycle,
       paymentLinkUrl: String(paymentLinkUrl).trim(),
       requestId,
     });
@@ -3473,7 +3796,7 @@ const sendUpgradePaymentLinkEmail = async (req, res, next) => {
 
 const sendUpgradeSuccessEmail = async (req, res, next) => {
   try {
-    const { email, name, companyId, companyName, selectedPlan } =
+    const { email, name, companyId, companyName, selectedPlan, billingCycle } =
       req.body || {};
 
     if (!email || !name) {
@@ -3496,6 +3819,7 @@ const sendUpgradeSuccessEmail = async (req, res, next) => {
       selectedPlan: String(
         selectedPlan || leadCompany?.plan || "requested",
       ).trim(),
+      billingCycle: billingCycle || leadCompany?.billingCycle || "monthly",
       effectiveDate: leadCompany?.paymentConfirmedAt,
       dashboardUrl,
     });
@@ -3788,6 +4112,23 @@ const handleStripeWebhook = async (req, res) => {
               },
             ],
           });
+        } else {
+          // Not a booking/plan_subscription Payment Link (or a redelivery of
+          // an already-paid one, in which case this is a safe no-op) — check
+          // if it's a company-verification payment instead.
+          const isKnownBookingLink = await BookingPaymentLink.exists({
+            stripePaymentLinkId: session.payment_link,
+          });
+          if (!isKnownBookingLink) {
+            const isKnownPlanLink = await PlanPaymentLink.exists({
+              stripePaymentLinkId: session.payment_link,
+            });
+            if (isKnownPlanLink) {
+              await handlePlanPaymentWebhookEvent(session);
+            } else {
+              await handleVerificationPaymentWebhookEvent(session);
+            }
+          }
         }
       } catch (error) {
         console.error(
@@ -3805,6 +4146,10 @@ module.exports = {
   bulkInsertPoc,
   getInviteStatuses,
   getCompanyMembers,
+  getDefaultInviteAgreement,
+  setDefaultInviteAgreement,
+  removeDefaultInviteAgreement,
+  getVerifyBusinessClicks,
   sendInviteEmail,
   updateHostUserAccountStatus,
   updateWorkspaceAccountStatus,
