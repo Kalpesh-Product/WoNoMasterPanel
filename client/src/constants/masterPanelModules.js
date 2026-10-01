@@ -25,6 +25,7 @@ import {
   LuLayoutTemplate,
   LuHandshake,
   LuMousePointerClick,
+  LuTag,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -60,6 +61,13 @@ export const MASTER_PANEL_MODULES = [
             icon: LuUserRound,
             route: "/dashboard/nomad-signup-leads",
           },
+          {
+            id: 30,
+            key: "dashboard.company-verification-leads",
+            title: "Company Verification Leads",
+            icon: LuShieldCheck,
+            route: "/dashboard/company-verification-leads",
+          },
         ],
       },
       {
@@ -72,6 +80,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Companies",
             icon: LuBuilding2,
             route: "/dashboard/companies",
+          },
+          {
+            id: 31,
+            key: "dashboard.companies-verified",
+            title: "Companies Verified",
+            icon: LuShieldCheck,
+            route: "/dashboard/companies-verified",
           },
           {
             id: 24,
@@ -211,6 +226,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Host Companies",
             icon: LuBuilding2,
             route: "/dashboard/host-companies",
+          },
+          {
+            id: 7,
+            key: "hostpanel.plan-pricing",
+            title: "Plan Pricing",
+            icon: LuTag,
+            route: "/dashboard/plan-pricing",
           },
         ],
       },
