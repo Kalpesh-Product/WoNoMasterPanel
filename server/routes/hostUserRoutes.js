@@ -1,10 +1,15 @@
 const router = require("express").Router();
 const verifyJwt = require("../middlewares/verifyJwt");
+const upload = require("../config/multerConfig");
 const {
   bulkInsertPoc,
   getCompanyMembers,
   getInviteStatuses,
   sendInviteEmail,
+  getDefaultInviteAgreement,
+  setDefaultInviteAgreement,
+  removeDefaultInviteAgreement,
+  getVerifyBusinessClicks,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
   sendBookingPaymentLinkEmail,
@@ -19,7 +24,13 @@ const {
 router.post("/bulk-insert-poc", bulkInsertPoc);
 router.get("/invite-statuses", verifyJwt, getInviteStatuses);
 router.get("/company-members", verifyJwt, getCompanyMembers);
-router.post("/send-invite", verifyJwt, sendInviteEmail);
+// The default agreement attached to every invite (upload once, replace when it changes).
+router.get("/verify-clicks", verifyJwt, getVerifyBusinessClicks);
+router.get("/invite-agreement", verifyJwt, getDefaultInviteAgreement);
+router.put("/invite-agreement", verifyJwt, upload.single("agreement"), setDefaultInviteAgreement);
+router.delete("/invite-agreement", verifyJwt, removeDefaultInviteAgreement);
+// Optional "agreement" PDF is attached to the invite email — see createHostInvite.
+router.post("/send-invite", verifyJwt, upload.single("agreement"), sendInviteEmail);
 router.post("/send-upgrade-payment-link-email", verifyJwt, sendUpgradePaymentLinkEmail);
 router.post("/send-upgrade-success-email", verifyJwt, sendUpgradeSuccessEmail);
 router.post("/send-booking-payment-link", verifyJwt, sendBookingPaymentLinkEmail);

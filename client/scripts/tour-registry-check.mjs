@@ -50,6 +50,7 @@ const EXPECTED = [
   { path: "/dashboard/companies", expectedId: "companies-shell" },
   { path: "/dashboard/companies/list", expectedId: "companies-list" },
   { path: "/dashboard/companies/requests", expectedId: "companies-requests" },
+  { path: "/dashboard/companies/claims", expectedId: "companies-claims" },
   { path: "/dashboard/companies/requests/xyz", expectedId: "companies-requests" },
   { path: "/dashboard/companies/add-company", expectedId: "company-forms" },
   { path: "/dashboard/companies/edit-company/xyz", expectedId: "company-forms" },

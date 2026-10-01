@@ -352,9 +352,523 @@ function renderNotificationEmail({
       `;
 }
 
+// Company-verification payment emails (Company Verification Leads page).
+// Mirror buildPlanSubscriptionPaymentEmail / buildPlanSubscriptionConfirmationEmail
+// in hostUserControllers.js — same shell, copy adapted for a verification
+// badge instead of a plan subscription.
+
+const VERIFICATION_CHANGE_TYPE_COPY = {
+  initial: {
+    subject: "Complete Your Verification Payment",
+    heroTitle: "Complete Your Payment",
+    heroLead: "Activate Your",
+    bodyLead: "Your business verification request for",
+    bodyTrail: "has been approved and is ready for payment.",
+  },
+  renewal: {
+    subject: "Renew Your Verification Badge",
+    heroTitle: "Renew Your Verification Badge",
+    heroLead: "Keep Your",
+    bodyLead: "Your business verification badge for",
+    bodyTrail: "is expiring soon.",
+  },
+  upgrade: {
+    subject: "Change Your Verification Plan",
+    heroTitle: "Change Your Verification Plan",
+    heroLead: "Upgrade Your",
+    bodyLead: "You're switching plans for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+  downgrade: {
+    subject: "Change Your Verification Plan",
+    heroTitle: "Change Your Verification Plan",
+    heroLead: "Change Your",
+    bodyLead: "You're switching plans for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+};
+
+const buildVerificationPaymentEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  paymentLinkUrl,
+  amount,
+  changeType = "initial",
+  projectedStart,
+  projectedEnd,
+}) => {
+  const copy = VERIFICATION_CHANGE_TYPE_COPY[changeType] || VERIFICATION_CHANGE_TYPE_COPY.initial;
+  // For a renewal/change-plan started before the current plan has expired,
+  // the new one starts only once the current one runs out — spelling that
+  // out here so paying early never reads as "losing" the time already paid
+  // for.
+  const periodNote =
+    changeType !== "initial" && projectedStart && projectedEnd
+      ? [
+          [
+            "Plan Starts",
+            new Date(projectedStart) > new Date()
+              ? `${formatLongDate(projectedStart)} (after your current plan ends)`
+              : formatLongDate(projectedStart),
+          ],
+          ["Plan Ends", formatLongDate(projectedEnd)],
+        ]
+      : [];
+  return {
+    subject: copy.subject,
+    html: renderNotificationEmail({
+      heroTitle: copy.heroTitle,
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">${copy.heroLead} Verified Badge — ${tierLabel}</span><br/>${copy.bodyTrail}`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">${copy.bodyLead} <b class="email-heading">${companyName}</b> ${copy.bodyTrail}</p>
+      `,
+      detailsTitle: "Payment Summary",
+      detailRows: [
+        ["Company", companyName],
+        ["Plan", tierLabel],
+        ["Amount Due", `$${Number(amount).toFixed(2)} USD`],
+        ...periodNote,
+      ],
+      ctaButton: { href: paymentLinkUrl, label: "Complete Payment" },
+    }),
+  };
+};
+
+// Optional second CTA block appended via bodyHtml — renderNotificationEmail's
+// own ctaButton only supports one button, so a second link (either a
+// Renew/Change-Plan pair or a single Become-a-Host nudge) is built as raw
+// table markup and passed through bodyHtml instead.
+const buildTwoCtaBodyHtml = (buttons) => `
+  <tr><td style="padding:24px 32px 4px;text-align:center;">
+    ${buttons
+      .map(
+        (btn, index) => `<a href="${btn.href}" style="display:inline-block;background:${index === 0 ? "#0BA9EF" : "#ffffff"};color:${index === 0 ? "#ffffff" : "#0BA9EF"};font-weight:600;font-size:14px;text-decoration:none;padding:13px 28px;border-radius:8px;border:1px solid #0BA9EF;margin:0 6px 8px;">${btn.label}</a>`,
+      )
+      .join("")}
+  </td></tr>`;
+
+const buildVerificationConfirmationEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  amount,
+  paidAt,
+  verificationExpiresAt,
+  changeType = "initial",
+  becomeHostUrl,
+  invoiceUrl,
+}) => ({
+  subject: "Verification Payment Successful!",
+  html: renderNotificationEmail({
+    heroTitle: "Payment Successful!",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${companyName} Verified Badge Is ${changeType === "initial" ? "Active" : "Updated"}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">We've received your payment. Your blue verification badge for <b class="email-heading">${companyName}</b> is now live on all your listings.${changeType !== "initial" ? " Any time remaining on your previous plan has been carried over — nothing is lost." : ""}${invoiceUrl ? " Your invoice is attached to this email." : ""}</p>
+      `,
+    detailsTitle: "Payment Summary",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", tierLabel],
+      [
+        "Amount Paid",
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(amount || 0),
+      ],
+      ["Payment Date", formatLongDate(paidAt || new Date())],
+      ["Start Date", formatLongDate(paidAt || new Date())],
+      ["Valid Until", formatLongDate(verificationExpiresAt)],
+    ],
+    ctaButton: invoiceUrl
+      ? { href: invoiceUrl, label: "View Invoice" }
+      : undefined,
+    bodyHtml: becomeHostUrl
+      ? buildTwoCtaBodyHtml([
+          { href: becomeHostUrl, label: "Become a Host — Sign Up Free" },
+        ])
+      : undefined,
+  }),
+});
+
+// Sent by the renewal-reminder cron, 5 days before verificationExpiresAt.
+// Unlike buildVerificationPaymentEmail, this can't link straight to a Stripe
+// Payment Link — the tier hasn't been chosen yet, since the owner might
+// renew the same plan or change it. Both CTAs land on the self-serve
+// "Verification" tab (Part C.1) instead, which creates the actual link.
+const buildVerificationRenewalReminderEmail = ({
+  customerName,
+  companyName,
+  tierLabel,
+  expiresOnLabel,
+  manageUrl,
+}) => ({
+  subject: "Your Verification Badge Is Expiring Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Renew Your Verification Badge",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Expiring ${expiresOnLabel}</span><br/>Renew now to keep your verified badge active.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your <b class="email-heading">${tierLabel}</b> verification badge for <b class="email-heading">${companyName}</b> expires on <b class="email-heading">${expiresOnLabel}</b>. Renew your current plan or switch to a different one below.</p>
+      `,
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: `${manageUrl}&action=change`, label: "Change Plan" },
+    ]),
+  }),
+});
+
+// Sent by the trial-ending cron ~1 month before a free verified-badge period
+// ends (the badge is free for the first 3 months after approval).
+const buildVerificationTrialEndingEmail = ({
+  customerName,
+  companyName,
+  startsOnLabel,
+  expiresOnLabel,
+  daysLeft,
+  manageUrl,
+}) => ({
+  subject: "Your Free Verified Badge Ends in 1 Month",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Verified Badge Ends Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Ends ${expiresOnLabel}</span><br/>Renew to keep your verified badge.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">The free verified badge for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${expiresOnLabel}</b> (${daysLeft} day${daysLeft === 1 ? "" : "s"} left). Renew for 1 month or 1 year to keep it live on your listings without a break.</p>
+      `,
+    detailsTitle: "Your Verified Badge",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", "Free · 3 months"],
+      ["Started", startsOnLabel],
+      ["Ends", expiresOnLabel],
+    ],
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: manageUrl, label: "View Details" },
+    ]),
+  }),
+});
+
+// Sent by the expiry-day cron, once verificationExpiresAt has passed and the
+// badge has actually lapsed (distinct from the 5-day-before reminder above).
+const buildVerificationExpiredEmail = ({ customerName, companyName, manageUrl }) => ({
+  subject: "Your Verification Badge Has Expired",
+  html: renderNotificationEmail({
+    heroTitle: "Your Verification Badge Has Expired",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is no longer verified</span><br/>Renew now to restore your badge.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your verification badge for <b class="email-heading">${companyName}</b> has expired and is no longer shown on your listings. Renew your plan or switch to a different one to restore it.</p>
+      `,
+    bodyHtml: buildTwoCtaBodyHtml([
+      { href: `${manageUrl}&action=renew`, label: "Renew Now" },
+      { href: `${manageUrl}&action=change`, label: "Change Plan" },
+    ]),
+  }),
+});
+
+// Host core-plan billing emails (Signup Leads / Upgrade Plan / Plan &
+// Billing). Same shell as the verification-payment emails above, copy
+// adapted for a Professional/Custom plan subscription instead of a
+// verification badge.
+
+const PLAN_CHANGE_TYPE_COPY = {
+  initial: {
+    subject: "Complete Your Plan Payment",
+    heroTitle: "Complete Your Payment",
+    heroLead: "Activate Your",
+    bodyLead: "Your signup for",
+    bodyTrail: "has been approved and is ready for payment.",
+  },
+  renewal: {
+    subject: "Renew Your WONO Plan",
+    heroTitle: "Renew Your Plan",
+    heroLead: "Keep Your",
+    bodyLead: "Your plan for",
+    bodyTrail: "is renewing this month.",
+  },
+  upgrade: {
+    subject: "Complete Your Plan Upgrade",
+    heroTitle: "Complete Your Plan Upgrade",
+    heroLead: "Upgrade Your",
+    bodyLead: "You're upgrading the plan for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+  downgrade: {
+    subject: "Confirm Your Plan Change",
+    heroTitle: "Confirm Your Plan Change",
+    heroLead: "Change Your",
+    bodyLead: "You're switching plans for",
+    bodyTrail: "— complete payment to apply the new plan.",
+  },
+};
+
+const formatUsdMonthly = (value) => `$${Number(value || 0).toFixed(2)} USD / month`;
+const formatUsd = (value) => `$${Number(value || 0).toFixed(2)}`;
+
+// A real 4-column table (Module / Price / Discount / Final) for a Custom
+// plan's per-module breakdown — every listed price, the discount staff gave
+// that specific line (if any), the overall discount, and a final total that
+// always equals customPricingBreakdown.totalMonthlyPriceUsd, i.e. exactly the
+// Amount Due / Amount Paid figure shown above it. Returns "" when this isn't
+// a Custom plan (nothing to break down).
+const buildCustomPlanBreakdownTableHtml = (customPricingBreakdown, finalLabel = "Final Monthly Amount") => {
+  const lineItems = Array.isArray(customPricingBreakdown?.lineItems)
+    ? customPricingBreakdown.lineItems
+    : [];
+  if (!customPricingBreakdown || !lineItems.length) return "";
+
+  const moduleRow = (label, price, discount, final) => `
+    <tr>
+      <td style="padding:7px 6px;border-top:1px solid #eef2f8;">${label}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;">${price}</td>
+      <td style="padding:7px 6px;text-align:right;color:#059669;border-top:1px solid #eef2f8;">${discount}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;">${final}</td>
+    </tr>`;
+
+  const summaryRow = (label, value, bold = false) => `
+    <tr>
+      <td colspan="3" style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;${bold ? "font-weight:700;" : ""}">${label}</td>
+      <td style="padding:7px 6px;text-align:right;border-top:1px solid #eef2f8;${bold ? "font-weight:700;" : ""}">${value}</td>
+    </tr>`;
+
+  const headerCell = (label, alignRight) => `
+    <td style="padding:0 6px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:#8a93a3;${alignRight ? "text-align:right;" : ""}">${label}</td>`;
+
+  const subtotalUsd = customPricingBreakdown.subtotalBeforeOverallDiscountUsd ?? customPricingBreakdown.totalMonthlyPriceUsd;
+  const overallDiscountUsd = Number(customPricingBreakdown.overallDiscountUsd || 0);
+
+  const itemRowsHtml = lineItems
+    .map((item) => {
+      const effectivePriceUsd = item.effectivePriceUsd ?? item.priceUsd;
+      const discountUsd = Number(item.discountUsd || 0);
+      return moduleRow(
+        `${item.label || item.itemId}${item.itemType === "department" ? " Bundle" : ""}`,
+        formatUsd(item.priceUsd),
+        discountUsd > 0 ? `-${formatUsd(discountUsd)}` : "—",
+        formatUsd(effectivePriceUsd),
+      );
+    })
+    .join("");
+
+  return `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:12px;color:#344054;">
+      <tr>
+        ${headerCell("Module")}
+        ${headerCell("Price", true)}
+        ${headerCell("Discount", true)}
+        ${headerCell("Final", true)}
+      </tr>
+      ${moduleRow("Professional Base", formatUsd(customPricingBreakdown.basePriceUsd), "—", formatUsd(customPricingBreakdown.basePriceUsd))}
+      ${itemRowsHtml}
+      ${summaryRow("Subtotal", formatUsd(subtotalUsd))}
+      ${overallDiscountUsd > 0 ? summaryRow("Overall Discount", `-${formatUsd(overallDiscountUsd)}`) : ""}
+      ${summaryRow(finalLabel, formatUsd(customPricingBreakdown.totalMonthlyPriceUsd), true)}
+    </table>`;
+};
+
+const buildPlanPaymentEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  paymentLinkUrl,
+  amount,
+  changeType = "initial",
+  billingCycle = "monthly",
+  projectedStart,
+  projectedEnd,
+  customPricingBreakdown,
+}) => {
+  const copy = PLAN_CHANGE_TYPE_COPY[changeType] || PLAN_CHANGE_TYPE_COPY.initial;
+  const amountLabel =
+    String(billingCycle || "").toLowerCase() === "annual"
+      ? `$${Number(amount).toFixed(2)} USD / year`
+      : `$${Number(amount).toFixed(2)} USD / month`;
+  return {
+    subject: copy.subject,
+    html: renderNotificationEmail({
+      heroTitle: copy.heroTitle,
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">${copy.heroLead} ${planLabel}</span><br/>${copy.bodyTrail}`,
+      greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">${copy.bodyLead} <b class="email-heading">${companyName}</b> ${copy.bodyTrail}</p>
+      `,
+      detailsTitle: "Payment Summary",
+      detailRows: [
+        ["Company", companyName],
+        ["Plan", planLabel],
+        [
+          "Billing Cycle",
+          String(billingCycle || "").toLowerCase() === "annual"
+            ? "Annual"
+            : "Monthly",
+        ],
+        ...(projectedStart && projectedEnd
+          ? [
+              ["Cycle Starts", formatLongDate(projectedStart)],
+              ["Cycle Ends", formatLongDate(projectedEnd)],
+            ]
+          : []),
+        ["Amount Due", amountLabel],
+      ],
+      noteTitle: customPricingBreakdown ? "Module Breakdown" : undefined,
+      noteHtml: customPricingBreakdown
+        ? buildCustomPlanBreakdownTableHtml(customPricingBreakdown, "Final Monthly Amount")
+        : undefined,
+      ctaButton: { href: paymentLinkUrl, label: "Complete Payment" },
+    }),
+  };
+};
+
+const buildPlanPaymentConfirmationEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  amount,
+  paidAt,
+  periodEnd,
+  changeType = "initial",
+  invoiceUrl,
+  customPricingBreakdown,
+}) => ({
+  subject: "Plan Payment Successful!",
+  html: renderNotificationEmail({
+    heroTitle: "Payment Successful!",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName}'s ${planLabel} Is ${changeType === "initial" ? "Active" : "Updated"}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">We've received your payment. The ${planLabel} for <b class="email-heading">${companyName}</b> is now active.${invoiceUrl ? " Your invoice is attached to this email." : ""}</p>
+      `,
+    detailsTitle: "Payment Summary",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", planLabel],
+      ["Payment Date", formatLongDate(paidAt || new Date())],
+      ["Renews On", formatLongDate(periodEnd)],
+      [
+        "Amount Paid",
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(
+          amount || 0,
+        ),
+      ],
+    ],
+    noteTitle: customPricingBreakdown ? "Module Breakdown" : undefined,
+    noteHtml: customPricingBreakdown
+      ? buildCustomPlanBreakdownTableHtml(customPricingBreakdown, "Amount Paid")
+      : undefined,
+    ctaButton: invoiceUrl ? { href: invoiceUrl, label: "View Invoice" } : undefined,
+  }),
+});
+
+// Sent once, the moment a Professional/Custom plan's very first payment is
+// confirmed (changeType === "initial") — distinct from the payment
+// confirmation above so hosts get one clear "your plan has started" email in
+// addition to the receipt.
+const buildPlanStartedEmail = ({ customerName, companyName, planLabel, startDate }) => ({
+  subject: `Your ${planLabel} Has Started`,
+  html: renderNotificationEmail({
+    heroTitle: "Your Plan Has Started",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the ${planLabel}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your <b class="email-heading">${planLabel}</b> for <b class="email-heading">${companyName}</b> started on <b class="email-heading">${formatLongDate(startDate)}</b>. You now have access to everything included in this plan.</p>
+      `,
+  }),
+});
+
+// Sent by the plan-expiry-reminder cron, 5 days before planExpiryDate.
+const buildPlanExpiryReminderEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  expiryDate,
+  modulesAtRisk = [],
+}) => ({
+  subject: "Your WONO Plan Is Expiring Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Your Plan Is Expiring Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Expiring ${formatLongDate(expiryDate)}</span><br/>Renew now to avoid losing access.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your <b class="email-heading">${planLabel}</b> for <b class="email-heading">${companyName}</b> expires on <b class="email-heading">${formatLongDate(expiryDate)}</b>. If it isn't renewed by then, your workspace will be downgraded to the Basic plan${modulesAtRisk.length ? ` and you'll lose access to: <b class="email-heading">${modulesAtRisk.join(", ")}</b>` : ""}. Your data is never deleted — renewing restores access immediately.</p>
+      `,
+  }),
+});
+
+// Sent by the downgrade cron, once planExpiryDate has passed with no renewal.
+const buildPlanDowngradedEmail = ({
+  customerName,
+  companyName,
+  previousPlanLabel,
+  modulesLost = [],
+}) => ({
+  subject: "Your WONO Plan Has Been Downgraded",
+  html: renderNotificationEmail({
+    heroTitle: "Your Plan Has Been Downgraded",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the Basic plan</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your ${previousPlanLabel} for <b class="email-heading">${companyName}</b> expired without renewal, so your workspace has been moved to the Basic plan${modulesLost.length ? ` and you've lost access to: <b class="email-heading">${modulesLost.join(", ")}</b>` : ""}. Nothing has been deleted — renew anytime to restore full access.</p>
+      `,
+  }),
+});
+
+// Sent by the plan-expiry-reminder cron, 5 days before a TRIAL's
+// planExpiryDate (workspace.isTrialing true) — same trigger as
+// buildPlanExpiryReminderEmail, just trial-specific copy since nothing was
+// ever paid for here.
+const buildTrialExpiryReminderEmail = ({
+  customerName,
+  companyName,
+  expiryDate,
+  modulesAtRisk = [],
+}) => ({
+  subject: "Your WONO Free Trial Is Ending Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Is Ending Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Ends ${formatLongDate(expiryDate)}</span><br/>Renew now to keep everything you've set up.`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your free trial of the Professional plan for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${formatLongDate(expiryDate)}</b>. If you don't renew by then, your workspace will move to the Basic plan${modulesAtRisk.length ? ` and you'll lose access to: <b class="email-heading">${modulesAtRisk.join(", ")}</b>` : ""}. Your data is never deleted — renewing restores full access immediately.</p>
+      `,
+  }),
+});
+
+// Sent by the downgrade cron once a TRIAL's planExpiryDate has passed with no
+// renewal — same trigger as buildPlanDowngradedEmail, trial-specific copy.
+const buildTrialEndedEmail = ({ customerName, companyName, modulesLost = [] }) => ({
+  subject: "Your WONO Free Trial Has Ended",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Has Ended",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the Basic plan</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your free trial of the Professional plan for <b class="email-heading">${companyName}</b> has ended, so your workspace has moved to the Basic plan${modulesLost.length ? ` and you've lost access to: <b class="email-heading">${modulesLost.join(", ")}</b>` : ""}. Nothing has been deleted — upgrade anytime to restore full access.</p>
+      `,
+  }),
+});
+
 module.exports = emailTemplates;
 module.exports.toDMY = toDMY;
 module.exports.referenceDateStamp = referenceDateStamp;
 module.exports.formatSubmittedOn = formatSubmittedOn;
 module.exports.formatLongDate = formatLongDate;
 module.exports.renderNotificationEmail = renderNotificationEmail;
+module.exports.buildVerificationPaymentEmail = buildVerificationPaymentEmail;
+module.exports.buildVerificationConfirmationEmail =
+  buildVerificationConfirmationEmail;
+module.exports.buildVerificationRenewalReminderEmail =
+  buildVerificationRenewalReminderEmail;
+module.exports.buildVerificationExpiredEmail = buildVerificationExpiredEmail;
+module.exports.buildVerificationTrialEndingEmail = buildVerificationTrialEndingEmail;
+module.exports.buildPlanPaymentEmail = buildPlanPaymentEmail;
+module.exports.buildPlanPaymentConfirmationEmail = buildPlanPaymentConfirmationEmail;
+module.exports.buildPlanStartedEmail = buildPlanStartedEmail;
+module.exports.buildPlanExpiryReminderEmail = buildPlanExpiryReminderEmail;
+module.exports.buildPlanDowngradedEmail = buildPlanDowngradedEmail;
+module.exports.buildTrialExpiryReminderEmail = buildTrialExpiryReminderEmail;
+module.exports.buildTrialEndedEmail = buildTrialEndedEmail;

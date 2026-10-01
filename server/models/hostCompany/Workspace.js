@@ -43,6 +43,66 @@ const workspaceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Plan billing lifecycle fields, mirrored from HostPanel's real Workspace
+    // schema (server/models/Workspace.ts) so master panel's cron/webhook
+    // writes actually persist on the shared collection — Mongoose only
+    // writes fields declared in the schema doing the write.
+    purchasedPlan: {
+      type: String,
+      enum: ["basic", "professional", "custom", null],
+      default: null,
+    },
+    planStatus: {
+      type: String,
+      enum: ["none", "active", "expiring_soon", "expired_downgraded"],
+      default: "none",
+    },
+    planStartDate: {
+      type: Date,
+      default: null,
+    },
+    planExpiryDate: {
+      type: Date,
+      default: null,
+    },
+    planLastPaidAt: {
+      type: Date,
+      default: null,
+    },
+    // The billing cycle the current plan is on: monthly (renew every month
+    // at the monthly rate) or annual (paid upfront for a 12-month period at
+    // the discounted monthly-equivalent rate × 12).
+    billingCycle: {
+      type: String,
+      enum: ["monthly", "annual"],
+      default: "monthly",
+    },
+    planExpiryWarningSentAt: {
+      type: Date,
+      default: null,
+    },
+    // True while this workspace's current Professional plan is an active
+    // free trial (started via hostCompanyControllers.startTrial) rather than
+    // a paid subscription. The expiry reminder/downgrade cron jobs branch on
+    // this to pick trial-flavored email copy and to reset the company-level
+    // trial flags on downgrade; they otherwise treat a trialing workspace
+    // exactly like any other active Professional plan.
+    isTrialing: {
+      type: Boolean,
+      default: false,
+    },
+    preDowngradeEnabledModuleIds: {
+      type: [String],
+      default: [],
+    },
+    customPlanModuleIds: {
+      type: [String],
+      default: [],
+    },
+    customPlanMonthlyPriceUsd: {
+      type: Number,
+      default: null,
+    },
     isActive: {
       type: Boolean,
       default: true,

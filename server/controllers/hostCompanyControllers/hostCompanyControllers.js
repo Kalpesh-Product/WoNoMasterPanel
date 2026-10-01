@@ -19,6 +19,8 @@ const {
   patchNomadListingsCache,
   fetchAllNomadListings,
 } = require("../hostListingControllers");
+const { getDefaultEnabledModuleIdsForPlan } = require("../../config/hostWorkspaceModuleCatalog");
+const { getFreeTrialConfig } = require("../../services/modulePricingService");
 
 const serviceOptions = [
   {
@@ -42,6 +44,36 @@ const serviceOptions = [
 const validApps = new Set(serviceOptions[0].items);
 const validModules = new Set(serviceOptions[1].items);
 const validDefaults = new Set(serviceOptions[2].items);
+
+// Nomads backend for the claim flow. NOMADS_BASE_URL (already used by the lead
+// controllers) is e.g. "http://localhost:3000/api"; falls back to local dev.
+const nomadsCompanyApi = () =>
+  `${String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(/\/+$/, "")}/company`;
+
+const reviewerName = (req) =>
+  String(
+    req.userData?.name || req.userData?.email || req.userData?._id || req.user?._id || "",
+  );
+
+// Plain copy of the current claim, appended to the history when it is
+// approved or rejected.
+const snapshotClaim = (claim) => ({
+  status: claim.status,
+  nomadsCompanyId: claim.nomadsCompanyId,
+  nomadsCompanyName: claim.nomadsCompanyName,
+  listingCount: claim.listingCount,
+  fullName: claim.fullName,
+  email: claim.email,
+  mobile: claim.mobile,
+  role: claim.role,
+  registeredCompanyName: claim.registeredCompanyName,
+  documents: (claim.documents || []).map((d) => ({ label: d.label, url: d.url, id: d.id })),
+  requestedAt: claim.requestedAt,
+  reviewedAt: claim.reviewedAt,
+  reviewedBy: claim.reviewedBy,
+  rejectionReason: claim.rejectionReason,
+});
+
 const escapeRegex = (value = "") =>
   String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const normalizeListingType = (value) =>
@@ -866,7 +898,9 @@ const getHostLeadCompanies = async (req, res, next) => {
     // true, otherwise the host gets told they're upgraded while still
     // seeing their old plan (exactly today's duplicate-lead-record bug).
     const allWorkspaces = await Workspace.find({ isActive: true })
-      .select("_id companyId businessName selectedPlan")
+      .select(
+        "_id companyId businessName selectedPlan purchasedPlan planStatus planStartDate planExpiryDate",
+      )
       .lean();
     const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
       .select("searchKey companyId companyName isActive isPublished")
@@ -942,6 +976,9 @@ const getHostLeadCompanies = async (req, res, next) => {
           workspaceSelectedPlan === requestedPlan,
         isWebsiteTemplate: Boolean(matchedTemplate),
         websiteTemplate: matchedTemplate || null,
+        planStatus: matchedWorkspace?.planStatus || null,
+        planStartDate: matchedWorkspace?.planStartDate || null,
+        planExpiryDate: matchedWorkspace?.planExpiryDate || null,
       };
     });
 
@@ -993,7 +1030,7 @@ const sendUpgradePaymentLink = async (req, res, next) => {
 
 const requestUpgradePlan = async (req, res, next) => {
   try {
-    const { companyId, requestedPlan } = req.body || {};
+    const { companyId, requestedPlan, customModuleIds, billingCycle } = req.body || {};
 
     if (!companyId) {
       return res.status(400).json({ message: "companyId is required" });
@@ -1002,6 +1039,10 @@ const requestUpgradePlan = async (req, res, next) => {
     if (!requestedPlan || !String(requestedPlan).trim()) {
       return res.status(400).json({ message: "requestedPlan is required" });
     }
+
+    const normalizedRequestedPlan = String(requestedPlan).trim().toLowerCase();
+    const normalizedBillingCycle =
+      String(billingCycle || "").trim().toLowerCase() === "annual" ? "annual" : "monthly";
 
     // A new upgrade request starts a fresh review cycle on this row — reset
     // the previous cycle's payment-link/paid/upgraded tracking so the
@@ -1013,13 +1054,22 @@ const requestUpgradePlan = async (req, res, next) => {
       { companyId: String(companyId).trim() },
       {
         $set: {
-          requestedPlan: String(requestedPlan).trim().toLowerCase(),
+          requestedPlan: normalizedRequestedPlan,
+          billingCycle: normalizedBillingCycle,
           paymentLinkUrl: "",
           paymentLinkSentAt: null,
           paymentStatus: false,
           paymentConfirmedAt: null,
           upgradeSuccessSentAt: null,
           upgradeStatus: "requested",
+          // The host's own module picks from HostPanel's Custom-plan
+          // selection modal, when this is a Custom request — staff see
+          // these pre-filled (and can still adjust) on the Upgrade Plan
+          // page before sending the payment link. Left untouched for a
+          // Professional request (no module selection involved).
+          ...(normalizedRequestedPlan === "custom" && Array.isArray(customModuleIds)
+            ? { customPlanModuleIds: customModuleIds }
+            : {}),
         },
       },
       { new: true },
@@ -1031,6 +1081,259 @@ const requestUpgradePlan = async (req, res, next) => {
 
     return res.status(200).json({
       message: "Requested upgrade plan saved successfully",
+      company,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/start-trial  { companyId }
+// Self-serve — unlike requestUpgradePlan, no staff review/payment link is
+// involved, since a trial isn't a purchase. Bumps EVERY workspace under this
+// companyId (a company can own more than one) straight to an active
+// Professional plan, marked isTrialing so the existing expiry
+// reminder/downgrade cron jobs (planExpiryReminders.js/planExpiryDowngrade.js)
+// pick it up automatically — they already key off planStatus/planExpiryDate
+// and don't care why those were set. hasUsedTrial is permanent: once true it
+// never resets, even after the trial ends, so a company gets exactly one
+// trial ever regardless of how many times the master toggle is flipped.
+const startTrial = async (req, res, next) => {
+  try {
+    const { companyId, companyName } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    const normalizedCompanyId = String(companyId).trim();
+
+    const { freeTrialEnabled, freeTrialDurationDays } = await getFreeTrialConfig();
+    if (!freeTrialEnabled) {
+      return res.status(403).json({ message: "The free trial offer is not currently active." });
+    }
+
+    // A workspace created directly (skipping the signup-lead/invite pipeline
+    // — common for locally/manually-created test or edge-case accounts) has
+    // no HostLeadCompany row at all. The trial is self-serve, so create one
+    // on the fly instead of blocking it the way the staff-mediated
+    // requestUpgradePlan does — companyName comes from HostPanel's own
+    // Workspace.businessName when this row doesn't exist yet.
+    const leadCompany = await HostLeadCompany.findOneAndUpdate(
+      { companyId: normalizedCompanyId },
+      { $setOnInsert: { companyId: normalizedCompanyId, companyName: companyName || normalizedCompanyId } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    if (leadCompany.hasUsedTrial) {
+      return res.status(409).json({ message: "This company has already used its free trial." });
+    }
+
+    const now = new Date();
+    const trialEndAt = new Date(now.getTime() + freeTrialDurationDays * 24 * 60 * 60 * 1000);
+
+    leadCompany.trialStartAt = now;
+    leadCompany.trialEndAt = trialEndAt;
+    leadCompany.isTrialActive = true;
+    leadCompany.hasUsedTrial = true;
+    leadCompany.subscriptionStatus = "trialing";
+    await leadCompany.save();
+
+    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
+    await Workspace.updateMany(
+      { companyId: normalizedCompanyId },
+      {
+        $set: {
+          selectedPlan: "professional",
+          planStatus: "active",
+          planStartDate: now,
+          planExpiryDate: trialEndAt,
+          planExpiryWarningSentAt: null,
+          isTrialing: true,
+          enabledModuleIds: professionalModuleIds,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      message: "Free trial started",
+      trialStartAt: now,
+      trialEndAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/hosts/trial-companies — every company that has ever started the
+// free trial (trialStartAt set), for the Plan Pricing page's "who's on
+// trial" view. Not the full company list — only ones with trial history.
+const getTrialCompanies = async (req, res, next) => {
+  try {
+    const companies = await HostLeadCompany.find({ trialStartAt: { $ne: null } })
+      .select(
+        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer",
+      )
+      .sort({ isTrialActive: -1, trialEndAt: -1 })
+      .lean();
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/trial-companies/:companyId/bonus-offer  { active, durationDays }
+// Staff grants (or revokes) a one-off extra trial window for a SPECIFIC
+// company — separate from the normal one-time freeTrialEnabled/hasUsedTrial
+// flow above, so it still works after hasUsedTrial is already permanently
+// true. Turning it on only makes it show up as a claimable offer on that
+// company's own dashboard (see claimBonusTrial below) — it's never applied
+// automatically.
+const setBonusTrialOffer = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { active, durationDays } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+
+    const resolvedDurationDays = Number(durationDays);
+    if (active && (!Number.isFinite(resolvedDurationDays) || resolvedDurationDays <= 0)) {
+      return res.status(400).json({ message: "durationDays must be a positive number" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          "bonusTrialOffer.active": Boolean(active),
+          "bonusTrialOffer.durationDays": resolvedDurationDays > 0 ? resolvedDurationDays : 30,
+          "bonusTrialOffer.setAt": new Date(),
+          "bonusTrialOffer.setByEmail": req.user?.email || "",
+          // Re-activating clears any earlier claim so it can be claimed again.
+          ...(active ? { "bonusTrialOffer.claimedAt": null } : {}),
+        },
+      },
+      { new: true },
+    );
+    if (!company) return res.status(404).json({ message: "Host lead company not found" });
+
+    return res.status(200).json({ message: "Bonus trial offer updated", company });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/claim-bonus-trial  { companyId }
+// Self-serve, hit from HostPanel once the host sees the offer on their own
+// dashboard. Only works while staff has bonusTrialOffer.active === true and
+// it hasn't been claimed yet. Extends from the current trialEndAt when the
+// trial is still running, or starts fresh from now if it already ended —
+// either way the company ends up on an active Professional trial for
+// durationDays more, same shape of update as startTrial above.
+const claimBonusTrial = async (req, res, next) => {
+  try {
+    const { companyId } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+    const normalizedCompanyId = String(companyId).trim();
+
+    const leadCompany = await HostLeadCompany.findOne({ companyId: normalizedCompanyId });
+    if (!leadCompany) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+    if (!leadCompany.bonusTrialOffer?.active || leadCompany.bonusTrialOffer?.claimedAt) {
+      return res.status(409).json({ message: "No bonus trial offer is available for this company." });
+    }
+
+    // Never let a bonus trial (a courtesy extension) overwrite a real paid
+    // subscription's planExpiryDate/isTrialing — that would let the
+    // downgrade cron later "expire" a paying customer as if it were a
+    // trial. Only companies currently on Basic, or already trialing, are
+    // eligible; a genuinely paid Professional/Custom workspace is not.
+    const hasActivePaidWorkspace = await Workspace.exists({
+      companyId: normalizedCompanyId,
+      selectedPlan: { $in: ["professional", "custom"] },
+      isTrialing: { $ne: true },
+      planStatus: "active",
+    });
+    if (hasActivePaidWorkspace) {
+      return res
+        .status(409)
+        .json({ message: "This company already has an active paid plan — the bonus trial doesn't apply." });
+    }
+
+    const durationDays = Number(leadCompany.bonusTrialOffer.durationDays) || 30;
+    const now = new Date();
+    const base =
+      leadCompany.isTrialActive && leadCompany.trialEndAt && new Date(leadCompany.trialEndAt) > now
+        ? new Date(leadCompany.trialEndAt)
+        : now;
+    const trialEndAt = new Date(base.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+    leadCompany.trialStartAt = leadCompany.trialStartAt || now;
+    leadCompany.trialEndAt = trialEndAt;
+    leadCompany.isTrialActive = true;
+    leadCompany.hasUsedTrial = true;
+    leadCompany.subscriptionStatus = "trialing";
+    leadCompany.bonusTrialOffer.active = false;
+    leadCompany.bonusTrialOffer.claimedAt = now;
+    await leadCompany.save();
+
+    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
+    await Workspace.updateMany(
+      { companyId: normalizedCompanyId },
+      {
+        $set: {
+          selectedPlan: "professional",
+          planStatus: "active",
+          planExpiryDate: trialEndAt,
+          planExpiryWarningSentAt: null,
+          isTrialing: true,
+          enabledModuleIds: professionalModuleIds,
+        },
+      },
+    );
+
+    return res.status(200).json({
+      message: "Bonus trial claimed",
+      trialEndAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/host-companies/:companyId/custom-plan-modules
+// Lets staff remove modules from a Custom plan request the host submitted
+// (e.g. if the host over-selected) without restarting the whole review
+// cycle the way requestUpgradePlan does. Any already-sent payment link is
+// invalidated since removing a module changes the price — staff must send
+// a fresh one for the updated selection.
+const updateRequestedPlanModules = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { customModuleIds } = req.body || {};
+
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    if (!Array.isArray(customModuleIds)) {
+      return res.status(400).json({ message: "customModuleIds must be an array" });
+    }
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      {
+        $set: {
+          customPlanModuleIds: customModuleIds,
+          paymentLinkUrl: "",
+          paymentLinkSentAt: null,
+        },
+      },
+      { new: true },
+    );
+
+    if (!company) {
+      return res.status(404).json({ message: "Host lead company not found" });
+    }
+
+    return res.status(200).json({
+      message: "Requested modules updated successfully",
       company,
     });
   } catch (error) {
@@ -1672,6 +1975,102 @@ const bulkInsertLogos = async (req, res, next) => {
   }
 };
 
+// Listing product type (as stored on Nomads' Company) -> the industry label the
+// verification request uses.
+const CLAIM_TYPE_TO_INDUSTRY = {
+  coworking: "Co-working",
+  coliving: "Co-living",
+  hostel: "Hostel",
+  workation: "Workation",
+  meetingroom: "Meetings",
+  cafe: "Cafe",
+};
+
+// An "existing listings" request also carries the verified badge, so the ONE
+// approval (Transfer) links the listings AND turns the badge on. This creates
+// the company's verification request from the claim (contact + the documents
+// the host already gave at onboarding) and approves it, which — for a HostPanel
+// request — starts the free 3-month period on Nomads' side and lists the
+// company under Companies Verified. Returns { activated, reason? }.
+const activateVerifiedBadgeForClaim = async ({
+  claim,
+  sourceCompany,
+  hostLeadCompany,
+  nomadsCompanyId,
+  listings,
+}) => {
+  const base = String(process.env.NOMADS_BASE_URL || "http://localhost:3000/api").replace(
+    /\/+$/,
+    "",
+  );
+  const client = axios.create({
+    baseURL: `${base}/admin/verification-requests`,
+    headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY },
+    timeout: 15000,
+  });
+
+  let request = (await client.get("/", { params: { companyId: nomadsCompanyId } })).data
+    ?.data?.[0];
+
+  if (!request) {
+    const proofDocuments = (claim.documents || [])
+      .filter((doc) => doc?.url)
+      .map(({ label, url, id }) => ({ label, url, id }));
+    if (!proofDocuments.length) {
+      return {
+        activated: false,
+        reason:
+          "the request had no documents, so the verified badge wasn't activated — do it from Company Verification Leads.",
+      };
+    }
+    const industry = [
+      ...new Set(
+        listings.map((l) => CLAIM_TYPE_TO_INDUSTRY[l.companyType]).filter(Boolean),
+      ),
+    ];
+    if (!industry.length) {
+      return {
+        activated: false,
+        reason:
+          "no listing types were found, so the verified badge wasn't activated — do it from Company Verification Leads.",
+      };
+    }
+    const country =
+      hostLeadCompany.companyCountry || sourceCompany.companyCountry || "-";
+    const created = await client.post("/", {
+      companyId: nomadsCompanyId,
+      companyName: sourceCompany.companyName,
+      businessName: sourceCompany.companyName,
+      verticalsSnapshot: listings.map((l) => ({
+        businessId: l.businessId,
+        companyType: l.companyType,
+        city: l.city,
+      })),
+      fullName: claim.fullName,
+      email: claim.email,
+      mobile: claim.mobile,
+      role: claim.role,
+      country,
+      industry,
+      registeredCompanyName: claim.registeredCompanyName || sourceCompany.companyName,
+      companyCountry: country,
+      companyState: hostLeadCompany.companyState || sourceCompany.companyState || "-",
+      companyCity: hostLeadCompany.companyCity || sourceCompany.companyCity || "-",
+      continent:
+        sourceCompany.companyContinent || hostLeadCompany.companyContinent || "Other",
+      websiteUrl: hostLeadCompany.websiteLink || "",
+      requestedTier: "1m",
+      proofDocuments,
+    });
+    request = created.data?.data;
+  }
+
+  if (request?.status !== "approved") {
+    await client.patch(`/${request._id}/status`, { status: "approved" });
+  }
+  return { activated: true };
+};
+
 // Links ALL of a Nomads company's listings to a staff-selected Host Company —
 // a reference only, no data is duplicated into our own DB.
 const transferNomadListing = async (req, res, next) => {
@@ -1701,11 +2100,169 @@ const transferNomadListing = async (req, res, next) => {
       return res.status(404).json({ message: "Host company not found" });
     }
 
-    hostLeadCompany.linkedNomadsCompanyId = String(nomadsCompanyId).trim();
+    const normalizedNomadsCompanyId = String(nomadsCompanyId).trim();
+
+    // A Nomads company can only belong to one host account.
+    const linkedElsewhere = await HostLeadCompany.exists({
+      linkedNomadsCompanyId: normalizedNomadsCompanyId,
+      companyId: { $ne: hostLeadCompany.companyId },
+    });
+    if (linkedElsewhere) {
+      return res.status(409).json({
+        message: "This company is already linked to another host account.",
+      });
+    }
+
+    const NOMADS_COMPANY_API = nomadsCompanyApi();
+
+    const fetchNomadListings = async (companyId) => {
+      try {
+        const response = await axios.get(
+          `${NOMADS_COMPANY_API}/get-listings/${encodeURIComponent(companyId)}`,
+        );
+        return (Array.isArray(response.data) ? response.data : []).filter(
+          (l) => l?.businessId && !l?.isDeleted,
+        );
+      } catch (error) {
+        if (error?.response?.status === 404) return [];
+        throw error;
+      }
+    };
+
+    // Who owned what before the merge: the host's own listings already went
+    // through staff approval (they hold the host's plan slots), so they keep
+    // their enabled slot first when the plan can't hold everything.
+    let ownListings = [];
+    try {
+      ownListings = await fetchNomadListings(hostLeadCompany.companyId);
+    } catch (error) {
+      return res.status(502).json({
+        message: "Couldn't read the company's listings to transfer. Please try again.",
+      });
+    }
+
+    // Fold the listings the host had already added under their own companyId
+    // into the linked company, so host + transferred listings sit under one
+    // companyId (listings, ownership checks and leads all key off it).
+    try {
+      await axios.patch(
+        `${NOMADS_COMPANY_API}/reassign-listings`,
+        {
+          fromCompanyId: hostLeadCompany.companyId,
+          toCompanyId: normalizedNomadsCompanyId,
+        },
+        { headers: { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY } },
+      );
+    } catch (error) {
+      return res.status(502).json({
+        message:
+          error?.response?.data?.message ||
+          "Couldn't merge the host's own listings into the company. Nothing was linked; please try again.",
+      });
+    }
+
+    hostLeadCompany.linkedNomadsCompanyId = normalizedNomadsCompanyId;
+    // Copy what the badge step needs BEFORE the claim's status flips below.
+    const claimWasPending = hostLeadCompany.existingCompanyClaim?.status === "pending";
+    const claimForBadge = claimWasPending
+      ? {
+          fullName: hostLeadCompany.existingCompanyClaim.fullName,
+          email: hostLeadCompany.existingCompanyClaim.email,
+          mobile: hostLeadCompany.existingCompanyClaim.mobile,
+          role: hostLeadCompany.existingCompanyClaim.role,
+          registeredCompanyName: hostLeadCompany.existingCompanyClaim.registeredCompanyName,
+          documents: (hostLeadCompany.existingCompanyClaim.documents || []).map((doc) => ({
+            label: doc.label,
+            url: doc.url,
+            id: doc.id,
+          })),
+        }
+      : null;
+    if (hostLeadCompany.existingCompanyClaim?.status === "pending") {
+      hostLeadCompany.existingCompanyClaim.status = "approved";
+      hostLeadCompany.existingCompanyClaim.reviewedAt = new Date();
+      hostLeadCompany.existingCompanyClaim.reviewedBy = reviewerName(req);
+      hostLeadCompany.existingCompanyClaim.rejectionReason = "";
+      hostLeadCompany.existingCompanyClaimHistory.push(
+        snapshotClaim(hostLeadCompany.existingCompanyClaim),
+      );
+    }
     await hostLeadCompany.save();
 
+    // The host's plan caps how many listings can be ENABLED (visible) at once,
+    // not how many exist. If the merged set is over that, keep the host's own
+    // enabled listings first (then the company's original ones) and switch the
+    // rest off — the host can swap by disabling one to enable another.
+    let disabledCount = 0;
+    let capWarning = "";
+    try {
+      const workspace = await Workspace.findOne({
+        companyId: hostLeadCompany.companyId,
+      })
+        .select("selectedPlan")
+        .lean();
+      const plan = String(workspace?.selectedPlan || "basic")
+        .trim()
+        .toLowerCase();
+      const enabledLimit =
+        plan === "professional" ? 9 : plan === "custom" ? null : 4;
+
+      if (enabledLimit !== null) {
+        const ownIds = new Set(ownListings.map((l) => l.businessId));
+        const allListings = await fetchNomadListings(normalizedNomadsCompanyId);
+        const enabled = allListings
+          .filter((l) => l.isPublic)
+          .sort(
+            (a, b) =>
+              Number(ownIds.has(b.businessId)) - Number(ownIds.has(a.businessId)),
+          );
+        const toDisable = enabled.slice(enabledLimit);
+        const results = await Promise.allSettled(
+          toDisable.map((l) =>
+            axios.patch(`${NOMADS_COMPANY_API}/set-public-status`, {
+              businessId: l.businessId,
+              isPublic: false,
+            }),
+          ),
+        );
+        disabledCount = results.filter((r) => r.status === "fulfilled").length;
+        if (disabledCount < toDisable.length) {
+          capWarning = `${toDisable.length - disabledCount} listing(s) are still enabled beyond the host's plan limit — disable them manually.`;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to enforce enabled-listing limit after transfer:", error.message);
+      capWarning =
+        "Linked, but couldn't apply the plan's enabled-listing limit — check the host's enabled listings.";
+    }
+
+    // One approval covers both: a host's existing-listings request also
+    // activates the verified badge (free for 3 months). A failure here must not
+    // undo the link that already went through — it's reported in the message.
+    let badgeNote = "";
+    if (claimForBadge) {
+      try {
+        const result = await activateVerifiedBadgeForClaim({
+          claim: claimForBadge,
+          sourceCompany,
+          hostLeadCompany,
+          nomadsCompanyId: normalizedNomadsCompanyId,
+          listings: await fetchNomadListings(normalizedNomadsCompanyId),
+        });
+        badgeNote = result.activated
+          ? " Verified badge activated for 3 months."
+          : ` Note: ${result.reason}`;
+      } catch (error) {
+        console.error("Failed to activate verified badge after claim approval:", error.message);
+        badgeNote =
+          " Note: linked, but the verified badge couldn't be activated — do it from Company Verification Leads.";
+      }
+    }
+
     return res.status(200).json({
-      message: `All products linked to Host Company "${hostLeadCompany.companyName}"`,
+      message: `All products linked to Host Company "${hostLeadCompany.companyName}"${
+        disabledCount ? ` — ${disabledCount} listing(s) left disabled to fit the host's plan` : ""
+      }${capWarning ? `. ${capWarning}` : ""}.${badgeNote}`,
       hostCompanyId: hostLeadCompany.companyId,
       hostCompanyName: hostLeadCompany.companyName,
     });
@@ -1982,7 +2539,227 @@ const rejectCompaniesListingRequest = async (req, res, next) => {
   }
 };
 
+
+// HostPanel (service key): a host searching for the existing Companies-page
+// company that already owns their listings. Skips companies that are host-
+// request shells (linkedHostCompanyId) or already linked to a host.
+const searchNomadCompaniesForClaim = async (req, res, next) => {
+  try {
+    const q = String(req.query.q || "").trim();
+    if (q.length < 2) {
+      return res.status(200).json([]);
+    }
+
+    const alreadyLinked = await HostLeadCompany.distinct(
+      "linkedNomadsCompanyId",
+      { linkedNomadsCompanyId: { $ne: "" } },
+    );
+
+    const companies = await HostCompany.find({
+      companyName: { $regex: escapeRegex(q), $options: "i" },
+      companyId: { $nin: alreadyLinked },
+      $or: [{ linkedHostCompanyId: "" }, { linkedHostCompanyId: null }, { linkedHostCompanyId: { $exists: false } }],
+    })
+      .select("companyId companyName companyCity companyState companyCountry")
+      .limit(8)
+      .lean();
+
+    return res.status(200).json(companies);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// HostPanel (service key): the listings under one candidate company, shown
+// to the host before they submit a claim.
+const getNomadCompanyListingsForClaim = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+
+    const alreadyLinked = await HostLeadCompany.exists({
+      linkedNomadsCompanyId: companyId,
+    });
+    if (alreadyLinked) {
+      return res
+        .status(409)
+        .json({ message: "This company is already linked to a host account." });
+    }
+
+    const company = await HostCompany.findOne({ companyId })
+      .select("companyId companyName")
+      .lean();
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    let listings = [];
+    try {
+      const response = await axios.get(
+        `${nomadsCompanyApi()}/get-listings/${encodeURIComponent(companyId)}`,
+      );
+      listings = Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      if (error?.response?.status !== 404) throw error;
+    }
+
+    return res.status(200).json({
+      companyId: company.companyId,
+      companyName: company.companyName,
+      listings: listings
+        .filter((l) => !l?.isDeleted)
+        .map((l) => ({
+          businessId: l.businessId,
+          companyName: l.companyName || company.companyName || "",
+          companyTitle: l.companyTitle || l.companyName || "",
+          companyType: l.companyType || "",
+          city: l.city || "",
+          state: l.state || "",
+          country: l.country || "",
+          isActive: Boolean(l.isActive),
+        })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff decline a host's claim on an existing company; the host sees the
+// reason and can resubmit.
+const rejectExistingCompanyClaim = async (req, res, next) => {
+  try {
+    const { hostCompanyId } = req.params;
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: hostCompanyId,
+    });
+    if (!hostLeadCompany) {
+      return res.status(404).json({ message: "Host company not found" });
+    }
+    if (hostLeadCompany.existingCompanyClaim?.status !== "pending") {
+      return res.status(400).json({ message: "No pending claim to reject" });
+    }
+    hostLeadCompany.existingCompanyClaim.status = "rejected";
+    hostLeadCompany.existingCompanyClaim.reviewedAt = new Date();
+    hostLeadCompany.existingCompanyClaim.reviewedBy = reviewerName(req);
+    hostLeadCompany.existingCompanyClaim.rejectionReason = String(
+      req.body?.reason || "",
+    ).trim();
+    hostLeadCompany.existingCompanyClaimHistory.push(
+      snapshotClaim(hostLeadCompany.existingCompanyClaim),
+    );
+    await hostLeadCompany.save();
+    return res.status(200).json({ message: "Claim rejected" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff: every host claim on an existing Companies-page company - pending
+// ones plus the full approved / rejected history - newest first. Each row
+// keeps the { companyId, companyName, existingCompanyClaim } shape; history
+// rows carry their snapshot in existingCompanyClaim.
+const getExistingCompanyClaims = async (req, res, next) => {
+  try {
+    const hosts = await HostLeadCompany.find({
+      $or: [
+        { "existingCompanyClaim.status": { $in: ["pending", "approved", "rejected"] } },
+        { "existingCompanyClaimHistory.0": { $exists: true } },
+      ],
+    })
+      .select(
+        "companyId companyName companyCity companyState companyCountry logo existingCompanyClaim existingCompanyClaimHistory",
+      )
+      .lean();
+
+    const rows = [];
+    hosts.forEach((host) => {
+      const { existingCompanyClaimHistory = [], existingCompanyClaim, ...base } = host;
+      existingCompanyClaimHistory.forEach((entry, index) => {
+        rows.push({
+          ...base,
+          _key: `${host.companyId}-h${index}`,
+          existingCompanyClaim: entry,
+        });
+      });
+      // The current claim is its own row while it's pending. Once decided it
+      // already lives in the history - except claims decided before history
+      // existed, which have no matching entry and would otherwise vanish.
+      const currentTime = new Date(existingCompanyClaim?.requestedAt || 0).getTime();
+      const inHistory = existingCompanyClaimHistory.some(
+        (entry) => new Date(entry.requestedAt || 0).getTime() === currentTime,
+      );
+      if (
+        existingCompanyClaim?.status === "pending" ||
+        (["approved", "rejected"].includes(existingCompanyClaim?.status) && !inHistory)
+      ) {
+        rows.push({ ...base, _key: `${host.companyId}-current`, existingCompanyClaim });
+      }
+    });
+
+    rows.sort(
+      (a, b) =>
+        new Date(b.existingCompanyClaim?.requestedAt || 0) -
+        new Date(a.existingCompanyClaim?.requestedAt || 0),
+    );
+    return res.status(200).json(rows);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Staff: the live listings under a claimed company. `nomadsCompanyId` in the
+// query selects a history row's company; otherwise the host's current claim.
+const getExistingCompanyClaimDetail = async (req, res, next) => {
+  try {
+    const hostLeadCompany = await HostLeadCompany.findOne({
+      companyId: req.params.hostCompanyId,
+    })
+      .select("companyId companyName existingCompanyClaim linkedNomadsCompanyId")
+      .lean();
+    const nomadsCompanyId = String(
+      req.query.nomadsCompanyId || hostLeadCompany?.existingCompanyClaim?.nomadsCompanyId || "",
+    ).trim();
+    if (!hostLeadCompany || !nomadsCompanyId) {
+      return res.status(404).json({ message: "Claim not found" });
+    }
+
+    let listings = [];
+    try {
+      const response = await axios.get(
+        `${nomadsCompanyApi()}/get-listings/${encodeURIComponent(nomadsCompanyId)}`,
+      );
+      listings = Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      if (error?.response?.status !== 404) throw error;
+    }
+
+    return res.status(200).json({
+      hostCompanyId: hostLeadCompany.companyId,
+      hostCompanyName: hostLeadCompany.companyName,
+      alreadyLinked: Boolean(hostLeadCompany.linkedNomadsCompanyId),
+      listings: listings
+        .filter((l) => !l?.isDeleted)
+        .map((l) => ({
+          businessId: l.businessId,
+          companyName: l.companyName || "",
+          companyTitle: l.companyTitle || l.companyName || "",
+          companyType: l.companyType || "",
+          city: l.city || "",
+          country: l.country || "",
+          isActive: Boolean(l.isActive),
+          isPublic: Boolean(l.isPublic),
+        })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
+  getExistingCompanyClaims,
+  getExistingCompanyClaimDetail,
+  searchNomadCompaniesForClaim,
+  getNomadCompanyListingsForClaim,
+  rejectExistingCompanyClaim,
   createCompany,
   editCompany,
   activateProduct,
@@ -1993,6 +2770,11 @@ module.exports = {
   updateServices,
   sendUpgradePaymentLink,
   requestUpgradePlan,
+  startTrial,
+  getTrialCompanies,
+  setBonusTrialOffer,
+  claimBonusTrial,
+  updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
   getCompanies,
