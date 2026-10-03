@@ -81,6 +81,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/publish-listings",
           },
           {
+            id: 30,
+            key: "dashboard.contributions",
+            title: "Contributions",
+            icon: LuFileText,
+            route: "/dashboard/contributions",
+          },
+          {
             id: 14,
             key: "dashboard.reviews",
             title: "Reviews",

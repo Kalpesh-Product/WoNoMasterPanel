@@ -4,6 +4,10 @@ const NOMADS_BASE_URL = process.env.NOMADS_BASE_URL;
 
 const toArrayResponse = (res, rows) => res.status(200).json(rows);
 
+const adminHeaders = () => process.env.NOMADS_ADMIN_API_KEY
+    ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+    : {};
+
 const getBlogs = async (req, res) => {
     try {
         const queryParams = { ...req.query };
@@ -134,6 +138,33 @@ const deleteNews = async (req, res) => {
     }
 };
 
+const getBlogContributions = async (req, res) => {
+    try {
+        const response = await axios.get(`${NOMADS_BASE_URL}/blogs/contributions`, {
+            params: req.query,
+            headers: adminHeaders(),
+        });
+        return res.status(200).json(response.data);
+    } catch (error) {
+        return res.status(error.response?.status || 500).json({
+            message: error.response?.data?.message || "Failed to fetch blog contributions from external API"
+        });
+    }
+};
+
+const updateBlogContributionStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const response = await axios.patch(`${NOMADS_BASE_URL}/blogs/contributions/${id}/status`, req.body, {
+            headers: adminHeaders(),
+        });
+        return res.status(200).json(response.data);
+    } catch (error) {
+        return res.status(error.response?.status || 500).json({
+            message: error.response?.data?.message || "Failed to update blog contribution status in external API"
+        });
+    }
+};
 const updateNewsStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -151,6 +182,7 @@ const updateNewsStatus = async (req, res) => {
 module.exports = {
     getBlogs,
     getNews,
+    getBlogContributions,
     createBlog,
     createNews,
     updateBlog,
@@ -158,4 +190,5 @@ module.exports = {
     updateNews,
     deleteNews,
     updateNewsStatus,
+    updateBlogContributionStatus,
 };

@@ -212,6 +212,7 @@ import {
   BecomeAContributorPartnersTable,
 } from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
+import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
@@ -422,6 +423,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "publish-listings",
                     element: <PublishListings />,
+                  },
+                  {
+                    path: "contributions/:contributionTab?",
+                    element: <Contributions />,
                   },
                   {
                     path: "nomad-signup-leads",
