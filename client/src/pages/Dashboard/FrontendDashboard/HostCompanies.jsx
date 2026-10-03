@@ -252,18 +252,18 @@ const HostCompanies = () => {
                             </div>
                         </div>
                         <div className="overflow-x-auto flex-1">
-                            <table data-tour="host-companies-table" className="w-full text-left border-collapse">
+                            <table data-tour="host-companies-table" className="w-full min-w-[1140px] text-left border-collapse table-fixed">
                                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                                     <tr>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Location</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Registration</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Subscription</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Plan Start</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Plan End</th>
-                                        <th className="px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                        <th className="w-[72px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Logo</th>
+                                        <th className="w-[200px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Company Name</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Vertical</th>
+                                        <th className="w-[170px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Location</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Registration</th>
+                                        <th className="w-[140px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Subscription</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan Start</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan End</th>
+                                        <th className="w-[120px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -283,10 +283,11 @@ const HostCompanies = () => {
                                                             <span className="text-slate-400">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4 align-top">
+                                                    <td className="px-5 py-4 align-top max-w-[200px]">
                                                         <span
                                                             data-tour="host-companies-name-link"
-                                                            className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
+                                                            title={company.companyName || "-"}
+                                                            className="block truncate text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
                                                             onClick={() => {
                                                                 dispatch(setSelectedCompany(company));
                                                                 sessionStorage.setItem("companyId", company.companyId);
@@ -309,26 +310,33 @@ const HostCompanies = () => {
                                                             {company.companyName || "-"}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.industry || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate">{company.industry || "-"}</td>
+                                                    <td
+                                                        className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[170px]"
+                                                        title={
+                                                            [company.companyCity, company.companyState, company.companyCountry]
+                                                                .filter(Boolean)
+                                                                .join(", ") || "-"
+                                                        }
+                                                    >
                                                         {[company.companyCity, company.companyState, company.companyCountry]
                                                             .filter(Boolean)
                                                             .join(", ") || "-"}
                                                     </td>
-                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center">
+                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center whitespace-nowrap">
                                                         <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
                                                             {company.isRegistered ? "Active" : "Inactive"}
                                                         </span>
                                                     </td>
-                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top">
+                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top whitespace-nowrap">
                                                         <span className={statusPillClass(getCurrentSubscriptionLabel(company))}>
                                                             {getCurrentSubscriptionLabel(company)}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
                                                         {formatDate(company.planStartDate)}
                                                     </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
                                                         {formatDate(company.planExpiryDate)}
                                                     </td>
                                                     <td className="px-5 py-4 align-top text-center whitespace-nowrap">

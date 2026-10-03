@@ -4,6 +4,7 @@ const TEMPLATE_KIND = {
     savor: "menu",
     wayfarer: "hostel",
     haven: "coLiving",
+    camelia: "coLiving",
     commons: "workspace",
     huddle: "meeting",
 };
@@ -25,10 +26,12 @@ const pageFor = (kind, business, slug) => ({
     inclusions: business.page.inclusions.map((key) => ({ key, enabled: true })),
     subProducts: kind === "workspace" ? business.pageItems || [] : [],
 });
-const ALL_KINDS = ["workspace", "hostel", "menu", "coLiving", "meeting", "workation"];
 export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
     const main = defaultKindForTemplate(themeVariant);
-    const kinds = serviceNames.length ? serviceNames.map(serviceNameToKind) : [main, ...ALL_KINDS.filter((kind) => kind !== main)];
+    // Only the services explicitly picked in the picker widen this beyond the template's own kind
+    // — otherwise a co-living template like Camelia would preview with meeting-room/cafe/hostel
+    // content bolted on by default, which reads as broken rather than "multi-service".
+    const kinds = serviceNames.length ? serviceNames.map(serviceNameToKind) : [main];
     const primary = DEMO_BUSINESSES[kinds[0]];
     const pages = kinds.map((kind, index) => {
         const business = DEMO_BUSINESSES[kind];

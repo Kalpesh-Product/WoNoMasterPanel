@@ -9,7 +9,7 @@
 import { DEMO_BUSINESSES } from "./demoContent";
 import { buildDemoPreviewDraft, defaultKindForTemplate } from "./demoPreviewData";
 import { SERVICE_CHOICES, serviceNameToKind } from "./serviceChoices";
-export const SAMPLE_TEMPLATE_IDS = ["savor", "wayfarer", "haven", "commons", "huddle"];
+export const SAMPLE_TEMPLATE_IDS = ["savor", "wayfarer", "haven", "camelia", "commons", "huddle"];
 export const hasSampleContent = (themeVariant) => SAMPLE_TEMPLATE_IDS.includes(String(themeVariant || "").trim());
 // The builder rejects images over 1 MB, so anything larger is skipped rather than failing a save.
 const MAX_IMAGE_BYTES = 1024 * 1024 - 2048;
