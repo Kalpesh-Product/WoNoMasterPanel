@@ -572,6 +572,14 @@ export const routes = createBrowserRouter([
                     children: [
                       {
                         index: true,
+                        element: <Navigate to="content-data" replace />,
+                      },
+                      {
+                        path: "content-data",
+                        element: <DestinationsData />,
+                      },
+                      {
+                        path: "nomad-listings",
                         element: <DestinationsData />,
                       },
                       {
@@ -1348,5 +1356,3 @@ export const routes = createBrowserRouter([
     element: <NotFoundPage />,
   },
 ]);
-
-
