@@ -25,6 +25,37 @@ const CONTRIBUTION_TABS = [
   { slug: "event-contributions", label: "Event Contributions", type: "events" },
 ];
 
+const CONTRIBUTION_CONFIG = {
+  blog: {
+    singular: "Blog",
+    plural: "Blogs",
+    contributorColumn: "Blogger",
+    category: "Blog",
+    emptyLabel: "blog contributions",
+    queryKey: "blogContributions",
+    endpoint: "/api/blogs/contributions",
+    statusEndpoint: (id) => `/api/blogs/contributions/${id}/status`,
+    approvedToast: "Blog approved.",
+    rejectedToast: "Blog rejected.",
+    loadError: "Failed to load blog contributions.",
+    updateError: "Failed to update blog contribution.",
+  },
+  news: {
+    singular: "News",
+    plural: "News",
+    contributorColumn: "Contributor",
+    category: "News",
+    emptyLabel: "news contributions",
+    queryKey: "newsContributions",
+    endpoint: "/api/news/contributions",
+    statusEndpoint: (id) => `/api/news/contributions/${id}/status`,
+    approvedToast: "News approved.",
+    rejectedToast: "News rejected.",
+    loadError: "Failed to load news contributions.",
+    updateError: "Failed to update news contribution.",
+  },
+};
+
 const DEFAULT_TAB = CONTRIBUTION_TABS[0];
 const TAB_BY_SLUG = CONTRIBUTION_TABS.reduce((acc, tab) => ({ ...acc, [tab.slug]: tab }), {});
 const STATUSES = ["pending", "approved", "rejected"];
@@ -53,13 +84,13 @@ const truncate = (value, length = 42) => {
 
 const stripHtml = (value) => String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-const getContributorName = (blog) => {
-  const contributor = blog?.contributor;
+const getContributorName = (item) => {
+  const contributor = item?.contributor;
   if (contributor && typeof contributor === "object") {
     const name = [contributor.firstName, contributor.lastName].filter(Boolean).join(" ").trim();
-    return contributor.fullName || contributor.name || name || contributor.email || blog.author || "Contributor";
+    return contributor.fullName || contributor.name || name || contributor.email || item.author || "Contributor";
   }
-  return blog?.author || "Contributor";
+  return item?.author || "Contributor";
 };
 
 const getInitials = (value) =>
@@ -72,10 +103,10 @@ const getInitials = (value) =>
     .join("")
     .toUpperCase() || "CB";
 
-const getDestination = (blog) => getText(blog?.destination);
+const getDestination = (item) => getText(item?.destination);
 
-const extractBlogs = (payload) => {
-  const rows = payload?.data?.data ?? payload?.data?.blogs ?? payload?.data ?? payload;
+const extractContributions = (payload) => {
+  const rows = payload?.data?.data ?? payload?.data?.blogs ?? payload?.data?.news ?? payload?.data ?? payload;
   return Array.isArray(rows) ? rows : [];
 };
 
@@ -101,33 +132,33 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
 const EmptyTable = ({ label }) => (
   <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
     <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400"><Target size={28} /></div>
-    <p className="text-slate-400 font-semibold">No {label.toLowerCase()} found.</p>
+    <p className="text-slate-400 font-semibold">No {label} found.</p>
   </div>
 );
 
-const BlogPreviewModal = ({ blog, onClose, onStatusChange, isUpdating }) => {
-  if (!blog) return null;
-  const status = String(blog.status || "pending").toLowerCase();
+const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpdating }) => {
+  if (!item) return null;
+  const status = String(item.status || "pending").toLowerCase();
   const canModerate = status === "pending";
-  const sections = Array.isArray(blog.sections) ? blog.sections : [];
-  const editCount = Number(blog.numberOfEdits ?? blog.editCount ?? blog.edits?.length ?? 0);
+  const sections = Array.isArray(item.sections) ? item.sections : [];
+  const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-3 backdrop-blur-md" onClick={onClose}>
       <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-5 text-[15px] font-pmedium text-slate-600 md:grid-cols-3 md:px-10">
-          <p>Destination: <span className="text-slate-800">{getDestination(blog)}</span></p>
-          <p>Date: <span className="text-slate-800">{formatDate(blog.date || blog.createdAt)}</span></p>
+          <p>Destination: <span className="text-slate-800">{getDestination(item)}</span></p>
+          <p>Date: <span className="text-slate-800">{formatDate(item.date || item.createdAt)}</span></p>
           <p>Number Of Edits: <span className="text-slate-800">{Number.isFinite(editCount) ? editCount : 0}</span></p>
           <button type="button" onClick={onClose} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:text-slate-700"><X size={16} /></button>
         </div>
 
         <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-          <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getText(blog.mainTitle, "Untitled blog")}</h2>
+          <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getText(item.mainTitle, `Untitled ${config.singular.toLowerCase()}`)}</h2>
           <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
-            <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(blog.mainContent) || "No main content provided."}</p>
-            {blog.mainImage ? (
-              <img src={blog.mainImage} alt={blog.mainTitle || "Blog"} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
+            <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(item.mainContent) || "No main content provided."}</p>
+            {item.mainImage ? (
+              <img src={item.mainImage} alt={item.mainTitle || config.singular} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
             ) : (
               <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
             )}
@@ -147,11 +178,11 @@ const BlogPreviewModal = ({ blog, onClose, onStatusChange, isUpdating }) => {
         <div className="flex shrink-0 justify-center gap-3 border-t border-slate-100 bg-slate-50 px-5 py-5">
           {canModerate ? (
             <>
-              <button type="button" disabled={isUpdating} onClick={() => onStatusChange(blog._id || blog.id, "approved")} className="rounded-xl bg-emerald-600 px-6 py-2.5 text-[12px] font-pmedium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"><CheckCircle2 size={14} className="mr-1.5 inline" />Approve Blog</button>
-              <button type="button" disabled={isUpdating} onClick={() => onStatusChange(blog._id || blog.id, "rejected")} className="rounded-xl bg-rose-600 px-6 py-2.5 text-[12px] font-pmedium text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"><XCircle size={14} className="mr-1.5 inline" />Reject Blog</button>
+              <button type="button" disabled={isUpdating} onClick={() => onStatusChange(item._id || item.id, "approved")} className="rounded-xl bg-emerald-600 px-6 py-2.5 text-[12px] font-pmedium text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60"><CheckCircle2 size={14} className="mr-1.5 inline" />Approve {config.singular}</button>
+              <button type="button" disabled={isUpdating} onClick={() => onStatusChange(item._id || item.id, "rejected")} className="rounded-xl bg-rose-600 px-6 py-2.5 text-[12px] font-pmedium text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60"><XCircle size={14} className="mr-1.5 inline" />Reject {config.singular}</button>
             </>
           ) : (
-            <span className="flex items-center text-[12px] font-pmedium text-slate-500">This blog has already been {status}.</span>
+            <span className="flex items-center text-[12px] font-pmedium text-slate-500">This {config.singular.toLowerCase()} has already been {status}.</span>
           )}
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-200 px-6 py-2.5 text-[12px] font-pmedium text-slate-700 transition hover:bg-slate-300">Cancel</button>
         </div>
@@ -166,9 +197,11 @@ const Contributions = () => {
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
   const activeTab = TAB_BY_SLUG[contributionTab] || DEFAULT_TAB;
+  const activeConfig = CONTRIBUTION_CONFIG[activeTab.type];
+  const supportsModeration = Boolean(activeConfig);
   const [stageFilter, setStageFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBlogId, setSelectedBlogId] = useState(null);
+  const [selectedItemId, setSelectedItemId] = useState(null);
 
   useEffect(() => {
     if (!contributionTab || !TAB_BY_SLUG[contributionTab]) {
@@ -179,58 +212,56 @@ const Contributions = () => {
   useEffect(() => {
     setStageFilter("all");
     setSearchQuery("");
-    setSelectedBlogId(null);
+    setSelectedItemId(null);
   }, [activeTab.slug]);
 
-  const { data: blogs = [], isPending, isError } = useQuery({
-    queryKey: ["blogContributions"],
+  const { data: contributions = [], isPending, isError } = useQuery({
+    queryKey: [activeConfig?.queryKey],
+    enabled: supportsModeration,
     queryFn: async () => {
-      const response = await axiosPrivate.get("/api/blogs/contributions", { headers: { "Cache-Control": "no-cache" } });
-      return extractBlogs(response);
+      const response = await axiosPrivate.get(activeConfig.endpoint, { headers: { "Cache-Control": "no-cache" } });
+      return extractContributions(response);
     },
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ blogId, status }) => {
-      const response = await axiosPrivate.patch(`/api/blogs/contributions/${blogId}/status`, { status });
+    mutationFn: async ({ itemId, status }) => {
+      const response = await axiosPrivate.patch(activeConfig.statusEndpoint(itemId), { status });
       return response?.data;
     },
     onSuccess: (_data, { status }) => {
-      toast.success(status === "approved" ? "Blog approved." : "Blog rejected.");
-      queryClient.invalidateQueries({ queryKey: ["blogContributions"] });
-      setSelectedBlogId(null);
+      toast.success(status === "approved" ? activeConfig.approvedToast : activeConfig.rejectedToast);
+      queryClient.invalidateQueries({ queryKey: [activeConfig.queryKey] });
+      setSelectedItemId(null);
     },
     onError: (error) => {
-      toast.error(error?.response?.data?.message || "Failed to update blog contribution.");
+      toast.error(error?.response?.data?.message || activeConfig.updateError);
     },
   });
 
-  const filteredBlogs = useMemo(() => {
-    if (activeTab.type !== "blog") return [];
+  const filteredContributions = useMemo(() => {
+    if (!supportsModeration) return [];
     const query = searchQuery.trim().toLowerCase();
-    return blogs.filter((blog) => {
-      const status = String(blog.status || "pending").toLowerCase();
+    return contributions.filter((item) => {
+      const status = String(item.status || "pending").toLowerCase();
       const matchesStatus = stageFilter === "all" || status === stageFilter;
-      const matchesSearch = !query || [getContributorName(blog), blog.mainTitle, blog.mainContent, blog.source, blog.destination, blog.link]
+      const matchesSearch = !query || [getContributorName(item), item.mainTitle, item.mainContent, item.source, item.destination, item.link]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
       return matchesStatus && matchesSearch;
     });
-  }, [activeTab.type, blogs, searchQuery, stageFilter]);
+  }, [contributions, searchQuery, stageFilter, supportsModeration]);
 
-  const stats = useMemo(() => {
-    const rows = activeTab.type === "blog" ? blogs : [];
-    return {
-      total: rows.length,
-      pending: rows.filter((item) => String(item.status || "pending").toLowerCase() === "pending").length,
-      approved: rows.filter((item) => String(item.status || "pending").toLowerCase() === "approved").length,
-      rejected: rows.filter((item) => String(item.status || "pending").toLowerCase() === "rejected").length,
-    };
-  }, [activeTab.type, blogs]);
+  const stats = useMemo(() => ({
+    total: contributions.length,
+    pending: contributions.filter((item) => String(item.status || "pending").toLowerCase() === "pending").length,
+    approved: contributions.filter((item) => String(item.status || "pending").toLowerCase() === "approved").length,
+    rejected: contributions.filter((item) => String(item.status || "pending").toLowerCase() === "rejected").length,
+  }), [contributions]);
 
-  const selectedBlog = useMemo(() => blogs.find((blog) => (blog._id || blog.id) === selectedBlogId), [blogs, selectedBlogId]);
+  const selectedItem = useMemo(() => contributions.find((item) => (item._id || item.id) === selectedItemId), [contributions, selectedItemId]);
 
-  const rows = activeTab.type === "blog" ? filteredBlogs : [];
+  const rows = supportsModeration ? filteredContributions : [];
   const colSpan = 8;
 
   return (
@@ -250,14 +281,14 @@ const Contributions = () => {
             ))}
           </div>
 
-          {isPending && activeTab.type === "blog" ? (
+          {isPending && supportsModeration ? (
             <div className="py-16 text-center text-slate-400 text-sm font-semibold">Loading contributions...</div>
-          ) : isError && activeTab.type === "blog" ? (
-            <div className="py-16 text-center text-red-500 text-sm font-semibold">Failed to load blog contributions.</div>
+          ) : isError && supportsModeration ? (
+            <div className="py-16 text-center text-red-500 text-sm font-semibold">{activeConfig.loadError}</div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
-                <StatTile label={`Total ${activeTab.type === "blog" ? "Blogs" : "Items"}`} value={stats.total} icon={FileText} tone="slate" />
+                <StatTile label={`Total ${activeConfig?.plural || "Items"}`} value={stats.total} icon={FileText} tone="slate" />
                 <StatTile label="Pending" value={stats.pending} icon={Sparkles} tone="amber" />
                 <StatTile label="Approved" value={stats.approved} icon={BadgeCheck} tone="emerald" />
                 <StatTile label="Rejected" value={stats.rejected} icon={XCircle} tone="rose" />
@@ -281,7 +312,7 @@ const Contributions = () => {
                   <table className="w-full text-left min-w-[920px]">
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
-                        <th className="px-5 py-4">Blogger</th>
+                        <th className="px-5 py-4">{activeConfig?.contributorColumn || "Contributor"}</th>
                         <th className="px-5 py-4">Title</th>
                         <th className="px-5 py-4">Description</th>
                         <th className="px-5 py-4">Source</th>
@@ -293,21 +324,21 @@ const Contributions = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100/60">
                       {rows.length === 0 ? (
-                        <tr><td colSpan={colSpan}><EmptyTable label={activeTab.label} /></td></tr>
-                      ) : rows.map((blog, index) => {
-                        const blogId = blog._id || blog.id;
-                        const blogger = getContributorName(blog);
-                        const status = String(blog.status || "pending").toLowerCase();
+                        <tr><td colSpan={colSpan}><EmptyTable label={activeConfig?.emptyLabel || activeTab.label.toLowerCase()} /></td></tr>
+                      ) : rows.map((item, index) => {
+                        const itemId = item._id || item.id;
+                        const contributor = getContributorName(item);
+                        const status = String(item.status || "pending").toLowerCase();
                         return (
-                          <tr key={blogId} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="px-5 py-4"><div className="flex items-center gap-2.5"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(blogger)}</div><p className="text-[12px] font-pmedium text-slate-900">{blogger}</p></div></td>
-                            <td className="px-5 py-4 max-w-[170px]"><p className="text-[11px] font-pmedium uppercase text-slate-900 truncate">{truncate(blog.mainTitle, 28)}</p></td>
-                            <td className="px-5 py-4 max-w-[240px]"><p className="text-[12px] font-pmedium text-slate-600 truncate">{truncate(stripHtml(blog.mainContent), 48)}</p></td>
-                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{getText(blog.source)}</span></td>
-                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{blog.link ? <a className="text-[#2563EB] hover:underline" href={blog.link} target="_blank" rel="noreferrer">Open</a> : "-"}</span></td>
+                          <tr key={itemId} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-5 py-4"><div className="flex items-center gap-2.5"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(contributor)}</div><p className="text-[12px] font-pmedium text-slate-900">{contributor}</p></div></td>
+                            <td className="px-5 py-4 max-w-[170px]"><p className="text-[11px] font-pmedium uppercase text-slate-900 truncate">{truncate(item.mainTitle, 28)}</p></td>
+                            <td className="px-5 py-4 max-w-[240px]"><p className="text-[12px] font-pmedium text-slate-600 truncate">{truncate(stripHtml(item.mainContent), 48)}</p></td>
+                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{getText(item.source)}</span></td>
+                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{item.link ? <a className="text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open</a> : "-"}</span></td>
                             <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
-                            <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">Blog</span></td>
-                            <td className="px-5 py-4"><div className="flex items-center justify-center"><button type="button" onClick={() => setSelectedBlogId(blogId)} data-tour={index === 0 ? "contributions-action-view" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button></div></td>
+                            <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">{activeConfig?.category || "-"}</span></td>
+                            <td className="px-5 py-4"><div className="flex items-center justify-center"><button type="button" onClick={() => setSelectedItemId(itemId)} data-tour={index === 0 ? "contributions-action-view" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button></div></td>
                           </tr>
                         );
                       })}
@@ -320,10 +351,9 @@ const Contributions = () => {
         </div>
       </PageFrame>
 
-      <BlogPreviewModal blog={selectedBlog} onClose={() => setSelectedBlogId(null)} onStatusChange={(blogId, status) => updateStatusMutation.mutate({ blogId, status })} isUpdating={updateStatusMutation.isPending} />
+      <ContributionPreviewModal item={selectedItem} config={activeConfig} onClose={() => setSelectedItemId(null)} onStatusChange={(itemId, status) => updateStatusMutation.mutate({ itemId, status })} isUpdating={updateStatusMutation.isPending} />
     </div>
   );
 };
 
 export default Contributions;
-
