@@ -172,7 +172,7 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
                 <img
                   src={section.image}
                   alt={section.title || `Section ${index + 1}`}
-                  className={isNewsPreview ? "h-auto w-full rounded-xl object-cover md:max-h-56" : "max-h-64 w-full rounded-2xl object-cover"}
+                  className="h-auto w-full rounded-xl object-cover md:max-h-56"
                 />
               ) : null;
               const sectionCopy = section.content ? (
@@ -182,17 +182,10 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
               return (
                 <section key={`${section.title || "section"}-${index}`} className="space-y-3 clear-both flow-root">
                   {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
-                  {isNewsPreview ? (
-                    <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
-                      {imageFirst ? sectionImage : sectionCopy}
-                      {imageFirst ? sectionCopy : sectionImage}
-                    </div>
-                  ) : (
-                    <>
-                      {sectionImage}
-                      {sectionCopy}
-                    </>
-                  )}
+                  <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
+                    {imageFirst ? sectionImage : sectionCopy}
+                    {imageFirst ? sectionCopy : sectionImage}
+                  </div>
                 </section>
               );
             })}
