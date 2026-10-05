@@ -142,6 +142,7 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
   const canModerate = status === "pending";
   const sections = Array.isArray(item.sections) ? item.sections : [];
   const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
+  const isNewsPreview = config.category === "News";
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-3 backdrop-blur-md" onClick={onClose}>
@@ -165,13 +166,36 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
           </div>
 
           <div className="space-y-7">
-            {sections.length === 0 ? null : sections.map((section, index) => (
-              <section key={`${section.title || "section"}-${index}`} className="space-y-3">
-                {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
-                {section.image ? <img src={section.image} alt={section.title || `Section ${index + 1}`} className="max-h-64 w-full rounded-2xl object-cover" /> : null}
-                {section.content ? <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(section.content)}</p> : null}
-              </section>
-            ))}
+            {sections.length === 0 ? null : sections.map((section, index) => {
+              const imageFirst = index % 2 === 0;
+              const sectionImage = section.image ? (
+                <img
+                  src={section.image}
+                  alt={section.title || `Section ${index + 1}`}
+                  className={isNewsPreview ? "h-auto w-full rounded-xl object-cover md:max-h-56" : "max-h-64 w-full rounded-2xl object-cover"}
+                />
+              ) : null;
+              const sectionCopy = section.content ? (
+                <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(section.content)}</p>
+              ) : null;
+
+              return (
+                <section key={`${section.title || "section"}-${index}`} className="space-y-3 clear-both flow-root">
+                  {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
+                  {isNewsPreview ? (
+                    <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
+                      {imageFirst ? sectionImage : sectionCopy}
+                      {imageFirst ? sectionCopy : sectionImage}
+                    </div>
+                  ) : (
+                    <>
+                      {sectionImage}
+                      {sectionCopy}
+                    </>
+                  )}
+                </section>
+              );
+            })}
           </div>
         </div>
 
