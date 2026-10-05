@@ -701,7 +701,7 @@ const handlePlanPaymentWebhookEvent = async (session) => {
   let periodEnd = link.periodEnd;
   if (link.workspaceId) {
     const workspace = await Workspace.findById(link.workspaceId).select("planExpiryDate").lean();
-    const { start, end } = computeProjectedPeriod(workspace?.planExpiryDate);
+    const { start, end } = computeProjectedPeriod(workspace?.planExpiryDate, link.billingCycle);
     periodStart = start;
     periodEnd = end;
   }
