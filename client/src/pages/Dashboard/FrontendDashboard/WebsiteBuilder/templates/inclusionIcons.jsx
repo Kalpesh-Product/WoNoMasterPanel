@@ -271,6 +271,23 @@ const ALL_INCLUSIONS = [
         <path d="M10 32c0-5 4-9 10-9s10 4 10 9" />
         <path d="M16 26l4 2 4-2" />
       </svg>
+  },
+  {
+    key: "spa-wellness",
+    label: "Spa & Wellness",
+    icon: <svg viewBox="0 0 40 40" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 8c-3 3-3 7 0 10 3-3 3-7 0-10z" />
+        <path d="M12 16c-2 3-1 7 2 9 1-3 0-7-2-9zM28 16c2 3 1 7-2 9-1-3 0-7 2-9z" />
+        <path d="M10 30c3-3 7-4 10-4s7 1 10 4" />
+      </svg>
+  },
+  {
+    key: "excursions",
+    label: "Excursions & Tours",
+    icon: <svg viewBox="0 0 40 40" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="20" cy="20" r="13" />
+        <path d="M26 14l-4 8-8 4 4-8 8-4z" />
+      </svg>
   }
 ];
 

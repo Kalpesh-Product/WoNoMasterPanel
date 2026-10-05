@@ -799,18 +799,50 @@ const resolveLeadEscalationWorkspace = async ({
   const companyNameRegex = normalizedCompanyName
     ? new RegExp(`^${escapeRegex(normalizedCompanyName)}$`, "i")
     : null;
-  const hostLeadFilters = [];
-  if (normalizedCompanyId) {
-    hostLeadFilters.push(
-      { linkedNomadsCompanyId: normalizedCompanyId },
-      { companyId: normalizedCompanyId },
-    );
-  }
-  if (companyNameRegex) hostLeadFilters.push({ companyName: companyNameRegex });
 
-  const hostLeadCompany = hostLeadFilters.length
-    ? await HostLeadCompany.findOne({ $or: hostLeadFilters }).lean()
-    : null;
+  // Most specific match first: a company linked to this Nomads company (via
+  // Transfer) beats an own-id match, and both beat a name match — company
+  // names aren't unique, so a name-only hit must never win over a real link.
+  let hostLeadCompany = null;
+  if (normalizedCompanyId) {
+    hostLeadCompany =
+      (await HostLeadCompany.findOne({
+        linkedNomadsCompanyId: normalizedCompanyId,
+      }).lean()) ||
+      (await HostLeadCompany.findOne({ companyId: normalizedCompanyId }).lean());
+  }
+  if (!hostLeadCompany && companyNameRegex) {
+    hostLeadCompany = await HostLeadCompany.findOne({
+      companyName: companyNameRegex,
+    }).lean();
+  }
+
+  // A host company can have several workspaces; escalate to its oldest active
+  // one (the primary) so the choice is the same every time. Workspaces link to
+  // the host company by `company` (its hostleadcompanies _id - how HostPanel
+  // itself finds them) and/or a `companyId` string, and either may be the only
+  // one set - so match on both.
+  if (hostLeadCompany?.companyId) {
+    const primaryWorkspace = await Workspace.findOne({
+      isActive: { $ne: false },
+      $or: [
+        { company: hostLeadCompany._id },
+        { companyId: hostLeadCompany.companyId },
+      ],
+    })
+      .sort({ createdAt: 1 })
+      .select("_id companyId businessName")
+      .lean();
+    if (primaryWorkspace) {
+      // hostCompanyId is stamped on the lead from workspace.companyId - make
+      // sure it's the host's companyId even when the workspace never stored it.
+      return {
+        ...primaryWorkspace,
+        companyId: primaryWorkspace.companyId || hostLeadCompany.companyId,
+      };
+    }
+  }
+
   const candidateCompanyIds = Array.from(
     new Set(
       [hostLeadCompany?.companyId, normalizedCompanyId]
@@ -862,9 +894,29 @@ const escalateWebsiteLeadToHostPanel = async (req, res, next) => {
     });
 
     if (!workspace?._id) {
+      // Say which link is missing so staff (and support) can tell "no host is
+      // linked to this company" from "host linked but has no active workspace".
+      const leadCompanyId = sanitizeValue(companyId);
+      const linkedHost = leadCompanyId
+        ? await HostLeadCompany.findOne({ linkedNomadsCompanyId: leadCompanyId })
+            .select("_id companyId companyName")
+            .lean()
+        : null;
+      const workspaceCount = linkedHost
+        ? await Workspace.countDocuments({
+            $or: [{ company: linkedHost._id }, { companyId: linkedHost.companyId }],
+          })
+        : 0;
+      const detail = !leadCompanyId
+        ? "The lead has no company id."
+        : !linkedHost
+          ? `No host account is linked to company ${leadCompanyId}.`
+          : workspaceCount === 0
+            ? `Host "${linkedHost.companyName}" is linked but has no workspace.`
+            : `Host "${linkedHost.companyName}" is linked but its ${workspaceCount} workspace(s) are inactive.`;
+      console.warn("[escalate-lead] no workspace:", { leadCompanyId, detail });
       return res.status(409).json({
-        message:
-          "No active HostPanel workspace is linked to this lead's company",
+        message: `No active HostPanel workspace is linked to this lead's company. ${detail}`,
       });
     }
 

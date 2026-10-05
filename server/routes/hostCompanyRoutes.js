@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
 const { setLogModule } = require("../middlewares/logContext");
+const { getCompanyOverview } = require("../controllers/companyOverviewController");
 
 // Default module for company management routes; nomad listing routes below
 // override it with their own tag.
@@ -24,6 +25,11 @@ const {
   getHostLeadCompanies,
   sendUpgradePaymentLink,
   requestUpgradePlan,
+  startTrial,
+  getTrialCompanies,
+  setBonusTrialOffer,
+  claimBonusTrial,
+  updateRequestedPlanModules,
   updateUpgradePaymentStatus,
   markUpgradeSuccessEmailSent,
   transferNomadListing,
@@ -32,6 +38,9 @@ const {
   getCompaniesListingRequests,
   approveCompaniesListingRequest,
   rejectCompaniesListingRequest,
+  rejectExistingCompanyClaim,
+  getExistingCompanyClaims,
+  getExistingCompanyClaimDetail,
 } = require("../controllers/hostCompanyControllers/hostCompanyControllers");
 const {
   getAllCompanyListings,
@@ -51,6 +60,21 @@ const {
   deleteUnit,
   recoverUnit,
 } = require("../controllers/hostCompanyControllers/unitManagementControllers");
+const {
+  sendPlanPaymentLink,
+  saveLeadCustomSelection,
+  getLeadCustomSelections,
+  getPlanPaymentStatuses,
+  getHostCompanyPlanHistory,
+} = require("../controllers/planPaymentControllers");
+const {
+  getPlanPricing,
+  getPricingCatalog,
+  updateBasePricing,
+  upsertPricingItem,
+  removePricingItem,
+  setCustomPlanModules,
+} = require("../controllers/planPricingControllers");
 
 //company
 router.post(
@@ -71,9 +95,25 @@ router.patch("/bulk-set-active-status", bulkSetListingActiveStatus);
 router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
+router.patch("/start-trial", startTrial);
+router.get("/trial-companies", getTrialCompanies);
+router.patch("/trial-companies/:companyId/bonus-offer", setBonusTrialOffer);
+router.patch("/claim-bonus-trial", claimBonusTrial);
+router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPlanModules);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
 router.patch("/mark-upgrade-success-email-sent", markUpgradeSuccessEmailSent);
+router.post("/plan-payments/send", sendPlanPaymentLink);
+router.post("/plan-payments/custom-selection", saveLeadCustomSelection);
+router.get("/plan-payments/custom-selections", getLeadCustomSelections);
+router.get("/plan-payments", getPlanPaymentStatuses);
+router.get("/plan-pricing", getPlanPricing);
+router.get("/plan-pricing/catalog", getPricingCatalog);
+router.patch("/plan-pricing/settings", updateBasePricing);
+router.put("/plan-pricing/:itemId", upsertPricingItem);
+router.delete("/plan-pricing/:itemId", removePricingItem);
+router.post("/custom-plan-modules", setCustomPlanModules);
 router.get("/companies", getCompanies);
+router.get("/companies/overview", getCompanyOverview);
 router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
 router.get("/host-companies", getHostLeadCompanies);
@@ -83,6 +123,7 @@ router.post(
   transferNomadListing,
 );
 router.get("/host-companies/:companyId/nomad-link", getLinkedNomadCompanyMeta);
+router.get("/host-companies/:companyId/plan-history", getHostCompanyPlanHistory);
 router.get("/companies/:companyId/nomad-source", getEffectiveNomadSourceForCompany);
 router.get("/companies-requests", getCompaniesListingRequests);
 router.post(
@@ -94,6 +135,13 @@ router.post(
   "/companies-requests/:hostCompanyId/reject",
   setLogModule("Nomad Listings"),
   rejectCompaniesListingRequest,
+);
+router.get("/existing-company-claims", getExistingCompanyClaims);
+router.get("/existing-company-claims/:hostCompanyId", getExistingCompanyClaimDetail);
+router.post(
+  "/existing-company-claims/:hostCompanyId/reject",
+  setLogModule("Nomad Listings"),
+  rejectExistingCompanyClaim,
 );
 router.get("/company", getCompany);
 router.patch("/upload-logo", uploadLogo);

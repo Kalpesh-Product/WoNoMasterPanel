@@ -64,14 +64,24 @@ const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
 const siteAnalyticsRoutes = require("./routes/siteAnalyticsRoutes");
+const companyVerificationLeadsRoutes = require("./routes/companyVerificationLeadsRoutes");
+const verificationServiceRoutes = require("./routes/verificationServiceRoutes");
+const hostPanelVerificationRoutes = require("./routes/hostPanelVerificationRoutes");
 
 const {
   getTemplate,
   createTemplate,
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
+const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
+const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
 
 require("./listeners/logEventListener");
+require("./jobs/verificationRenewalReminders");
+require("./jobs/verificationExpiryNotices");
+require("./jobs/verificationTrialEndingNotices");
+require("./jobs/planExpiryReminders");
+require("./jobs/planExpiryDowngrade");
 const app = express();
 const PORT = process.env.PORT || 5007;
 app.set("trust proxy", true);
@@ -110,6 +120,13 @@ app.get("/", (req, res) => {
 // Shared with other apps: auth is optional, actions are logged only when a
 // master panel token is present.
 app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
+// Fully public — just the Professional plan price, so Nomads' and
+// HostPanel's public-facing pricing pages can stay in sync with whatever
+// staff set on the Plan Pricing settings page, without exposing anything
+// else in the pricing model.
+app.get("/api/public/plan-pricing", getPublicPlanPricing);
+// Public: payment-confirmation polling for HostPanel's /payment-success page.
+app.get("/api/public/plan-payment-status", getPublicPlanPaymentStatus);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs
@@ -163,6 +180,20 @@ app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
+app.use(
+  "/api/company-verification-leads",
+  verifyJwt,
+  auditLogger,
+  companyVerificationLeadsRoutes,
+);
+// Server-to-server only (Nomads backend calling in for self-serve
+// renew/change-plan) — auth is verifyNomadsServiceKey inside the router
+// itself, not verifyJwt/auditLogger (those are for staff browser sessions).
+app.use("/api/internal/verification-payments", verificationServiceRoutes);
+// Server-to-server only (HostPanel backend calling in when a host requests/
+// renews/changes their verification plan) — auth is verifyHostPanelServiceKey
+// inside the router itself, same reasoning as verificationServiceRoutes above.
+app.use("/api/hostpanel", hostPanelVerificationRoutes);
 app.use("/api/site-analytics", verifyJwt, auditLogger, siteAnalyticsRoutes);
 
 app.all("*", (req, res) => {

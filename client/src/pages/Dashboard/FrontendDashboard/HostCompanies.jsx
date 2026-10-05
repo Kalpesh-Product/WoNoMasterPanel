@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
-import { Search, Eye, X } from "lucide-react";
+import { Search, Eye, X, FileText, Pencil, Ban, CheckCircle2 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
-import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
@@ -39,8 +38,28 @@ const formatDateTime = (value) => {
     });
 };
 
+const formatDate = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" });
+};
+
+const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
+
+// Reads the real, staff-configurable trial length from the dates actually
+// stored on this company rather than a hardcoded day count, so it stays
+// correct even after Plan Pricing settings' trial duration changes.
+const trialDayCountLabel = (company) => {
+    const start = new Date(company?.trialStartAt);
+    const end = new Date(company?.trialEndAt);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "Free Trial";
+    const days = Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000));
+    return days > 0 ? `${days} Day Trial` : "Free Trial";
+};
+
 const getCurrentSubscriptionLabel = (company) => {
-    if (company?.isTrialActive) return "7 Day Trial";
+    if (company?.isTrialActive) return trialDayCountLabel(company);
     if (String(company?.subscriptionStatus || "").trim()) {
         return formatLabel(company.subscriptionStatus);
     }
@@ -136,6 +155,10 @@ const HostCompanies = () => {
                 );
             }
         },
+        // Keeps plan/upgrade-request status fresh without a manual reload —
+        // this data changes from a host's own session, which nothing else
+        // here would ever invalidate.
+        refetchInterval: 15000,
     });
 
     const sortedCompanies = useMemo(
@@ -229,18 +252,18 @@ const HostCompanies = () => {
                             </div>
                         </div>
                         <div className="overflow-x-auto flex-1">
-                            <table data-tour="host-companies-table" className="w-full text-left border-collapse">
+                            <table data-tour="host-companies-table" className="w-full min-w-[1140px] text-left border-collapse table-fixed">
                                 <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                                     <tr>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Vertical</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">City</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Registration</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Subscription</th>
-                                        <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
+                                        <th className="w-[72px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Logo</th>
+                                        <th className="w-[200px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Company Name</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Vertical</th>
+                                        <th className="w-[170px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Location</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Registration</th>
+                                        <th className="w-[140px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Subscription</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan Start</th>
+                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan End</th>
+                                        <th className="w-[120px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -260,10 +283,11 @@ const HostCompanies = () => {
                                                             <span className="text-slate-400">-</span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4 align-top">
+                                                    <td className="px-5 py-4 align-top max-w-[200px]">
                                                         <span
                                                             data-tour="host-companies-name-link"
-                                                            className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
+                                                            title={company.companyName || "-"}
+                                                            className="block truncate text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
                                                             onClick={() => {
                                                                 dispatch(setSelectedCompany(company));
                                                                 sessionStorage.setItem("companyId", company.companyId);
@@ -286,22 +310,37 @@ const HostCompanies = () => {
                                                             {company.companyName || "-"}
                                                         </span>
                                                     </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.industry || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCountry || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyState || "-"}</td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{company.companyCity || "-"}</td>
-                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center">
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate">{company.industry || "-"}</td>
+                                                    <td
+                                                        className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[170px]"
+                                                        title={
+                                                            [company.companyCity, company.companyState, company.companyCountry]
+                                                                .filter(Boolean)
+                                                                .join(", ") || "-"
+                                                        }
+                                                    >
+                                                        {[company.companyCity, company.companyState, company.companyCountry]
+                                                            .filter(Boolean)
+                                                            .join(", ") || "-"}
+                                                    </td>
+                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center whitespace-nowrap">
                                                         <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
                                                             {company.isRegistered ? "Active" : "Inactive"}
                                                         </span>
                                                     </td>
-                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top">
+                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top whitespace-nowrap">
                                                         <span className={statusPillClass(getCurrentSubscriptionLabel(company))}>
                                                             {getCurrentSubscriptionLabel(company)}
                                                         </span>
                                                     </td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
+                                                        {formatDate(company.planStartDate)}
+                                                    </td>
+                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
+                                                        {formatDate(company.planExpiryDate)}
+                                                    </td>
                                                     <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                                                        <div className="flex items-center justify-center gap-1">
+                                                        <div data-tour="host-companies-row-actions" className="flex items-center justify-center gap-1">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => handleViewHostCompany(company)}
@@ -310,43 +349,53 @@ const HostCompanies = () => {
                                                             >
                                                                 <Eye size={15} strokeWidth={2.5} />
                                                             </button>
-                                                            <span data-tour="host-companies-row-menu" className="inline-flex">
-                                                            <ThreeDotMenu
-                                                                rowId={company.companyId || company._id || company.companyName}
-                                                                menuItems={[
-                                                                    company.isRegistered
-                                                                        ? {
-                                                                            label: "Mark As Inactive",
-                                                                            onClick: () =>
-                                                                                toggleCompanyStatus({
-                                                                                    companyId: company.companyId,
-                                                                                    status: false,
-                                                                                }),
-                                                                        }
-                                                                        : {
-                                                                            label: "Mark As Active",
-                                                                            onClick: () =>
-                                                                                toggleCompanyStatus({
-                                                                                    companyId: company.companyId,
-                                                                                    status: true,
-                                                                                }),
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    navigate(
+                                                                        `/dashboard/host-companies/edit/${company.companyId}`,
+                                                                        {
+                                                                            state: {
+                                                                                companyId: company.companyId,
+                                                                                companyName: company.companyName,
+                                                                            },
                                                                         },
-                                                                    {
-                                                                        label: "Edit",
-                                                                        onClick: () =>
-                                                                            navigate(
-                                                                                `/dashboard/host-companies/edit/${company.companyId}`,
-                                                                                {
-                                                                                    state: {
-                                                                                        companyId: company.companyId,
-                                                                                        companyName: company.companyName,
-                                                                                    },
-                                                                                },
-                                                                            ),
-                                                                    },
-                                                                ]}
-                                                            />
-                                                            </span>
+                                                                    )
+                                                                }
+                                                                title="Edit company"
+                                                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                                                            >
+                                                                <Pencil size={15} strokeWidth={2.5} />
+                                                            </button>
+                                                            {company.isRegistered ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        toggleCompanyStatus({
+                                                                            companyId: company.companyId,
+                                                                            status: false,
+                                                                        })
+                                                                    }
+                                                                    title="Mark as inactive"
+                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+                                                                >
+                                                                    <Ban size={15} strokeWidth={2.5} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        toggleCompanyStatus({
+                                                                            companyId: company.companyId,
+                                                                            status: true,
+                                                                        })
+                                                                    }
+                                                                    title="Mark as active"
+                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                                                                >
+                                                                    <CheckCircle2 size={15} strokeWidth={2.5} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -430,6 +479,14 @@ const HostCompanies = () => {
                                         </p>
                                     </div>
                                     <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan Start</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDate(selectedCompany?.planStartDate)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">Plan End</p>
+                                        <p className="text-[12px] font-pmedium text-slate-900">{formatDate(selectedCompany?.planExpiryDate)}</p>
+                                    </div>
+                                    <div>
                                         <p className="text-[9px] text-slate-500 uppercase font-pmedium tracking-widest mb-1">POC Name</p>
                                         <p className="text-[12px] font-pmedium text-slate-900">{selectedCompany.pocName || "-"}</p>
                                     </div>
@@ -461,10 +518,92 @@ const HostCompanies = () => {
                                     )}
                                 </div>
                             </div>
+
+                            <PlanHistorySection companyId={selectedCompany?.companyId} />
                         </div>
                     </div>
                 </div>
             ) : null}
+        </div>
+    );
+};
+
+// Full history of every plan payment attempt for this company (not just the
+// latest) — initial purchase, renewals, upgrades/downgrades — each with its
+// status, amount, and Stripe invoice link where one exists.
+const PlanHistorySection = ({ companyId }) => {
+    const axiosPrivate = useAxiosPrivate();
+    const { data, isLoading } = useQuery({
+        queryKey: ["hostCompanyPlanHistory", companyId],
+        enabled: Boolean(companyId),
+        queryFn: async () => {
+            const response = await axiosPrivate.get(
+                `/api/hosts/host-companies/${companyId}/plan-history`,
+            );
+            return response?.data?.history || [];
+        },
+    });
+    const history = data || [];
+
+    return (
+        <div>
+            <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
+                Plan History
+            </h3>
+            {isLoading ? (
+                <p className="text-[11px] text-slate-400">Loading…</p>
+            ) : history.length === 0 ? (
+                <p className="text-[11px] text-slate-400">No plan payments yet.</p>
+            ) : (
+                <div className="space-y-1.5">
+                    {history.map((entry) => (
+                        <div
+                            key={entry._id}
+                            className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-100 bg-slate-50/60"
+                        >
+                            <div className="min-w-0">
+                                <p className="text-[12px] font-pmedium text-slate-800">
+                                    {PLAN_LABELS[entry.plan] || formatLabel(entry.plan)}{" "}
+                                    <span className="text-slate-400 font-normal">
+                                        ({formatLabel(entry.changeType)})
+                                    </span>
+                                </p>
+                                <p className="text-[10px] text-slate-400">
+                                    {entry.status === "paid"
+                                        ? `Paid ${formatDate(entry.paidAt)}`
+                                        : `Requested ${formatDate(entry.createdAt)}`}
+                                    {entry.periodStart && entry.periodEnd
+                                        ? ` · Covers ${formatDate(entry.periodStart)} – ${formatDate(entry.periodEnd)}`
+                                        : ""}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <span
+                                    className={statusPillClass(
+                                        entry.status === "paid" ? "Paid" : "Pending",
+                                    )}
+                                >
+                                    {entry.status === "paid" ? "Paid" : "Pending"}
+                                </span>
+                                <span className="text-[12px] font-pmedium text-slate-700">
+                                    ${entry.amount}
+                                </span>
+                                {entry.hostedInvoiceUrl && (
+                                    <a
+                                        href={entry.hostedInvoiceUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="text-blue-600 hover:text-blue-700"
+                                        title="View invoice"
+                                    >
+                                        <FileText size={14} />
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 };

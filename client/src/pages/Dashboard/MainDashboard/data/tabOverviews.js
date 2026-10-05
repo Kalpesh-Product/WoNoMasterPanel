@@ -69,8 +69,7 @@ const COMPANIES_OVERVIEW = {
   sources: [
     {
       key: "companies",
-      url: "/api/hosts/companies",
-      params: { page: 1, limit: 100 },
+      url: "/api/hosts/companies/overview",
       pick: pickData,
     },
   ],
@@ -78,7 +77,7 @@ const COMPANIES_OVERVIEW = {
     { label: "Total Companies", value: ({ data }) => data.companies.counts?.total ?? 0, icon: Building2, tone: 0 },
     { label: "Active", value: ({ data }) => data.companies.counts?.active ?? 0, icon: CheckCircle2, tone: 1 },
     { label: "Inactive", value: ({ data }) => data.companies.counts?.inactive ?? 0, icon: AlertCircle, tone: 2 },
-    { label: "Countries", value: ({ data }) => distinctCount(data.companies.items, "companyCountry"), icon: Globe, tone: 3 },
+    { label: "Countries", value: ({ data }) => data.companies.counts?.countries ?? 0, icon: Globe, tone: 3 },
   ],
   charts: [
     {
@@ -93,17 +92,17 @@ const COMPANIES_OVERVIEW = {
     {
       title: "Top Cities",
       type: "bars",
-      build: ({ data }) => topN(countBy(data.companies.items, "companyCity"), 6),
+      build: ({ data }) => data.companies.cities.slice(0, 6),
     },
     {
       title: "Continent Distribution",
       type: "donut",
-      build: ({ data }) => countBy(data.companies.items, "companyContinent"),
+      build: ({ data }) => data.companies.continents,
     },
     {
       title: "Top Countries",
       type: "bars",
-      build: ({ data }) => topN(countBy(data.companies.items, "companyCountry"), 6),
+      build: ({ data }) => data.companies.countries.slice(0, 6),
     },
   ],
 };
@@ -381,6 +380,74 @@ export const TAB_OVERVIEWS = {
         title: "Country",
         type: "donut",
         build: ({ data }) => topN(countBy(data.leads, "country"), 6),
+      },
+    ],
+  },
+
+  "dashboard.company-verification-leads": {
+    sources: [
+      { key: "leads", url: "/api/company-verification-leads", pick: pickDataArray },
+      {
+        key: "paymentHistory",
+        url: "/api/company-verification-leads/payment-history",
+        pick: pickDataArray,
+      },
+    ],
+    cards: [
+      {
+        label: "Verified",
+        value: ({ data }) =>
+          data.leads.filter(
+            (l) =>
+              l.paymentStatus === "paid" &&
+              (!l.verificationExpiresAt || new Date(l.verificationExpiresAt) > new Date()),
+          ).length,
+        icon: ShieldCheck,
+        tone: 0,
+      },
+      {
+        label: "Expired",
+        value: ({ data }) =>
+          data.leads.filter(
+            (l) =>
+              l.paymentStatus === "paid" &&
+              l.verificationExpiresAt &&
+              new Date(l.verificationExpiresAt) <= new Date(),
+          ).length,
+        icon: AlertCircle,
+        tone: 1,
+      },
+      {
+        label: "Renewed",
+        value: ({ data }) =>
+          data.paymentHistory.filter((p) => p.changeType === "renewal").length,
+        icon: CheckCircle2,
+        tone: 2,
+      },
+      {
+        label: "Changed Plan",
+        value: ({ data }) =>
+          data.paymentHistory.filter((p) => ["upgrade", "downgrade"].includes(p.changeType))
+            .length,
+        icon: TrendingUp,
+        tone: 3,
+      },
+    ],
+    charts: [
+      {
+        title: "Requests by Status",
+        type: "donut",
+        build: ({ data }) => topN(countBy(data.leads, "status"), 6),
+      },
+      {
+        title: "Requests by Plan",
+        type: "donut",
+        build: ({ data }) => topN(countBy(data.leads, "requestedTier"), 6),
+      },
+      {
+        title: "Monthly Submission Trend",
+        type: "bars",
+        build: ({ data }) => monthlyTrend(data.leads),
       },
     ],
   },
