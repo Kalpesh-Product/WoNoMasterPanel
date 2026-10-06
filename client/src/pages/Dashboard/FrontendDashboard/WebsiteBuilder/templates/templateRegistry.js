@@ -4,6 +4,7 @@ import WarmOrganicTemplate from "./WarmOrganicTemplate";
 import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
+import TravigoTemplate from "./travigo/TravigoTemplate";
 import HavenTemplate from "./haven/HavenTemplate";
 import CameliaTemplate from "./camelia/CameliaTemplate";
 import CommonsTemplate from "./commons/CommonsTemplate";
@@ -61,6 +62,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#0c2a2e",
             accent: "#f26b3a",
             font: "'Sora', sans-serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    travigo: {
+        id: "travigo",
+        name: "Travigo",
+        description: "Editorial travel style — oversized typography, circular destination photography, room-led browsing and direct hostel booking.",
+        component: TravigoTemplate,
+        swatch: {
+            bg: "#f5f3ed",
+            fg: "#111111",
+            accent: "#d8ff48",
+            font: "'Manrope', sans-serif",
         },
         recommendedFor: ["hostel"],
         supportsBooking: true,
