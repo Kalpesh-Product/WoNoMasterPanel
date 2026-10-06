@@ -5,6 +5,7 @@ import { format, isValid } from "date-fns";
 import { toast } from "sonner";
 import {
   BadgeCheck,
+  CalendarDays,
   CheckCircle2,
   Eye,
   FileText,
@@ -184,34 +185,32 @@ const EmptyTable = ({ label }) => (
 
 const EventPreviewContent = ({ item, config }) => {
   const image = getContributionImage(item);
-  const details = [
-    ["Category", item.category],
-    ["Month", item.month],
-    ["Venue", item.venue],
-    ["Type", item.eventType],
-  ].filter(([, value]) => getText(value, ""));
+  const description = getContributionDescription(item, config);
 
   return (
     <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-      <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
-      <div className="mb-8 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
-        <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{getContributionDescription(item, config) || "No short description provided."}</p>
-        {image ? (
-          <img src={image} alt={getContributionTitle(item, config)} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
-        )}
-      </div>
-      {details.length > 0 ? (
-        <div className="grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4">
-          {details.map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">{label}</p>
-              <p className="mt-1 text-[13px] font-pmedium text-slate-800">{getText(value)}</p>
-            </div>
-          ))}
+      <h2 className="mb-1 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+      {item.month ? (
+        <div className="mb-5 flex items-center gap-2 text-[15px] font-pmedium text-slate-900">
+          <CalendarDays size={16} strokeWidth={2.2} />
+          <span>During the month of {item.month}</span>
         </div>
       ) : null}
+
+      {image ? (
+        <img src={image} alt={getContributionTitle(item, config)} className="mb-5 h-64 w-full rounded-xl object-cover shadow-sm md:h-80 lg:h-[360px]" />
+      ) : (
+        <div className="mb-5 flex h-64 w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400 md:h-80 lg:h-[360px]">No image</div>
+      )}
+
+      <div className="mb-5 grid grid-cols-1 gap-4 border-b border-slate-100 pb-5 text-[15px] font-pmedium text-slate-950 sm:grid-cols-3">
+        <p>{getText(item.category)}</p>
+        <p className="sm:text-center">{getText(item.month)}</p>
+        <p className="sm:text-right">{getText(item.venue)}</p>
+      </div>
+
+      <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-900">{description || "No short description provided."}</p>
+      {item.eventType ? <p className="mt-5 text-[14px] font-pmedium text-slate-600">Type: {item.eventType}</p> : null}
       {item.link ? (
         <a className="mt-5 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open event link</a>
       ) : null}
