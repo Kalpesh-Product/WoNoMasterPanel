@@ -7,7 +7,7 @@ const WebsiteTemplateSettings = require("../../models/website/WebsiteTemplateSet
 const Workspace = require("../../models/hostCompany/Workspace");
 
 const PLAN_KEYS = ["basic", "professional", "custom"];
-const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "wayfarer", "haven", "commons", "huddle"];
+const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "wayfarer", "travigo", "haven", "camelia", "commons", "huddle"];
 const DEFAULT_SETTINGS = {
   key: "global",
   limitPeriod: "monthly",
@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS = {
     { templateId: "minimal-swiss", enabled: false, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "Coming soon" },
     { templateId: "savor", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "wayfarer", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "travigo", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "camelia", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "haven", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "commons", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "huddle", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
