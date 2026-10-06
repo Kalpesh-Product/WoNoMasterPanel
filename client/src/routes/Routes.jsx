@@ -155,6 +155,7 @@ import CompaniesRequestOverview from "../pages/Dashboard/FrontendDashboard/Compa
 import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/CompaniesRequestNomadListing";
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
+import ContributorLeads from "../pages/Dashboard/Leads/ContributorLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
@@ -325,6 +326,10 @@ export const routes = createBrowserRouter([
                         element: <JobApplicationsTable />,
                       },
                     ],
+                  },
+                  {
+                    path: "contributor-leads/:contributorLeadTab?",
+                    element: <ContributorLeads />,
                   },
                   {
                     path: "value-adds-leads",
