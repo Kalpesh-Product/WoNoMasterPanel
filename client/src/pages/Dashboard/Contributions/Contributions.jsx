@@ -54,6 +54,20 @@ const CONTRIBUTION_CONFIG = {
     loadError: "Failed to load news contributions.",
     updateError: "Failed to update news contribution.",
   },
+  events: {
+    singular: "Event",
+    plural: "Events",
+    contributorColumn: "Contributor",
+    category: "Event",
+    emptyLabel: "event contributions",
+    queryKey: "eventContributions",
+    endpoint: "/api/events/contributions",
+    statusEndpoint: (id) => `/api/events/contributions/${id}/status`,
+    approvedToast: "Event approved.",
+    rejectedToast: "Event rejected.",
+    loadError: "Failed to load event contributions.",
+    updateError: "Failed to update event contribution.",
+  },
 };
 
 const DEFAULT_TAB = CONTRIBUTION_TABS[0];
@@ -84,6 +98,8 @@ const truncate = (value, length = 42) => {
 
 const stripHtml = (value) => String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
+const isEventContribution = (config) => config?.category === "Event";
+
 const getContributorName = (item) => {
   const contributor = item?.contributor;
   if (contributor && typeof contributor === "object") {
@@ -104,6 +120,36 @@ const getInitials = (value) =>
     .toUpperCase() || "CB";
 
 const getDestination = (item) => getText(item?.destination);
+
+const getContributionTitle = (item, config) =>
+  getText(isEventContribution(config) ? item?.eventName : item?.mainTitle, `Untitled ${config?.singular?.toLowerCase() || "item"}`);
+
+const getContributionDescription = (item, config) =>
+  stripHtml(isEventContribution(config) ? item?.shortDescription : item?.mainContent);
+
+const getContributionImage = (item) => getText(item?.mainImage || item?.image, "");
+
+const getContributionSource = (item, config) => {
+  if (isEventContribution(config)) {
+    return getText(item?.venue || item?.category || item?.eventType);
+  }
+  return getText(item?.source);
+};
+
+const getContributionDate = (item, config) =>
+  isEventContribution(config) ? item?.updatedAt || item?.createdAt : item?.date || item?.createdAt;
+
+const getSearchValues = (item, config) => [
+  getContributorName(item),
+  getContributionTitle(item, config),
+  getContributionDescription(item, config),
+  getContributionSource(item, config),
+  item?.destination,
+  item?.link,
+  item?.category,
+  item?.month,
+  item?.eventType,
+];
 
 const extractContributions = (payload) => {
   const rows = payload?.data?.data ?? payload?.data?.blogs ?? payload?.data?.news ?? payload?.data ?? payload;
@@ -136,61 +182,109 @@ const EmptyTable = ({ label }) => (
   </div>
 );
 
+const EventPreviewContent = ({ item, config }) => {
+  const image = getContributionImage(item);
+  const details = [
+    ["Category", item.category],
+    ["Month", item.month],
+    ["Venue", item.venue],
+    ["Type", item.eventType],
+  ].filter(([, value]) => getText(value, ""));
+
+  return (
+    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
+      <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+      <div className="mb-8 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
+        <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{getContributionDescription(item, config) || "No short description provided."}</p>
+        {image ? (
+          <img src={image} alt={getContributionTitle(item, config)} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
+        )}
+      </div>
+      {details.length > 0 ? (
+        <div className="grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+          {details.map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">{label}</p>
+              <p className="mt-1 text-[13px] font-pmedium text-slate-800">{getText(value)}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {item.link ? (
+        <a className="mt-5 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open event link</a>
+      ) : null}
+    </div>
+  );
+};
+
+const ArticlePreviewContent = ({ item, config }) => {
+  const sections = Array.isArray(item.sections) ? item.sections : [];
+  const image = getContributionImage(item);
+
+  return (
+    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
+      <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+      <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
+        <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{getContributionDescription(item, config) || "No main content provided."}</p>
+        {image ? (
+          <img src={image} alt={getContributionTitle(item, config)} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
+        ) : (
+          <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
+        )}
+      </div>
+
+      <div className="space-y-7">
+        {sections.length === 0 ? null : sections.map((section, index) => {
+          const imageFirst = index % 2 === 0;
+          const sectionImage = section.image ? (
+            <img
+              src={section.image}
+              alt={section.title || `Section ${index + 1}`}
+              className="h-auto w-full rounded-xl object-cover md:max-h-56"
+            />
+          ) : null;
+          const sectionCopy = section.content ? (
+            <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(section.content)}</p>
+          ) : null;
+
+          return (
+            <section key={`${section.title || "section"}-${index}`} className="space-y-3 clear-both flow-root">
+              {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
+              <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
+                {imageFirst ? sectionImage : sectionCopy}
+                {imageFirst ? sectionCopy : sectionImage}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpdating }) => {
-  if (!item) return null;
+  if (!item || !config) return null;
   const status = String(item.status || "pending").toLowerCase();
   const canModerate = status === "pending";
-  const sections = Array.isArray(item.sections) ? item.sections : [];
   const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
-  const isNewsPreview = config.category === "News";
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-3 backdrop-blur-md" onClick={onClose}>
       <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
         <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-5 text-[15px] font-pmedium text-slate-600 md:grid-cols-3 md:px-10">
           <p>Destination: <span className="text-slate-800">{getDestination(item)}</span></p>
-          <p>Date: <span className="text-slate-800">{formatDate(item.date || item.createdAt)}</span></p>
+          <p>Date: <span className="text-slate-800">{formatDate(getContributionDate(item, config))}</span></p>
           <p>Number Of Edits: <span className="text-slate-800">{Number.isFinite(editCount) ? editCount : 0}</span></p>
           <button type="button" onClick={onClose} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:text-slate-700"><X size={16} /></button>
         </div>
 
-        <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-          <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getText(item.mainTitle, `Untitled ${config.singular.toLowerCase()}`)}</h2>
-          <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
-            <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(item.mainContent) || "No main content provided."}</p>
-            {item.mainImage ? (
-              <img src={item.mainImage} alt={item.mainTitle || config.singular} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
-            ) : (
-              <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
-            )}
-          </div>
-
-          <div className="space-y-7">
-            {sections.length === 0 ? null : sections.map((section, index) => {
-              const imageFirst = index % 2 === 0;
-              const sectionImage = section.image ? (
-                <img
-                  src={section.image}
-                  alt={section.title || `Section ${index + 1}`}
-                  className="h-auto w-full rounded-xl object-cover md:max-h-56"
-                />
-              ) : null;
-              const sectionCopy = section.content ? (
-                <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(section.content)}</p>
-              ) : null;
-
-              return (
-                <section key={`${section.title || "section"}-${index}`} className="space-y-3 clear-both flow-root">
-                  {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
-                  <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
-                    {imageFirst ? sectionImage : sectionCopy}
-                    {imageFirst ? sectionCopy : sectionImage}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </div>
+        {isEventContribution(config) ? (
+          <EventPreviewContent item={item} config={config} />
+        ) : (
+          <ArticlePreviewContent item={item} config={config} />
+        )}
 
         <div className="flex shrink-0 justify-center gap-3 border-t border-slate-100 bg-slate-50 px-5 py-5">
           {canModerate ? (
@@ -262,12 +356,12 @@ const Contributions = () => {
     return contributions.filter((item) => {
       const status = String(item.status || "pending").toLowerCase();
       const matchesStatus = stageFilter === "all" || status === stageFilter;
-      const matchesSearch = !query || [getContributorName(item), item.mainTitle, item.mainContent, item.source, item.destination, item.link]
+      const matchesSearch = !query || getSearchValues(item, activeConfig)
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query));
       return matchesStatus && matchesSearch;
     });
-  }, [contributions, searchQuery, stageFilter, supportsModeration]);
+  }, [activeConfig, contributions, searchQuery, stageFilter, supportsModeration]);
 
   const stats = useMemo(() => ({
     total: contributions.length,
@@ -298,14 +392,16 @@ const Contributions = () => {
             ))}
           </div>
 
-          {isPending && supportsModeration ? (
+          {!supportsModeration ? (
+            <div className="rounded-2xl border border-slate-100 bg-white py-16 text-center text-slate-400 text-sm font-semibold">{activeTab.label} will be available soon.</div>
+          ) : isPending ? (
             <div className="py-16 text-center text-slate-400 text-sm font-semibold">Loading contributions...</div>
-          ) : isError && supportsModeration ? (
+          ) : isError ? (
             <div className="py-16 text-center text-red-500 text-sm font-semibold">{activeConfig.loadError}</div>
           ) : (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
-                <StatTile label={`Total ${activeConfig?.plural || "Items"}`} value={stats.total} icon={FileText} tone="slate" />
+                <StatTile label={`Total ${activeConfig.plural}`} value={stats.total} icon={FileText} tone="slate" />
                 <StatTile label="Pending" value={stats.pending} icon={Sparkles} tone="amber" />
                 <StatTile label="Approved" value={stats.approved} icon={BadgeCheck} tone="emerald" />
                 <StatTile label="Rejected" value={stats.rejected} icon={XCircle} tone="rose" />
@@ -329,7 +425,7 @@ const Contributions = () => {
                   <table className="w-full text-left min-w-[920px]">
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
-                        <th className="px-5 py-4">{activeConfig?.contributorColumn || "Contributor"}</th>
+                        <th className="px-5 py-4">{activeConfig.contributorColumn}</th>
                         <th className="px-5 py-4">Title</th>
                         <th className="px-5 py-4">Description</th>
                         <th className="px-5 py-4">Source</th>
@@ -341,7 +437,7 @@ const Contributions = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100/60">
                       {rows.length === 0 ? (
-                        <tr><td colSpan={colSpan}><EmptyTable label={activeConfig?.emptyLabel || activeTab.label.toLowerCase()} /></td></tr>
+                        <tr><td colSpan={colSpan}><EmptyTable label={activeConfig.emptyLabel} /></td></tr>
                       ) : rows.map((item, index) => {
                         const itemId = item._id || item.id;
                         const contributor = getContributorName(item);
@@ -349,12 +445,12 @@ const Contributions = () => {
                         return (
                           <tr key={itemId} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-5 py-4"><div className="flex items-center gap-2.5"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(contributor)}</div><p className="text-[12px] font-pmedium text-slate-900">{contributor}</p></div></td>
-                            <td className="px-5 py-4 max-w-[170px]"><p className="text-[11px] font-pmedium uppercase text-slate-900 truncate">{truncate(item.mainTitle, 28)}</p></td>
-                            <td className="px-5 py-4 max-w-[240px]"><p className="text-[12px] font-pmedium text-slate-600 truncate">{truncate(stripHtml(item.mainContent), 48)}</p></td>
-                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{getText(item.source)}</span></td>
+                            <td className="px-5 py-4 max-w-[170px]"><p className="text-[11px] font-pmedium uppercase text-slate-900 truncate">{truncate(getContributionTitle(item, activeConfig), 28)}</p></td>
+                            <td className="px-5 py-4 max-w-[240px]"><p className="text-[12px] font-pmedium text-slate-600 truncate">{truncate(getContributionDescription(item, activeConfig), 48)}</p></td>
+                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{getContributionSource(item, activeConfig)}</span></td>
                             <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{item.link ? <a className="text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open</a> : "-"}</span></td>
                             <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
-                            <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">{activeConfig?.category || "-"}</span></td>
+                            <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">{activeConfig.category}</span></td>
                             <td className="px-5 py-4"><div className="flex items-center justify-center"><button type="button" onClick={() => setSelectedItemId(itemId)} data-tour={index === 0 ? "contributions-action-view" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button></div></td>
                           </tr>
                         );
