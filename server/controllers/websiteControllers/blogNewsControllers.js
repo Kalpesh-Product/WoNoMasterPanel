@@ -220,6 +220,33 @@ const updateEventContributionStatus = async (req, res) => {
         });
     }
 };
+const getPlaceContributions = async (req, res) => {
+    try {
+        const response = await axios.get(`${NOMADS_BASE_URL}/places/contributions`, {
+            params: req.query,
+            headers: adminHeaders(),
+        });
+        return res.status(200).json(response.data);
+    } catch (error) {
+        return res.status(error.response?.status || 500).json({
+            message: error.response?.data?.message || "Failed to fetch place contributions from external API"
+        });
+    }
+};
+
+const updatePlaceContributionStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const response = await axios.patch(`${NOMADS_BASE_URL}/places/contributions/${id}/status`, req.body, {
+            headers: adminHeaders(),
+        });
+        return res.status(200).json(response.data);
+    } catch (error) {
+        return res.status(error.response?.status || 500).json({
+            message: error.response?.data?.message || "Failed to update place contribution status in external API"
+        });
+    }
+};
 const updateNewsStatus = async (req, res) => {
     try {
         const { id } = req.params;
@@ -240,6 +267,7 @@ module.exports = {
     getBlogContributions,
     getNewsContributions,
     getEventContributions,
+    getPlaceContributions,
     createBlog,
     createNews,
     updateBlog,
@@ -250,4 +278,5 @@ module.exports = {
     updateBlogContributionStatus,
     updateNewsContributionStatus,
     updateEventContributionStatus,
+    updatePlaceContributionStatus,
 };

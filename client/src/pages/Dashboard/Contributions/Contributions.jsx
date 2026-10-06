@@ -9,8 +9,10 @@ import {
   CheckCircle2,
   Eye,
   FileText,
+  MapPin,
   Search,
   Sparkles,
+  Star,
   Target,
   X,
   XCircle,
@@ -69,6 +71,20 @@ const CONTRIBUTION_CONFIG = {
     loadError: "Failed to load event contributions.",
     updateError: "Failed to update event contribution.",
   },
+  places: {
+    singular: "Place",
+    plural: "Places",
+    contributorColumn: "Contributor",
+    category: "Place",
+    emptyLabel: "place contributions",
+    queryKey: "placeContributions",
+    endpoint: "/api/places/contributions",
+    statusEndpoint: (id) => `/api/places/contributions/${id}/status`,
+    approvedToast: "Place approved.",
+    rejectedToast: "Place rejected.",
+    loadError: "Failed to load place contributions.",
+    updateError: "Failed to update place contribution.",
+  },
 };
 
 const DEFAULT_TAB = CONTRIBUTION_TABS[0];
@@ -100,6 +116,7 @@ const truncate = (value, length = 42) => {
 const stripHtml = (value) => String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 const isEventContribution = (config) => config?.category === "Event";
+const isPlaceContribution = (config) => config?.category === "Place";
 
 const getContributorName = (item) => {
   const contributor = item?.contributor;
@@ -123,10 +140,10 @@ const getInitials = (value) =>
 const getDestination = (item) => getText(item?.destination);
 
 const getContributionTitle = (item, config) =>
-  getText(isEventContribution(config) ? item?.eventName : item?.mainTitle, `Untitled ${config?.singular?.toLowerCase() || "item"}`);
+  getText(isEventContribution(config) ? item?.eventName : isPlaceContribution(config) ? item?.placeName : item?.mainTitle, `Untitled ${config?.singular?.toLowerCase() || "item"}`);
 
 const getContributionDescription = (item, config) =>
-  stripHtml(isEventContribution(config) ? item?.shortDescription : item?.mainContent);
+  stripHtml(isEventContribution(config) || isPlaceContribution(config) ? item?.shortDescription : item?.mainContent);
 
 const getContributionImage = (item) => getText(item?.mainImage || item?.image, "");
 
@@ -134,11 +151,14 @@ const getContributionSource = (item, config) => {
   if (isEventContribution(config)) {
     return getText(item?.venue || item?.category || item?.eventType);
   }
+  if (isPlaceContribution(config)) {
+    return getText(item?.address || item?.category || item?.placeType);
+  }
   return getText(item?.source);
 };
 
 const getContributionDate = (item, config) =>
-  isEventContribution(config) ? item?.updatedAt || item?.createdAt : item?.date || item?.createdAt;
+  isEventContribution(config) || isPlaceContribution(config) ? item?.updatedAt || item?.createdAt : item?.date || item?.createdAt;
 
 const getSearchValues = (item, config) => [
   getContributorName(item),
@@ -150,6 +170,9 @@ const getSearchValues = (item, config) => [
   item?.category,
   item?.month,
   item?.eventType,
+  item?.address,
+  item?.placeType,
+  item?.rating,
 ];
 
 const extractContributions = (payload) => {
@@ -218,6 +241,43 @@ const EventPreviewContent = ({ item, config }) => {
   );
 };
 
+const PlacePreviewContent = ({ item, config }) => {
+  const image = getContributionImage(item);
+  const description = getContributionDescription(item, config);
+  const rating = getText(item.rating, "");
+
+  return (
+    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
+      <h2 className="mb-2 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+      {item.address ? (
+        <div className="mb-5 flex items-center gap-2 text-[15px] font-pmedium text-slate-900">
+          <MapPin size={16} strokeWidth={2.2} />
+          <span>{item.address}</span>
+        </div>
+      ) : null}
+
+      {image ? (
+        <img src={image} alt={getContributionTitle(item, config)} className="mb-5 h-64 w-full rounded-xl object-cover shadow-sm md:h-80 lg:h-[360px]" />
+      ) : (
+        <div className="mb-5 flex h-64 w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400 md:h-80 lg:h-[360px]">No image</div>
+      )}
+
+      <div className="mb-5 grid grid-cols-1 gap-4 border-b border-slate-100 pb-5 text-[15px] font-pmedium text-slate-950 sm:grid-cols-3">
+        <p>{getText(item.category || item.placeType)}</p>
+        <p className="sm:text-center">{rating ? <span className="inline-flex items-center justify-center gap-1"><Star size={15} className="fill-amber-400 text-amber-400" />{rating}</span> : "-"}</p>
+        <p className="sm:text-right">{getText(item.venue || item.month)}</p>
+      </div>
+
+      <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-900">{description || "No short description provided."}</p>
+      {item.googleMapsLink ? (
+        <a className="mt-5 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline" href={item.googleMapsLink} target="_blank" rel="noreferrer">Open Google Maps</a>
+      ) : null}
+      {item.link ? (
+        <a className="ml-0 mt-3 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline sm:ml-5" href={item.link} target="_blank" rel="noreferrer">Open place link</a>
+      ) : null}
+    </div>
+  );
+};
 const ArticlePreviewContent = ({ item, config }) => {
   const sections = Array.isArray(item.sections) ? item.sections : [];
   const image = getContributionImage(item);
@@ -281,6 +341,8 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
 
         {isEventContribution(config) ? (
           <EventPreviewContent item={item} config={config} />
+        ) : isPlaceContribution(config) ? (
+          <PlacePreviewContent item={item} config={config} />
         ) : (
           <ArticlePreviewContent item={item} config={config} />
         )}
