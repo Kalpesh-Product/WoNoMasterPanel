@@ -5,6 +5,7 @@ import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
+import TulumTemplate from "./tulum/TulumTemplate";
 import HavenTemplate from "./haven/HavenTemplate";
 import CameliaTemplate from "./camelia/CameliaTemplate";
 import CommonsTemplate from "./commons/CommonsTemplate";
@@ -64,6 +65,15 @@ export const TEMPLATE_REGISTRY = {
             font: "'Sora', sans-serif",
         },
         recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    tulum: {
+        id: "tulum",
+        name: "Tulum",
+        description: "Quiet editorial co-living style: a full-bleed video hero with a nightly price, serif headings, sage bands, unit rows and pricing cards. Made for co-living and workation stays, works for any service.",
+        component: TulumTemplate,
+        swatch: { bg: "#f1f1ed", fg: "#4f5a53", accent: "#8a968f", font: "'Cormorant Upright', serif" },
+        recommendedFor: ["coLiving", "workation"],
         supportsBooking: true,
     },
     travigo: {

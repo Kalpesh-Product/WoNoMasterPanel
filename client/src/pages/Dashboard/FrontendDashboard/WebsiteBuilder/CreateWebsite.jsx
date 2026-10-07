@@ -4560,7 +4560,7 @@ const CreateWebsite = () => {
        the photo carousel above. A direct link, not an upload (keeps video
        hosting off our own storage); other templates ignore this field entirely. */
   }
-                {watch("themeVariant") === "camelia" && (
+                {["camelia", "tulum"].includes(watch("themeVariant")) && (
     <Controller
       name="heroVideoUrl"
       control={control}
