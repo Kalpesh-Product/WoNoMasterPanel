@@ -6,6 +6,7 @@ import SavorTemplate from "./savor/SavorTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
 import TulumTemplate from "./tulum/TulumTemplate";
+import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
 import HavenTemplate from "./haven/HavenTemplate";
 import CameliaTemplate from "./camelia/CameliaTemplate";
 import CommonsTemplate from "./commons/CommonsTemplate";
@@ -73,6 +74,15 @@ export const TEMPLATE_REGISTRY = {
         description: "Quiet editorial co-living style: a full-bleed video hero with a nightly price, serif headings, sage bands, unit rows and pricing cards. Made for co-living and workation stays, works for any service.",
         component: TulumTemplate,
         swatch: { bg: "#f1f1ed", fg: "#4f5a53", accent: "#8a968f", font: "'Cormorant Upright', serif" },
+        recommendedFor: ["coLiving", "workation"],
+        supportsBooking: true,
+    },
+    grindelwald: {
+        id: "grindelwald",
+        name: "Grindelwald",
+        description: "Forest-retreat style: a deep green hero with a round photo and dashed neon rings, a pale intro with stats, a parallax photo, room cards, a photo slider and a closing band. Made for co-living and cabin stays, works for any service.",
+        component: GrindelwaldTemplate,
+        swatch: { bg: "#f8f8f8", fg: "#1b3936", accent: "#75ff69", font: "'Bodoni Moda', serif" },
         recommendedFor: ["coLiving", "workation"],
         supportsBooking: true,
     },
