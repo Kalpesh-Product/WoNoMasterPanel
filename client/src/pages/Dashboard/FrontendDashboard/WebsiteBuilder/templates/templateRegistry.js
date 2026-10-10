@@ -5,6 +5,7 @@ import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
+import LodgeTemplate from "./lodge/LodgeTemplate";
 import TulumTemplate from "./tulum/TulumTemplate";
 import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
 import HavenTemplate from "./haven/HavenTemplate";
@@ -84,6 +85,15 @@ export const TEMPLATE_REGISTRY = {
         component: GrindelwaldTemplate,
         swatch: { bg: "#f8f8f8", fg: "#1b3936", accent: "#75ff69", font: "'Bodoni Moda', serif" },
         recommendedFor: ["coLiving", "workation"],
+        supportsBooking: true,
+    },
+    lodge: {
+        id: "lodge",
+        name: "Lodge",
+        description: "Rental-house style: a full-bleed photo slider, pill-shaped amenity chips, rolling counters and a dark guest-quote band. Made for hostels and short rentals, works for any service.",
+        component: LodgeTemplate,
+        swatch: { bg: "#ffffff", fg: "#1c1f21", accent: "#7fa388", font: "'Inter', sans-serif" },
+        recommendedFor: ["hostel"],
         supportsBooking: true,
     },
     travigo: {
