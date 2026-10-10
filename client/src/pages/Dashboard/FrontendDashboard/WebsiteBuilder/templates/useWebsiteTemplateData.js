@@ -3,6 +3,26 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Country, State, City } from "country-state-city";
 import { api } from "../../../../../utils/axios";
 const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
+
+// Read synchronously so the very first render already has the draft (when one is already
+// saved) instead of mounting with draft === null and flashing every template's "no preview
+// data" fallback for a tick before the loading effect below catches up.
+const readPreviewDraftRaw = () => {
+  try {
+    return localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+const parsePreviewDraft = (raw) => {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error("Failed to parse preview draft", error);
+    return null;
+  }
+};
 const normalizeSlug = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, "-");
 const FALLBACK_NAV = [
   { name: "Home", slug: "home" },
@@ -212,8 +232,8 @@ const getProductContentItems = (draft, slug, page) => {
 const useWebsiteTemplateData = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState(null);
-  const previewDraftRawRef = useRef(null);
+  const [draft, setDraft] = useState(() => parsePreviewDraft(readPreviewDraftRaw()));
+  const previewDraftRawRef = useRef(readPreviewDraftRaw());
   const [heroIndex, setHeroIndex] = useState(0);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [expandedTestimonials, setExpandedTestimonials] = useState({});
@@ -306,18 +326,10 @@ const useWebsiteTemplateData = () => {
   }, [careersApplyForm.state]);
   useEffect(() => {
     const loadDraft = () => {
-      try {
-        const raw = localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
-        if (raw === previewDraftRawRef.current) return;
-        previewDraftRawRef.current = raw;
-        if (!raw) {
-          setDraft(null);
-          return;
-        }
-        setDraft(JSON.parse(raw));
-      } catch (error) {
-        console.error("Failed to parse preview draft", error);
-      }
+      const raw = readPreviewDraftRaw();
+      if (raw === previewDraftRawRef.current) return;
+      previewDraftRawRef.current = raw;
+      setDraft(parsePreviewDraft(raw));
     };
     const handleStorage = (event) => {
       if (event.key === LIVE_PREVIEW_DRAFT_STORAGE_KEY) loadDraft();

@@ -40,7 +40,7 @@ const Hero = () => {
     // video all have no inline opacity/transform and no load-triggered interaction at all, just a
     // poster image behind the <video> so there's no blank flash while it buffers) — so this
     // matches that: everything renders at full opacity immediately, like the reference does.
-    return (<section id="cm-hero" className="relative -mt-20 aspect-[4/3] w-full overflow-hidden md:aspect-[16/8]">
+    return (<section id="cm-hero" className="relative -mt-20 aspect-[4/3] min-h-[560px] w-full overflow-hidden md:aspect-[16/8]">
       {video ? (<video className="absolute inset-0 h-full w-full object-cover" src={video} poster={main || undefined} autoPlay muted loop playsInline/>) : main ? (<img src={main} alt="" className="absolute inset-0 h-full w-full object-cover"/>) : (<div className="absolute inset-0 flex items-center justify-center" style={{ background: "linear-gradient(160deg, color-mix(in srgb, var(--t-accent) 30%, var(--t-surface)), var(--t-surface))" }}>
           <Placeholder text={draft?.companyName || ""}/>
         </div>)}
