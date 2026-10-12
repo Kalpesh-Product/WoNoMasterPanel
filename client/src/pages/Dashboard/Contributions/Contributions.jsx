@@ -10,6 +10,7 @@ import {
   Eye,
   FileText,
   MapPin,
+  Power,
   Search,
   Sparkles,
   Star,
@@ -38,8 +39,10 @@ const CONTRIBUTION_CONFIG = {
     queryKey: "blogContributions",
     endpoint: "/api/blogs/contributions",
     statusEndpoint: (id) => `/api/blogs/contributions/${id}/status`,
+    activeEndpoint: (id) => `/api/blogs/${id}`,
     approvedToast: "Blog approved.",
     rejectedToast: "Blog rejected.",
+    activeToast: (isActive) => `Blog marked as ${isActive ? "active" : "inactive"}.`,
     loadError: "Failed to load blog contributions.",
     updateError: "Failed to update blog contribution.",
   },
@@ -159,6 +162,8 @@ const getContributionSource = (item, config) => {
 
 const getContributionDate = (item, config) =>
   isEventContribution(config) || isPlaceContribution(config) ? item?.updatedAt || item?.createdAt : item?.date || item?.createdAt;
+
+const isContributionActive = (item) => item?.isActive !== false;
 
 const getSearchValues = (item, config) => [
   getContributorName(item),
@@ -411,6 +416,20 @@ const Contributions = () => {
     },
   });
 
+  const updateActiveMutation = useMutation({
+    mutationFn: async ({ itemId, isActive }) => {
+      const response = await axiosPrivate.patch(activeConfig.activeEndpoint(itemId), { isActive });
+      return response?.data;
+    },
+    onSuccess: (_data, { isActive }) => {
+      toast.success(activeConfig.activeToast?.(isActive) || `${activeConfig.singular} status updated.`);
+      queryClient.invalidateQueries({ queryKey: [activeConfig.queryKey] });
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || activeConfig.updateError);
+    },
+  });
+
   const filteredContributions = useMemo(() => {
     if (!supportsModeration) return [];
     const query = searchQuery.trim().toLowerCase();
@@ -503,6 +522,8 @@ const Contributions = () => {
                         const itemId = item._id || item.id;
                         const contributor = getContributorName(item);
                         const status = String(item.status || "pending").toLowerCase();
+                        const isActive = isContributionActive(item);
+                        const canToggleActive = typeof activeConfig.activeEndpoint === "function";
                         return (
                           <tr key={itemId} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-5 py-4"><div className="flex items-center gap-2.5"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(contributor)}</div><p className="text-[12px] font-pmedium text-slate-900">{contributor}</p></div></td>
@@ -512,7 +533,26 @@ const Contributions = () => {
                             <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{item.link ? <a className="text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open</a> : "-"}</span></td>
                             <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
                             <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">{activeConfig.category}</span></td>
-                            <td className="px-5 py-4"><div className="flex items-center justify-center"><button type="button" onClick={() => setSelectedItemId(itemId)} data-tour={index === 0 ? "contributions-action-view" : undefined} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"><Eye size={15} strokeWidth={2.5} /></button></div></td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button type="button" onClick={() => setSelectedItemId(itemId)} data-tour={index === 0 ? "contributions-action-view" : undefined} title={`View ${activeConfig.singular.toLowerCase()}`} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"><Eye size={15} strokeWidth={2.5} /></button>
+                                {canToggleActive ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateActiveMutation.mutate({ itemId, isActive: !isActive })}
+                                    disabled={updateActiveMutation.isPending}
+                                    title={isActive ? "Mark as Inactive" : "Mark as Active"}
+                                    className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                      isActive
+                                        ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                        : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                    }`}
+                                  >
+                                    <Power size={15} strokeWidth={2.5} />
+                                  </button>
+                                ) : null}
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
