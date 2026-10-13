@@ -164,6 +164,20 @@ const getContributionSource = (item, config) => {
 const getContributionDate = (item, config) =>
   isEventContribution(config) || isPlaceContribution(config) ? item?.updatedAt || item?.createdAt : item?.date || item?.createdAt;
 
+const getFirstSubmissionDate = (item) => item?.firstSubmittedAt || item?.submittedAt || item?.createdAt || item?.date;
+
+const getLastEditedDate = (item) => {
+  if (Array.isArray(item?.edits) && item.edits.length > 0) {
+    const latestEdit = item.edits
+      .map((edit) => edit?.updatedAt || edit?.editedAt || edit?.date || edit?.createdAt)
+      .filter(Boolean)
+      .sort((first, second) => new Date(second).getTime() - new Date(first).getTime())[0];
+    if (latestEdit) return latestEdit;
+  }
+
+  return item?.lastEditedAt || item?.editedAt || item?.updatedAt || item?.createdAt || item?.date;
+};
+
 const isContributionActive = (item) => item?.isActive !== false;
 
 const getSearchValues = (item, config) => [
@@ -334,14 +348,28 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
   const status = String(item.status || "pending").toLowerCase();
   const canModerate = status === "pending";
   const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
+  const metadata = [
+    ["Destination", getDestination(item)],
+    ["Date", formatDate(getContributionDate(item, config))],
+    ["First Submission", formatDate(getFirstSubmissionDate(item))],
+    ["Last Edited", formatDate(getLastEditedDate(item))],
+    ["Number Of Edits", Number.isFinite(editCount) ? editCount : 0],
+  ];
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-3 backdrop-blur-md" onClick={onClose}>
       <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="grid gap-3 border-b border-slate-100 bg-slate-50/70 px-6 py-5 text-[15px] font-pmedium text-slate-600 md:grid-cols-3 md:px-10">
-          <p>Destination: <span className="text-slate-800">{getDestination(item)}</span></p>
-          <p>Date: <span className="text-slate-800">{formatDate(getContributionDate(item, config))}</span></p>
-          <p>Number Of Edits: <span className="text-slate-800">{Number.isFinite(editCount) ? editCount : 0}</span></p>
+        <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-5 pr-16 text-[15px] font-pmedium text-slate-600 md:px-10 md:pr-20">
+          <div className="flex flex-wrap items-center gap-y-2">
+            {metadata.map(([label, value], index) => (
+              <React.Fragment key={label}>
+                {index > 0 ? <span className="mx-3 hidden text-slate-300 sm:inline">|</span> : null}
+                <p className="whitespace-nowrap">
+                  {label}: <span className="text-slate-800">{value}</span>
+                </p>
+              </React.Fragment>
+            ))}
+          </div>
           <button type="button" onClick={onClose} className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:text-slate-700"><X size={16} /></button>
         </div>
 
