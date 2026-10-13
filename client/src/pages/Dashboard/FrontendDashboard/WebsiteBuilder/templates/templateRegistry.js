@@ -3,6 +3,7 @@ import FreshStudioTemplate from "./FreshStudioTemplate";
 import WarmOrganicTemplate from "./WarmOrganicTemplate";
 import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
+import TastycTemplate from "./tastyc/TastycTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
 import LodgeTemplate from "./lodge/LodgeTemplate";
@@ -51,6 +52,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#2a1a12",
             accent: "#e4572e",
             font: "'Bricolage Grotesque', sans-serif",
+        },
+        recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    tastyc: {
+        id: "tastyc",
+        name: "Tastyc",
+        description: "Dark editorial coffee-house style — full-screen roast photography, elegant serif type, menu lists, reservations, working hours and gallery storytelling.",
+        component: TastycTemplate,
+        swatch: {
+            bg: "#06191b",
+            fg: "#fffdf8",
+            accent: "#cf7736",
+            font: "'Playfair Display', Georgia, serif",
         },
         recommendedFor: ["menu"],
         supportsBooking: true,
