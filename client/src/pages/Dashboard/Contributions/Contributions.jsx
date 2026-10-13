@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Eye,
   FileText,
+  History,
   MapPin,
   Power,
   Search,
@@ -19,6 +20,7 @@ import {
   XCircle,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
+import useAuth from "../../../hooks/useAuth";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { statusPillClass } from "../../../lib/status-pill";
 
@@ -101,6 +103,12 @@ const formatDate = (raw) => {
   return isValid(date) ? format(date, "dd-MM-yyyy") : "-";
 };
 
+const formatDateTime = (raw) => {
+  if (!raw) return "-";
+  const date = new Date(raw);
+  return isValid(date) ? format(date, "dd-MM-yyyy hh:mm a") : "-";
+};
+
 const formatLabel = (value) => {
   const raw = String(value || "").trim();
   return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "-";
@@ -129,6 +137,13 @@ const getContributorName = (item) => {
     return contributor.fullName || contributor.name || name || contributor.email || item.author || "Contributor";
   }
   return item?.author || "Contributor";
+};
+
+const getActorName = (actor, fallback = "Master Panel") => {
+  if (!actor) return fallback;
+  if (typeof actor === "string") return actor.trim() || fallback;
+  const name = [actor.firstName, actor.lastName].filter(Boolean).join(" ").trim();
+  return actor.fullName || actor.name || actor.reviewerName || actor.email || name || fallback;
 };
 
 const getInitials = (value) =>
@@ -198,6 +213,88 @@ const getSearchValues = (item, config) => [
 const extractContributions = (payload) => {
   const rows = payload?.data?.data ?? payload?.data?.blogs ?? payload?.data?.news ?? payload?.data ?? payload;
   return Array.isArray(rows) ? rows : [];
+};
+
+const normalizeTimelineStatus = (status) => {
+  const raw = String(status || "").toLowerCase();
+  if (raw === "approved") return "Approved";
+  if (raw === "rejected") return "Rejected";
+  if (raw === "pending") return "Pending Review";
+  return formatLabel(raw);
+};
+
+const buildContributionTimeline = (item, config) => {
+  if (!item) return [];
+  const contributorName = getContributorName(item);
+  const createdAt = getFirstSubmissionDate(item);
+  const updatedAt = getLastEditedDate(item);
+  const status = String(item.status || "pending").toLowerCase();
+  const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
+  const timeline = [];
+
+  if (createdAt) {
+    timeline.push({
+      date: createdAt,
+      title: "First Submission",
+      description: `${config.singular} submitted by ${contributorName}.`,
+      tone: "blue",
+    });
+  }
+
+  if (Array.isArray(item.edits) && item.edits.length > 0) {
+    item.edits.forEach((edit, index) => {
+      const editDate = edit?.updatedAt || edit?.editedAt || edit?.date || edit?.createdAt;
+      if (!editDate) return;
+      timeline.push({
+        date: editDate,
+        title: `Edit ${index + 1}`,
+        description: `Edited by ${getActorName(edit?.editedBy || edit?.updatedBy, contributorName)}.`,
+        tone: "amber",
+      });
+    });
+  } else if (updatedAt && updatedAt !== createdAt && editCount > 0) {
+    timeline.push({
+      date: updatedAt,
+      title: "Last Edited",
+      description: `Edited by ${contributorName}${editCount > 0 ? ` (${editCount} edit${editCount === 1 ? "" : "s"})` : ""}.`,
+      tone: "amber",
+    });
+  }
+
+  if (Array.isArray(item.moderationHistory) && item.moderationHistory.length > 0) {
+    item.moderationHistory.forEach((entry) => {
+      const entryStatus = String(entry?.status || entry?.action || "").toLowerCase();
+      const entryDate = entry?.date || entry?.createdAt || entry?.updatedAt;
+      if (!entryDate || !entryStatus) return;
+      timeline.push({
+        date: entryDate,
+        title: normalizeTimelineStatus(entryStatus),
+        description: `${normalizeTimelineStatus(entryStatus)} by ${getActorName(entry?.reviewedBy || entry?.moderatedBy || entry?.actor)}.`,
+        details: entry?.reason || entry?.rejectionReason || "",
+        tone: entryStatus === "approved" ? "emerald" : entryStatus === "rejected" ? "rose" : "slate",
+      });
+    });
+  } else if (["approved", "rejected"].includes(status)) {
+    const reviewedAt = item.reviewedAt || item.moderatedAt || item.approvedAt || item.rejectedAt || item.updatedAt;
+    timeline.push({
+      date: reviewedAt,
+      title: normalizeTimelineStatus(status),
+      description: `${normalizeTimelineStatus(status)} by ${getActorName(item.reviewedBy || item.moderatedBy || item.approvedBy || item.rejectedBy)}.`,
+      details: status === "rejected" ? item.rejectionReason : "",
+      tone: status === "approved" ? "emerald" : "rose",
+    });
+  } else {
+    timeline.push({
+      date: item.updatedAt || createdAt,
+      title: "Pending Review",
+      description: `Waiting for ${config.singular.toLowerCase()} review.`,
+      tone: "slate",
+    });
+  }
+
+  return timeline
+    .filter((entry) => entry.date)
+    .sort((first, second) => new Date(first.date).getTime() - new Date(second.date).getTime());
 };
 
 const StatTile = ({ label, value, icon: Icon, tone }) => {
@@ -436,17 +533,74 @@ const RejectionReasonModal = ({ item, config, reason, onReasonChange, onClose, o
   );
 };
 
+const TimelineModal = ({ item, config, onClose }) => {
+  if (!item || !config) return null;
+  const title = getContributionTitle(item, config);
+  const timeline = buildContributionTimeline(item, config);
+  const tones = {
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    rose: "border-rose-200 bg-rose-50 text-rose-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-600",
+  };
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-4 backdrop-blur-md" onClick={onClose}>
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/70 px-6 py-5">
+          <div>
+            <h3 className="text-base font-pmedium text-slate-950">{config.singular} Timeline</h3>
+            <p className="mt-1 text-[12px] font-pmedium text-slate-500">{title}</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-400 transition hover:text-slate-700">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
+          {timeline.length > 0 ? (
+            <ol className="relative ml-3 border-l border-slate-200">
+              {timeline.map((entry, index) => (
+                <li key={`${entry.title}-${entry.date}-${index}`} className="mb-7 ml-6 last:mb-0">
+                  <span className={`absolute -left-3 flex h-6 w-6 items-center justify-center rounded-full border ${tones[entry.tone] || tones.slate}`}>
+                    <span className="h-2 w-2 rounded-full bg-current" />
+                  </span>
+                  <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <h4 className="text-[13px] font-pmedium text-slate-950">{entry.title}</h4>
+                      <time className="text-[11px] font-pmedium text-slate-400">{formatDateTime(entry.date)}</time>
+                    </div>
+                    <p className="mt-1 text-[12px] font-pmedium text-slate-600">{entry.description}</p>
+                    {entry.details ? (
+                      <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-[12px] font-pmedium text-slate-700">{entry.details}</p>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 py-10 text-center text-[12px] font-pmedium text-slate-400">No timeline entries available.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Contributions = () => {
   const navigate = useNavigate();
   const { contributionTab } = useParams();
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
+  const { auth } = useAuth();
   const activeTab = TAB_BY_SLUG[contributionTab] || DEFAULT_TAB;
   const activeConfig = CONTRIBUTION_CONFIG[activeTab.type];
   const supportsModeration = Boolean(activeConfig);
   const [stageFilter, setStageFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [timelineItemId, setTimelineItemId] = useState(null);
   const [rejectionTarget, setRejectionTarget] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
 
@@ -460,6 +614,7 @@ const Contributions = () => {
     setStageFilter("all");
     setSearchQuery("");
     setSelectedItemId(null);
+    setTimelineItemId(null);
     setRejectionTarget(null);
     setRejectionReason("");
   }, [activeTab.slug]);
@@ -476,6 +631,9 @@ const Contributions = () => {
   const updateStatusMutation = useMutation({
     mutationFn: async ({ itemId, status, rejectionReason }) => {
       const payload = { status };
+      const reviewerName = [auth?.user?.firstName, auth?.user?.lastName].filter(Boolean).join(" ").trim();
+      payload.reviewerName = reviewerName || auth?.user?.name || auth?.user?.email || "Master Panel";
+      payload.reviewerEmail = auth?.user?.email || "";
       if (status === "rejected") {
         payload.rejectionReason = rejectionReason;
       }
@@ -529,6 +687,7 @@ const Contributions = () => {
   }), [contributions]);
 
   const selectedItem = useMemo(() => contributions.find((item) => (item._id || item.id) === selectedItemId), [contributions, selectedItemId]);
+  const timelineItem = useMemo(() => contributions.find((item) => (item._id || item.id) === timelineItemId), [contributions, timelineItemId]);
   const beginStatusChange = (itemId, status) => {
     if (status === "rejected" && activeConfig.requiresRejectionReason) {
       const item = contributions.find((entry) => (entry._id || entry.id) === itemId);
@@ -638,6 +797,7 @@ const Contributions = () => {
                             <td className="px-5 py-4">
                               <div className="flex items-center justify-center gap-1.5">
                                 <button type="button" onClick={() => setSelectedItemId(itemId)} data-tour={index === 0 ? "contributions-action-view" : undefined} title={`View ${activeConfig.singular.toLowerCase()}`} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"><Eye size={15} strokeWidth={2.5} /></button>
+                                <button type="button" onClick={() => setTimelineItemId(itemId)} title={`View ${activeConfig.singular.toLowerCase()} timeline`} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"><History size={15} strokeWidth={2.5} /></button>
                                 {canToggleActive ? (
                                   <button
                                     type="button"
@@ -668,6 +828,7 @@ const Contributions = () => {
       </PageFrame>
 
       <ContributionPreviewModal item={selectedItem} config={activeConfig} onClose={() => setSelectedItemId(null)} onStatusChange={beginStatusChange} isUpdating={updateStatusMutation.isPending} />
+      <TimelineModal item={timelineItem} config={activeConfig} onClose={() => setTimelineItemId(null)} />
       <RejectionReasonModal
         item={rejectionTarget}
         config={activeConfig}
