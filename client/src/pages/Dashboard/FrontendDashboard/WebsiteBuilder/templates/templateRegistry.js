@@ -4,6 +4,7 @@ import WarmOrganicTemplate from "./WarmOrganicTemplate";
 import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import TastycTemplate from "./tastyc/TastycTemplate";
+import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
 import LodgeTemplate from "./lodge/LodgeTemplate";
@@ -68,6 +69,20 @@ export const TEMPLATE_REGISTRY = {
             font: "'Playfair Display', Georgia, serif",
         },
         recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    flowspace: {
+        id: "flowspace",
+        name: "Flowspace",
+        description: "Warm editorial meeting-room design — oversized typography, cinematic room photography, lime accents, flowing space discovery and booking-led pages.",
+        component: FlowspaceTemplate,
+        swatch: {
+            bg: "#f2efe6",
+            fg: "#10110f",
+            accent: "#d9ff4f",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
         supportsBooking: true,
     },
     wayfarer: {

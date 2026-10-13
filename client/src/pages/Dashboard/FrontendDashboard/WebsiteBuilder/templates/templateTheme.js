@@ -11,6 +11,7 @@ const THEME_DEFAULTS = {
   // (see verticalProfiles.js); these are the picker placeholders.
   savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
   tastyc: { bg: "#f4efe7", text: "#1a1715", accent: "#cf7736", surfaceUp: true },
+  flowspace: { bg: "#fbfaeb", text: "#11110f", accent: "#11110f", surfaceUp: true },
   wayfarer: { bg: "#f3fbfa", text: "#0c2a2e", accent: "#f26b3a", surfaceUp: true },
   tulum: { bg: "#f1f1ed", text: "#6e7a73", accent: "#8a968f", surfaceUp: true },
   grindelwald: { bg: "#f8f8f8", text: "#1b3936", accent: "#75ff69", surfaceUp: true },
