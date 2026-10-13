@@ -40,6 +40,7 @@ const CONTRIBUTION_CONFIG = {
     endpoint: "/api/blogs/contributions",
     statusEndpoint: (id) => `/api/blogs/contributions/${id}/status`,
     activeEndpoint: (id) => `/api/blogs/${id}`,
+    requiresRejectionReason: true,
     approvedToast: "Blog approved.",
     rejectedToast: "Blog rejected.",
     activeToast: (isActive) => `Blog marked as ${isActive ? "active" : "inactive"}.`,
@@ -368,6 +369,45 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
   );
 };
 
+const RejectionReasonModal = ({ item, config, reason, onReasonChange, onClose, onSubmit, isSubmitting }) => {
+  if (!item || !config) return null;
+  const title = getContributionTitle(item, config);
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-[#0F172A]/50 p-4 backdrop-blur-md" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl border border-white/80 bg-white p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-base font-pmedium text-slate-950">Reject {config.singular}</h3>
+            <p className="mt-1 text-[12px] font-pmedium text-slate-500">{title}</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-400 transition hover:text-slate-700 disabled:opacity-60">
+            <X size={16} />
+          </button>
+        </div>
+
+        <label className="mb-2 block text-[11px] font-pmedium uppercase tracking-widest text-slate-500">Reason for rejection</label>
+        <textarea
+          value={reason}
+          onChange={(event) => onReasonChange(event.target.value.slice(0, 500))}
+          rows={5}
+          className="w-full resize-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-[13px] font-pmedium text-slate-800 outline-none transition focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+          placeholder={`Tell the contributor why this ${config.singular.toLowerCase()} was rejected...`}
+          autoFocus
+        />
+        <p className="mt-1 text-right text-[10px] font-pmedium text-slate-400">{reason.length}/500</p>
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="rounded-xl bg-slate-100 px-5 py-2.5 text-[12px] font-pmedium text-slate-700 transition hover:bg-slate-200 disabled:opacity-60">Cancel</button>
+          <button type="button" onClick={onSubmit} disabled={!reason.trim() || isSubmitting} className="rounded-xl bg-rose-600 px-5 py-2.5 text-[12px] font-pmedium text-white transition hover:bg-rose-700 disabled:opacity-60">
+            {isSubmitting ? "Rejecting..." : `Reject ${config.singular}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Contributions = () => {
   const navigate = useNavigate();
   const { contributionTab } = useParams();
@@ -379,6 +419,8 @@ const Contributions = () => {
   const [stageFilter, setStageFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItemId, setSelectedItemId] = useState(null);
+  const [rejectionTarget, setRejectionTarget] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   useEffect(() => {
     if (!contributionTab || !TAB_BY_SLUG[contributionTab]) {
@@ -390,6 +432,8 @@ const Contributions = () => {
     setStageFilter("all");
     setSearchQuery("");
     setSelectedItemId(null);
+    setRejectionTarget(null);
+    setRejectionReason("");
   }, [activeTab.slug]);
 
   const { data: contributions = [], isPending, isError } = useQuery({
@@ -402,14 +446,20 @@ const Contributions = () => {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: async ({ itemId, status }) => {
-      const response = await axiosPrivate.patch(activeConfig.statusEndpoint(itemId), { status });
+    mutationFn: async ({ itemId, status, rejectionReason }) => {
+      const payload = { status };
+      if (status === "rejected") {
+        payload.rejectionReason = rejectionReason;
+      }
+      const response = await axiosPrivate.patch(activeConfig.statusEndpoint(itemId), payload);
       return response?.data;
     },
     onSuccess: (_data, { status }) => {
       toast.success(status === "approved" ? activeConfig.approvedToast : activeConfig.rejectedToast);
       queryClient.invalidateQueries({ queryKey: [activeConfig.queryKey] });
       setSelectedItemId(null);
+      setRejectionTarget(null);
+      setRejectionReason("");
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || activeConfig.updateError);
@@ -451,6 +501,30 @@ const Contributions = () => {
   }), [contributions]);
 
   const selectedItem = useMemo(() => contributions.find((item) => (item._id || item.id) === selectedItemId), [contributions, selectedItemId]);
+  const beginStatusChange = (itemId, status) => {
+    if (status === "rejected" && activeConfig.requiresRejectionReason) {
+      const item = contributions.find((entry) => (entry._id || entry.id) === itemId);
+      setRejectionTarget(item || null);
+      setRejectionReason("");
+      return;
+    }
+
+    updateStatusMutation.mutate({ itemId, status });
+  };
+
+  const submitRejection = () => {
+    const reason = rejectionReason.trim();
+    if (!rejectionTarget || !reason) {
+      toast.error("A rejection reason is required.");
+      return;
+    }
+
+    updateStatusMutation.mutate({
+      itemId: rejectionTarget._id || rejectionTarget.id,
+      status: "rejected",
+      rejectionReason: reason,
+    });
+  };
 
   const rows = supportsModeration ? filteredContributions : [];
   const colSpan = 8;
@@ -565,7 +639,20 @@ const Contributions = () => {
         </div>
       </PageFrame>
 
-      <ContributionPreviewModal item={selectedItem} config={activeConfig} onClose={() => setSelectedItemId(null)} onStatusChange={(itemId, status) => updateStatusMutation.mutate({ itemId, status })} isUpdating={updateStatusMutation.isPending} />
+      <ContributionPreviewModal item={selectedItem} config={activeConfig} onClose={() => setSelectedItemId(null)} onStatusChange={beginStatusChange} isUpdating={updateStatusMutation.isPending} />
+      <RejectionReasonModal
+        item={rejectionTarget}
+        config={activeConfig}
+        reason={rejectionReason}
+        onReasonChange={setRejectionReason}
+        onClose={() => {
+          if (updateStatusMutation.isPending) return;
+          setRejectionTarget(null);
+          setRejectionReason("");
+        }}
+        onSubmit={submitRejection}
+        isSubmitting={updateStatusMutation.isPending}
+      />
     </div>
   );
 };
