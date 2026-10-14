@@ -5,6 +5,7 @@ import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import TastycTemplate from "./tastyc/TastycTemplate";
 import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
+import WorpaceTemplate from "./worpace/WorpaceTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
 import LodgeTemplate from "./lodge/LodgeTemplate";
@@ -83,6 +84,15 @@ export const TEMPLATE_REGISTRY = {
             font: "'Inter', sans-serif",
         },
         recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    worpace: {
+        id: "worpace",
+        name: "Worpace",
+        description: "High-contrast editorial co-working design — oversized typography, warm workspace photography, reservation-led hero, space discovery, community proof and refined motion.",
+        component: WorpaceTemplate,
+        swatch: { bg: "#f7f7e8", fg: "#11110f", accent: "#11110f", font: "'Inter', sans-serif" },
+        recommendedFor: ["workspace"],
         supportsBooking: true,
     },
     wayfarer: {
