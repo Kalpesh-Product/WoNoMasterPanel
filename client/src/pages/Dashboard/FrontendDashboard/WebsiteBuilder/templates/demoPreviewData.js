@@ -4,6 +4,7 @@ const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
     flowspace: "meeting",
+    workscape: "meeting",
     worpace: "workspace",
     wayfarer: "hostel",
     travigo: "hostel",
@@ -409,6 +410,49 @@ const FLOWSPACE_DEMO_BUSINESS = (() => {
         },
     };
 })();
+const WORKSCAPE_PHOTOS = {
+    hero: ["photo-1521737711867-e3b97375f902", "photo-1497366754035-f200968a6e72", "photo-1524758631624-e2822e304c36"],
+    rooms: ["photo-1497215842964-222b430dc094", "photo-1517502884422-41eaead166d4", "photo-1556761175-b413da4baf72", "photo-1497366216548-37526070297c", "photo-1568992687947-868a62a9f521", "photo-1600508774634-4e11d34730e2", "photo-1521737711867-e3b97375f902", "photo-1551836022-d5d88e9218df", "photo-1556761175-4b46a572b786", "photo-1504384308090-c894fdcc538d", "photo-1542744173-8e7e53415bb0", "photo-1552664730-d307ca884978"],
+};
+const WORKSCAPE_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.meeting;
+    const rooms = base.extra.meetingRooms || [];
+    return {
+        ...base,
+        companyName: "Atrium Rooms",
+        title: "Work Better, Together",
+        subTitle: "Bright, fully equipped meeting rooms for teams that value calm thinking and useful conversations.",
+        cta: "Book Room",
+        heroImages: WORKSCAPE_PHOTOS.hero.map((id) => photo(id, 1900)),
+        gallery: [...WORKSCAPE_PHOTOS.hero, ...WORKSCAPE_PHOTOS.rooms].map((id) => photo(id, 1450)),
+        aboutImages: [WORKSCAPE_PHOTOS.hero[1], WORKSCAPE_PHOTOS.rooms[6], WORKSCAPE_PHOTOS.rooms[9]].map((id) => photo(id, 1200)),
+        aboutTitle: "About Atrium Rooms",
+        aboutPageStory: "Atrium Rooms brings flexible meeting spaces, reliable technology and thoughtful hospitality together in one calm place.",
+        about: [
+            "We believe the room affects the work. Natural light, practical layouts and a team that prepares everything before you arrive make better meetings possible.",
+            "From a private interview to a thirty-person workshop, every space can flex around the people and purpose in it.",
+        ],
+        founders: [
+            { name: "Rhea Kapoor", role: "Founder & Space Director", bio: "Rhea designs adaptable rooms that make collaboration feel natural.", image: photoValue("photo-1494790108377-be9c29b29330", 900) },
+            { name: "Karan Rao", role: "Guest Experience Lead", bio: "Karan and his team make sure every meeting starts ready and runs smoothly.", image: photoValue("photo-1500648767791-00dcc994a43e", 900) },
+        ],
+        address: "27 Residency Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Work in Workscape",
+            heroSubHeading: "Flexible rooms for interviews, workshops, presentations and team decisions.",
+            heroImage: photo(WORKSCAPE_PHOTOS.hero[0], 1900),
+            cardImage: photo(WORKSCAPE_PHOTOS.hero[1], 1100),
+        },
+        extra: {
+            ...base.extra,
+            meetingRooms: rooms.map((room, index) => ({
+                ...room,
+                images: WORKSCAPE_PHOTOS.rooms.slice(index * 3, index * 3 + 3).map((id) => photoValue(id)),
+            })),
+        },
+    };
+})();
 // Worpace keeps an editorial, natural-light photo direction distinct from Commons.
 const worpacePhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
 const worpaceValue = (id, width = 1200) => ({ url: worpacePhoto(id, width) });
@@ -453,6 +497,8 @@ const demoBusinessFor = (kind, themeVariant) => {
         return TASTYC_DEMO_BUSINESS;
     if (themeVariant === "flowspace" && kind === "meeting")
         return FLOWSPACE_DEMO_BUSINESS;
+    if (themeVariant === "workscape" && kind === "meeting")
+        return WORKSCAPE_DEMO_BUSINESS;
     if (themeVariant === "worpace" && kind === "workspace")
         return WORPACE_DEMO_BUSINESS;
     if (themeVariant === "travigo" && kind === "hostel")
