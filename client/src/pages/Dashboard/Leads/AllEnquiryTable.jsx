@@ -322,7 +322,7 @@ export default function AllEnquiryTable() {
                           </td>
                           <td className="truncate px-3 py-4 font-pmedium text-slate-700" title={lead.companyName}>{lead.companyName || "--"}</td>
                           <td className="px-3 py-4 font-pmedium capitalize text-slate-700">{lead.source || "--"}</td>
-                          <td className="truncate px-3 py-4 text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
+                          <td className="truncate px-3 py-4 font-pmedium text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
                           <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-master-status-column" : undefined}>
                             <select value={masterStatus} onChange={(event) => updateLeadMutation.mutate({ leadId: lead._id, status: event.target.value })}
                               disabled={updateLeadMutation.isPending}

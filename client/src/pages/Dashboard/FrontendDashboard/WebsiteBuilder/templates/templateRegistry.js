@@ -3,19 +3,20 @@ import FreshStudioTemplate from "./FreshStudioTemplate";
 import WarmOrganicTemplate from "./WarmOrganicTemplate";
 import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
-import TastycTemplate from "./tastyc/TastycTemplate";
-import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
-import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
-import WorpaceTemplate from "./worpace/WorpaceTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
-import TravigoTemplate from "./travigo/TravigoTemplate";
-import LodgeTemplate from "./lodge/LodgeTemplate";
-import TulumTemplate from "./tulum/TulumTemplate";
-import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
 import HavenTemplate from "./haven/HavenTemplate";
 import CameliaTemplate from "./camelia/CameliaTemplate";
 import CommonsTemplate from "./commons/CommonsTemplate";
 import HuddleTemplate from "./huddle/HuddleTemplate";
+import TravigoTemplate from "./travigo/TravigoTemplate";
+import TulumTemplate from "./tulum/TulumTemplate";
+import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
+import LodgeTemplate from "./lodge/LodgeTemplate";
+import TastycTemplate from "./tastyc/TastycTemplate";
+import GrandBarTemplate from "./grandbar/GrandBarTemplate";
+import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
+import WorpaceTemplate from "./worpace/WorpaceTemplate";
+import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
 export const DEFAULT_TEMPLATE_ID = "default";
 // Keyed by the `themeVariant` value stored on WebsiteTemplate documents.
 // Any themeVariant not present here falls back to DEFAULT_TEMPLATE_ID.
@@ -73,41 +74,18 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["menu"],
         supportsBooking: true,
     },
-    flowspace: {
-        id: "flowspace",
-        name: "Flowspace",
-        description: "Warm editorial meeting-room design — oversized typography, cinematic room photography, lime accents, flowing space discovery and booking-led pages.",
-        component: FlowspaceTemplate,
+    grandbar: {
+        id: "grandbar",
+        name: "Grand Bar",
+        description: "Nocturnal cocktail-bar design — centered seal, oversized serif typography, arched photography, menu discovery, location storytelling and polished reservations.",
+        component: GrandBarTemplate,
         swatch: {
-            bg: "#f2efe6",
-            fg: "#10110f",
-            accent: "#d9ff4f",
-            font: "'Inter', sans-serif",
+            bg: "#0b1b22",
+            fg: "#f2eee7",
+            accent: "#aa8867",
+            font: "'Cormorant Garamond', Georgia, serif",
         },
-        recommendedFor: ["meeting"],
-        supportsBooking: true,
-    },
-    workscape: {
-        id: "workscape",
-        name: "Workscape",
-        description: "Bright editorial meeting-space design — modular photography, oversized offset headings, flexible room discovery and a polished booking flow.",
-        component: WorkscapeTemplate,
-        swatch: {
-            bg: "#ffffff",
-            fg: "#20201f",
-            accent: "#a99d93",
-            font: "'Inter', sans-serif",
-        },
-        recommendedFor: ["meeting"],
-        supportsBooking: true,
-    },
-    worpace: {
-        id: "worpace",
-        name: "Worpace",
-        description: "High-contrast editorial co-working design — oversized typography, warm workspace photography, reservation-led hero, space discovery, community proof and refined motion.",
-        component: WorpaceTemplate,
-        swatch: { bg: "#f7f7e8", fg: "#11110f", accent: "#11110f", font: "'Inter', sans-serif" },
-        recommendedFor: ["workspace"],
+        recommendedFor: ["menu"],
         supportsBooking: true,
     },
     wayfarer: {
@@ -124,33 +102,6 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["hostel"],
         supportsBooking: true,
     },
-    tulum: {
-        id: "tulum",
-        name: "Tulum",
-        description: "Quiet editorial co-living style: a full-bleed video hero with a nightly price, serif headings, sage bands, unit rows and pricing cards. Made for co-living and workation stays, works for any service.",
-        component: TulumTemplate,
-        swatch: { bg: "#f1f1ed", fg: "#4f5a53", accent: "#8a968f", font: "'Cormorant Upright', serif" },
-        recommendedFor: ["coLiving", "workation"],
-        supportsBooking: true,
-    },
-    grindelwald: {
-        id: "grindelwald",
-        name: "Grindelwald",
-        description: "Forest-retreat style: a deep green hero with a round photo and dashed neon rings, a pale intro with stats, a parallax photo, room cards, a photo slider and a closing band. Made for co-living and cabin stays, works for any service.",
-        component: GrindelwaldTemplate,
-        swatch: { bg: "#f8f8f8", fg: "#1b3936", accent: "#75ff69", font: "'Bodoni Moda', serif" },
-        recommendedFor: ["coLiving", "workation"],
-        supportsBooking: true,
-    },
-    lodge: {
-        id: "lodge",
-        name: "Lodge",
-        description: "Rental-house style: a full-bleed photo slider, pill-shaped amenity chips, rolling counters and a dark guest-quote band. Made for hostels and short rentals, works for any service.",
-        component: LodgeTemplate,
-        swatch: { bg: "#ffffff", fg: "#1c1f21", accent: "#7fa388", font: "'Inter', sans-serif" },
-        recommendedFor: ["hostel"],
-        supportsBooking: true,
-    },
     travigo: {
         id: "travigo",
         name: "Travigo",
@@ -161,6 +112,48 @@ export const TEMPLATE_REGISTRY = {
             fg: "#111111",
             accent: "#d8ff48",
             font: "'Manrope', sans-serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    tulum: {
+        id: "tulum",
+        name: "Tulum",
+        description: "Quiet editorial co-living style: a full-bleed video hero with a nightly price, serif headings, sage bands, unit rows and pricing cards. Made for co-living and workation stays, works for any service.",
+        component: TulumTemplate,
+        swatch: {
+            bg: "#f1f1ed",
+            fg: "#4f5a53",
+            accent: "#8a968f",
+            font: "'Cormorant Upright', serif",
+        },
+        recommendedFor: ["coLiving", "workation"],
+        supportsBooking: true,
+    },
+    grindelwald: {
+        id: "grindelwald",
+        name: "Grindelwald",
+        description: "Forest-retreat style: a deep green hero with a round photo and dashed neon rings, a pale intro with stats, a parallax photo, room cards, a photo slider and a closing band. Made for co-living and cabin stays, works for any service.",
+        component: GrindelwaldTemplate,
+        swatch: {
+            bg: "#f8f8f8",
+            fg: "#1b3936",
+            accent: "#75ff69",
+            font: "'Bodoni Moda', serif",
+        },
+        recommendedFor: ["coLiving", "workation"],
+        supportsBooking: true,
+    },
+    lodge: {
+        id: "lodge",
+        name: "Lodge",
+        description: "Rental-house style: a full-bleed photo slider, pill-shaped amenity chips, rolling counters and a dark guest-quote band. Made for hostels and short rentals, works for any service.",
+        component: LodgeTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#1c1f21",
+            accent: "#7fa388",
+            font: "'Inter', sans-serif",
         },
         recommendedFor: ["hostel"],
         supportsBooking: true,
@@ -219,6 +212,48 @@ export const TEMPLATE_REGISTRY = {
             font: "'Sora', sans-serif",
         },
         recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    flowspace: {
+        id: "flowspace",
+        name: "Flowspace",
+        description: "Warm editorial meeting-room design — oversized typography, cinematic room photography, lime accents, flowing space discovery and booking-led pages.",
+        component: FlowspaceTemplate,
+        swatch: {
+            bg: "#f2efe6",
+            fg: "#10110f",
+            accent: "#d9ff4f",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    workscape: {
+        id: "workscape",
+        name: "Workscape",
+        description: "Bright editorial meeting-space design — modular photography, oversized offset headings, flexible room discovery and a polished booking flow.",
+        component: WorkscapeTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#20201f",
+            accent: "#a99d93",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    worpace: {
+        id: "worpace",
+        name: "Worpace",
+        description: "High-contrast editorial co-working design — oversized typography, warm workspace photography, reservation-led hero, space discovery, community proof and refined motion.",
+        component: WorpaceTemplate,
+        swatch: {
+            bg: "#f7f7e8",
+            fg: "#11110f",
+            accent: "#11110f",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["workspace"],
         supportsBooking: true,
     },
     "warm-organic": {
