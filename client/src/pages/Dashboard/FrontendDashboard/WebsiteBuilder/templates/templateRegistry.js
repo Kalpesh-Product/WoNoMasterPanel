@@ -5,6 +5,7 @@ import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
 import SavorTemplate from "./savor/SavorTemplate";
 import TastycTemplate from "./tastyc/TastycTemplate";
 import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
+import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
 import WorpaceTemplate from "./worpace/WorpaceTemplate";
 import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
 import TravigoTemplate from "./travigo/TravigoTemplate";
@@ -81,6 +82,20 @@ export const TEMPLATE_REGISTRY = {
             bg: "#f2efe6",
             fg: "#10110f",
             accent: "#d9ff4f",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    workscape: {
+        id: "workscape",
+        name: "Workscape",
+        description: "Bright editorial meeting-space design — modular photography, oversized offset headings, flexible room discovery and a polished booking flow.",
+        component: WorkscapeTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#20201f",
+            accent: "#a99d93",
             font: "'Inter', sans-serif",
         },
         recommendedFor: ["meeting"],
