@@ -3,21 +3,24 @@ import { DEMO_BUSINESSES, withFaqs } from "./demoContent";
 const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
+    grandbar: "menu",
     flowspace: "meeting",
     workscape: "meeting",
     worpace: "workspace",
     wayfarer: "hostel",
     travigo: "hostel",
     lodge: "hostel",
-    tulum: "coLiving",
-    grindelwald: "coLiving",
     haven: "coLiving",
     camelia: "coLiving",
+    tulum: "coLiving",
+    grindelwald: "coLiving",
     commons: "workspace",
     huddle: "meeting",
 };
 const photo = (id, width = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=78`;
 const photoValue = (id, width = 1000) => ({ url: photo(id, width) });
+// Portrait crops centred on the face, for team photos (4:5, matching the team cards).
+const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=700&h=875&q=78`;
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
 // local exploration so the two hostel templates remain visually distinct in previews.
@@ -94,9 +97,6 @@ const TRAVIGO_DEMO_BUSINESS = {
         })),
     },
 };
-"use strict";
-// Portrait crops centred on the face, for team photos (4:5, matching the team cards).
-const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=700&h=875&q=78`;
 // Tulum has its own co-living photo set, so its preview never shares images with Haven or Camelia.
 const TULUM_PHOTOS = {
     hero: ["photo-1721222203415-69033eaf3bd1", "photo-1668854084710-386c7d25f771", "photo-1668277280345-f3949c1b6aa2", "photo-1752769041878-f24e37fd6aea"],
@@ -237,8 +237,8 @@ const grindelwaldDemo = (() => {
         },
     };
 })();
-
-"use strict";
+// Lodge has its own rental-house photos (slider, intro cards, feature band, rooms) so it never
+// previews with the hostel library Wayfarer and Travigo use.
 // Lodge's own hostel-flavoured photo set — a hostel entrance, dorm bunks and hotel-style twin
 // rooms — instead of the shared IMG.hostel/IMG.coliving pools other templates already draw
 // from, so its preview doesn't look like a reshuffled Wayfarer/Haven.
@@ -298,7 +298,6 @@ const LODGE_DEMO_BUSINESS = {
         })),
     },
 };
-
 // Tastyc has a separate coffee-house photo direction so its preview never looks like Savor.
 // Dark roast details, moody interiors and close-up pastry photography mirror the reference's
 // cinematic coffee-house mood while keeping every image replaceable in the builder.
@@ -367,6 +366,124 @@ const TASTYC_DEMO_BUSINESS = (() => {
         },
     };
 })();
+const GRAND_BAR_PHOTOS = {
+    hero: [
+        "photo-1572116469696-31de0f17cc34",
+        "photo-1470337458703-46ad1756a1875",
+        "photo-1543007630-9710e4a00a20",
+    ],
+    interior: [
+        "photo-1514933651103-005eec06c04b",
+        "photo-1552566626-52f8b828add9",
+        "photo-1527761939622-911909463c76",
+        "photo-1541544741938-0af808871cc0",
+    ],
+    drinks: [
+        "photo-1536935338788-846bb9981813",
+        "photo-1513558161293-cdaf765ed2fd",
+        "photo-1544145945-f90425340c7e",
+        "photo-1551024709-8f23befc6f87",
+        "photo-1510812431401-41d2bd2722f3",
+        "photo-1560512823-829485b8bf24",
+    ],
+    plates: [
+        "photo-1515003197210-e0cd71810b5f",
+        "photo-1547592180-85f173990554",
+        "photo-1551024506-0bccd828d307",
+        "photo-1547592166-23ac45744acd",
+        "photo-1559847844-5315695dadae",
+        "photo-1504674900247-0877df9cc836",
+    ],
+};
+const GRAND_BAR_MENU_ITEMS = [
+    { category: "Cocktails", name: "Blackberry Citrus Smash", price: "₹850", description: "Crushed blackberries, dry gin, fresh lemon, mint and a splash of soda over pebble ice.", image: GRAND_BAR_PHOTOS.drinks[0] },
+    { category: "Cocktails", name: "Garden Mojito", price: "₹780", description: "White rum, muddled mint, lime, cane sugar and chilled soda in a tall glass.", image: GRAND_BAR_PHOTOS.drinks[1] },
+    { category: "Cocktails", name: "Blood Orange Margarita", price: "₹720", description: "Reposado tequila, blood orange, lime and agave, served bright with a citrus wheel.", image: GRAND_BAR_PHOTOS.drinks[2] },
+    { category: "Cocktails", name: "House Cocktail Flight", price: "₹690", description: "Three seasonal signatures — tropical, herbaceous and berry-led — made for tasting together.", image: GRAND_BAR_PHOTOS.drinks[3] },
+    { category: "Wine & Champagne", name: "Cabernet Table Pour", price: "₹650", description: "A generous pour of full-bodied cabernet with dark fruit, gentle oak and a smooth finish.", image: GRAND_BAR_PHOTOS.drinks[4] },
+    { category: "Wine & Champagne", name: "Sunset Aperol Spritz", price: "₹750", description: "Aperol, sparkling wine, soda and fresh orange poured over ice.", image: GRAND_BAR_PHOTOS.drinks[5] },
+    { category: "Desserts", name: "Salted Caramel Brownie", price: "₹420", description: "Warm chocolate brownie, vanilla ice cream, crisp wafer and salted caramel sauce.", image: GRAND_BAR_PHOTOS.plates[2] },
+    { category: "Food & Bites", name: "Truffle Egg Tagliatelle", price: "₹480", description: "Handmade pasta, soft egg, wild mushrooms, parmesan and a touch of truffle.", image: GRAND_BAR_PHOTOS.plates[0] },
+    { category: "Food & Bites", name: "Charred Salmon Grain Bowl", price: "₹520", description: "Grilled salmon, herb couscous, green beans, cherry tomatoes and toasted seeds.", image: GRAND_BAR_PHOTOS.plates[1] },
+    { category: "Food & Bites", name: "Coastal Prawn Curry", price: "₹680", description: "Tiger prawns in a gently spiced coconut curry with steamed rice and fresh herbs.", image: GRAND_BAR_PHOTOS.plates[4] },
+    { category: "Food & Bites", name: "Thai Beef Salad", price: "₹890", description: "Sliced grilled beef, crisp lettuce, red onion, toasted cashews and chilli-lime dressing.", image: GRAND_BAR_PHOTOS.plates[5] },
+];
+const GRAND_BAR_FAQS = [
+    { question: "Do you take walk-ins?", answer: "We hold half the bar for walk-ins every night, but a booking guarantees your table." },
+    { question: "Is there a dress code?", answer: "Smart casual after 7 PM — think elevated, not formal." },
+    { question: "Can I book the bar for a private event?", answer: "Yes, we host private parties and corporate evenings. Send us a note and we'll build a menu around it." },
+    { question: "Do you have a non-alcoholic menu?", answer: "Absolutely — ask your server for our zero-proof cocktail list." },
+];
+const GRAND_BAR_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.menu;
+    const galleryPhotos = [
+        GRAND_BAR_PHOTOS.interior[0],
+        GRAND_BAR_PHOTOS.interior[1],
+        GRAND_BAR_PHOTOS.drinks[2],
+        GRAND_BAR_PHOTOS.drinks[0],
+        GRAND_BAR_PHOTOS.plates[0],
+        GRAND_BAR_PHOTOS.hero[0],
+        GRAND_BAR_PHOTOS.drinks[3],
+        GRAND_BAR_PHOTOS.interior[0],
+        GRAND_BAR_PHOTOS.plates[1],
+        GRAND_BAR_PHOTOS.drinks[4],
+        GRAND_BAR_PHOTOS.interior[3],
+        ...GRAND_BAR_PHOTOS.drinks.slice(1),
+        ...GRAND_BAR_PHOTOS.plates.slice(2),
+    ];
+    return {
+        ...base,
+        companyName: "Grand Bar",
+        title: "A Mixologist's Paradise",
+        subTitle: "World-class cocktails, vibrant plates and an evening atmosphere worth dressing up for.",
+        cta: "Book a table",
+        heroImages: GRAND_BAR_PHOTOS.hero.map((id) => photo(id, 1900)),
+        gallery: galleryPhotos.map((id) => photo(id, 1400)),
+        aboutImages: [GRAND_BAR_PHOTOS.interior[0], GRAND_BAR_PHOTOS.interior[2], GRAND_BAR_PHOTOS.hero[1]].map((id) => photo(id, 1200)),
+        aboutTitle: "A room shaped by flavor, music and generous hospitality",
+        aboutPageStory: "Grand Bar brings classic technique, seasonal ingredients and after-dark energy together under one roof.",
+        about: [
+            "We built Grand Bar for evenings that unfold slowly: a first drink at the counter, a plate shared across the table and one last round before home.",
+            "Our bartenders respect the classics while the kitchen follows the seasons, keeping every visit familiar enough to relax and surprising enough to remember.",
+        ],
+        founders: [
+            { name: "Maya D'Souza", role: "Founder & Creative Director", bio: "Maya shapes the room, the music and the small details that turn service into an experience.", image: photoValue("photo-1534528741775-53994a69daeb", 900) },
+            { name: "Armaan Khanna", role: "Head Mixologist", bio: "Armaan pairs classic technique with Indian botanicals and a restless curiosity for new flavor.", image: photoValue("photo-1507003211169-0a1dd7228f2d", 900) },
+        ],
+        address: "42 Lavelle Road, Ashok Nagar, Bengaluru 560001",
+        faqs: GRAND_BAR_FAQS,
+        page: {
+            ...base.page,
+            name: "Our Menus",
+            slug: "our-menus",
+            heroHeading: "Cocktails, plates and late-night favorites",
+            heroSubHeading: "Explore signature drinks, wine, desserts and food made for sharing.",
+            homeCardHeading: "Our Menus",
+            homeCardSubText: "Cocktails, wine, desserts and food made for sharing.",
+            heroImage: photo(GRAND_BAR_PHOTOS.hero[2], 1900),
+            cardImage: photo(GRAND_BAR_PHOTOS.drinks[0], 1100),
+            faqs: GRAND_BAR_FAQS.slice(0, 2),
+        },
+        extra: {
+            ...base.extra,
+            menuItems: GRAND_BAR_MENU_ITEMS.map((item) => ({
+                category: item.category,
+                name: item.name,
+                price: item.price,
+                description: item.description,
+                image: photoValue(item.image),
+                dietary: "veg",
+                spiceLevel: 0,
+                popular: false,
+                badge: "",
+                features: [],
+                enabled: true,
+                priceUnit: "",
+                featured: false,
+            })),
+        },
+    };
+})();
 // Flowspace keeps a separate photo library from Huddle: warmer materials, more daylight and
 // a high-end editorial direction that mirrors the reference without repeating another template.
 const pexels = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
@@ -410,13 +527,15 @@ const FLOWSPACE_DEMO_BUSINESS = (() => {
         },
     };
 })();
+// Workscape uses a bright, architectural photo direction with clean timber, plants and daylight.
+// These images are intentionally separate from Flowspace and the other meeting-room templates.
 const WORKSCAPE_PHOTOS = {
     hero: ["photo-1521737711867-e3b97375f902", "photo-1497366754035-f200968a6e72", "photo-1524758631624-e2822e304c36"],
     rooms: ["photo-1497215842964-222b430dc094", "photo-1517502884422-41eaead166d4", "photo-1556761175-b413da4baf72", "photo-1497366216548-37526070297c", "photo-1568992687947-868a62a9f521", "photo-1600508774634-4e11d34730e2", "photo-1521737711867-e3b97375f902", "photo-1551836022-d5d88e9218df", "photo-1556761175-4b46a572b786", "photo-1504384308090-c894fdcc538d", "photo-1542744173-8e7e53415bb0", "photo-1552664730-d307ca884978"],
 };
 const WORKSCAPE_DEMO_BUSINESS = (() => {
     const base = DEMO_BUSINESSES.meeting;
-    const rooms = base.extra.meetingRooms || [];
+    const rooms = (base.extra.meetingRooms || []);
     return {
         ...base,
         companyName: "Atrium Rooms",
@@ -453,7 +572,7 @@ const WORKSCAPE_DEMO_BUSINESS = (() => {
         },
     };
 })();
-// Worpace keeps an editorial, natural-light photo direction distinct from Commons.
+// Worpace uses a distinct, natural-light editorial photo direction rather than Commons' bento imagery.
 const worpacePhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
 const worpaceValue = (id, width = 1200) => ({ url: worpacePhoto(id, width) });
 const WORPACE_PHOTOS = {
@@ -462,7 +581,7 @@ const WORPACE_PHOTOS = {
 };
 const WORPACE_DEMO_BUSINESS = (() => {
     const base = DEMO_BUSINESSES.workspace;
-    const items = base.pageItems || [];
+    const items = (base.pageItems || []);
     return {
         ...base,
         companyName: "Northline Works",
@@ -495,6 +614,8 @@ const WORPACE_DEMO_BUSINESS = (() => {
 const demoBusinessFor = (kind, themeVariant) => {
     if (themeVariant === "tastyc" && kind === "menu")
         return TASTYC_DEMO_BUSINESS;
+    if (themeVariant === "grandbar" && kind === "menu")
+        return GRAND_BAR_DEMO_BUSINESS;
     if (themeVariant === "flowspace" && kind === "meeting")
         return FLOWSPACE_DEMO_BUSINESS;
     if (themeVariant === "workscape" && kind === "meeting")
@@ -511,10 +632,12 @@ const demoBusinessFor = (kind, themeVariant) => {
         return grindelwaldDemo;
     return DEMO_BUSINESSES[kind];
 };
-
-
 /** The kind of business a template is previewed with when no services are chosen. */
 export const defaultKindForTemplate = (themeVariant) => TEMPLATE_KIND[themeVariant] || "workspace";
+// Pexels "Video of a House Interior" (free to use, no attribution needed); 2K file, 21 seconds.
+const CAMELIA_DEMO_VIDEO = "https://videos.pexels.com/video-files/7578546/7578546-uhd_2560_1440_30fps.mp4";
+// Pexels "A Bartender Making A Cocktail Drink" (free to use, no attribution needed); HD, portrait.
+const GRAND_BAR_DEMO_VIDEO = "https://videos.pexels.com/video-files/7608984/7608984-hd_720_1280_25fps.mp4";
 const slugOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 const pageFor = (kind, business, slug) => ({
     name: business.page.name,
@@ -553,8 +676,9 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         companyId: "demo",
         workspaceId: "",
         themeVariant,
-        // Tulum plays a looping video in its hero when one is linked (see the builder's "Hero Video URL").
-        heroVideoUrl: themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : "",
+        // Camelia's hero plays a looping video when one is linked (see the builder's "Hero Video URL").
+        // The sample clip is a placeholder for previews only; a real site sets its own link.
+        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : "",
         styleConfig: {},
         sectionOverrides: {},
         vertical: primary.vertical,

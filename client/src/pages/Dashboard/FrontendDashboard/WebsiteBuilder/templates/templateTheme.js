@@ -1,99 +1,118 @@
-// Ported from HostPanel (client/src/pages/Dashboard/FrontendDashboard/WebsiteBuilder/templates/).
-// Keep the three copies in sync.
+// Per-business colours for the templates that support them.
+//
+// A business can pick a background, text and accent colour in the builder
+// (stored in the site's `styleConfig`). Templates that read colours from CSS
+// variables (Fresh Studio, Warm Organic) get them from `buildThemeVars`, which
+// returns nothing when no custom colour is set, so their own defaults (the
+// `var(--t-x, <default>)` fallbacks in the template) stay untouched.
+// Emerald Studio and Classic re-point their fixed utility classes instead;
+// see emeraldTheme.ts / classicTheme.ts.
 import { contrastRatio, luminance, mix, normalizeHex } from "./emeraldTheme";
-const THEME_DEFAULTS = {
-  "emerald-studio": { bg: "#4a6b96", text: "#ffffff", accent: "#ffffff" },
-  "figma-make": { bg: "#4a6b96", text: "#ffffff", accent: "#ffffff" },
-  "fresh-studio": { bg: "#0a0a12", text: "#ffffff", accent: "#d94b4b" },
-  default: { bg: "#efefef", text: "#1f1f1f", accent: "#3b82f6" },
-  "warm-organic": { bg: "#f1e6d3", text: "#2b211a", accent: "#b85c38", surfaceUp: true },
-  // The vertical-led templates start from the palette of the service the business sells
-  // (see verticalProfiles.js); these are the picker placeholders.
-  savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
-  tastyc: { bg: "#f4efe7", text: "#1a1715", accent: "#cf7736", surfaceUp: true },
-  flowspace: { bg: "#fbfaeb", text: "#11110f", accent: "#11110f", surfaceUp: true },
-  workscape: { bg: "#ffffff", text: "#20201f", accent: "#a99d93", surfaceUp: true },
+// The colours each template ships with; shown in the picker as placeholders.
+export const THEME_DEFAULTS = {
+    "emerald-studio": { bg: "#4a6b96", text: "#ffffff", accent: "#ffffff" },
+    "figma-make": { bg: "#4a6b96", text: "#ffffff", accent: "#ffffff" },
+    "fresh-studio": { bg: "#0a0a12", text: "#ffffff", accent: "#d94b4b" },
+    default: { bg: "#efefef", text: "#1f1f1f", accent: "#3b82f6" },
+    "warm-organic": { bg: "#f1e6d3", text: "#2b211a", accent: "#b85c38", surfaceUp: true },
+    // The three vertical-led templates start from the palette of the service the
+    // business sells (see verticalProfiles.ts); these are the picker placeholders.
+    savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
+    tastyc: { bg: "#f4efe7", text: "#1a1715", accent: "#cf7736", surfaceUp: true },
+    grandbar: { bg: "#0b1b22", text: "#f2eee7", accent: "#aa8867", surfaceUp: true },
+    flowspace: { bg: "#fbfaeb", text: "#11110f", accent: "#11110f", surfaceUp: true },
+    workscape: { bg: "#ffffff", text: "#20201f", accent: "#a99d93", surfaceUp: true },
     worpace: { bg: "#f7f7e8", text: "#11110f", accent: "#11110f", surfaceUp: true },
-  wayfarer: { bg: "#f3fbfa", text: "#0c2a2e", accent: "#f26b3a", surfaceUp: true },
-  tulum: { bg: "#f1f1ed", text: "#6e7a73", accent: "#8a968f", surfaceUp: true },
-  grindelwald: { bg: "#f8f8f8", text: "#1b3936", accent: "#75ff69", surfaceUp: true },
-  lodge: { bg: "#ffffff", text: "#1c1f21", accent: "#7fa388", surfaceUp: true },
-  travigo: { bg: "#f5f3ed", text: "#111111", accent: "#111111", surfaceUp: true },
-  haven: { bg: "#f4f1ea", text: "#26312b", accent: "#5b7f6a", surfaceUp: true },
-  camelia: { bg: "#f6f3ec", text: "#2b2a26", accent: "#8a9a86", surfaceUp: true },
-  commons: { bg: "#f6f7f9", text: "#0b1f3a", accent: "#ffc21a", surfaceUp: true },
-  huddle: { bg: "#f5f6f8", text: "#14161a", accent: "#3b6cf0", surfaceUp: true }
+    wayfarer: { bg: "#f3fbfa", text: "#0c2a2e", accent: "#f26b3a", surfaceUp: true },
+    travigo: { bg: "#f5f3ed", text: "#111111", accent: "#111111", surfaceUp: true },
+    lodge: { bg: "#ffffff", text: "#1c1f21", accent: "#7fa388", surfaceUp: true },
+    haven: { bg: "#f4f1ea", text: "#26312b", accent: "#5b7f6a", surfaceUp: true },
+    camelia: { bg: "#f6f3ec", text: "#2b2a26", accent: "#8a9a86", surfaceUp: true },
+    tulum: { bg: "#f1f1ed", text: "#4f5a53", accent: "#8a968f", surfaceUp: true },
+    grindelwald: { bg: "#f8f8f8", text: "#1b3936", accent: "#75ff69", surfaceUp: true },
+    commons: { bg: "#f6f7f9", text: "#0b1f3a", accent: "#ffc21a", surfaceUp: true },
+    huddle: { bg: "#f5f6f8", text: "#14161a", accent: "#3b6cf0", surfaceUp: true },
 };
-const supportsThemeColors = (templateId) => Boolean(THEME_DEFAULTS[String(templateId || "").trim() || "default"]);
-const getThemeDefaults = (templateId) => THEME_DEFAULTS[String(templateId || "").trim() || "default"] || THEME_DEFAULTS.default;
-const hasCustomTheme = (config) => Boolean(
-  normalizeHex(config?.bgColor) || normalizeHex(config?.textColor) || normalizeHex(config?.accentColor)
-);
+export const supportsThemeColors = (templateId) => Boolean(THEME_DEFAULTS[String(templateId || "").trim() || "default"]);
+export const getThemeDefaults = (templateId) => THEME_DEFAULTS[String(templateId || "").trim() || "default"] || THEME_DEFAULTS.default;
+export const hasCustomTheme = (config) => Boolean(normalizeHex(config?.bgColor) ||
+    normalizeHex(config?.textColor) ||
+    normalizeHex(config?.accentColor));
+// Nudge `hex` toward the text colour until it reads on `bg` (4.5:1).
 const readableAgainst = (hex, bg, text) => {
-  let out = hex;
-  for (let i = 1; i <= 10 && contrastRatio(out, bg) < 4.5; i++) out = mix(hex, text, i / 10);
-  return out;
+    let out = hex;
+    for (let i = 1; i <= 10 && contrastRatio(out, bg) < 4.5; i++)
+        out = mix(hex, text, i / 10);
+    return out;
 };
 const readableOn = (hex) => contrastRatio(hex, "#111111") >= contrastRatio(hex, "#ffffff") ? "#111111" : "#ffffff";
-const resolveThemeColors = (templateId, config) => {
-  const d = getThemeDefaults(templateId);
-  const bgC = normalizeHex(config?.bgColor);
-  const bg = bgC || d.bg;
-  const text = normalizeHex(config?.textColor) || (bgC && contrastRatio(d.text, bgC) < 4.5 ? readableOn(bgC) : d.text);
-  return { bg, text, accent: normalizeHex(config?.accentColor) || d.accent };
+// The colours actually in effect: what the business picked, else the template's
+// own, with a readable text colour chosen when only the background was changed.
+export const resolveThemeColors = (templateId, config) => {
+    const d = getThemeDefaults(templateId);
+    const bgC = normalizeHex(config?.bgColor);
+    const bg = bgC || d.bg;
+    const text = normalizeHex(config?.textColor) ||
+        (bgC && contrastRatio(d.text, bgC) < 4.5 ? readableOn(bgC) : d.text);
+    return { bg, text, accent: normalizeHex(config?.accentColor) || d.accent };
 };
-const buildThemeVars = (templateId, config) => {
-  if (!hasCustomTheme(config)) return void 0;
-  const d = getThemeDefaults(templateId);
-  const bgC = normalizeHex(config?.bgColor);
-  const textC = normalizeHex(config?.textColor);
-  const accC = normalizeHex(config?.accentColor);
-  const { bg, text } = resolveThemeColors(templateId, config);
-  const vars = {};
-  if (bgC) {
-    const dark = luminance(bgC) < 0.45;
-    vars["--t-bg"] = bgC;
-    if (d.surfaceUp) {
-      vars["--t-surface"] = mix(bgC, "#ffffff", dark ? 0.07 : 0.5);
-      vars["--t-surface2"] = mix(bgC, "#ffffff", dark ? 0.12 : 0.3);
-      vars["--t-raised"] = mix(bgC, "#ffffff", dark ? 0.1 : 0.75);
-    } else {
-      vars["--t-surface"] = mix(bgC, dark ? "#ffffff" : "#000000", dark ? 0.06 : 0.05);
-      vars["--t-surface2"] = mix(bgC, dark ? "#ffffff" : "#000000", dark ? 0.1 : 0.08);
-      vars["--t-raised"] = vars["--t-surface"];
+// CSS custom properties for a variable-driven template, or undefined when the
+// business has not picked any colour. Only roles that follow from a chosen
+// colour are set; everything else keeps the template's own fallback.
+export const buildThemeVars = (templateId, config) => {
+    if (!hasCustomTheme(config))
+        return undefined;
+    const d = getThemeDefaults(templateId);
+    const bgC = normalizeHex(config?.bgColor);
+    const textC = normalizeHex(config?.textColor);
+    const accC = normalizeHex(config?.accentColor);
+    const { bg, text } = resolveThemeColors(templateId, config);
+    const vars = {};
+    if (bgC) {
+        const dark = luminance(bgC) < 0.45;
+        vars["--t-bg"] = bgC;
+        if (d.surfaceUp) {
+            vars["--t-surface"] = mix(bgC, "#ffffff", dark ? 0.07 : 0.5);
+            vars["--t-surface2"] = mix(bgC, "#ffffff", dark ? 0.12 : 0.3);
+            vars["--t-raised"] = mix(bgC, "#ffffff", dark ? 0.1 : 0.75);
+        }
+        else {
+            vars["--t-surface"] = mix(bgC, dark ? "#ffffff" : "#000000", dark ? 0.06 : 0.05);
+            vars["--t-surface2"] = mix(bgC, dark ? "#ffffff" : "#000000", dark ? 0.1 : 0.08);
+            vars["--t-raised"] = vars["--t-surface"];
+        }
+        vars["--t-line"] = mix(bgC, text, 0.2);
     }
-    vars["--t-line"] = mix(bgC, text, 0.2);
-  }
-  if (textC || text !== d.text) vars["--t-text"] = text;
-  if (bgC && luminance(bgC) >= 0.45 && !d.surfaceUp) vars["--t-k"] = "1.22";
-  if (bgC || textC) vars["--t-muted"] = mix(text, bg, 0.3);
-  if (accC) {
-    const secondary = mix(accC, "#000000", 0.45);
-    vars["--t-accent"] = accC;
-    vars["--t-accent-text"] = readableOn(accC);
-    vars["--t-accent-light"] = mix(accC, "#ffffff", 0.2);
-    vars["--t-accent-dark"] = mix(accC, "#000000", 0.3);
-    vars["--t-secondary"] = secondary;
-    vars["--t-secondary-text"] = readableOn(secondary);
-    vars["--t-secondary-fg"] = readableAgainst(secondary, bg, text);
-    vars["--t-tint3"] = mix(secondary, accC, 0.5);
-  } else if (bgC || textC) {
-    vars["--t-secondary-fg"] = readableAgainst("#3e5641", bg, text);
-    const accent = readableAgainst(d.accent, bg, text);
-    if (accent !== d.accent) {
-      vars["--t-accent"] = accent;
-      vars["--t-accent-text"] = readableOn(accent);
-      vars["--t-accent-light"] = mix(accent, "#ffffff", 0.2);
-      vars["--t-accent-dark"] = mix(accent, "#000000", 0.3);
+    if (textC || text !== d.text)
+        vars["--t-text"] = text;
+    // Fresh Studio's translucent body text is tuned for a dark page; give it more
+    // weight on a light custom background.
+    if (bgC && luminance(bgC) >= 0.45 && !d.surfaceUp)
+        vars["--t-k"] = "1.22";
+    if (bgC || textC)
+        vars["--t-muted"] = mix(text, bg, 0.3);
+    if (accC) {
+        const secondary = mix(accC, "#000000", 0.45);
+        vars["--t-accent"] = accC;
+        vars["--t-accent-text"] = readableOn(accC);
+        vars["--t-accent-light"] = mix(accC, "#ffffff", 0.2);
+        vars["--t-accent-dark"] = mix(accC, "#000000", 0.3);
+        vars["--t-secondary"] = secondary;
+        vars["--t-secondary-text"] = readableOn(secondary);
+        vars["--t-secondary-fg"] = readableAgainst(secondary, bg, text);
+        vars["--t-tint3"] = mix(secondary, accC, 0.5);
     }
-  }
-  return vars;
-};
-export {
-  THEME_DEFAULTS,
-  buildThemeVars,
-  getThemeDefaults,
-  hasCustomTheme,
-  resolveThemeColors,
-  supportsThemeColors
+    else if (bgC || textC) {
+        // The default green still has to read on a custom background.
+        vars["--t-secondary-fg"] = readableAgainst("#3e5641", bg, text);
+        // Same for the template's own accent colour.
+        const accent = readableAgainst(d.accent, bg, text);
+        if (accent !== d.accent) {
+            vars["--t-accent"] = accent;
+            vars["--t-accent-text"] = readableOn(accent);
+            vars["--t-accent-light"] = mix(accent, "#ffffff", 0.2);
+            vars["--t-accent-dark"] = mix(accent, "#000000", 0.3);
+        }
+    }
+    return vars;
 };
