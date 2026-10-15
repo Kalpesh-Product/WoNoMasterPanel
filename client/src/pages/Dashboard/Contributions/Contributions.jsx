@@ -714,7 +714,7 @@ const Contributions = () => {
   };
 
   const rows = supportsModeration ? filteredContributions : [];
-  const colSpan = 8;
+  const colSpan = 7;
 
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -770,7 +770,6 @@ const Contributions = () => {
                         <th className="px-5 py-4">Title</th>
                         <th className="px-5 py-4">Description</th>
                         <th className="px-5 py-4">Source</th>
-                        <th className="px-5 py-4">Link</th>
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4">Category</th>
                         <th className="px-5 py-4 text-center">Action</th>
@@ -791,7 +790,6 @@ const Contributions = () => {
                             <td className="px-5 py-4 max-w-[170px]"><p className="text-[11px] font-pmedium uppercase text-slate-900 truncate">{truncate(getContributionTitle(item, activeConfig), 28)}</p></td>
                             <td className="px-5 py-4 max-w-[240px]"><p className="text-[12px] font-pmedium text-slate-600 truncate">{truncate(getContributionDescription(item, activeConfig), 48)}</p></td>
                             <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-700">{getContributionSource(item, activeConfig)}</span></td>
-                            <td className="px-5 py-4"><span className="text-[12px] font-pmedium text-slate-600">{item.link ? <a className="text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open</a> : "-"}</span></td>
                             <td className="px-5 py-4"><span className={statusPillClass(status)}>{status}</span></td>
                             <td className="px-5 py-4"><span className="inline-flex whitespace-nowrap rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-pmedium text-blue-700">{activeConfig.category}</span></td>
                             <td className="px-5 py-4">
