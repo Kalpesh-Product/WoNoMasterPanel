@@ -26,6 +26,7 @@ import {
   LuHandshake,
   LuMousePointerClick,
   LuTag,
+  LuLayoutGrid,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -197,6 +198,19 @@ export const MASTER_PANEL_MODULES = [
             title: "Master Panel Analytics",
             icon: LuChartLine,
             route: "/dashboard/master-panel-analytics",
+          },
+        ],
+      },
+      {
+        id: "dashboard-content-management",
+        title: "Content Management",
+        submenus: [
+          {
+            id: 32,
+            key: "dashboard.host-modules-content",
+            title: "Host Modules Content",
+            icon: LuLayoutGrid,
+            route: "/dashboard/host-modules-content",
           },
         ],
       },

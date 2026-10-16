@@ -225,6 +225,7 @@ import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLe
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
 import NomadDestinationListingAnalytics from "../pages/Dashboard/FrontendDashboard/NomadDestinationListingAnalytics";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostModulesContent from "../pages/Dashboard/FrontendDashboard/HostModulesContent";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
 import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/WonoNomadsHome";
@@ -512,6 +513,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "master-panel-analytics",
                     element: <MasterPanelAnalytics />,
+                  },
+                  {
+                    path: "host-modules-content",
+                    element: <HostModulesContent />,
                   },
                   {
                     path: "website-credits",
