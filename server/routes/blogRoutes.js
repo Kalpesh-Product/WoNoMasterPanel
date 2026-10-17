@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { uploadImages } = require("../config/multerConfig");
+const { uploadContentImages } = require("../config/multerConfig");
 const {
   getBlogs,
   getBlogContributions,
@@ -14,8 +14,8 @@ router.get("/all-blogs", getBlogs);
 router.get("/get-all-blogs", getBlogs);
 router.get("/contributions", getBlogContributions);
 router.patch("/contributions/:id/status", updateBlogContributionStatus);
-router.post("/", uploadImages.any(), createBlog);
-router.patch("/:id", uploadImages.any(), updateBlog);
+router.post("/", uploadContentImages.any(), createBlog);
+router.patch("/:id", uploadContentImages.any(), updateBlog);
 router.delete("/:id", deleteBlog);
 
 module.exports = router;

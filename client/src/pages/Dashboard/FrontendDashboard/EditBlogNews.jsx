@@ -54,7 +54,36 @@ const stripSectionIds = (sections = []) =>
     return rest;
   });
 
-const BlogSectionImageInput = ({ field, file, onFileChange, id, disabled }) => {
+const openImagePreview = (event, src) => {
+  event.preventDefault();
+  let imageUrl;
+  try {
+    imageUrl = new URL(src, window.location.href);
+    if (!["http:", "https:", "blob:"].includes(imageUrl.protocol)) {
+      throw new Error("Invalid image URL");
+    }
+  } catch {
+    toast.error("Enter a valid image URL to preview.");
+    return;
+  }
+
+  // Embed the image so attachment headers cannot trigger a navigation download.
+  const previewWindow = window.open("about:blank", "_blank");
+  if (!previewWindow) {
+    toast.error("Allow pop-ups to open the image preview.");
+    return;
+  }
+  previewWindow.opener = null;
+  previewWindow.document.title = "Image preview";
+  const image = previewWindow.document.createElement("img");
+  image.src = imageUrl.href;
+  image.alt = "Image preview";
+  image.style.cssText = "max-width:100%;max-height:100vh;object-fit:contain";
+  previewWindow.document.body.style.cssText = "margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111";
+  previewWindow.document.body.appendChild(image);
+};
+
+const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) => {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState("");
 
@@ -88,15 +117,15 @@ const BlogSectionImageInput = ({ field, file, onFileChange, id, disabled }) => {
             event.target.value = "";
             return;
           }
-          if (selected.size > 30 * 1024 * 1024) {
-            toast.error("The image must be 30 MB or smaller.");
+          if (selected.size > 15 * 1024 * 1024) {
+            toast.error("The image must be 15 MB or smaller.");
             event.target.value = "";
             return;
           }
           onFileChange(selected);
         }}
       />
-      <p className="text-xs text-slate-500">JPEG, PNG, or WebP, up to 30 MB. The selected file replaces this section's image when you save.</p>
+      <p className="text-xs text-slate-500">JPEG, PNG, or WebP, up to 15 MB. The selected file replaces this section's image when you save.</p>
       {(preview || field.value) && <img src={preview || field.value} alt="Section image preview" className="max-h-48 w-full rounded-lg object-contain" />}
       {file && (
         <button type="button" disabled={disabled} className="self-start text-sm text-red-600 hover:underline" onClick={() => {
@@ -130,6 +159,7 @@ const EditBlogNews = () => {
   const isPlace = type === "place";
   const isRestaurant = type === "restaurant";
   const isEdit = !!stateItem?._id;
+  const supportsImageUploads = ["blog", "news", "event", "place"].includes(type);
   const [mainImageFile, setMainImageFile] = useState(null);
   const [sectionImageFiles, setSectionImageFiles] = useState({});
   const [mainImagePreview, setMainImagePreview] = useState("");
@@ -210,8 +240,9 @@ const EditBlogNews = () => {
             : type === "restaurant"
               ? "restaurants"
               : "news";
-      const baseUrl =
-        isEvent || isPlace || isRestaurant
+      const baseUrl = isEvent || isPlace
+        ? `/api/destination-content/${type}`
+        : isRestaurant
           ? `${NOMADS_API_BASE_URL}/${resourceType}`
           : `/api/${resourceType}`;
       const url = `${baseUrl}${isEdit ? `/${item._id}` : ""}`;
@@ -221,7 +252,7 @@ const EditBlogNews = () => {
       const sectionUploads = fields
         .map((section, index) => ({ index, file: sectionImageFiles[section.id] }))
         .filter(({ file }) => file);
-      if (type === "blog" && (mainImageFile || sectionUploads.length)) {
+      if (supportsImageUploads && (mainImageFile || sectionUploads.length)) {
         payload = new FormData();
         Object.entries(cleanData).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
@@ -279,7 +310,7 @@ const EditBlogNews = () => {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className={`grid grid-cols-1 gap-4 ${type === "blog" ? "md:grid-cols-3" : "md:grid-cols-2"}`}
+          className={`grid grid-cols-1 gap-4 ${supportsImageUploads ? "md:grid-cols-3" : "md:grid-cols-2"}`}
         >
           <Controller
             name="destination"
@@ -304,7 +335,7 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent || isPlace || isRestaurant ? (
+          {isRestaurant ? (
             <Controller
               name="serialNumber"
               control={control}
@@ -369,17 +400,30 @@ const EditBlogNews = () => {
             name="mainImage"
             control={control}
             render={({ field }) => (
-              <div className={`flex flex-col gap-2 w-full mt-4 ${type === "blog" ? "col-span-full" : ""}`}>
-                <label className="text-sm text-slate-700">Main Image URL</label>
-                <Input
-                  {...field}
-                  placeholder="Type URL here"
-                  variant="outlined"
-                  color="neutral"
-                  disabled={type === "blog" && !!mainImageFile}
-                />
-                {type === "blog" && (
-                  <>
+              <div className={`grid gap-4 w-full mt-4 ${supportsImageUploads ? "col-span-full md:grid-cols-2" : "grid-cols-1"}`}>
+                <div className="flex min-w-0 flex-col gap-2">
+                  <label className="text-sm text-slate-700">Main Image URL</label>
+                  <Input
+                    {...field}
+                    placeholder="Type URL here"
+                    variant="outlined"
+                    color="neutral"
+                    disabled={supportsImageUploads && !!mainImageFile}
+                  />
+                  {supportsImageUploads && (mainImagePreview || field.value) && (
+                    <a
+                      href={mainImagePreview || field.value}
+                      onClick={(event) => openImagePreview(event, mainImagePreview || field.value)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="self-start text-sm text-primary underline"
+                    >
+                      Preview
+                    </a>
+                  )}
+                </div>
+                {supportsImageUploads && (
+                  <div className="flex min-w-0 flex-col gap-2">
                     <label htmlFor="blog-main-image-file" className="text-sm text-slate-700">
                       Or upload a main image
                     </label>
@@ -398,8 +442,8 @@ const EditBlogNews = () => {
                           event.target.value = "";
                           return;
                         }
-                        if (file.size > 30 * 1024 * 1024) {
-                          toast.error("The image must be 30 MB or smaller.");
+                        if (file.size > 15 * 1024 * 1024) {
+                          toast.error("The image must be 15 MB or smaller.");
                           event.target.value = "";
                           return;
                         }
@@ -407,15 +451,8 @@ const EditBlogNews = () => {
                       }}
                     />
                     <p className="text-xs text-slate-500">
-                      JPEG, PNG, or WebP, up to 30 MB. The selected file replaces the URL image when you save.
+                      JPEG, PNG, or WebP, up to 15 MB. The selected file replaces the URL image when you save.
                     </p>
-                    {(mainImagePreview || field.value) && (
-                      <img
-                        src={mainImagePreview || field.value}
-                        alt="Main image preview"
-                        className="max-h-48 w-full rounded-lg object-contain"
-                      />
-                    )}
                     {mainImageFile && (
                       <button
                         type="button"
@@ -429,7 +466,7 @@ const EditBlogNews = () => {
                         Remove selected image
                       </button>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             )}
@@ -437,6 +474,25 @@ const EditBlogNews = () => {
 
           {isEvent || isPlace || isRestaurant ? (
             <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
+          {isEvent || isPlace ? (
+            <Controller
+              name="serialNumber"
+              control={control}
+              render={({ field }) => (
+                <div className="flex flex-col gap-2 w-full mt-4">
+                  <label className="text-sm text-slate-700">
+                    Serial Number
+                  </label>
+                  <Input
+                    {...field}
+                    placeholder="Serial number"
+                    variant="outlined"
+                    color="neutral"
+                  />
+                </div>
+              )}
+            />
+          ) : null}
               {(isRestaurant
                 ? [
                     "category",
@@ -621,8 +677,8 @@ const EditBlogNews = () => {
                 <Controller
                   name={`sections.${index}.image`}
                   control={control}
-                  render={({ field }) => type === "blog" ? (
-                    <BlogSectionImageInput
+                  render={({ field }) => supportsImageUploads ? (
+                    <ContentSectionImageInput
                       field={field}
                       file={sectionImageFiles[fields[index].id]}
                       id={`blog-section-image-${fields[index].id}`}

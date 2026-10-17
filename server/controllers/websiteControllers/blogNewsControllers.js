@@ -37,7 +37,7 @@ const getS3KeyFromUrl = (fileUrl) => {
     }
 };
 
-const buildBlogPayload = async (req) => {
+const buildContentPayload = async (req, { folder = "blogs", titleField = "mainTitle", titleFallback = "Blog" } = {}) => {
     const payload = { ...req.body };
     const files = Array.isArray(req.files) ? req.files : req.file ? [req.file] : [];
     if (!files.length) return payload;
@@ -76,16 +76,16 @@ const buildBlogPayload = async (req) => {
     });
 
     const destinationFolder = sanitizeS3PathSegment(payload.destination, "Destination");
-    const blogFolder = sanitizeS3PathSegment(payload.mainTitle, "Blog");
-    const baseFolder = `nomads/blogs/${destinationFolder}/${blogFolder}`;
+    const contentFolder = sanitizeS3PathSegment(payload[titleField], titleFallback);
+    const baseFolder = `nomads/${folder}/${destinationFolder}/${contentFolder}`;
     await Promise.all(uploads.map(async ({ file, index }) => {
         const isMain = index === null;
         const existingUrl = isMain ? payload.mainImage : payload.sections[index].image;
         const existingKey = getS3KeyFromUrl(existingUrl);
         // Reuse Nomads image keys; replace old flat Master Panel paths on upload.
         const isNomadsImage = isMain
-            ? /^nomads\/blogs\/[^/]+\/[^/]+\/Main Image\/[^/]+$/.test(existingKey)
-            : /^nomads\/blogs\/[^/]+\/[^/]+\/Section \d+ Image\/[^/]+$/.test(existingKey);
+            ? new RegExp(`^nomads/${folder}/[^/]+/[^/]+/Main Image/[^/]+$`).test(existingKey)
+            : new RegExp(`^nomads/${folder}/[^/]+/[^/]+/Section \\d+ Image/[^/]+$`).test(existingKey);
         const imageFolder = isMain ? "Main Image" : `Section ${index + 1} Image`;
         const key = isNomadsImage ? existingKey : `${baseFolder}/${imageFolder}/${sanitizeFileName(file.originalname)}`;
         const uploaded = await uploadFileToS3(key, file);
@@ -146,7 +146,7 @@ const createBlog = async (req, res) => {
         if (!req.body?.mainTitle || `${req.body.mainTitle}`.trim() === "") {
             return res.status(400).json({ message: "mainTitle is required" });
         }
-        const payload = await buildBlogPayload(req);
+        const payload = await buildContentPayload(req);
 
         const response = await axios.post(`${NOMADS_BASE_URL}/blogs/blogs`, payload);
         return res.status(201).json({ message: "Blog created via API", blog: response.data.blog || response.data });
@@ -159,16 +159,16 @@ const createBlog = async (req, res) => {
 
 const createNews = async (req, res) => {
     try {
-        const payload = req.body || {};
-        if (!payload.mainTitle || `${payload.mainTitle}`.trim() === "") {
+        if (!req.body?.mainTitle || `${req.body.mainTitle}`.trim() === "") {
             return res.status(400).json({ message: "mainTitle is required" });
         }
+        const payload = await buildContentPayload(req, { folder: "news", titleFallback: "Content" });
 
         const response = await axios.post(`${NOMADS_BASE_URL}/news/news`, payload);
         return res.status(201).json({ message: "News created via API", news: response.data.news || response.data });
     } catch (error) {
-        return res.status(error.response?.status || 500).json({
-            message: error.response?.data?.message || "Failed to create news via external API"
+        return res.status(error.response?.status || error.status || 500).json({
+            message: error.response?.data?.message || (error.status === 400 ? error.message : "Failed to create news via external API")
         });
     }
 };
@@ -176,7 +176,7 @@ const createNews = async (req, res) => {
 const updateBlog = async (req, res) => {
     try {
         const { id } = req.params;
-        const payload = await buildBlogPayload(req);
+        const payload = await buildContentPayload(req);
 
         const response = await axios.put(`${NOMADS_BASE_URL}/blogs/blogs/${id}`, payload);
         return res.status(200).json({ message: "Blog updated via API", blog: response.data.blog || response.data });
@@ -202,13 +202,13 @@ const deleteBlog = async (req, res) => {
 const updateNews = async (req, res) => {
     try {
         const { id } = req.params;
-        const payload = req.body;
+        const payload = await buildContentPayload(req, { folder: "news", titleFallback: "Content" });
 
         const response = await axios.put(`${NOMADS_BASE_URL}/news/news/${id}`, payload);
         return res.status(200).json({ message: "News updated via API", news: response.data.news || response.data });
     } catch (error) {
-        return res.status(error.response?.status || 500).json({
-            message: error.response?.data?.message || "Failed to update news via external API"
+        return res.status(error.response?.status || error.status || 500).json({
+            message: error.response?.data?.message || (error.status === 400 ? error.message : "Failed to update news via external API")
         });
     }
 };
@@ -348,7 +348,29 @@ const updateNewsStatus = async (req, res) => {
     }
 };
 
+const saveDestinationContent = async (req, res) => {
+    const configs = {
+        event: { folder: "events", titleField: "eventName", titleFallback: "Content" },
+        place: { folder: "places", titleField: "placeName", titleFallback: "Content" },
+    };
+    const config = Object.prototype.hasOwnProperty.call(configs, req.params.type) ? configs[req.params.type] : null;
+    if (!config) return res.status(400).json({ message: "Unsupported destination content type." });
+    try {
+        const payload = await buildContentPayload(req, config);
+        const url = `${NOMADS_BASE_URL}/${config.folder}${req.params.id ? `/${req.params.id}` : ""}`;
+        const response = req.params.id
+            ? await axios.patch(url, payload, { headers: adminHeaders() })
+            : await axios.post(url, payload, { headers: adminHeaders() });
+        return res.status(req.params.id ? 200 : 201).json(response.data);
+    } catch (error) {
+        return res.status(error.response?.status || error.status || 500).json({
+            message: error.response?.data?.message || (error.status === 400 ? error.message : "Failed to save destination content via external API"),
+        });
+    }
+};
+
 module.exports = {
+    saveDestinationContent,
     getBlogs,
     getNews,
     getBlogContributions,
