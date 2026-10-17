@@ -98,41 +98,55 @@ const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) =
   }, [file]);
 
   return (
-    <div className="flex flex-col gap-2 w-full mb-3">
-      <label className="text-sm text-slate-700">Section Image URL</label>
-      <Input {...field} placeholder="Section Image URL" variant="outlined" color="neutral" disabled={disabled || !!file} />
-      <label htmlFor={id} className="text-sm text-slate-700">Or upload a section image</label>
-      <input
-        id={id}
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        disabled={disabled}
-        className="w-full rounded-lg border border-slate-300 p-2 text-sm"
-        onChange={(event) => {
-          const selected = event.target.files?.[0];
-          if (!selected) return;
-          if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
-            toast.error("Choose a JPEG, PNG, or WebP image.");
-            event.target.value = "";
-            return;
-          }
-          if (selected.size > 15 * 1024 * 1024) {
-            toast.error("The image must be 15 MB or smaller.");
-            event.target.value = "";
-            return;
-          }
-          onFileChange(selected);
-        }}
-      />
-      <p className="text-xs text-slate-500">JPEG, PNG, or WebP, up to 15 MB. The selected file replaces this section's image when you save.</p>
-      {(preview || field.value) && <img src={preview || field.value} alt="Section image preview" className="max-h-48 w-full rounded-lg object-contain" />}
-      {file && (
-        <button type="button" disabled={disabled} className="self-start text-sm text-red-600 hover:underline" onClick={() => {
-          onFileChange(null);
-          if (inputRef.current) inputRef.current.value = "";
-        }}>Remove selected image</button>
-      )}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-3">
+      <div className="flex min-w-0 flex-col gap-2">
+        <label className="text-sm text-slate-700">Section Image URL</label>
+        <Input {...field} placeholder="Section Image URL" variant="outlined" color="neutral" disabled={disabled || !!file} />
+        {(preview || field.value) && (
+          <a
+            href={preview || field.value}
+            onClick={(event) => openImagePreview(event, preview || field.value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-start text-sm text-primary underline"
+          >
+            Preview
+          </a>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <label htmlFor={id} className="text-sm text-slate-700">Or upload a section image</label>
+        <input
+          id={id}
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={disabled}
+          className="w-full rounded-lg border border-slate-300 p-2 text-sm"
+          onChange={(event) => {
+            const selected = event.target.files?.[0];
+            if (!selected) return;
+            if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
+              toast.error("Choose a JPEG, PNG, or WebP image.");
+              event.target.value = "";
+              return;
+            }
+            if (selected.size > 15 * 1024 * 1024) {
+              toast.error("The image must be 15 MB or smaller.");
+              event.target.value = "";
+              return;
+            }
+            onFileChange(selected);
+          }}
+        />
+        <p className="text-xs text-slate-500">JPEG, PNG, or WebP, up to 15 MB. The selected file replaces this section's image when you save.</p>
+        {file && (
+          <button type="button" disabled={disabled} className="self-start text-sm text-red-600 hover:underline" onClick={() => {
+            onFileChange(null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}>Remove selected image</button>
+        )}
+      </div>
     </div>
   );
 };
@@ -657,51 +671,53 @@ const EditBlogNews = () => {
                     Remove
                   </button>
                 </div>
-                <Controller
-                  name={`sections.${index}.title`}
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mb-3">
-                      <label className="text-sm text-slate-700">
-                        Section Title
-                      </label>
-                      <Input
-                        {...field}
-                        placeholder="Section Title"
-                        variant="outlined"
-                        color="neutral"
+                <div>
+                  <Controller
+                    name={`sections.${index}.title`}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex min-w-0 flex-col gap-2 w-full mb-3">
+                        <label className="text-sm text-slate-700">
+                          Section Title
+                        </label>
+                        <Input
+                          {...field}
+                          placeholder="Section Title"
+                          variant="outlined"
+                          color="neutral"
+                        />
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name={`sections.${index}.image`}
+                    control={control}
+                    render={({ field }) => supportsImageUploads ? (
+                      <ContentSectionImageInput
+                        field={field}
+                        file={sectionImageFiles[fields[index].id]}
+                        id={`blog-section-image-${fields[index].id}`}
+                        disabled={isPending}
+                        onFileChange={(file) => setSectionImageFiles((current) => ({
+                          ...current,
+                          [fields[index].id]: file,
+                        }))}
                       />
-                    </div>
-                  )}
-                />
-                <Controller
-                  name={`sections.${index}.image`}
-                  control={control}
-                  render={({ field }) => supportsImageUploads ? (
-                    <ContentSectionImageInput
-                      field={field}
-                      file={sectionImageFiles[fields[index].id]}
-                      id={`blog-section-image-${fields[index].id}`}
-                      disabled={isPending}
-                      onFileChange={(file) => setSectionImageFiles((current) => ({
-                        ...current,
-                        [fields[index].id]: file,
-                      }))}
-                    />
-                  ) : (
-                    <div className="flex flex-col gap-2 w-full mb-3">
-                      <label className="text-sm text-slate-700">
-                        Section Image URL
-                      </label>
-                      <Input
-                        {...field}
-                        placeholder="Section Image URL"
-                        variant="outlined"
-                        color="neutral"
-                      />
-                    </div>
-                  )}
-                />
+                    ) : (
+                      <div className="flex flex-col gap-2 w-full mb-3">
+                        <label className="text-sm text-slate-700">
+                          Section Image URL
+                        </label>
+                        <Input
+                          {...field}
+                          placeholder="Section Image URL"
+                          variant="outlined"
+                          color="neutral"
+                        />
+                      </div>
+                    )}
+                  />
+                </div>
                 <Controller
                   name={`sections.${index}.content`}
                   control={control}
