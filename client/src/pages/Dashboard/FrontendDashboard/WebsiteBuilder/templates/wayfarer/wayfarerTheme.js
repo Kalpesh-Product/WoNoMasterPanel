@@ -2,7 +2,8 @@
 // radii, a full-width header and lots of white space around dense, useful cards.
 // It defines the same neutral tp-* primitives Savor does, so the shared forms, modals
 // and overlays pick up Wayfarer's styling automatically. Colours are all --t-* vars.
-export const WAYFARER_FONTS = "@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');";
+export const WAYFARER_FONTS =
+  "@import url('https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');";
 export const WAYFARER_CSS = `
 ${WAYFARER_FONTS}
 .wf { background: var(--t-bg); color: var(--t-text); font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: clip; }

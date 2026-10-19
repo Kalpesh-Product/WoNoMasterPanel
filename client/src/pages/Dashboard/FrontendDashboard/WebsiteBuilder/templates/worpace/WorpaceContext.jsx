@@ -1,2 +1,4 @@
-export { TplProvider as WorpaceProvider, useTpl as useWorpace, } from "../shared/TplContext";
-
+export {
+  TplProvider as WorpaceProvider,
+  useTpl as useWorpace,
+} from "../shared/TplContext";

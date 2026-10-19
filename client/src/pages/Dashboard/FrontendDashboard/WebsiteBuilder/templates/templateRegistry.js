@@ -18,6 +18,7 @@ import GrandBarTemplate from "./grandbar/GrandBarTemplate";
 import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
 import WorpaceTemplate from "./worpace/WorpaceTemplate";
 import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
+import BrixspaceTemplate from "./brixspace/BrixspaceTemplate";
 import QerjaTemplate from "./qerja/QerjaTemplate";
 export const DEFAULT_TEMPLATE_ID = "default";
 // Keyed by the `themeVariant` value stored on WebsiteTemplate documents.
@@ -254,6 +255,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#20201f",
             accent: "#a99d93",
             font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    brixspace: {
+        id: "brixspace",
+        name: "Brixspace",
+        description: "Community-led meeting-space design — cinematic rounded photography, interactive facilities, room discovery, location storytelling and polished booking flows.",
+        component: BrixspaceTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#101211",
+            accent: "#078b52",
+            font: "'DM Sans', sans-serif",
         },
         recommendedFor: ["meeting"],
         supportsBooking: true,

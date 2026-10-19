@@ -27,4 +27,3 @@ export const WORPACE_CSS = `
 @media(max-width:380px){.wp-shell{width:calc(100% - 24px)}.wp-hero h1{font-size:42px}.wp-hero-photo>img,.wp-hero-photo>.wp-placeholder,.wp-hero-photo:after{height:235px;flex-basis:235px}.wp-reserve{padding-inline:12px}.wp-reserve h2{font-size:32px}.wp-people h2,.wp-section-head h2,.wp-why h2,.wp-difference-head h2,.wp-page-hero h1,.wp-contact-head h2,.wp-about-intro h2,.wp-about-faq-grid h2,.wp-form-grid>div:first-child h2,.wp-footer-cta h2{font-size:36px}.wp-why-photo>img,.wp-why-photo>.wp-placeholder{height:330px;flex-basis:330px}.wp-modal-panel>aside{padding-left:18px}.wp-modal-form{padding-inline:18px}}
 @media(prefers-reduced-motion:reduce){.wp *,.wp *:before,.wp *:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 `;
-
