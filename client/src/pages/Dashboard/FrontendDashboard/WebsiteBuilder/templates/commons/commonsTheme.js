@@ -3,7 +3,8 @@
 // sticky white header under a slim status strip. It defines the same neutral tp-*
 // primitives the other new templates do, so the shared forms, modals and overlays pick
 // up Commons' styling automatically. Colours are all --t-* vars.
-export const COMMONS_FONTS = "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');";
+export const COMMONS_FONTS =
+  "@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap');";
 export const COMMONS_CSS = `
 ${COMMONS_FONTS}
 .cw { background: var(--t-bg); color: var(--t-text); font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: clip; }

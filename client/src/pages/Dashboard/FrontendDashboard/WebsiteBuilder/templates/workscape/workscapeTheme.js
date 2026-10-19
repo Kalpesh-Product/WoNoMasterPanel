@@ -34,6 +34,4 @@ const WORKSCAPE_CSS = `
 @media(max-width:520px){.wks-page-media{height:485px;min-height:0}.wks-page-media h1{max-width:95%;font-size:46px}.wks-page-media-detail>p{font-size:12px}.wks-service-copy>div{align-items:flex-start;flex-direction:column}.wks-detail-overview>aside{padding:26px 20px}.wks-detail-overview>aside>div{grid-template-columns:90px 1fr}.wks-detail-cinema{height:340px}.wks-detail-location .wks-map{height:340px}.wks-trusted>.wks-shell>div{grid-template-columns:1fr 1fr}.wks-footer-visual{min-height:470px}.wks-footer-copy>h2{font-size:44px}.wks-footer-contact a,.wks-footer-contact>div{grid-template-columns:80px 1fr}.wks-footer-visual form label{font-size:22px}}
 @media(prefers-reduced-motion:reduce){.wks *{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 `;
-export {
-  WORKSCAPE_CSS
-};
+export { WORKSCAPE_CSS };

@@ -2,7 +2,8 @@
 // buttons, arch-shaped photos and generous rounded cards on a warm, quiet background.
 // It defines the same neutral tp-* primitives Savor and Wayfarer do, so the shared forms,
 // modals and overlays pick up Haven's styling automatically. Colours are all --t-* vars.
-export const HAVEN_FONTS = "@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=DM+Sans:wght@400;500;600;700&display=swap');";
+export const HAVEN_FONTS =
+  "@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=DM+Sans:wght@400;500;600;700&display=swap');";
 export const HAVEN_CSS = `
 ${HAVEN_FONTS}
 .hv { --hv-ink-accent: color-mix(in srgb, var(--t-accent) 62%, var(--t-text)); background: var(--t-bg); color: var(--t-text); font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: clip; }

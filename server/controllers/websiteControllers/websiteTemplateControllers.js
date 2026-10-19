@@ -1568,7 +1568,6 @@ const saveTemplateDraftHandler = async (req, res) => {
 
 const createTemplateHandler = async (req, res, next) => {
   try {
-    console.log("REQ BODY VERTICAL:", req.body.vertical);
     console.log("REQ BODY COMPANY:", req.body.companyName);
     const { company } = req.query;
 
@@ -1620,6 +1619,14 @@ const createTemplateHandler = async (req, res, next) => {
     styleConfig = safeParse(styleConfig, {});
     socials = normalizeSocials(safeParse(socials, {}));
 
+    // The website builder doesn't currently send a real vertical on every save (it's
+    // disabled on the frontend), so `vertical` below just defaults to "co-working" for
+    // template-rendering purposes (theme/section selection) — it must never be mistaken for
+    // "the company's business vertical is co-working" when writing back to the company record
+    // further down. `hasVerticalInBody` is the only signal for that.
+    const hasVerticalInBody =
+      Object.prototype.hasOwnProperty.call(req.body, "vertical") ||
+      Object.prototype.hasOwnProperty.call(req.body, "verticalType");
     const vertical = normalizeVertical(
       req.body.vertical ?? req.body.verticalType,
     );
@@ -1627,7 +1634,6 @@ const createTemplateHandler = async (req, res, next) => {
       String(req.body?.productTitle || "").trim() ||
       sectionTitleByVertical[vertical] ||
       "Our Products";
-    console.log("VERTICAL BEING SAVED:", req.body.vertical);
     const themeIdFromConfig = VERTICAL_CONFIG?.[vertical]?.themeId;
     const themeId =
       themeIdFromConfig && THEME_TOKENS?.[themeIdFromConfig]
@@ -2759,11 +2765,20 @@ const createTemplateHandler = async (req, res, next) => {
     }
 
     if (source !== "Nomad") {
-      const derivedBusinessType =
-        businessTypeLabelByVertical[vertical] || "Co-Working";
-      const normalizedIndustry = [derivedBusinessType]
-        .filter(Boolean)
-        .join(", ");
+      // Only touch the company's own vertical/industry when the request actually carried a
+      // real one — otherwise this would silently overwrite the vertical the company chose at
+      // signup with the "co-working" render default every time a website is saved.
+      const updateFields = { isWebsiteTemplate: true };
+      const updateOps = { $set: updateFields };
+      if (hasVerticalInBody) {
+        const derivedBusinessType =
+          businessTypeLabelByVertical[vertical] || "Co-Working";
+        updateFields.vertical = vertical;
+        updateFields.industry = [derivedBusinessType]
+          .filter(Boolean)
+          .join(", ");
+        updateOps.$addToSet = { businessTypes: derivedBusinessType };
+      }
 
       const updateHostCompany = await HostCompany.findOneAndUpdate(
         {
@@ -2777,16 +2792,7 @@ const createTemplateHandler = async (req, res, next) => {
             },
           ],
         },
-        {
-          $set: {
-            isWebsiteTemplate: true,
-            vertical,
-            industry: normalizedIndustry,
-          },
-          $addToSet: {
-            businessTypes: derivedBusinessType,
-          },
-        },
+        updateOps,
       );
 
       if (!updateHostCompany) {
