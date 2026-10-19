@@ -126,4 +126,9 @@ ${WAYFARER_CSS}
   .tk-unit-media img, .tk-tile img, .tk-price-card { transition: none; }
 }
 `;
-export const TULUM_PALETTE = { bg: "#f1f1ed", text: "#6e7a73", accent: "#8a968f", secondary: "#d4d6ce" };
+export const TULUM_PALETTE = {
+  bg: "#f1f1ed",
+  text: "#6e7a73",
+  accent: "#8a968f",
+  secondary: "#d4d6ce",
+};

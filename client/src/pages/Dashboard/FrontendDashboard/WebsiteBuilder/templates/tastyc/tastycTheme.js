@@ -1,4 +1,4 @@
-export const TASTYC_CSS = String.raw `
+export const TASTYC_CSS = String.raw`
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Josefin+Sans:wght@400;500;600&display=swap');
 
 .tc{--tc-ink:#071719;--tc-deep:#0b2224;--tc-paper:var(--t-bg,#f2ede5);--tc-orange:var(--t-accent,#dc8438);--tc-cream:#eee3d2;--tc-line:color-mix(in srgb,var(--t-text,#191614) 16%,transparent);--tc-shadow:0 28px 70px rgba(5,20,21,.18);min-height:100vh;overflow-x:hidden;background:var(--tc-paper);color:var(--t-text,#191614);font-family:'Josefin Sans',ui-sans-serif,sans-serif;-webkit-font-smoothing:antialiased}

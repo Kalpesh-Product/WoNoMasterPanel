@@ -1,4 +1,5 @@
 import { api } from "../../../../../utils/axios";
+import { getWorkspaceCurrencySymbol, normalizeWorkspaceCurrency } from "../../../../../lib/workspaceLocalization";
 import { buildThemeVars, resolveThemeColors } from "./templateTheme";
 import { contrastRatio, luminance, mix } from "./emeraldTheme";
 import { formatTime12h } from "./leadForms";
@@ -111,12 +112,25 @@ export const postWebsiteLead = (draft, fields) => api.post("/api/leads/create-le
     websiteUrl: window.location.href,
     ...fields,
 });
-/** "₹500" + "per night" -> "₹500 / night". */
-export const priceWithUnit = (price, unit) => {
+// The currency every template's price display resolves to when a call site doesn't pass one
+// explicitly. Set once per render by useWebsiteTemplateData from the draft's own currency (a real
+// company's saved site carries its own; anything without one yet defaults to USD rather than
+// assuming India).
+let activeTemplateCurrency = "USD";
+export const setActiveTemplateCurrency = (currency) => {
+    const trimmed = String(currency || "").trim();
+    activeTemplateCurrency = trimmed ? normalizeWorkspaceCurrency(trimmed) : "USD";
+};
+
+/** "500" + "per night" -> "₹500 / night" (symbol resolved from the active/given currency, any symbol already in `price` is replaced). */
+export const priceWithUnit = (price, unit, currency) => {
     if (!price)
         return "";
     const cleaned = String(unit || "").replace(/^per\s+/i, "").replace(/^\/\s*/, "").trim();
-    return cleaned ? `${price} / ${cleaned}` : price;
+    const numeric = String(price).replace(/^[^\d]+/, "").trim();
+    const symbol = getWorkspaceCurrencySymbol(currency || activeTemplateCurrency);
+    const priced = numeric ? `${symbol}${numeric}` : String(price);
+    return cleaned ? `${priced} / ${cleaned}` : priced;
 };
 /** Currency prefix of a free-text price ("₹1,200" -> "₹"). */
 export const currencyPrefix = (price) => (String(price).match(/^[^\d]*/)?.[0] || "").trim();
