@@ -873,6 +873,8 @@ export const defaultKindForTemplate = (themeVariant) => TEMPLATE_KIND[themeVaria
 const CAMELIA_DEMO_VIDEO = "https://videos.pexels.com/video-files/7578546/7578546-uhd_2560_1440_30fps.mp4";
 // Pexels "A Bartender Making A Cocktail Drink" (free to use, no attribution needed); HD, portrait.
 const GRAND_BAR_DEMO_VIDEO = "https://videos.pexels.com/video-files/7608984/7608984-hd_720_1280_25fps.mp4";
+// Pexels "Barista Crafting Latte Art in Coffee Shop"; used only by the Aromatica demo preview.
+const AROMATICA_DEMO_VIDEO = "https://www.pexels.com/download/video/30090157/";
 const slugOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 const pageFor = (kind, business, slug) => ({
     name: business.page.name,
@@ -917,7 +919,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         themeVariant,
         // Camelia's hero plays a looping video when one is linked (see the builder's "Hero Video URL").
         // The sample clip is a placeholder for previews only; a real site sets its own link.
-        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : "",
+        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : themeVariant === "aromatica" ? AROMATICA_DEMO_VIDEO : "",
         styleConfig: {},
         sectionOverrides: {},
         vertical: primary.vertical,
