@@ -20,6 +20,7 @@ export const THEME_DEFAULTS = {
     savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
     tastyc: { bg: "#f4efe7", text: "#1a1715", accent: "#cf7736", surfaceUp: true },
     grandbar: { bg: "#0b1b22", text: "#f2eee7", accent: "#aa8867", surfaceUp: true },
+    aromatica: { bg: "#f4f0e8", text: "#11111b", accent: "#e9a542", surfaceUp: true },
     flowspace: { bg: "#fbfaeb", text: "#11110f", accent: "#11110f", surfaceUp: true },
     workscape: { bg: "#ffffff", text: "#20201f", accent: "#a99d93", surfaceUp: true },
     brixspace: { bg: "#ffffff", text: "#101211", accent: "#078b52", surfaceUp: true },
