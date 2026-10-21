@@ -4,6 +4,7 @@ const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
     grandbar: "menu",
+    aromatica: "menu",
     flowspace: "meeting",
     workscape: "meeting",
     brixspace: "meeting",
@@ -784,11 +785,66 @@ const CALI_HOSTEL_DEMO_BUSINESS = (() => {
     };
 })();
 
+const AROMATICA_PHOTOS = {
+    hero: ["photo-1528605248644-14dd04022da1", "photo-1447933601403-0c6688de566e", "photo-1501339847302-ac426a4a7cbb"],
+    roast: ["photo-1511081692775-05d0f180a065", "photo-1461988091159-192b6df7054f", "photo-1495474472287-4d71bcdd2085"],
+    drinks: ["photo-1512568400610-62da28bc8a13", "photo-1498804103079-a6351b050096", "photo-1509042239860-f550ce710b93", "photo-1517701604599-bb29b565090c"],
+    cafe: ["photo-1459755486867-b55449bb39ff", "photo-1554118811-1e0d58224f24", "photo-1521017432531-fbd92d768814", "photo-1511537190424-bbbab87ac5eb"],
+};
+const AROMATICA_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.menu;
+    const items = [
+        { category: "Espresso bar", name: "Honey Cortado", price: "₹240", description: "Double espresso, warm textured milk and a touch of wildflower honey.", image: AROMATICA_PHOTOS.drinks[0], badge: "House favourite" },
+        { category: "Espresso bar", name: "Orange Blossom Latte", price: "₹280", description: "Silky milk, house espresso and fragrant orange blossom syrup.", image: AROMATICA_PHOTOS.drinks[1], badge: "Seasonal" },
+        { category: "Slow coffee", name: "Ethiopia Guji Pour", price: "₹320", description: "A floral single origin with notes of peach, bergamot and cocoa nib.", image: AROMATICA_PHOTOS.drinks[2], badge: "Single origin" },
+        { category: "Slow coffee", name: "Roastery Cold Brew", price: "₹260", description: "Eighteen-hour cold brew, bright and clean with a chocolate finish.", image: AROMATICA_PHOTOS.drinks[3], badge: "All day" },
+        { category: "Roasted beans", name: "Morning Ritual Blend", price: "₹720", description: "Caramel, roasted almond and orange zest. Balanced for espresso or moka pot.", image: AROMATICA_PHOTOS.roast[0], badge: "250 g" },
+        { category: "Roasted beans", name: "Monsoon Estate", price: "₹780", description: "A rich Indian single estate coffee with spice, cacao and a round body.", image: AROMATICA_PHOTOS.roast[1], badge: "250 g" },
+        { category: "Roasted beans", name: "Sunday Filter", price: "₹690", description: "Soft stone fruit, panela sweetness and a tea-like finish for filter brewing.", image: AROMATICA_PHOTOS.roast[2], badge: "250 g" },
+    ];
+    const toMenuItem = (item, index) => ({
+        ...item,
+        enabled: true,
+        dietary: "vegan",
+        spiceLevel: 0,
+        popular: index < 2,
+        featured: index < 4,
+        priceUnit: "",
+        images: [item.image, AROMATICA_PHOTOS.cafe[index % AROMATICA_PHOTOS.cafe.length]].map((id) => photoValue(id)),
+        image: photo(item.image, 1200),
+    });
+    return {
+        ...base,
+        companyName: "Emberline Coffee Roasters",
+        title: "Coffee, transformed by fire and patience",
+        subTitle: "Traceable beans, small-batch roasting and an open coffee bar in the heart of Bengaluru.",
+        heroImages: AROMATICA_PHOTOS.hero.map((id) => photo(id, 1900)),
+        gallery: [...AROMATICA_PHOTOS.cafe, ...AROMATICA_PHOTOS.roast, ...AROMATICA_PHOTOS.drinks, ...AROMATICA_PHOTOS.hero].map((id) => photo(id, 1300)),
+        aboutImages: [AROMATICA_PHOTOS.roast[0], AROMATICA_PHOTOS.cafe[0], AROMATICA_PHOTOS.cafe[3]].map((id) => photo(id, 1200)),
+        aboutTitle: "A roastery built around flavour",
+        aboutPageStory: "Emberline began with a sample roaster, a borrowed table and weekly cuppings for friends. We now roast every batch in view of the café, still guided by taste rather than volume.",
+        aboutPageMission: "To make exceptional, traceable coffee approachable — from the farmer who grew it to the guest drinking it.",
+        aboutPageValues: "Buy thoughtfully. Roast transparently. Brew precisely. Welcome generously.",
+        partnerHeading: "Build a better coffee programme",
+        partnerContent: "We supply offices, restaurants and independent cafés with freshly roasted coffee, training and practical equipment support.",
+        address: "18 Museum Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Coffee roasted for clarity",
+            heroSubHeading: "Espresso, slow coffee and fresh retail beans — each selected and roasted in small batches.",
+            heroImage: photo(AROMATICA_PHOTOS.hero[1], 1900),
+            cardImage: photo(AROMATICA_PHOTOS.drinks[0], 1100),
+        },
+        extra: { ...base.extra, menuItems: items.map(toMenuItem) },
+    };
+})();
 const demoBusinessFor = (kind, themeVariant) => {
     if (themeVariant === "tastyc" && kind === "menu")
         return TASTYC_DEMO_BUSINESS;
     if (themeVariant === "grandbar" && kind === "menu")
         return GRAND_BAR_DEMO_BUSINESS;
+    if (themeVariant === "aromatica" && kind === "menu")
+        return AROMATICA_DEMO_BUSINESS;
     if (themeVariant === "flowspace" && kind === "meeting")
         return FLOWSPACE_DEMO_BUSINESS;
     if (themeVariant === "workscape" && kind === "meeting")
