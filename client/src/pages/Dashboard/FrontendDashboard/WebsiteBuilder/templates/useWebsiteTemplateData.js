@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Country, State, City } from "country-state-city";
 import { api } from "../../../../../utils/axios";
+import { setActiveTemplateCurrency } from "./templateKit";
 const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 
 // Read synchronously so the very first render already has the draft (when one is already
@@ -234,6 +235,11 @@ const useWebsiteTemplateData = () => {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(() => parsePreviewDraft(readPreviewDraftRaw()));
   const previewDraftRawRef = useRef(readPreviewDraftRaw());
+
+  // Demo drafts carry their own currency (always "USD" — see buildDemoPreviewDraft) so every
+  // template preview reads the same regardless of who's browsing it. A real company's saved draft
+  // carries its own too; anything without one yet falls back to USD.
+  setActiveTemplateCurrency(draft?.currency);
   const [heroIndex, setHeroIndex] = useState(0);
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [expandedTestimonials, setExpandedTestimonials] = useState({});

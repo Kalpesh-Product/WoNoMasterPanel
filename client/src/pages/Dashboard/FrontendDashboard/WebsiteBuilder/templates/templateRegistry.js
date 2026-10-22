@@ -12,11 +12,15 @@ import TravigoTemplate from "./travigo/TravigoTemplate";
 import TulumTemplate from "./tulum/TulumTemplate";
 import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
 import LodgeTemplate from "./lodge/LodgeTemplate";
+import CaliHostelTemplate from "./caliHostel/CaliHostelTemplate";
 import TastycTemplate from "./tastyc/TastycTemplate";
 import GrandBarTemplate from "./grandbar/GrandBarTemplate";
+import AromaticaTemplate from "./aromatica/AromaticaTemplate";
 import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
 import WorpaceTemplate from "./worpace/WorpaceTemplate";
 import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
+import BrixspaceTemplate from "./brixspace/BrixspaceTemplate";
+import QerjaTemplate from "./qerja/QerjaTemplate";
 export const DEFAULT_TEMPLATE_ID = "default";
 // Keyed by the `themeVariant` value stored on WebsiteTemplate documents.
 // Any themeVariant not present here falls back to DEFAULT_TEMPLATE_ID.
@@ -88,6 +92,20 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["menu"],
         supportsBooking: true,
     },
+    aromatica: {
+        id: "aromatica",
+        name: "Aromatica",
+        description: "Bright editorial coffee-roastery design — oversized typography, amber accents, roast storytelling, product-led menus and polished reservations.",
+        component: AromaticaTemplate,
+        swatch: {
+            bg: "#f4f0e8",
+            fg: "#11111b",
+            accent: "#e9a542",
+            font: "'Manrope', sans-serif",
+        },
+        recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
     wayfarer: {
         id: "wayfarer",
         name: "Wayfarer",
@@ -154,6 +172,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#1c1f21",
             accent: "#7fa388",
             font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    "cali-hostel": {
+        id: "cali-hostel",
+        name: "Cali Hostel",
+        description: "Cinematic social-hostel style — floating pill navigation, immersive photography, editorial room rows, sticky story scenes and a playful hostel-stamp loader.",
+        component: CaliHostelTemplate,
+        swatch: {
+            bg: "#f2eadb",
+            fg: "#171711",
+            accent: "#e86d43",
+            font: "'Instrument Serif', Georgia, serif",
         },
         recommendedFor: ["hostel"],
         supportsBooking: true,
@@ -242,6 +274,20 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["meeting"],
         supportsBooking: true,
     },
+    brixspace: {
+        id: "brixspace",
+        name: "Brixspace",
+        description: "Community-led meeting-space design — cinematic rounded photography, interactive facilities, room discovery, location storytelling and polished booking flows.",
+        component: BrixspaceTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#101211",
+            accent: "#078b52",
+            font: "'DM Sans', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
     worpace: {
         id: "worpace",
         name: "Worpace",
@@ -252,6 +298,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#11110f",
             accent: "#11110f",
             font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["workspace"],
+        supportsBooking: true,
+    },
+    qerja: {
+        id: "qerja",
+        name: "Qerja",
+        description: "Confident modern coworking design — deep teal, bright yellow accents, image-led storytelling, flexible space discovery, community proof and polished enquiry flows.",
+        component: QerjaTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#003f3a",
+            accent: "#f3c441",
+            font: "'Manrope', sans-serif",
         },
         recommendedFor: ["workspace"],
         supportsBooking: true,

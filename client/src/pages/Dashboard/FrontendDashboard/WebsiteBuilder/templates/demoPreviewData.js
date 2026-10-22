@@ -4,12 +4,16 @@ const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
     grandbar: "menu",
+    aromatica: "menu",
     flowspace: "meeting",
     workscape: "meeting",
+    brixspace: "meeting",
     worpace: "workspace",
+    qerja: "workspace",
     wayfarer: "hostel",
     travigo: "hostel",
     lodge: "hostel",
+    "cali-hostel": "hostel",
     haven: "coLiving",
     camelia: "coLiving",
     tulum: "coLiving",
@@ -572,6 +576,54 @@ const WORKSCAPE_DEMO_BUSINESS = (() => {
         },
     };
 })();
+// Brixspace uses a people-first, green-accented photo set that is separate from the
+// architectural Workscape and warm Flowspace meeting-room libraries.
+const BRIXSPACE_PHOTOS = {
+    hero: ["photo-1521737711867-e3b97375f902", "photo-1552664730-d307ca884978", "photo-1522071820081-009f0129c71c"],
+    rooms: [
+        "photo-1497366811353-6870744d04b2", "photo-1497366754035-f200968a6e72", "photo-1497366216548-37526070297c", "photo-1524758631624-e2822e304c36", "photo-1497215728101-856f4ea42174",
+        "photo-1505409859467-3a796fd5798e", "photo-1517245386807-bb43f82c33c4", "photo-1556761175-b413da4baf72", "photo-1556761175-4b46a572b786", "photo-1556761175-5973dc0f32e7",
+        "photo-1497366412874-3415097a27e7", "photo-1522202176988-66273c2fd55f", "photo-1524178232363-1fb2b075b655", "photo-1542744173-8e7e53415bb0", "photo-1551836022-d5d88e9218df",
+        "photo-1568992687947-868a62a9f521", "photo-1600508774634-4e11d34730e2", "photo-1504384308090-c894fdcc538d", "photo-1552664730-d307ca884978", "photo-1521737711867-e3b97375f902",
+        "photo-1517502884422-41eaead166d4", "photo-1524758631624-e2822e304c36", "photo-1497215842964-222b430dc094", "photo-1551836022-d5d88e9218df", "photo-1542744173-8e7e53415bb0",
+    ],
+};
+const BRIXSPACE_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.meeting;
+    const rooms = base.extra.meetingRooms || [];
+    const names = ["Focus Room", "Huddle Studio", "Strategy Suite", "Boardroom", "Training Loft"];
+    const descriptions = [
+        "A calm two-to-four person room for interviews, one-to-ones and focused decisions.",
+        "A bright team room with a screen and whiteboard for quick workshops and weekly syncs.",
+        "A flexible collaboration suite for planning sessions, client reviews and project kick-offs.",
+        "A polished boardroom with dependable video conferencing for important presentations.",
+        "An adaptable studio for training days, facilitated workshops and larger team sessions.",
+    ];
+    return {
+        ...base,
+        companyName: "Brix Rooms",
+        title: "Connect, Collaborate, Grow Together",
+        subTitle: "Thoughtful meeting rooms, reliable technology and hospitality that helps every conversation move forward.",
+        cta: "Book Space",
+        heroImages: BRIXSPACE_PHOTOS.hero.map((id) => photo(id, 2000)),
+        gallery: [...BRIXSPACE_PHOTOS.hero, ...BRIXSPACE_PHOTOS.rooms].map((id) => photo(id, 1500)),
+        aboutImages: [BRIXSPACE_PHOTOS.hero[1], BRIXSPACE_PHOTOS.rooms[7], BRIXSPACE_PHOTOS.rooms[12]].map((id) => photo(id, 1300)),
+        aboutTitle: "A better room for work that matters",
+        aboutPageStory: "Brix Rooms makes it easier for teams to gather, focus and make progress in spaces that feel considered from the moment they arrive.",
+        about: [
+            "We believe useful work starts with the right environment: calm, comfortable and ready before the first guest walks in.",
+            "Our team combines flexible layouts, reliable technology and genuine hospitality so every meeting can stay focused on its purpose.",
+        ],
+        founders: [
+            { name: "Anika Shah", role: "Founder & Space Director", bio: "Anika designs rooms around the way people actually meet, think and decide.", image: photoValue("photo-1494790108377-be9c29b29330", 900) },
+            { name: "Rohan Mehta", role: "Guest Experience Lead", bio: "Rohan makes sure every room, screen and coffee is ready before the team arrives.", image: photoValue("photo-1500648767791-00dcc994a43e", 900) },
+            { name: "Maya Iyer", role: "Community & Partnerships", bio: "Maya connects Brix Rooms with facilitators, local teams and growing businesses.", image: photoValue("photo-1534528741775-53994a69daeb", 900) },
+        ],
+        address: "42 Residency Road, Ashok Nagar, Bengaluru 560025",
+        page: { ...base.page, heroHeading: "Meeting spaces built for momentum", heroSubHeading: "Choose a focused room, flexible studio or polished boardroom and make it yours for the hour.", heroImage: photo(BRIXSPACE_PHOTOS.hero[0], 1900), cardImage: photo(BRIXSPACE_PHOTOS.hero[1], 1100) },
+        extra: { ...base.extra, meetingRooms: rooms.slice(0, 5).map((room, index) => ({ ...room, title: names[index], description: descriptions[index], price: ["650", "950", "1,400", "2,200", "3,200"][index], priceUnit: "hour", capacity: [4, 8, 12, 16, 30][index], images: BRIXSPACE_PHOTOS.rooms.slice(index * 5, index * 5 + 5).map((id) => photoValue(id)) })) },
+    };
+})();
 // Worpace uses a distinct, natural-light editorial photo direction rather than Commons' bento imagery.
 const worpacePhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
 const worpaceValue = (id, width = 1200) => ({ url: worpacePhoto(id, width) });
@@ -611,21 +663,204 @@ const WORPACE_DEMO_BUSINESS = (() => {
         })),
     };
 })();
+
+// Qerja uses a crisp, people-first photo direction with brighter communal spaces and teal/yellow branding.
+const qerjaPhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
+const qerjaValue = (id, width = 1200) => ({ url: qerjaPhoto(id, width) });
+const QERJA_PHOTOS = {
+    hero: ["3182759", "3183190", "3182827"],
+    spaces: ["3182812", "3184416", "3182811", "3182765", "3182826", "3182833", "3184287", "3205570", "3768904", "3861958", "4348404", "7654118"],
+};
+const QERJA_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.workspace;
+    const items = base.pageItems || [];
+    return {
+        ...base,
+        companyName: "Qerja",
+        title: "We’re the Perfect Working Space for You",
+        subTitle: "Thoughtfully designed workspaces, useful services and a community that helps every workday flow better.",
+        cta: "Learn more",
+        heroImages: QERJA_PHOTOS.hero.map((id) => qerjaPhoto(id, 1900)),
+        gallery: [...QERJA_PHOTOS.hero, ...QERJA_PHOTOS.spaces].map((id) => qerjaPhoto(id, 1450)),
+        aboutImages: [QERJA_PHOTOS.spaces[1], QERJA_PHOTOS.spaces[5], QERJA_PHOTOS.spaces[8]].map((id) => qerjaPhoto(id, 1200)),
+        aboutTitle: "We help businesses feel at home while they grow",
+        aboutPageStory: "Qerja Collective combines practical workspaces, thoughtful hospitality and an active professional community in one bright, welcoming place.",
+        about: [
+            "We designed Qerja for people who want the freedom of flexible work without giving up the energy and support of a shared workplace.",
+            "Every desk, room and service is shaped around useful workdays: comfortable, reliable and ready to change as your team changes.",
+        ],
+        founders: [
+            { name: "Aanya Mehta", role: "Founder & Community Director", bio: "Aanya builds useful spaces and the connections that make them feel alive.", image: qerjaValue("6893942", 900) },
+            { name: "Dev Malhotra", role: "Workspace Experience Lead", bio: "Dev makes sure every member and guest has what they need for a productive day.", image: qerjaValue("4348404", 900) },
+            { name: "Maya Rao", role: "Partnerships Lead", bio: "Maya brings teams, local businesses and the wider creative community together.", image: qerjaValue("774909", 900) },
+        ],
+        address: "42 Residency Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Find Your Ideal Workspace",
+            heroSubHeading: "Choose a flexible desk, private office or team suite and make the workday your own.",
+            heroImage: qerjaPhoto(QERJA_PHOTOS.hero[0], 1900),
+            cardImage: qerjaPhoto(QERJA_PHOTOS.hero[1], 1100),
+        },
+        pageItems: items.map((item, index) => ({
+            ...item,
+            images: QERJA_PHOTOS.spaces.slice(index * 2, index * 2 + 3).map((id) => qerjaValue(id)),
+        })),
+    };
+})();
+// Cali Hostel has its own sun-washed, people-first photo library so it never
+// repeats the room imagery or travel tone of Wayfarer, Travigo or Lodge.
+const caliPhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
+const caliValue = (id, width = 1200) => ({ url: caliPhoto(id, width) });
+const CALI_HOSTEL_PHOTOS = {
+    hero: ["4907181", "5158948", "7969104"],
+    rooms: [
+        "5137980", "7969098", "4907181", "7969104", "4907199",
+        "4907207", "4907208", "4907229", "4907175", "5158948",
+        "4907190", "4907236", "4907235", "4907429", "5158945",
+        "7969106", "7969099", "4907179", "4907183", "4907617",
+    ],
+    life: ["5158948", "4907175", "4907179", "4907183", "4907617", "7969106", "7969099", "7969104", "4907207", "4907199", "4907181", "4907229"],
+};
+const CALI_HOSTEL_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.hostel;
+    const rooms = base.extra.dorms || [];
+    const roomNames = ["Sunset Social Dorm", "The Quiet Six", "Women’s Garden Dorm", "Private Hideaway"];
+    const roomCopy = [
+        "An airy mixed dorm with privacy curtains, reading lights and room for easy conversation before the day begins.",
+        "Six calm bunks, generous lockers and a quieter position in the house for travellers who take sleep seriously.",
+        "A light-filled women-only dorm beside the garden, with ensuite access and thoughtful personal storage.",
+        "A warm private room for two with a queen bed, its own bathroom and all the energy of the hostel just downstairs.",
+    ];
+    return {
+        ...base,
+        companyName: "Marea House",
+        title: "Come for the coast. Stay for the people.",
+        subTitle: "Social rooms, deep sleep and good stories in the middle of everything.",
+        cta: "Find Your Bed",
+        heroImages: CALI_HOSTEL_PHOTOS.hero.map((id) => caliPhoto(id, 2000)),
+        gallery: [...CALI_HOSTEL_PHOTOS.life, ...CALI_HOSTEL_PHOTOS.rooms].map((id) => caliPhoto(id, 1500)),
+        aboutImages: [CALI_HOSTEL_PHOTOS.life[0], CALI_HOSTEL_PHOTOS.life[4], CALI_HOSTEL_PHOTOS.life[6]].map((id) => caliPhoto(id, 1300)),
+        address: "18 Palm Grove Road, Anjuna, Goa 403509",
+        aboutTitle: "A house made for crossing paths",
+        aboutPageStory: "Marea House began with a simple idea: travelling alone should never feel lonely. We turned a sun-washed old house into a relaxed base for people who want proper rest, honest local tips and new company when they want it.",
+        about: [
+            "Our rooms are designed for sleep first—solid bunks, privacy curtains, quiet corners and space for your things.",
+            "Downstairs, the long table, garden and rooftop make it easy to meet without forcing the moment. Join in, head out, or take the afternoon for yourself.",
+        ],
+        founders: [
+            { name: "Nina D'Souza", role: "Founder & Host", bio: "Nina built Marea as the hostel she always hoped to find on the road: warm, useful and full of local character.", image: caliValue("3763188", 900) },
+            { name: "Kabir Menon", role: "House & Experience Lead", bio: "Kabir knows every beach bus, late-night food stop and sunrise route worth taking.", image: caliValue("2379004", 900) },
+            { name: "Lena Costa", role: "Community Host", bio: "Lena runs the shared table, walking plans and the little rituals that turn arrivals into friendships.", image: caliValue("733872", 900) },
+        ],
+        page: {
+            ...base.page,
+            heroHeading: "Beds made for real rest",
+            heroSubHeading: "Social dorms, quiet bunks and a private room—each with thoughtful details and no hotel stiffness.",
+            heroImage: caliPhoto(CALI_HOSTEL_PHOTOS.rooms[0], 1900),
+            cardImage: caliPhoto(CALI_HOSTEL_PHOTOS.rooms[4], 1200),
+        },
+        extra: {
+            ...base.extra,
+            // roomKind/genderPolicy/capacity/bedType/bathroom drive the listing chips (see
+            // buildChips in serviceAdapter.js) — set explicitly per room instead of inheriting
+            // the base hostel's values, which belonged to differently-named rooms at these indexes
+            // and produced chips that contradicted these rooms' own names and descriptions.
+            dorms: rooms.slice(0, 4).map((room, index) => ({
+                ...room,
+                title: roomNames[index],
+                description: roomCopy[index],
+                price: ["850", "1,050", "1,150", "3,200"][index],
+                priceUnit: "night",
+                badge: index === 0 ? "Most social" : index === 2 ? "Women only" : "",
+                images: CALI_HOSTEL_PHOTOS.rooms.slice(index * 5, index * 5 + 5).map((id) => caliValue(id)),
+                features: ["Privacy curtain", "Personal reading light", "Lockable storage", "Fast Wi-Fi", index === 3 ? "Private bathroom" : "Hot shared showers", "Fresh linen"],
+                roomKind: index === 3 ? "private" : "dorm",
+                genderPolicy: index === 2 ? "female" : "mixed",
+                capacity: [6, 6, 4, 2][index],
+                bedType: index === 3 ? "queen" : "bunk",
+                bathroom: index === 2 || index === 3 ? "ensuite" : "shared",
+            })),
+        },
+    };
+})();
+
+const AROMATICA_PHOTOS = {
+    hero: ["photo-1528605248644-14dd04022da1", "photo-1447933601403-0c6688de566e", "photo-1501339847302-ac426a4a7cbb"],
+    roast: ["photo-1511081692775-05d0f180a065", "photo-1461988091159-192b6df7054f", "photo-1495474472287-4d71bcdd2085"],
+    drinks: ["photo-1512568400610-62da28bc8a13", "photo-1498804103079-a6351b050096", "photo-1509042239860-f550ce710b93", "photo-1517701604599-bb29b565090c"],
+    cafe: ["photo-1459755486867-b55449bb39ff", "photo-1554118811-1e0d58224f24", "photo-1521017432531-fbd92d768814", "photo-1511537190424-bbbab87ac5eb"],
+};
+const AROMATICA_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.menu;
+    const items = [
+        { category: "Espresso bar", name: "Honey Cortado", price: "₹240", description: "Double espresso, warm textured milk and a touch of wildflower honey.", image: AROMATICA_PHOTOS.drinks[0], badge: "House favourite" },
+        { category: "Espresso bar", name: "Orange Blossom Latte", price: "₹280", description: "Silky milk, house espresso and fragrant orange blossom syrup.", image: AROMATICA_PHOTOS.drinks[1], badge: "Seasonal" },
+        { category: "Slow coffee", name: "Ethiopia Guji Pour", price: "₹320", description: "A floral single origin with notes of peach, bergamot and cocoa nib.", image: AROMATICA_PHOTOS.drinks[2], badge: "Single origin" },
+        { category: "Slow coffee", name: "Roastery Cold Brew", price: "₹260", description: "Eighteen-hour cold brew, bright and clean with a chocolate finish.", image: AROMATICA_PHOTOS.drinks[3], badge: "All day" },
+        { category: "Roasted beans", name: "Morning Ritual Blend", price: "₹720", description: "Caramel, roasted almond and orange zest. Balanced for espresso or moka pot.", image: AROMATICA_PHOTOS.roast[0], badge: "250 g" },
+        { category: "Roasted beans", name: "Monsoon Estate", price: "₹780", description: "A rich Indian single estate coffee with spice, cacao and a round body.", image: AROMATICA_PHOTOS.roast[1], badge: "250 g" },
+        { category: "Roasted beans", name: "Sunday Filter", price: "₹690", description: "Soft stone fruit, panela sweetness and a tea-like finish for filter brewing.", image: AROMATICA_PHOTOS.roast[2], badge: "250 g" },
+    ];
+    const toMenuItem = (item, index) => ({
+        ...item,
+        enabled: true,
+        dietary: "vegan",
+        spiceLevel: 0,
+        popular: index < 2,
+        featured: index < 4,
+        priceUnit: "",
+        images: [item.image, AROMATICA_PHOTOS.cafe[index % AROMATICA_PHOTOS.cafe.length]].map((id) => photoValue(id)),
+        image: photo(item.image, 1200),
+    });
+    return {
+        ...base,
+        companyName: "Emberline Coffee Roasters",
+        title: "Coffee, transformed by fire and patience",
+        subTitle: "Traceable beans, small-batch roasting and an open coffee bar in the heart of Bengaluru.",
+        heroImages: AROMATICA_PHOTOS.hero.map((id) => photo(id, 1900)),
+        gallery: [...AROMATICA_PHOTOS.cafe, ...AROMATICA_PHOTOS.roast, ...AROMATICA_PHOTOS.drinks, ...AROMATICA_PHOTOS.hero].map((id) => photo(id, 1300)),
+        aboutImages: [AROMATICA_PHOTOS.roast[0], AROMATICA_PHOTOS.cafe[0], AROMATICA_PHOTOS.cafe[3]].map((id) => photo(id, 1200)),
+        aboutTitle: "A roastery built around flavour",
+        aboutPageStory: "Emberline began with a sample roaster, a borrowed table and weekly cuppings for friends. We now roast every batch in view of the café, still guided by taste rather than volume.",
+        aboutPageMission: "To make exceptional, traceable coffee approachable — from the farmer who grew it to the guest drinking it.",
+        aboutPageValues: "Buy thoughtfully. Roast transparently. Brew precisely. Welcome generously.",
+        partnerHeading: "Build a better coffee programme",
+        partnerContent: "We supply offices, restaurants and independent cafés with freshly roasted coffee, training and practical equipment support.",
+        address: "18 Museum Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Coffee roasted for clarity",
+            heroSubHeading: "Espresso, slow coffee and fresh retail beans — each selected and roasted in small batches.",
+            heroImage: photo(AROMATICA_PHOTOS.hero[1], 1900),
+            cardImage: photo(AROMATICA_PHOTOS.drinks[0], 1100),
+        },
+        extra: { ...base.extra, menuItems: items.map(toMenuItem) },
+    };
+})();
 const demoBusinessFor = (kind, themeVariant) => {
     if (themeVariant === "tastyc" && kind === "menu")
         return TASTYC_DEMO_BUSINESS;
     if (themeVariant === "grandbar" && kind === "menu")
         return GRAND_BAR_DEMO_BUSINESS;
+    if (themeVariant === "aromatica" && kind === "menu")
+        return AROMATICA_DEMO_BUSINESS;
     if (themeVariant === "flowspace" && kind === "meeting")
         return FLOWSPACE_DEMO_BUSINESS;
     if (themeVariant === "workscape" && kind === "meeting")
         return WORKSCAPE_DEMO_BUSINESS;
+    if (themeVariant === "brixspace" && kind === "meeting")
+        return BRIXSPACE_DEMO_BUSINESS;
     if (themeVariant === "worpace" && kind === "workspace")
         return WORPACE_DEMO_BUSINESS;
+    if (themeVariant === "qerja" && kind === "workspace")
+        return QERJA_DEMO_BUSINESS;
     if (themeVariant === "travigo" && kind === "hostel")
         return TRAVIGO_DEMO_BUSINESS;
     if (themeVariant === "lodge" && kind === "hostel")
         return LODGE_DEMO_BUSINESS;
+    if (themeVariant === "cali-hostel" && kind === "hostel")
+        return CALI_HOSTEL_DEMO_BUSINESS;
     if (themeVariant === "tulum" && kind === "coLiving")
         return tulumDemo;
     if (themeVariant === "grindelwald" && kind === "coLiving")
@@ -638,6 +873,8 @@ export const defaultKindForTemplate = (themeVariant) => TEMPLATE_KIND[themeVaria
 const CAMELIA_DEMO_VIDEO = "https://videos.pexels.com/video-files/7578546/7578546-uhd_2560_1440_30fps.mp4";
 // Pexels "A Bartender Making A Cocktail Drink" (free to use, no attribution needed); HD, portrait.
 const GRAND_BAR_DEMO_VIDEO = "https://videos.pexels.com/video-files/7608984/7608984-hd_720_1280_25fps.mp4";
+// Pexels "Barista Crafting Latte Art in Coffee Shop"; used only by the Aromatica demo preview.
+const AROMATICA_DEMO_VIDEO = "https://www.pexels.com/download/video/30090157/";
 const slugOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 const pageFor = (kind, business, slug) => ({
     name: business.page.name,
@@ -675,10 +912,14 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         searchKey: "demo-preview",
         companyId: "demo",
         workspaceId: "",
+        // Demo previews always show USD, independent of whoever's browsing the template
+        // gallery — a real company's own currency only kicks in once they've started
+        // building their own site (see useWebsiteTemplateData's currency fallback).
+        currency: "USD",
         themeVariant,
         // Camelia's hero plays a looping video when one is linked (see the builder's "Hero Video URL").
         // The sample clip is a placeholder for previews only; a real site sets its own link.
-        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : "",
+        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : themeVariant === "aromatica" ? AROMATICA_DEMO_VIDEO : "",
         styleConfig: {},
         sectionOverrides: {},
         vertical: primary.vertical,
@@ -714,7 +955,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         email: `hello@${handle}.com`,
         phone: "+91 98765 43210",
         address: primary.address,
-        mapUrl: "https://www.openstreetmap.org/export/embed.html?bbox=77.58%2C12.96%2C77.65%2C12.99&layer=mapnik",
+        mapUrl: themeVariant === "qerja" || themeVariant === "cali-hostel" ? `https://www.google.com/maps?q=${encodeURIComponent(primary.address)}&output=embed` : "https://www.openstreetmap.org/export/embed.html?bbox=77.58%2C12.96%2C77.65%2C12.99&layer=mapnik",
         contactPersonName: primary.contactPersonName,
         contactPersonRole: primary.contactPersonRole,
         contactPersonEmail: `${primary.contactPersonName.split(" ")[0].toLowerCase()}@${handle}.com`,
