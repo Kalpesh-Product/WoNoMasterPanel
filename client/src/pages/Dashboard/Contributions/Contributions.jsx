@@ -453,20 +453,20 @@ const ContributionPreviewModal = ({ item, config, onClose, onStatusChange, isUpd
   const metadata = [
     ["Destination", getDestination(item)],
     ["Date", formatDate(getContributionDate(item, config))],
-    ["First Submission", formatDate(getFirstSubmissionDate(item))],
-    ["Last Edited", formatDate(getLastEditedDate(item))],
+    ["First Submission", formatDateTime(getFirstSubmissionDate(item))],
+    ["Last Edited", formatDateTime(getLastEditedDate(item))],
     ["Number Of Edits", Number.isFinite(editCount) ? editCount : 0],
   ];
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/50 p-3 backdrop-blur-md" onClick={onClose}>
       <div className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/80 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>
-        <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-5 pr-16 text-[15px] font-pmedium text-slate-600 md:px-10 md:pr-20">
-          <div className="flex flex-wrap items-center gap-y-2">
+        <div className="shrink-0 border-b border-slate-100 bg-slate-50/70 px-6 py-5 pr-16 text-[14px] font-pregular font-normal text-slate-600 md:px-8 md:pr-16">
+          <div className="flex flex-nowrap items-center overflow-x-auto whitespace-nowrap">
             {metadata.map(([label, value], index) => (
               <React.Fragment key={label}>
-                {index > 0 ? <span className="mx-3 hidden text-slate-300 sm:inline">|</span> : null}
-                <p className="whitespace-nowrap">
+                {index > 0 ? <span className="mx-2 shrink-0 text-slate-300">|</span> : null}
+                <p className="shrink-0">
                   {label}: <span className="text-slate-800">{value}</span>
                 </p>
               </React.Fragment>
