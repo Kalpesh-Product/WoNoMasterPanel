@@ -328,31 +328,32 @@ const EventPreviewContent = ({ item, config }) => {
   const description = getContributionDescription(item, config);
 
   return (
-    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-      <h2 className="mb-1 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+    <div className="min-h-0 overflow-y-auto break-words px-4 pb-10 pt-4 font-pregular text-base font-normal text-black md:px-8">
+      <h2 className="font-pbold text-[28px] leading-normal sm:text-[32px]">{getContributionTitle(item, config)}</h2>
       {item.month ? (
-        <div className="mb-5 flex items-center gap-2 text-[15px] font-pmedium text-slate-900">
+        <div className="mt-2 flex items-center gap-2 text-base font-medium">
           <CalendarDays size={16} strokeWidth={2.2} />
           <span>During the month of {item.month}</span>
         </div>
       ) : null}
 
       {image ? (
-        <img src={image} alt={getContributionTitle(item, config)} className="mb-5 h-64 w-full rounded-xl object-cover shadow-sm md:h-80 lg:h-[360px]" />
+        <img src={image} alt={getContributionTitle(item, config)} className="mt-6 aspect-[3.3/1] w-full rounded-xl bg-slate-100 object-cover" />
       ) : (
-        <div className="mb-5 flex h-64 w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400 md:h-80 lg:h-[360px]">No image</div>
+        <div className="mt-6 flex aspect-[3.3/1] w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400">No image</div>
       )}
 
-      <div className="mb-5 grid grid-cols-1 gap-4 border-b border-slate-100 pb-5 text-[15px] font-pmedium text-slate-950 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 font-pbold text-base md:grid-cols-3">
         <p>{getText(item.category)}</p>
-        <p className="sm:text-center">{getText(item.month)}</p>
-        <p className="sm:text-right">{getText(item.venue)}</p>
+        <p className="md:text-center">{getText(item.month)}</p>
+        <p className="md:text-right">{getText(item.venue)}</p>
       </div>
 
-      <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-900">{description || "No short description provided."}</p>
-      {item.eventType ? <p className="mt-5 text-[14px] font-pmedium text-slate-600">Type: {item.eventType}</p> : null}
+      <hr className="my-6" />
+      <p className="whitespace-pre-line leading-relaxed">{description || "No short description provided."}</p>
+      {item.eventType ? <p className="mt-6 text-sm text-slate-600">Type: {item.eventType}</p> : null}
       {item.link ? (
-        <a className="mt-5 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open event link</a>
+        <a className="mt-6 inline-flex text-sm font-pmedium text-[#0BA9EF] hover:underline" href={item.link} target="_blank" rel="noreferrer">Open event link</a>
       ) : null}
     </div>
   );
@@ -364,77 +365,81 @@ const PlacePreviewContent = ({ item, config }) => {
   const rating = getText(item.rating, "");
 
   return (
-    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-      <h2 className="mb-2 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
+    <div className="min-h-0 overflow-y-auto break-words px-4 pb-10 pt-4 font-pregular text-base font-normal text-black md:px-8">
+      <h2 className="font-pbold text-[28px] leading-normal sm:text-[32px]">{getContributionTitle(item, config)}</h2>
       {item.address ? (
-        <div className="mb-5 flex items-center gap-2 text-[15px] font-pmedium text-slate-900">
+        <div className="mt-2 flex items-center gap-2 text-base font-medium">
           <MapPin size={16} strokeWidth={2.2} />
           <span>{item.address}</span>
         </div>
       ) : null}
 
       {image ? (
-        <img src={image} alt={getContributionTitle(item, config)} className="mb-5 h-64 w-full rounded-xl object-cover shadow-sm md:h-80 lg:h-[360px]" />
+        <img src={image} alt={getContributionTitle(item, config)} className="mt-6 aspect-[3.3/1] w-full rounded-xl bg-slate-100 object-cover" />
       ) : (
-        <div className="mb-5 flex h-64 w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400 md:h-80 lg:h-[360px]">No image</div>
+        <div className="mt-6 flex aspect-[3.3/1] w-full items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-xs text-slate-400">No image</div>
       )}
 
-      <div className="mb-5 grid grid-cols-1 gap-4 border-b border-slate-100 pb-5 text-[15px] font-pmedium text-slate-950 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-4 font-pbold text-base md:grid-cols-3">
         <p>{getText(item.category || item.placeType)}</p>
-        <p className="sm:text-center">{rating ? <span className="inline-flex items-center justify-center gap-1"><Star size={15} className="fill-amber-400 text-amber-400" />{rating}</span> : "-"}</p>
-        <p className="sm:text-right">{getText(item.venue || item.month)}</p>
+        <p className="md:text-center">{rating ? <span className="inline-flex items-center justify-center gap-1"><Star size={15} className="fill-amber-400 text-amber-400" />{rating}</span> : "-"}</p>
+        <p className="md:text-right">{getText(item.venue || item.month)}</p>
       </div>
 
-      <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-900">{description || "No short description provided."}</p>
+      <hr className="my-6" />
+      <p className="whitespace-pre-line leading-relaxed">{description || "No short description provided."}</p>
       {item.googleMapsLink ? (
-        <a className="mt-5 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline" href={item.googleMapsLink} target="_blank" rel="noreferrer">Open Google Maps</a>
+        <a className="mt-6 inline-flex text-sm font-pmedium text-[#0BA9EF] hover:underline" href={item.googleMapsLink} target="_blank" rel="noreferrer">Open Google Maps</a>
       ) : null}
       {item.link ? (
-        <a className="ml-0 mt-3 inline-flex text-[13px] font-pmedium text-[#2563EB] hover:underline sm:ml-5" href={item.link} target="_blank" rel="noreferrer">Open place link</a>
+        <a className="ml-0 mt-6 inline-flex text-sm font-pmedium text-[#0BA9EF] hover:underline sm:ml-5" href={item.link} target="_blank" rel="noreferrer">Open place link</a>
       ) : null}
     </div>
   );
 };
-const ArticlePreviewContent = ({ item, config }) => {
-  const sections = Array.isArray(item.sections) ? item.sections : [];
-  const image = getContributionImage(item);
+// Keep blog and news typography and image wrapping aligned with contributor articles.
+const ArticlePreviewImage = ({ src, alt, side = "right" }) => {
+  if (!src) return null;
 
   return (
-    <div className="overflow-y-auto px-6 py-6 md:px-12 md:py-8">
-      <h2 className="mb-6 max-w-4xl text-2xl font-pmedium leading-tight text-slate-950 md:text-3xl">{getContributionTitle(item, config)}</h2>
-      <div className="mb-9 grid gap-8 lg:grid-cols-[1fr_360px] lg:items-start">
-        <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{getContributionDescription(item, config) || "No main content provided."}</p>
-        {image ? (
-          <img src={image} alt={getContributionTitle(item, config)} className="h-40 w-full rounded-2xl object-cover shadow-sm" />
-        ) : (
-          <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-[12px] font-pmedium text-slate-400">No image</div>
-        )}
-      </div>
+    <div className={`mb-5 h-auto w-full overflow-hidden rounded-xl md:mb-3 md:w-[38%] lg:w-[36%] ${side === "left" ? "md:float-left md:mr-8" : "md:float-right md:ml-8"}`}>
+      <img src={src} alt={alt} className="block h-auto w-full" />
+    </div>
+  );
+};
 
-      <div className="space-y-7">
-        {sections.length === 0 ? null : sections.map((section, index) => {
-          const imageFirst = index % 2 === 0;
-          const sectionImage = section.image ? (
-            <img
-              src={section.image}
-              alt={section.title || `Section ${index + 1}`}
-              className="h-auto w-full rounded-xl object-cover md:max-h-56"
-            />
-          ) : null;
-          const sectionCopy = section.content ? (
-            <p className="whitespace-pre-line text-[15px] font-pmedium leading-7 text-slate-800">{stripHtml(section.content)}</p>
-          ) : null;
+const ArticlePreviewContent = ({ item, config }) => {
+  const sections = Array.isArray(item.sections) ? item.sections : [];
+  const title = getContributionTitle(item, config);
+  let sectionImageIndex = 0;
 
-          return (
-            <section key={`${section.title || "section"}-${index}`} className="space-y-3 clear-both flow-root">
-              {section.title ? <h3 className="text-xl font-pmedium text-slate-950">{section.title}</h3> : null}
-              <div className="grid gap-6 md:grid-cols-[minmax(220px,38%)_1fr] md:items-start">
-                {imageFirst ? sectionImage : sectionCopy}
-                {imageFirst ? sectionCopy : sectionImage}
-              </div>
+  return (
+    <div className="min-h-0 overflow-y-auto break-words px-4 pb-10 pt-4 font-pregular text-base font-normal text-black md:px-8">
+      <div className="flex flex-col gap-8">
+        <section className="clear-both flow-root">
+          <h2 className="mb-8 font-pbold text-[28px] leading-normal sm:text-[32px]">{title}</h2>
+          <ArticlePreviewImage src={getContributionImage(item)} alt={title} />
+          <p className="whitespace-pre-line leading-relaxed max-sm:text-[14px]">{getContributionDescription(item, config) || "No main content provided."}</p>
+        </section>
+
+        {sections.length > 0 ? (
+          <>
+            <hr />
+            <section className="flex flex-col gap-8">
+              {sections.map((section, index) => {
+                const imageSide = section.image ? (sectionImageIndex++ % 2 === 0 ? "left" : "right") : undefined;
+
+                return (
+                  <article key={`${section.title || "section"}-${index}`} className="clear-both flow-root">
+                    {section.title ? <h3 className="mb-4 font-pbold text-[20px] leading-[1.2] sm:text-2xl md:leading-[1.35]">{section.title}</h3> : null}
+                    <ArticlePreviewImage src={section.image} alt={section.title || `Section ${index + 1}`} side={imageSide} />
+                    {section.content ? <p className="whitespace-pre-line leading-relaxed max-sm:text-[14px]">{stripHtml(section.content).trimStart()}</p> : null}
+                  </article>
+                );
+              })}
             </section>
-          );
-        })}
+          </>
+        ) : null}
       </div>
     </div>
   );
