@@ -1042,6 +1042,9 @@ const COMMON_MODULES_BLUEPRINT = {
     { id: "meeting-room-system", name: "Meeting Room Booking" },
     { id: "printouts", name: "Printouts" },
     { id: "calendar", name: "Calendar" },
+    { id: "cafe-orders", name: "Cafe Orders" },
+    { id: "hostel-booking", name: "Hostel Booking" },
+    { id: "room-booking", name: "Room Booking" },
   ],
 };
 
@@ -1104,6 +1107,9 @@ const KEY_APPS_BLUEPRINT = {
     { id: "website-builder", name: "Website Builder" },
     { id: "wono-nomad", name: "Wono Nomad" },
     { id: "website-leads", name: "Website Leads" },
+    { id: "cafe-management", name: "Cafe Management" },
+    { id: "hostel-management", name: "Hostel Management" },
+    { id: "co-living-management", name: "Co-living Management" },
   ],
 };
 

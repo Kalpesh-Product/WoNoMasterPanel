@@ -21,6 +21,9 @@ const MODULE_GROUPS = [
       { id: "meeting-room-system", label: "Meeting Room Booking" },
       { id: "printouts", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
+      { id: "cafe-orders", label: "Cafe Orders" },
+      { id: "hostel-booking", label: "Hostel Booking" },
+      { id: "room-booking", label: "Room Booking" },
     ],
   },
   {
@@ -42,6 +45,9 @@ const MODULE_GROUPS = [
       { id: "wono-nomad", label: "Nomad Listings" },
       { id: "website-leads", label: "All Leads" },
       { id: "visitor-management", label: "Visitor Management" },
+      { id: "cafe-management", label: "Cafe Management" },
+      { id: "hostel-management", label: "Hostel Management" },
+      { id: "co-living-management", label: "Co-living Management" },
     ],
   },
   {
