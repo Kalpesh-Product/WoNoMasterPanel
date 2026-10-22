@@ -48,6 +48,8 @@ const MODULE_GROUPS = [
       { id: "cafe-management", label: "Cafe Management" },
       { id: "hostel-management", label: "Hostel Management" },
       { id: "co-living-management", label: "Co-living Management" },
+      { id: "co-working-management", label: "Co-working Management" },
+      { id: "meeting-room-management", label: "Meeting Room Management" },
     ],
   },
   {

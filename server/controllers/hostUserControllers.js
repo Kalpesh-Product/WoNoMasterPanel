@@ -1110,6 +1110,8 @@ const KEY_APPS_BLUEPRINT = {
     { id: "cafe-management", name: "Cafe Management" },
     { id: "hostel-management", name: "Hostel Management" },
     { id: "co-living-management", name: "Co-living Management" },
+    { id: "co-working-management", name: "Co-working Management" },
+    { id: "meeting-room-management", name: "Meeting Room Management" },
   ],
 };
 
