@@ -61,6 +61,7 @@ const newsRoutes = require("./routes/newsRoutes");
 const hostModuleCatalogRoutes = require("./routes/hostModuleCatalogRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
 const websiteTemplateChangeRoutes = require("./routes/websiteTemplateChangeRoutes");
+const websiteThemeCatalogRoutes = require("./routes/websiteThemeCatalogRoutes");
 const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
@@ -76,6 +77,7 @@ const {
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
 const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
+const { getPublicWebsiteThemes } = require("./controllers/websiteControllers/websiteThemeCatalogController");
 
 require("./listeners/logEventListener");
 require("./jobs/verificationRenewalReminders");
@@ -105,6 +107,8 @@ app.post(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/api/public/website-themes", getPublicWebsiteThemes);
 
 app.get("/", (req, res) => {
   if (req.accepts("html")) {
@@ -180,6 +184,7 @@ app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
 app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
+app.use("/api/website-theme-catalog", verifyJwt, auditLogger, websiteThemeCatalogRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 app.use(

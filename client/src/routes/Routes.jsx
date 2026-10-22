@@ -187,7 +187,7 @@ import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import HostPanelAnalytics from "../pages/Dashboard/FrontendDashboard/HostPanelAnalytics";
 import MasterPanelAnalytics from "../pages/Dashboard/FrontendDashboard/MasterPanelAnalytics";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
-import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
+import WebsiteTemplatesWorkspace from "../pages/Dashboard/FrontendDashboard/WebsiteTemplatesWorkspace";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -524,7 +524,7 @@ export const routes = createBrowserRouter([
                   },
                   {
                     path: "website-templates",
-                    element: <WebsiteTemplateRequests />,
+                    element: <WebsiteTemplatesWorkspace />,
                   },
                   {
                     path: "company-reviews/:reviewTab?",
