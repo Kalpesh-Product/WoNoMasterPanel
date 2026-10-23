@@ -184,6 +184,7 @@ app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
+app.use("/api/contributor-leads", verifyJwt, auditLogger, require("./routes/contributorLeadRoutes"));
 app.use(
   "/api/company-verification-leads",
   verifyJwt,

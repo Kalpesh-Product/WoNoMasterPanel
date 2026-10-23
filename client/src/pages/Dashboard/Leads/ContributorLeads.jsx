@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Calendar,
   Clock,
   Eye,
   Mail,
   Phone,
+  Power,
   Search,
   Target,
   UserRoundCheck,
@@ -15,11 +17,7 @@ import {
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { NOMADS_BACKEND_URL } from "../../../constants/api";
 import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
-
-const API_BASE_URL =
-  import.meta.env.VITE_VALUE_ADDS_API_BASE_URL || NOMADS_BACKEND_URL;
 
 const CONTRIBUTOR_TABS = [
   {
@@ -107,8 +105,9 @@ const getContributionTypes = (row) => {
 };
 
 const matchesContributorTab = (row, tab) => {
-  if (row?.[tab.roleFlag]) return true;
-  const typeText = normalize(getContributionTypes(row).join(" "));
+  const contributionTypes = getContributionTypes(row);
+  if (!contributionTypes.length) return row?.[tab.roleFlag] === true;
+  const typeText = normalize(contributionTypes.join(" "));
   return tab.matchers.some((matcher) => typeText.includes(matcher));
 };
 
@@ -258,6 +257,7 @@ const ContributorLeads = () => {
   const navigate = useNavigate();
   const { contributorLeadTab } = useParams();
   const axiosPrivate = useAxiosPrivate();
+  const queryClient = useQueryClient();
   const activeTab = TAB_BY_SLUG[contributorLeadTab] || DEFAULT_TAB;
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLeadId, setSelectedLeadId] = useState(null);
@@ -279,9 +279,21 @@ const ContributorLeads = () => {
     queryKey: ["contributorLeads"],
     queryFn: async () => {
       const response = await axiosPrivate.get(
-        `${API_BASE_URL}/api/become-contributor`,
+        "/api/contributor-leads",
       );
       return response?.data?.data || [];
+    },
+  });
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ leadId, role, isActive }) =>
+      (await axiosPrivate.patch(`/api/contributor-leads/${leadId}/status`, { role, isActive })).data,
+    onSuccess: (data) => {
+      toast.success(data.message || "Contributor access updated.");
+      queryClient.invalidateQueries({ queryKey: ["contributorLeads"] });
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || "Failed to update contributor access.");
     },
   });
 
@@ -430,12 +442,13 @@ const ContributorLeads = () => {
                           <th className="px-5 py-4">LinkedIn Profile</th>
                           <th className="px-5 py-4">Nationality</th>
                           <th className="px-5 py-4">Date</th>
-                          <th className="px-5 py-4 text-center">Action</th>
+                          <th className="px-5 py-4 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100/60">
                         {filteredLeads.map((lead, index) => {
                           const leadId = lead._id || lead.id;
+                          const isActive = lead[activeTab.roleFlag] === true;
                           return (
                             <tr
                               key={leadId || index}
@@ -476,6 +489,7 @@ const ContributorLeads = () => {
                                 {formatDateLabel(lead.createdAt)}
                               </td>
                               <td className="px-5 py-4 text-center">
+                                <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => setSelectedLeadId(leadId)}
@@ -484,6 +498,22 @@ const ContributorLeads = () => {
                                 >
                                   <Eye size={15} strokeWidth={2.5} />
                                 </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateStatus.mutate({ leadId, role: activeTab.roleFlag, isActive: !isActive })}
+                                  disabled={updateStatus.isPending}
+                                  title={isActive ? "Mark as Inactive" : "Mark as Active"}
+                                  aria-label={`${isActive ? "Mark as Inactive" : "Mark as Active"}: ${getName(lead)} (${activeTab.singular})`}
+                                  aria-pressed={isActive}
+                                  className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    isActive
+                                      ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                      : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                  }`}
+                                >
+                                  <Power size={15} strokeWidth={2.5} />
+                                </button>
+                                </div>
                               </td>
                             </tr>
                           );
