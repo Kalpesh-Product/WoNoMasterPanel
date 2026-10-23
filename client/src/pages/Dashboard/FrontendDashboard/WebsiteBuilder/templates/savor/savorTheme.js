@@ -1,6 +1,7 @@
 // Savor's look. Colours come from the --t-* variables set on the root element
 // (vertical palette, or whatever the business picked), so nothing here is a hex.
-export const SAVOR_FONTS = "@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap');";
+export const SAVOR_FONTS =
+  "@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&display=swap');";
 export const SAVOR_CSS = `
 ${SAVOR_FONTS}
 .sv { background: var(--t-bg); color: var(--t-text); font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; overflow-x: clip; }

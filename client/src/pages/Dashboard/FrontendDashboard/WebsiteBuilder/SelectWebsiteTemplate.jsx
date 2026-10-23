@@ -146,11 +146,11 @@ export const TemplatePicker = ({ onClose }) => {
     <>
           <div className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
             <div>
-              <p className="text-sm font-semibold text-slate-800">1. What is your main business?</p>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="text-sm font-pmedium text-slate-800">1. What is your main business?</p>
+              <p className="mt-0.5 font-pmedium text-xs text-slate-500">
                 Choose the one that matters most. We'll recommend the template built for it and lead your website with it.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Main business">
+              <div className="mt-3 font-pmedium flex flex-wrap gap-2" role="radiogroup" aria-label="Main business">
                 {SERVICE_CHOICES.map((choice) => {
             const active = main === choice.name;
             return (<button key={choice.name} type="button" role="radio" aria-checked={active} onClick={() => chooseMain(choice.name)} className={`rounded-full border px-4 py-2 text-left text-xs font-semibold transition ${active
@@ -166,13 +166,13 @@ export const TemplatePicker = ({ onClose }) => {
             </div>
 
             <div className={main ? "" : "opacity-50"}>
-              <p className="text-sm font-semibold text-slate-800">
+              <p className="text-sm font-pmedium text-slate-800">
                 2. Anything else you offer? <span className="font-normal text-slate-400">(optional)</span>
               </p>
-              <p className="mt-0.5 text-xs text-slate-500">
+              <p className="mt-0.5 font-pmedium text-xs text-slate-500">
                 Each one gets its own service page. Every template can show them, and you can add more later.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Other services you offer">
+              <div className="mt-3 font-pmedium flex flex-wrap gap-2" role="group" aria-label="Other services you offer">
                 {SERVICE_CHOICES.filter((choice) => choice.name !== main).map((choice) => {
             const active = extras.includes(choice.name);
             return (<button key={choice.name} type="button" aria-pressed={active} disabled={!main} onClick={() => toggleExtra(choice.name)} className={`rounded-full border px-4 py-2 text-left text-xs font-semibold transition disabled:cursor-not-allowed ${active
@@ -185,7 +185,7 @@ export const TemplatePicker = ({ onClose }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid font-pmedium grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {templates.map((template) => {
             const isSelected = selectedId === template.id;
             const switchedOff = availability[template.id]?.enabled === false;
@@ -208,9 +208,9 @@ export const TemplatePicker = ({ onClose }) => {
                   <div className="flex h-32 flex-col justify-between p-4" style={{ backgroundColor: template.swatch.bg, color: template.swatch.fg, fontFamily: template.swatch.font }}>
                     <div className="flex items-start justify-between gap-2">
                       <div className="h-2 w-10 rounded-full" style={{ backgroundColor: template.swatch.accent }}/>
-                      {switchedOff ? (<span className="rounded-full bg-slate-700 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                      {switchedOff ? (<span className="rounded-full bg-slate-700 px-2.5 py-1 text-[8px] font-pmedium uppercase tracking-wide text-white shadow-sm">
                           {availability[template.id]?.disabledReason || "Coming soon"}
-                        </span>) : matchedKind ? (<span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                        </span>) : matchedKind ? (<span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[7.5px] font-pmedium uppercase tracking-wide text-white shadow-sm">
                           Recommended for your {main}
                         </span>) : null}
                     </div>
@@ -221,9 +221,9 @@ export const TemplatePicker = ({ onClose }) => {
                   </div>
 
                   <div className="flex flex-1 flex-col gap-2 p-4">
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-sm font-pmedium text-slate-800">
                       {template.name}
-                      {isSelected ? (<span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-[#2563EB]">
+                      {isSelected ? (<span className="ml-2 text-[10px] font-pmedium uppercase tracking-wide text-[#2563EB]">
                           Selected
                         </span>) : null}
                     </span>
@@ -231,7 +231,7 @@ export const TemplatePicker = ({ onClose }) => {
                     <button type="button" onClick={(e) => {
                     e.stopPropagation();
                     handlePreview(template.id);
-                }} className="mt-auto self-start text-xs font-semibold text-[#2563EB] underline underline-offset-2 hover:text-blue-700">
+                }} className="mt-auto self-start text-xs font-pmedium text-[#2563EB] underline underline-offset-2 hover:text-blue-700">
                       Preview with sample content →
                     </button>
                   </div>
@@ -245,7 +245,7 @@ export const TemplatePicker = ({ onClose }) => {
   if (onClose) {
     return (
       <div
-        className="fixed inset-0 z-[1000] flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6"
+        className="fixed inset-0 z-[1000] font-pmedium flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-6"
         role="presentation"
         onMouseDown={(event) => {
           if (event.target === event.currentTarget) onClose();
@@ -260,7 +260,7 @@ export const TemplatePicker = ({ onClose }) => {
           <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
             <div>
               <h2 id="select-template-title" className="text-title font-pmedium text-primary uppercase">Choose a Template</h2>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs font-pmedium text-slate-500">
                 Pick the visual style for your website. Preview each one with sample content before deciding —
                 once you get started, the template can't be changed later.
               </p>
@@ -303,7 +303,7 @@ export const TemplatePicker = ({ onClose }) => {
         <div className="flex flex-col gap-5">
           <div>
             <h2 className="text-title font-pmedium text-primary uppercase">Choose a Template</h2>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs font-pmedium text-slate-500">
               Pick the visual style for your website. Preview each one with sample content before deciding —
               once you continue, the template can't be changed later.
             </p>
