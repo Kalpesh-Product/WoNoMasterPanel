@@ -28,7 +28,7 @@ const CONTRIBUTOR_TABS = [
     singular: "Blogger",
     contributionLabel: "Become a Blogger",
     roleFlag: "isBlogger",
-    matchers: ["become a blogger", "blogger"],
+    matchers: ["become a blogger", "blogger", "become a nomad blog & news writer"],
   },
   {
     slug: "news-writers",
@@ -36,7 +36,7 @@ const CONTRIBUTOR_TABS = [
     singular: "News Writer",
     contributionLabel: "Become A News Writer",
     roleFlag: "isNewsWriter",
-    matchers: ["become a news writer", "news writer"],
+    matchers: ["become a news writer", "news writer", "become a nomad blog & news writer"],
   },
   {
     slug: "events-contributors",
@@ -44,7 +44,7 @@ const CONTRIBUTOR_TABS = [
     singular: "Event Contributor",
     contributionLabel: "Contribute To Events",
     roleFlag: "isEventWriter",
-    matchers: ["contribute to events", "event writer", "events"],
+    matchers: ["contribute to events", "event writer", "events", "become a content creator", "become a content contributor"],
   },
   {
     slug: "places-contributors",
@@ -52,7 +52,7 @@ const CONTRIBUTOR_TABS = [
     singular: "Place Contributor",
     contributionLabel: "Contribute To Places",
     roleFlag: "isPlaceWriter",
-    matchers: ["contribute to places", "place writer", "places"],
+    matchers: ["contribute to places", "place writer", "places", "become a content creator", "become a content contributor"],
   },
 ];
 
