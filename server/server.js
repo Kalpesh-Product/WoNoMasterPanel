@@ -59,6 +59,8 @@ const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
 const hostModuleCatalogRoutes = require("./routes/hostModuleCatalogRoutes");
+const destinationContentRoutes = require("./routes/destinationContentRoutes");
+const placesRoutes = require("./routes/placesRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
 const websiteTemplateChangeRoutes = require("./routes/websiteTemplateChangeRoutes");
 const websiteThemeCatalogRoutes = require("./routes/websiteThemeCatalogRoutes");
@@ -147,6 +149,8 @@ app.use("/api/company", verifyJwt, auditLogger, companyRoutes);
 app.use("/api/blogs", verifyJwt, auditLogger, blogRoutes);
 app.use("/api/news", verifyJwt, auditLogger, newsRoutes);
 app.use("/api/host-modules", verifyJwt, auditLogger, hostModuleCatalogRoutes);
+app.use("/api/destination-content", verifyJwt, auditLogger, destinationContentRoutes);
+app.use("/api/places", verifyJwt, auditLogger, placesRoutes);
 app.use("/api/budget", verifyJwt, auditLogger, budgetRoutes);
 app.use("/api/departments", verifyJwt, auditLogger, departmentsRoutes);
 app.use("/api/designations", verifyJwt, auditLogger, designationRoutes);
@@ -187,6 +191,7 @@ app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplate
 app.use("/api/website-theme-catalog", verifyJwt, auditLogger, websiteThemeCatalogRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
+app.use("/api/contributor-leads", verifyJwt, auditLogger, require("./routes/contributorLeadRoutes"));
 app.use(
   "/api/company-verification-leads",
   verifyJwt,

@@ -27,6 +27,7 @@ import {
   LuMousePointerClick,
   LuTag,
   LuLayoutGrid,
+  LuUserCheck,
 } from "react-icons/lu";
 
 export const MASTER_PANEL_MODULES = [
@@ -47,6 +48,13 @@ export const MASTER_PANEL_MODULES = [
             title: "All Leads",
             icon: LuUsers,
             route: "/dashboard/all-leads",
+          },
+          {
+            id: 32,
+            key: "dashboard.contributor-leads",
+            title: "Contributor Leads",
+            icon: LuUserCheck,
+            route: "/dashboard/contributor-leads",
           },
           {
             id: 4,
@@ -95,6 +103,13 @@ export const MASTER_PANEL_MODULES = [
             title: "Publish Listings",
             icon: LuGlobe,
             route: "/dashboard/publish-listings",
+          },
+          {
+            id: 30,
+            key: "dashboard.contributions",
+            title: "Contributions",
+            icon: LuFileText,
+            route: "/dashboard/contributions",
           },
           {
             id: 14,

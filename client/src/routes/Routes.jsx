@@ -155,6 +155,7 @@ import CompaniesRequestOverview from "../pages/Dashboard/FrontendDashboard/Compa
 import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/CompaniesRequestNomadListing";
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
+import ContributorLeads from "../pages/Dashboard/Leads/ContributorLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
@@ -216,6 +217,7 @@ import {
   BecomeAContributorPartnersTable,
 } from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
+import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
@@ -325,6 +327,10 @@ export const routes = createBrowserRouter([
                         element: <JobApplicationsTable />,
                       },
                     ],
+                  },
+                  {
+                    path: "contributor-leads/:contributorLeadTab?",
+                    element: <ContributorLeads />,
                   },
                   {
                     path: "value-adds-leads",
@@ -440,6 +446,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "publish-listings",
                     element: <PublishListings />,
+                  },
+                  {
+                    path: "contributions/:contributionTab?",
+                    element: <Contributions />,
                   },
                   {
                     path: "nomad-signup-leads",

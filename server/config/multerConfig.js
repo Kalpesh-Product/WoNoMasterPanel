@@ -26,10 +26,10 @@ const upload = multer({
 });
 
 //Multer config for website file uploads
-const uploadImages = multer({
+const createImageUpload = (maxFileSize) => multer({
   storage,
   limits: {
-    fileSize: 30 * 1024 * 1024, // 30 MB
+    fileSize: maxFileSize,
     fieldSize: 10 * 1024 * 1024, // draftData JSON can exceed multer's 1MB default
   },
   fileFilter: (req, file, cb) => {
@@ -46,4 +46,5 @@ const uploadImages = multer({
 });
 
 module.exports = upload;
-module.exports.uploadImages = uploadImages;
+module.exports.uploadImages = createImageUpload(30 * 1024 * 1024);
+module.exports.uploadContentImages = createImageUpload(15 * 1024 * 1024);
