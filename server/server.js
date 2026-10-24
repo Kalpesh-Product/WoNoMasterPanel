@@ -58,10 +58,12 @@ const adminAccessRoutes = require("./routes/adminAccessRoutes");
 const hostUserRoutes = require("./routes/hostUserRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const newsRoutes = require("./routes/newsRoutes");
+const hostModuleCatalogRoutes = require("./routes/hostModuleCatalogRoutes");
 const destinationContentRoutes = require("./routes/destinationContentRoutes");
 const placesRoutes = require("./routes/placesRoutes");
 const websiteCreditsRoutes = require("./routes/websiteCreditsRoutes");
 const websiteTemplateChangeRoutes = require("./routes/websiteTemplateChangeRoutes");
+const websiteThemeCatalogRoutes = require("./routes/websiteThemeCatalogRoutes");
 const recruitmentRoutes = require("./routes/recruitmentRoutes");
 const subscriptionRoutes = require("./routes/subscriptionRoutes");
 const nomadUserRoutes = require("./routes/nomadUserRoutes");
@@ -77,6 +79,7 @@ const {
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
 const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
+const { getPublicWebsiteThemes } = require("./controllers/websiteControllers/websiteThemeCatalogController");
 
 require("./listeners/logEventListener");
 require("./jobs/verificationRenewalReminders");
@@ -106,6 +109,8 @@ app.post(
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/api/public/website-themes", getPublicWebsiteThemes);
 
 app.get("/", (req, res) => {
   if (req.accepts("html")) {
@@ -143,6 +148,7 @@ app.use("/api/access", verifyJwt, auditLogger, accessRoutes);
 app.use("/api/company", verifyJwt, auditLogger, companyRoutes);
 app.use("/api/blogs", verifyJwt, auditLogger, blogRoutes);
 app.use("/api/news", verifyJwt, auditLogger, newsRoutes);
+app.use("/api/host-modules", verifyJwt, auditLogger, hostModuleCatalogRoutes);
 app.use("/api/destination-content", verifyJwt, auditLogger, destinationContentRoutes);
 app.use("/api/places", verifyJwt, auditLogger, placesRoutes);
 app.use("/api/budget", verifyJwt, auditLogger, budgetRoutes);
@@ -182,6 +188,7 @@ app.use("/api/weekly-unit", verifyJwt, auditLogger, weeklyUnitRoutes);
 app.use("/api/logs", verifyJwt, logRoutes);
 app.use("/api/website-credits", websiteCreditsRoutes);
 app.use("/api/website-template-changes", verifyJwt, auditLogger, websiteTemplateChangeRoutes);
+app.use("/api/website-theme-catalog", verifyJwt, auditLogger, websiteThemeCatalogRoutes);
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 app.use("/api/contributor-leads", verifyJwt, auditLogger, require("./routes/contributorLeadRoutes"));
