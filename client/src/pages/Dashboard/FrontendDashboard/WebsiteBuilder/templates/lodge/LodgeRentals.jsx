@@ -86,7 +86,7 @@ const PolicyPanel = () => {
   );
 };
 const PageIntro = ({ eyebrow, title, sub }) => (
-  <section className="tp-wrap pb-12 pt-14 md:pb-16 md:pt-20">
+  <section className="tp-wrap ld-page-intro pb-12 pt-14 md:pb-16 md:pt-20">
     <SlideIn>
       <Label>{eyebrow}</Label>
     </SlideIn>
