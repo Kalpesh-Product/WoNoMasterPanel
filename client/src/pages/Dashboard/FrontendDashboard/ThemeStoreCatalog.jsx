@@ -8,7 +8,6 @@ import {
   Monitor,
   Pencil,
   Plus,
-  Save,
   Search,
   Smartphone,
   Star,
@@ -125,6 +124,7 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
   const queryClient = useQueryClient();
   const [orderedThemes, setOrderedThemes] = useState([]);
   const [orderDirty, setOrderDirty] = useState(false);
+  const [orderSaveState, setOrderSaveState] = useState("idle");
   const [draggedId, setDraggedId] = useState("");
   const [editor, setEditor] = useState(null);
   const [previewTheme, setPreviewTheme] = useState(null);
@@ -134,6 +134,9 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const registrySyncRef = useRef(false);
+  const confirmedOrderRef = useRef([]);
+  const reorderTimerRef = useRef(null);
+  const saveStateTimerRef = useRef(null);
 
   const catalogQuery = useQuery({
     queryKey: ["website-theme-catalog"],
@@ -144,8 +147,16 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
   });
 
   useEffect(() => {
-    if (!orderDirty && catalogQuery.data) setOrderedThemes(catalogQuery.data);
+    if (!orderDirty && catalogQuery.data) {
+      setOrderedThemes(catalogQuery.data);
+      confirmedOrderRef.current = catalogQuery.data;
+    }
   }, [catalogQuery.data, orderDirty]);
+
+  useEffect(() => () => {
+    if (reorderTimerRef.current) clearTimeout(reorderTimerRef.current);
+    if (saveStateTimerRef.current) clearTimeout(saveStateTimerRef.current);
+  }, []);
 
   // Keep the catalog in sync with the website builder's template registry: any
   // template added there (Template settings shows the same registry) shows up
@@ -207,6 +218,8 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
     });
   }, [orderedThemes, searchQuery, statusFilter, verticalFilter]);
 
+  const hasActiveFilters = verticalFilter !== "all" || statusFilter !== "all" || searchQuery.trim() !== "";
+
   const saveThemeMutation = useMutation({
     mutationFn: async ({ themeId, values }) => {
       const payload = new FormData();
@@ -225,22 +238,31 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
       toast.success(response.data?.message || "Theme saved");
       setEditor(null);
       setForm(EMPTY_FORM);
-      setOrderDirty(false);
       await queryClient.invalidateQueries({ queryKey: ["website-theme-catalog"] });
     },
     onError: (error) => toast.error(error?.response?.data?.message || "Unable to save the theme"),
   });
 
   const reorderMutation = useMutation({
-    mutationFn: () => axiosPrivate.put("/api/website-theme-catalog/order", {
-      themeIds: orderedThemes.map((theme) => theme._id),
+    mutationFn: (themes) => axiosPrivate.put("/api/website-theme-catalog/order", {
+      themeIds: themes.map((theme) => theme._id),
     }),
-    onSuccess: async (response) => {
-      toast.success(response.data?.message || "Theme order saved");
+    onSuccess: (response, submittedThemes) => {
+      const savedThemes = Array.isArray(response.data?.themes) ? response.data.themes : submittedThemes;
+      confirmedOrderRef.current = savedThemes;
+      setOrderedThemes(savedThemes);
+      queryClient.setQueryData(["website-theme-catalog"], savedThemes);
       setOrderDirty(false);
-      await queryClient.invalidateQueries({ queryKey: ["website-theme-catalog"] });
+      setOrderSaveState("saved");
+      saveStateTimerRef.current = setTimeout(() => setOrderSaveState("idle"), 2000);
     },
-    onError: (error) => toast.error(error?.response?.data?.message || "Unable to save the order"),
+    onError: (error) => {
+      setOrderedThemes(confirmedOrderRef.current);
+      setOrderDirty(false);
+      setOrderSaveState("error");
+      saveStateTimerRef.current = setTimeout(() => setOrderSaveState("idle"), 3000);
+      toast.error(error?.response?.data?.message || "Unable to save the order. The previous order was restored.");
+    },
   });
 
   const openCreate = () => {
@@ -259,18 +281,20 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
   };
 
   const handleDrop = (targetId) => {
-    if (!draggedId || draggedId === targetId) return;
-    setOrderedThemes((current) => {
-      const from = current.findIndex((theme) => theme._id === draggedId);
-      const to = current.findIndex((theme) => theme._id === targetId);
-      if (from < 0 || to < 0) return current;
-      const next = [...current];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
-    });
+    if (hasActiveFilters || reorderMutation.isPending || !draggedId || draggedId === targetId) return;
+    const from = orderedThemes.findIndex((theme) => theme._id === draggedId);
+    const to = orderedThemes.findIndex((theme) => theme._id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...orderedThemes];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrderedThemes(next);
     setOrderDirty(true);
+    setOrderSaveState("saving");
     setDraggedId("");
+    if (reorderTimerRef.current) clearTimeout(reorderTimerRef.current);
+    if (saveStateTimerRef.current) clearTimeout(saveStateTimerRef.current);
+    reorderTimerRef.current = setTimeout(() => reorderMutation.mutate(next), 500);
   };
 
   const submit = (event) => {
@@ -320,16 +344,6 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
                 className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-slate-900 outline-none transition-all focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
               />
             </div>
-            {orderDirty ? (
-              <button
-                type="button"
-                disabled={reorderMutation.isPending}
-                onClick={() => reorderMutation.mutate()}
-                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-[11px] font-pmedium uppercase tracking-wider text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-              >
-                <Save size={15} /> {reorderMutation.isPending ? "Saving..." : "Save order"}
-              </button>
-            ) : null}
             <button
               type="button"
               onClick={openCreate}
@@ -340,7 +354,18 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
           </div>
           <div className="grid grid-cols-[48px_minmax(280px,1.4fr)_minmax(130px,.55fr)_minmax(130px,.55fr)_132px] items-center border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
             <span />
-            <span>Theme</span>
+            <span className="flex items-center gap-2" aria-live="polite">
+              Theme
+              {hasActiveFilters ? (
+                <span className="normal-case tracking-normal text-slate-400">Clear filters to reorder</span>
+              ) : orderSaveState === "saving" ? (
+                <span className="normal-case tracking-normal text-blue-600">Saving order...</span>
+              ) : orderSaveState === "saved" ? (
+                <span className="normal-case tracking-normal text-emerald-600">Order saved</span>
+              ) : orderSaveState === "error" ? (
+                <span className="normal-case tracking-normal text-rose-600">Save failed</span>
+              ) : null}
+            </span>
             <span>Vertical</span>
             <span>Status</span>
             <span className="text-right">Action</span>
@@ -364,13 +389,23 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
           ) : filteredThemes.map((theme) => (
             <div
               key={theme._id}
-              draggable
-              onDragStart={() => setDraggedId(theme._id)}
+              draggable={!hasActiveFilters && !reorderMutation.isPending}
+              onDragStart={() => {
+                if (!hasActiveFilters && !reorderMutation.isPending) setDraggedId(theme._id);
+              }}
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => handleDrop(theme._id)}
               className={`grid grid-cols-[48px_minmax(280px,1.4fr)_minmax(130px,.55fr)_minmax(130px,.55fr)_132px] items-center border-b border-slate-100 px-4 py-3 last:border-0 ${draggedId === theme._id ? "bg-blue-50/70 opacity-60" : "hover:bg-slate-50/70"}`}
             >
-              <button type="button" className="cursor-grab text-slate-300 hover:text-slate-600" aria-label={`Reorder ${theme.name}`}><GripVertical size={18} /></button>
+              <button
+                type="button"
+                disabled={hasActiveFilters || reorderMutation.isPending}
+                className="cursor-grab text-slate-300 hover:text-slate-600 disabled:cursor-not-allowed disabled:text-slate-200"
+                aria-label={hasActiveFilters ? "Clear filters to reorder themes" : `Reorder ${theme.name}`}
+                title={hasActiveFilters ? "Clear filters to reorder themes" : `Reorder ${theme.name}`}
+              >
+                <GripVertical size={18} />
+              </button>
               <div className="flex min-w-0 items-center gap-4">
                 <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                   {theme.heroImage ? <img src={theme.heroImage} alt="" className="h-full w-full object-cover object-top" /> : <ImageUp className="absolute inset-0 m-auto text-slate-300" size={20} />}

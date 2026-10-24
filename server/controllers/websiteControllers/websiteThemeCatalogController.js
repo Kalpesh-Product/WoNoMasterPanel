@@ -108,7 +108,15 @@ const getPublicWebsiteThemes = async (_req, res, next) => {
     const themes = await WebsiteThemeCatalog.find({ visible: true })
       .sort({ sortOrder: 1, createdAt: 1 })
       .lean();
-    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+    // Catalog visibility and ordering are controlled from the Master Panel and
+    // should be reflected immediately on the public Themes page. Prevent the
+    // browser and intermediary caches from serving an older catalog snapshot.
+    res.set({
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+      "Surrogate-Control": "no-store",
+    });
     return res.status(200).json({ themes: themes.map((theme) => serializeTheme(theme, { publicView: true })) });
   } catch (error) {
     next(error);
