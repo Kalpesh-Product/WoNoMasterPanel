@@ -22,6 +22,7 @@ import { GrandBarBooking } from "./GrandBarBooking";
 import { GrandBarFooter, GrandBarHeader } from "./GrandBarChrome";
 import { GrandBarProvider } from "./GrandBarContext";
 import { GrandBarHome } from "./GrandBarHome";
+import { GbIcon } from "./GrandBarUI";
 import {
   GrandBarAbout,
   GrandBarCareers,
@@ -59,12 +60,19 @@ const GrandBarTemplate = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [leadTarget, setLeadTarget] = useState(null);
   const companyName = draft?.companyName;
   const companyLogo = draft?.companyLogo;
   useEffect(() => {
     const timer = window.setTimeout(() => setLoading(false), 1100);
     return () => window.clearTimeout(timer);
+  }, []);
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 640);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   useEffect(() => {
     if (!leadTarget) return;
@@ -227,6 +235,24 @@ const GrandBarTemplate = () => {
         <ReviewModal />
         <Lightbox />
         <Toast />
+        <AnimatePresence>
+          {showBackToTop ? (
+            <motion.button
+              type="button"
+              className="gb-back-to-top"
+              aria-label="Back to top"
+              initial={{ opacity: 0, y: 18, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.9 }}
+              whileHover={{ y: -4 }}
+              onClick={() =>
+                window.scrollTo({ top: 0, behavior: "smooth" })
+              }
+            >
+              {GbIcon.arrow(20)}
+            </motion.button>
+          ) : null}
+        </AnimatePresence>
       </div>
     </GrandBarProvider>
   );

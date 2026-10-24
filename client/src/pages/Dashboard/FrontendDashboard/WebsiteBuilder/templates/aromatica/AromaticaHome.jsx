@@ -3,6 +3,9 @@ import { AnimatePresence, motion } from "../motion";
 import { useAromatica } from "./AromaticaContext";
 import { AromaArrow, AromaImage, AromaReveal } from "./AromaticaUI";
 const mediaUrl = (value) => typeof value === "string" ? value : value?.url || value?.src || "";
+const uniqueMedia = (values) => Array.from(new Set(values
+    .map(mediaUrl)
+    .filter((value) => Boolean(value))));
 const CoffeeBranch = () => (<svg className="aroma-coffee-branch" viewBox="0 0 680 430" aria-hidden="true">
     <g fill="none" stroke="currentColor" strokeWidth="3">
       <path d="M-20 410c182-34 292-108 388-227C449 84 528 38 706 14"/>
@@ -25,7 +28,7 @@ export const AromaticaHome = () => {
     const { t, draft, primary, testimonials, openLead, goToService, c, photo } = useAromatica();
     const [reviewIndex, setReviewIndex] = useState(0);
     const [videoPlaying, setVideoPlaying] = useState(false);
-    const configuredHeroImages = (t.heroImages || []).map(mediaUrl).filter(Boolean);
+    const configuredHeroImages = uniqueMedia(t.heroImages || []);
     const heroFallback = photo("home.hero", mediaUrl(t.heroImages?.[0]) || primary?.heroImage || primary?.items[0]?.image);
     const heroSlides = configuredHeroImages.length > 1
         ? configuredHeroImages
@@ -33,7 +36,11 @@ export const AromaticaHome = () => {
     const hero = heroSlides[t.heroIndex % heroSlides.length] || heroFallback;
     const videoUrl = String(draft?.heroVideoUrl || "").trim();
     const products = useMemo(() => primary?.items || [], [primary?.items]);
-    const gallery = (t.galleryItems || []).map(mediaUrl).filter(Boolean);
+    const gallery = uniqueMedia(t.galleryItems || []);
+    const heroMedia = new Set(uniqueMedia([...configuredHeroImages, heroFallback]));
+    const aboutMedia = uniqueMedia(t.aboutImages || []);
+    const productMedia = uniqueMedia(products.flatMap((item) => [item?.image, ...(item?.images || [])]));
+    const visualPool = uniqueMedia([...aboutMedia, ...gallery, ...productMedia]).filter((item) => !heroMedia.has(item));
     const reviews = testimonials?.length
         ? testimonials
         : [
@@ -52,12 +59,13 @@ export const AromaticaHome = () => {
         ];
     const review = reviews[reviewIndex % reviews.length];
     const menuItems = products.slice(0, 6);
+    const storyImage = photo("home.story.image", visualPool[0]);
     const tryImages = [
-        photo("home.try.primary", gallery[6] || gallery[0] || hero),
-        photo("home.try.secondary", gallery[2] || gallery[1] || hero),
+        photo("home.try.primary", visualPool[1] || visualPool[0]),
+        photo("home.try.secondary", visualPool[2] || visualPool[1]),
     ];
-    const videoPoster = photo("home.video", gallery[7] || gallery[3] || hero);
-    const enjoyImage = photo("home.enjoy.image", mediaUrl(t.aboutImages?.[2]) || gallery[1] || hero);
+    const videoPoster = photo("home.video", visualPool[3] || visualPool[2]);
+    const enjoyImage = photo("home.enjoy.image", visualPool[4] || visualPool[3]);
     return (<>
       <section className="aroma-cafe-hero">
         <AnimatePresence initial={false}>
@@ -73,6 +81,19 @@ export const AromaticaHome = () => {
           <motion.h1 initial={{ opacity: 0, y: 44 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.85, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}>
             {c("home.hero.title", "Where Every Sip is a Moment of Delight")}
           </motion.h1>
+          <motion.p className="aroma-hero-intro-copy" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.42 }}>
+            {c("home.hero.body", draft?.subTitle ||
+            "Seasonal coffee, generous plates and a room designed for staying longer.")}
+          </motion.p>
+          <motion.div className="aroma-hero-actions" initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.52 }}>
+            <button type="button" className="aroma-primary" onClick={() => (primary ? goToService(primary) : t.goToSection("contact"))}>
+              {c("home.hero.primaryCta", "Explore the menu")}
+            </button>
+            <button type="button" className="aroma-hero-secondary" onClick={() => (primary?.leadEnabled ? openLead(primary) : t.goToSection("contact"))}>
+              {c("home.hero.secondaryCta", primary?.leadEnabled ? "Reserve a table" : "Visit us")}
+              <AromaArrow />
+            </button>
+          </motion.div>
         </div>
         <button className="aroma-hero-scroll" type="button" onClick={() => document
             .getElementById("aroma-story")
@@ -97,6 +118,10 @@ export const AromaticaHome = () => {
             <p>
               {c("home.story.body2", "Our baristas pair time-honored techniques with playful seasonal ideas, creating a familiar ritual that still has room to surprise.")}
             </p>
+          </AromaReveal>
+          <AromaReveal className="aroma-story-image" delay={0.14}>
+            <AromaImage src={storyImage} alt="Coffee being prepared with care"/>
+            <span>{c("home.story.caption", "Small batch · roasted with intention")}</span>
           </AromaReveal>
         </div>
       </section>
@@ -177,13 +202,13 @@ export const AromaticaHome = () => {
 
       <section className="aroma-video-story">
         {videoPlaying && videoUrl ? (<motion.video key="video" className="aroma-video-player" src={videoUrl} poster={videoPoster} controls autoPlay playsInline preload="metadata" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.45 }}/>) : (<motion.div key="poster" initial={{ scale: 1.08 }} whileInView={{ scale: 1 }} viewport={{ once: true, amount: 0.2 }} transition={{ duration: 1.3, ease: [0.22, 1, 0.36, 1] }}>
-          <AromaImage src={videoPoster} alt="Barista pouring latte art"/>
-        </motion.div>)}
+            <AromaImage src={videoPoster} alt="Barista pouring latte art"/>
+          </motion.div>)}
         {!videoPlaying ? <div className="aroma-video-shade"/> : null}
         {!videoPlaying && videoUrl ? (<button type="button" aria-label="Play cafe video" onClick={() => setVideoPlaying(true)}>
-          <span>▶</span>
-          Play
-        </button>) : null}
+            <span>▶</span>
+            Play
+          </button>) : null}
       </section>
 
       <section className="aroma-enjoy">
