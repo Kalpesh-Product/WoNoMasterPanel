@@ -46,6 +46,7 @@ import FrontendFinLayout from "../pages/Dashboard/FrontendDashboard/FrontendFina
 import ThemeGrid from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ThemeGrid";
 import ViewTheme from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ViewTheme";
 import PageDemo from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PageDemo";
+import PublicDemoPreview from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PublicDemoPreview";
 import FrontendSettings from "../pages/Dashboard/FrontendDashboard/FrontendSettings/FrontendSettings";
 import AssetsLayout from "../pages/Assets/AssetsLayout";
 import AssetsDashboard from "../pages/Assets/AssetsDashboard";
@@ -269,6 +270,13 @@ export const routes = createBrowserRouter([
   {
     path: "/website-preview/*",
     element: <PageDemo />,
+  },
+  // Shareable version of the above for external links (e.g. the Nomads Theme
+  // Store) — loads sample content for :templateId itself, no localStorage
+  // write from a click handler required.
+  {
+    path: "/website-preview/demo/:templateId",
+    element: <PublicDemoPreview />,
   },
 
   {
