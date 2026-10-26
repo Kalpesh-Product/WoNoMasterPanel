@@ -10,7 +10,15 @@ const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 // data" fallback for a tick before the loading effect below catches up.
 const readPreviewDraftRaw = () => {
   try {
-    return localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+    // sessionStorage first: the public "/preview/:templateId" route (see
+    // PublicDemoPreview) writes there instead of localStorage specifically so
+    // two tabs previewing different templates don't stomp on each other —
+    // localStorage is one shared bucket per origin, so two tabs/iframes both
+    // on masterpanel.wono.co would otherwise overwrite one another's draft.
+    // The Website Builder's own "Preview" buttons still write to localStorage
+    // (they open a fresh tab via window.open(...,"noopener"), which can only
+    // inherit localStorage, not sessionStorage), so that flow is unaffected.
+    return sessionStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY) || localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
   } catch {
     return null;
   }

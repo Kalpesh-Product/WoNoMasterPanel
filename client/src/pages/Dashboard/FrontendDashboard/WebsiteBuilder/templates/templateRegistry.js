@@ -1,26 +1,34 @@
-import ClassicTemplate from "../ClassicTemplate";
-import FreshStudioTemplate from "./FreshStudioTemplate";
-import WarmOrganicTemplate from "./WarmOrganicTemplate";
-import EmeraldStudioTemplate from "./EmeraldStudioTemplate";
-import SavorTemplate from "./savor/SavorTemplate";
-import WayfarerTemplate from "./wayfarer/WayfarerTemplate";
-import HavenTemplate from "./haven/HavenTemplate";
-import CameliaTemplate from "./camelia/CameliaTemplate";
-import CommonsTemplate from "./commons/CommonsTemplate";
-import HuddleTemplate from "./huddle/HuddleTemplate";
-import TravigoTemplate from "./travigo/TravigoTemplate";
-import TulumTemplate from "./tulum/TulumTemplate";
-import GrindelwaldTemplate from "./grindelwald/GrindelwaldTemplate";
-import LodgeTemplate from "./lodge/LodgeTemplate";
-import CaliHostelTemplate from "./caliHostel/CaliHostelTemplate";
-import TastycTemplate from "./tastyc/TastycTemplate";
-import GrandBarTemplate from "./grandbar/GrandBarTemplate";
-import AromaticaTemplate from "./aromatica/AromaticaTemplate";
-import FlowspaceTemplate from "./flowspace/FlowspaceTemplate";
-import WorpaceTemplate from "./worpace/WorpaceTemplate";
-import WorkscapeTemplate from "./workscape/WorkscapeTemplate";
-import BrixspaceTemplate from "./brixspace/BrixspaceTemplate";
-import QerjaTemplate from "./qerja/QerjaTemplate";
+import { lazy } from "react";
+
+// Lazy per template: previewing/rendering any one theme used to pull in every
+// other theme's code too, since these were all plain static imports living in
+// one shared chunk. A visitor opening a single preview was downloading and
+// parsing ~20 templates' worth of JS to see 1. React.lazy() + the <Suspense>
+// boundary in WebsiteTemplateRenderer (the only place `.component` is ever
+// rendered) means only the chosen template's code is fetched.
+const ClassicTemplate = lazy(() => import("../ClassicTemplate"));
+const FreshStudioTemplate = lazy(() => import("./FreshStudioTemplate"));
+const WarmOrganicTemplate = lazy(() => import("./WarmOrganicTemplate"));
+const EmeraldStudioTemplate = lazy(() => import("./EmeraldStudioTemplate"));
+const SavorTemplate = lazy(() => import("./savor/SavorTemplate"));
+const WayfarerTemplate = lazy(() => import("./wayfarer/WayfarerTemplate"));
+const HavenTemplate = lazy(() => import("./haven/HavenTemplate"));
+const CameliaTemplate = lazy(() => import("./camelia/CameliaTemplate"));
+const CommonsTemplate = lazy(() => import("./commons/CommonsTemplate"));
+const HuddleTemplate = lazy(() => import("./huddle/HuddleTemplate"));
+const TravigoTemplate = lazy(() => import("./travigo/TravigoTemplate"));
+const TulumTemplate = lazy(() => import("./tulum/TulumTemplate"));
+const GrindelwaldTemplate = lazy(() => import("./grindelwald/GrindelwaldTemplate"));
+const LodgeTemplate = lazy(() => import("./lodge/LodgeTemplate"));
+const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"));
+const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
+const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
+const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
+const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
+const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
+const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
+const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
+const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
 export const DEFAULT_TEMPLATE_ID = "default";
 // Keyed by the `themeVariant` value stored on WebsiteTemplate documents.
 // Any themeVariant not present here falls back to DEFAULT_TEMPLATE_ID.
