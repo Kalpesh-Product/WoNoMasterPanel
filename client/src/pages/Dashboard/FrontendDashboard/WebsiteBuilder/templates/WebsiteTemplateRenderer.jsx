@@ -6,9 +6,20 @@ const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 const mediaSrc = (value) =>
   typeof value === "string" ? value.trim() : String(value?.url || value?.src || "").trim();
 
+// sessionStorage first — see useWebsiteTemplateData's readPreviewDraftRaw for
+// why: keeps two tabs previewing different templates from overwriting each
+// other's draft in the one shared localStorage bucket for this origin.
+const readDraftRaw = () => {
+  try {
+    return sessionStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY) || localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+
 const readPreviewMetadata = () => {
   try {
-    const raw = localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+    const raw = readDraftRaw();
     const draft = raw ? JSON.parse(raw) : null;
     return {
       title: String(draft?.companyName || "Website Preview").trim() || "Website Preview",
@@ -21,7 +32,7 @@ const readPreviewMetadata = () => {
 
 const readThemeVariant = () => {
   try {
-    const raw = localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+    const raw = readDraftRaw();
     if (!raw) return "default";
     const draft = JSON.parse(raw);
     return String(draft?.themeVariant || "default").trim() || "default";
