@@ -353,9 +353,6 @@ const ContributorLeads = () => {
               <h2 className="text-title font-pmedium uppercase text-primary">
                 Contributor Leads
               </h2>
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-pmedium text-blue-600">
-                Guide
-              </span>
             </div>
             <p className="text-xs font-pmedium text-slate-500">
               Leads received for {activeTab.label}.
