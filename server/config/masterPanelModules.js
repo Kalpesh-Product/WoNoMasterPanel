@@ -26,6 +26,7 @@ const masterPanelModules = [
       { key: "dashboard.visa-countries", label: "Visa Countries" },
       { key: "dashboard.nomad-click-analytics", label: "Nomad Click Analytics" },
       { key: "dashboard.add-master-user", label: "Add Master User" },
+      { key: "dashboard.host-modules-content", label: "Host Modules Content" },
     ],
   },
   {

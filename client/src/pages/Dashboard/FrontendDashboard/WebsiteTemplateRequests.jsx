@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -99,7 +99,7 @@ const ModalShell = ({ title, subtitle, onClose, children, width = "900px" }) => 
   </div>
 );
 
-const WebsiteTemplateRequests = () => {
+const WebsiteTemplateRequests = ({ embedded = false }) => {
   const axiosPrivate = useAxiosPrivate();
   const actionGuardRef = useRef(false);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -245,17 +245,19 @@ const WebsiteTemplateRequests = () => {
     updateTemplateRow(templateId, { allowedPlans: [...selected] });
   };
 
+  const Frame = embedded ? Fragment : PageFrame;
+
   return (
-    <PageFrame>
+    <Frame>
       <div className="flex flex-col gap-4">
-        <div className="mb-1">
+        {!embedded ? <div className="mb-1">
           <div>
             <h2 className="text-title font-pmedium uppercase text-primary">Website Templates</h2>
             <p className="mt-1 text-xs font-pmedium text-slate-500">Review template-change requests and control template access by plan.</p>
           </div>
-        </div>
+        </div> : null}
 
-        <div data-tour="website-templates-stats" className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {!embedded ? <div data-tour="website-templates-stats" className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
             ["Total Requests", counts.total, "border-l-slate-400", "text-slate-500"],
             ["Pending", counts.pending, "border-l-amber-500", "text-amber-600"],
@@ -267,7 +269,7 @@ const WebsiteTemplateRequests = () => {
               <p className="text-[15px] font-pmedium text-slate-900">{value}</p>
             </div>
           ))}
-        </div>
+        </div> : null}
 
         <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur-md">
           <div className="flex flex-col items-start justify-between gap-3 border-b border-slate-100/60 bg-slate-50/50 p-4 xl:flex-row xl:items-center">
@@ -497,7 +499,7 @@ const WebsiteTemplateRequests = () => {
           </div>
         </ModalShell>
       ) : null}
-    </PageFrame>
+    </Frame>
   );
 };
 

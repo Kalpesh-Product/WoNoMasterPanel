@@ -46,6 +46,7 @@ import FrontendFinLayout from "../pages/Dashboard/FrontendDashboard/FrontendFina
 import ThemeGrid from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ThemeGrid";
 import ViewTheme from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ViewTheme";
 import PageDemo from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PageDemo";
+import PublicDemoPreview from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PublicDemoPreview";
 import FrontendSettings from "../pages/Dashboard/FrontendDashboard/FrontendSettings/FrontendSettings";
 import AssetsLayout from "../pages/Assets/AssetsLayout";
 import AssetsDashboard from "../pages/Assets/AssetsDashboard";
@@ -188,7 +189,7 @@ import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import HostPanelAnalytics from "../pages/Dashboard/FrontendDashboard/HostPanelAnalytics";
 import MasterPanelAnalytics from "../pages/Dashboard/FrontendDashboard/MasterPanelAnalytics";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
-import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
+import WebsiteTemplatesWorkspace from "../pages/Dashboard/FrontendDashboard/WebsiteTemplatesWorkspace";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -227,6 +228,7 @@ import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLe
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
 import NomadDestinationListingAnalytics from "../pages/Dashboard/FrontendDashboard/NomadDestinationListingAnalytics";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostModulesContent from "../pages/Dashboard/FrontendDashboard/HostModulesContent";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
 import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/WonoNomadsHome";
@@ -268,6 +270,13 @@ export const routes = createBrowserRouter([
   {
     path: "/website-preview/*",
     element: <PageDemo />,
+  },
+  // Shareable version of the above for external links (e.g. the Nomads Theme
+  // Store) — loads sample content for :templateId itself, no localStorage
+  // write from a click handler required.
+  {
+    path: "/website-preview/demo/:templateId",
+    element: <PublicDemoPreview />,
   },
 
   {
@@ -524,12 +533,16 @@ export const routes = createBrowserRouter([
                     element: <MasterPanelAnalytics />,
                   },
                   {
+                    path: "host-modules-content",
+                    element: <HostModulesContent />,
+                  },
+                  {
                     path: "website-credits",
                     element: <WebsiteCreditsOverview />,
                   },
                   {
                     path: "website-templates",
-                    element: <WebsiteTemplateRequests />,
+                    element: <WebsiteTemplatesWorkspace />,
                   },
                   {
                     path: "company-reviews/:reviewTab?",

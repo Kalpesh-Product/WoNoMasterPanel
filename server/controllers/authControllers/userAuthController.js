@@ -8,6 +8,21 @@ const emailTemplates = require("../../utils/emailTemplates");
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).+$/;
 
+// `secure: true` cookies are only ever stored/sent by the browser over HTTPS.
+// Hardcoding it broke every local dev session: the refresh cookie set on
+// login was silently dropped by the browser on http://localhost, so the next
+// page load's GET /api/auth/refresh always 401'd and useRefresh() treats any
+// failure there as "log out". sameSite must drop to "Lax" alongside it —
+// "None" without "Secure" is rejected by browsers outright. Clearing the
+// cookie has to use these same attributes too, or the browser won't match it
+// to the one it actually stored and silently no-ops the clear.
+const isProdEnv = process.env.NODE_ENV === "production";
+const masterPanelCookieOptions = {
+  httpOnly: true,
+  sameSite: isProdEnv ? "None" : "Lax",
+  secure: isProdEnv,
+};
+
 const validateStrongPassword = (password) => {
   if (!password || password.length < 8) return "Must be at least 8 characters long.";
   if (password.length > 72) return "Password cannot exceed 72 characters.";
@@ -87,8 +102,18 @@ const login = async (req, res, next) => {
       { expiresIn: "15m" }
     );
 
+    // Deliberately a minimal payload, NOT the full user doc: this value is
+    // stored as an httpOnly cookie, which browsers cap at ~4096 bytes.
+    // Superadmins accumulate a large allowedModules list and an
+    // ever-growing tourProgress history, and embedding the whole user object
+    // (as the access token does) pushed the cookie past that limit — the
+    // browser silently refused to store it, so every refresh 401'd and
+    // looked like a random logout for just that account. Nothing reads this
+    // payload besides jwt.verify() below (refreshTokenController re-fetches
+    // the user fresh from the DB rather than trusting the token's claims),
+    // so shrinking it is safe.
     const refreshToken = jwt.sign(
-      { userInfo: { ...user } },
+      { id: user._id },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "15d" }
     );
@@ -96,9 +121,7 @@ const login = async (req, res, next) => {
     await AdminUser.findOneAndUpdate({ email }, { refreshToken }).lean().exec();
 
     res.cookie("masterPannelCookie", refreshToken, {
-      httpOnly: true,
-      sameSite: "None",
-      secure: true,
+      ...masterPanelCookieOptions,
       maxAge: 15 * 24 * 60 * 60 * 1000,
     });
 
@@ -166,22 +189,14 @@ const logout = async (req, res, next) => {
     const refreshToken = cookies?.masterPannelCookie;
     const user = await AdminUser.findOne({ refreshToken }).lean().exec();
     if (!user) {
-      res.clearCookie("masterPannelCookie", {
-        httpOnly: true,
-        sameSite: "None",
-        secure: true,
-      });
+      res.clearCookie("masterPannelCookie", masterPanelCookieOptions);
       return res.sendStatus(201);
     }
 
     await AdminUser.findOneAndUpdate({ refreshToken }, { refreshToken: "" })
       .lean()
       .exec();
-    res.clearCookie("masterPannelCookie", {
-      httpOnly: true,
-      sameSite: "None",
-      secure: true,
-    });
+    res.clearCookie("masterPannelCookie", masterPanelCookieOptions);
     res.sendStatus(201);
   } catch (error) {
     next(error);

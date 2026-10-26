@@ -19,7 +19,7 @@ const AMENITIES = [
   "Breakout spaces",
 ];
 const Hero = () => {
-  const { t, draft, primary, c, rating } = useFlowspace();
+  const { t, draft, primary, openLead, c, rating } = useFlowspace();
   const image = t.heroImages?.[0] || primary?.heroImage || t.galleryItems?.[0];
   return (
     <section className="fs-hero">
@@ -33,6 +33,15 @@ const Hero = () => {
       </div>
       <div className="fs-shell fs-hero-grid">
         <div className="fs-hero-copy">
+          <motion.p
+            className="fs-hero-kicker"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.65 }}
+          >
+            <span aria-hidden="true" />
+            {c("home.hero.eyebrow", "Flexible spaces. Better work.")}
+          </motion.p>
           <motion.h1
             initial={{ opacity: 0, y: 42 }}
             animate={{ opacity: 1, y: 0 }}
@@ -62,10 +71,21 @@ const Hero = () => {
             <button
               type="button"
               className="fs-pill-btn fs-hero-cta"
-              onClick={() => t.goToSection("products")}
+              onClick={() =>
+                primary?.leadEnabled
+                  ? openLead(primary)
+                  : t.goToSection("products")
+              }
             >
               {draft?.CTAButtonText || "Find your desk"}
               <span className="fs-btn-icon">{Icon.map()}</span>
+            </button>
+            <button
+              type="button"
+              className="fs-hero-link"
+              onClick={() => t.goToSection("products")}
+            >
+              Explore spaces {Icon.arrow()}
             </button>
           </motion.div>
           <motion.div
@@ -74,6 +94,7 @@ const Hero = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.65 }}
           >
+            <span className="fs-trust-dot" aria-hidden="true" />
             <span>
               {rating.count
                 ? `${rating.avg.toFixed(1)} from ${rating.count} teams`

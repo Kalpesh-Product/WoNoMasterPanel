@@ -1,7 +1,7 @@
 import React from "react";
 import { AnimatePresence, motion } from "../motion";
 import { LeadFormPanel } from "../shared/TplLead";
-import { GbIcon, GbImage } from "./GrandBarUI";
+import { GbIcon } from "./GrandBarUI";
 export const GrandBarBooking = ({ open, onClose, service, item }) => (
   <AnimatePresence>
     {open && service ? (
@@ -35,22 +35,17 @@ export const GrandBarBooking = ({ open, onClose, service, item }) => (
           >
             {GbIcon.close(24)}
           </button>
-          <div className="gb-booking-image">
-            <GbImage
-              src={item?.image || service.heroImage}
-              alt={item?.title || service.name}
-            />
-            <div />
-            <span>Grand Bar</span>
-            <h2>{item?.title || "A table for the evening"}</h2>
-          </div>
           <div className="gb-booking-form">
-            <p className="gb-kicker">Reservations</p>
-            <h3>Book a table</h3>
-            <p>
-              Choose a date, time and party size. Our team will confirm your
-              table shortly.
-            </p>
+            <div className="gb-booking-heading">
+              <p className="gb-kicker">
+                {item?.title || service.name || "Reservations"}
+              </p>
+              <h3>Reserve your table</h3>
+              <p>
+                Choose a date, time and party size. Our team will confirm your
+                table shortly.
+              </p>
+            </div>
             <LeadFormPanel service={service} item={item} />
           </div>
         </motion.div>
