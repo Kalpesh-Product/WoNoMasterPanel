@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { resolveTemplate } from "./templateRegistry";
 import TemplateIntroLoader from "./shared/TemplateIntroLoader";
+import TemplateBackToTop from "./shared/TemplateBackToTop";
 
 // Shown while a lazily-loaded template's own JS chunk is still downloading
 // (see templateRegistry.js) — without it the page is just blank white for
@@ -116,6 +117,7 @@ const WebsiteTemplateRenderer = () => {
         themeVariant={resolvedTemplate.id}
         companyName={metadata.title}
       />
+      <TemplateBackToTop themeVariant={resolvedTemplate.id} />
       <TemplateComponent />
     </Suspense>
   );
