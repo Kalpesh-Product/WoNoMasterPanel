@@ -1,5 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { resolveTemplate } from "./templateRegistry";
+
+// Shown while a lazily-loaded template's own JS chunk is still downloading
+// (see templateRegistry.js) — without it the page is just blank white for
+// however long that takes, which reads as "broken" rather than "loading".
+const TemplateLoadingFallback = () => (
+  <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-white">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-sky-500" />
+    <p className="text-sm font-medium text-slate-500">Loading preview…</p>
+  </div>
+);
 
 const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 
@@ -97,7 +107,11 @@ const WebsiteTemplateRenderer = () => {
 
   const previewOverride = new URLSearchParams(window.location.search).get("previewTemplate");
   const { component: TemplateComponent } = resolveTemplate(previewOverride || themeVariant);
-  return <TemplateComponent />;
+  return (
+    <Suspense fallback={<TemplateLoadingFallback />}>
+      <TemplateComponent />
+    </Suspense>
+  );
 };
 
 export default WebsiteTemplateRenderer;
