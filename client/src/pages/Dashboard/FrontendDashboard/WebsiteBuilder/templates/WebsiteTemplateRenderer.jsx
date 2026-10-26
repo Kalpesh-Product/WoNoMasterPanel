@@ -1,5 +1,6 @@
 import React, { Suspense, useEffect, useState } from "react";
 import { resolveTemplate } from "./templateRegistry";
+import TemplateIntroLoader from "./shared/TemplateIntroLoader";
 
 // Shown while a lazily-loaded template's own JS chunk is still downloading
 // (see templateRegistry.js) — without it the page is just blank white for
@@ -106,9 +107,15 @@ const WebsiteTemplateRenderer = () => {
   }, [metadata]);
 
   const previewOverride = new URLSearchParams(window.location.search).get("previewTemplate");
-  const { component: TemplateComponent } = resolveTemplate(previewOverride || themeVariant);
+  const resolvedTemplate = resolveTemplate(previewOverride || themeVariant);
+  const { component: TemplateComponent } = resolvedTemplate;
   return (
     <Suspense fallback={<TemplateLoadingFallback />}>
+      <TemplateIntroLoader
+        key={resolvedTemplate.id}
+        themeVariant={resolvedTemplate.id}
+        companyName={metadata.title}
+      />
       <TemplateComponent />
     </Suspense>
   );
