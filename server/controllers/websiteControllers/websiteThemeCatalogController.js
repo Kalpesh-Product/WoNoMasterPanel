@@ -44,6 +44,7 @@ const serializeTheme = (theme, { publicView = false } = {}) => {
     enabled: value?.enabled === true,
     visible: value?.visible !== false,
     featured: value?.featured === true,
+    showOnHostHome: value?.showOnHostHome === true,
     sortOrder: Number(value?.sortOrder || 0),
     disabledReason: text(value?.disabledReason) || "Coming soon",
     updatedAt: value?.updatedAt || null,
@@ -158,6 +159,7 @@ const createWebsiteTheme = async (req, res, next) => {
       externalDemoUrl: text(req.body.externalDemoUrl),
       ...flags,
       featured: boolean(req.body.featured),
+      showOnHostHome: boolean(req.body.showOnHostHome),
       disabledReason: text(req.body.disabledReason) || "Coming soon",
       sortOrder: Number(last?.sortOrder || 0) + 10,
       updatedBy: text(req.user),
@@ -207,6 +209,7 @@ const updateWebsiteTheme = async (req, res, next) => {
     theme.enabled = flags.enabled;
     theme.visible = flags.visible;
     theme.featured = boolean(req.body.featured);
+    theme.showOnHostHome = boolean(req.body.showOnHostHome);
     theme.disabledReason = text(req.body.disabledReason) || "Coming soon";
     theme.updatedBy = text(req.user);
     await theme.save();

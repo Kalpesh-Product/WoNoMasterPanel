@@ -44,6 +44,7 @@ const EMPTY_FORM = {
   status: "coming-soon",
   disabledReason: "Coming soon",
   featured: false,
+  showOnHostHome: false,
   swatchBg: "#ffffff",
   swatchFg: "#111111",
   swatchAccent: "#0aa9ef",
@@ -83,6 +84,7 @@ const formFromTheme = (theme) => ({
   status: theme.status,
   disabledReason: theme.disabledReason || "Coming soon",
   featured: theme.featured === true,
+  showOnHostHome: theme.showOnHostHome === true,
   swatchBg: theme.swatch?.bg || "#ffffff",
   swatchFg: theme.swatch?.fg || "#111111",
   swatchAccent: theme.swatch?.accent || "#0aa9ef",
@@ -556,6 +558,10 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
                     <label className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
                       <span><span className="block text-xs font-pmedium text-slate-800">Featured theme</span><span className="mt-1 block text-[10px] leading-4 text-slate-500">Show in the top device showcase.</span></span>
                       <input type="checkbox" checked={form.featured} onChange={(event) => setForm((current) => ({ ...current, featured: event.target.checked }))} className="h-4 w-4 accent-[#2563EB]" />
+                    </label>
+                    <label className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+                      <span><span className="block text-xs font-pmedium text-slate-800">Show on host.wono.co homepage</span><span className="mt-1 block text-[10px] leading-4 text-slate-500">Appears in the free-templates teaser there (shows up to 4).</span></span>
+                      <input type="checkbox" checked={form.showOnHostHome} onChange={(event) => setForm((current) => ({ ...current, showOnHostHome: event.target.checked }))} className="h-4 w-4 accent-[#2563EB]" />
                     </label>
                   </section>
 
