@@ -18,12 +18,12 @@ const MODULE_GROUPS = [
       { id: "tasks", label: "Tasks" },
       { id: "tickets", label: "Tickets" },
       { id: "leave-requests", label: "Leave Requests" },
-      { id: "meeting-room-system", label: "Meeting Room Booking" },
+      { id: "meeting-room-system", label: "Meeting Room Booking", verticals: ["meeting-rooms", "co-working"] },
       { id: "printouts", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
-      { id: "cafe-orders", label: "Cafe Orders" },
-      { id: "hostel-booking", label: "Hostel Booking" },
-      { id: "room-booking", label: "Room Booking" },
+      { id: "cafe-orders", label: "Cafe Orders", verticals: ["cafe"] },
+      { id: "hostel-booking", label: "Hostel Booking", verticals: ["hostel"] },
+      { id: "room-booking", label: "Room Booking", verticals: ["co-living"] },
     ],
   },
   {
@@ -45,11 +45,6 @@ const MODULE_GROUPS = [
       { id: "wono-nomad", label: "Nomad Listings" },
       { id: "website-leads", label: "All Leads" },
       { id: "visitor-management", label: "Visitor Management" },
-      { id: "cafe-management", label: "Cafe Management" },
-      { id: "hostel-management", label: "Hostel Management" },
-      { id: "co-living-management", label: "Co-living Management" },
-      { id: "co-working-management", label: "Co-working Management" },
-      { id: "meeting-room-management", label: "Meeting Room Management" },
     ],
   },
   {
@@ -84,8 +79,8 @@ const MODULE_GROUPS = [
         id: "administration-department",
         label: "Administration Department",
         tabs: [
-          { id: "tenant-companies-admin", label: "Tenant Companies" },
-          { id: "bookings", label: "Bookings" },
+          { id: "tenant-companies-admin", label: "Tenant Companies", verticals: ["co-working", "meeting-rooms", "workation"] },
+          { id: "bookings", label: "Bookings", verticals: ["meeting-rooms", "workation"] },
           { id: "visitors-management", label: "Visitors Management" },
           { id: "resource-management", label: "Resource Management" },
           { id: "house-keeping", label: "House Keeping" },
@@ -97,9 +92,13 @@ const MODULE_GROUPS = [
         label: "Sales Department",
         tabs: [
           { id: "leads-management", label: "Leads Management" },
-          { id: "tenant-companies-sales", label: "Tenant Companies" },
-          { id: "virtual-office-sales", label: "Virtual Offices" },
+          { id: "cafe-management", label: "Cafe Management", verticals: ["cafe"] },
+          { id: "hostel-management", label: "Hostel Management", verticals: ["hostel"] },
+          { id: "co-living-management", label: "Co-living Management", verticals: ["co-living"] },
+          { id: "co-working-management", label: "Co-working Management", verticals: ["co-working"] },
+          { id: "meeting-room-management", label: "Meeting Room Management", verticals: ["meeting-rooms"] },
           { id: "resource-pricing", label: "Resource & Pricing" },
+          { id: "virtual-office-sales", label: "Virtual Offices", verticals: ["co-working"] },
           { id: "sales-architecture", label: "Sales Architecture" },
         ],
       },
@@ -218,6 +217,55 @@ const getDefaultEnabledModuleIdsForPlan = (selectedPlan = "basic") => {
     }
   }
   return Array.from(ids);
+};
+
+// Mirrored from HostPanel's VERTICAL_KEY_BY_BUSINESS_TYPE /
+// getWorkspaceVerticalKeys / getVerticalModuleIds (workspaceModuleCatalog.ts)
+// — needed so every plan-upgrade path here (trial start, bonus trial, mark
+// as paid, Stripe webhook) can grant a workspace's vertical modules (Cafe
+// Management, Cafe Orders, etc.) on top of the plan's own defaults, instead
+// of silently omitting them. getDefaultEnabledModuleIdsForPlan above never
+// includes these — they're not plan defaults, they're vertical-gated.
+const VERTICAL_KEY_BY_BUSINESS_TYPE = {
+  "co-working": "co-working",
+  "co-living": "co-living",
+  hostels: "hostel",
+  hostel: "hostel",
+  workation: "workation",
+  "meeting rooms": "meeting-rooms",
+  cafe: "cafe",
+};
+
+const getWorkspaceVerticalKeys = (businessTypes = []) => {
+  const keys = new Set();
+  for (const businessType of Array.isArray(businessTypes) ? businessTypes : []) {
+    const key = VERTICAL_KEY_BY_BUSINESS_TYPE[String(businessType || "").trim().toLowerCase()];
+    if (key) keys.add(key);
+  }
+  return Array.from(keys);
+};
+
+const getVerticalModuleIds = (verticalKeys = []) => {
+  const ids = new Set();
+  for (const section of MODULE_GROUPS) {
+    for (const module of collectLeafModules(section.items || [])) {
+      if (
+        Array.isArray(module.verticals) &&
+        module.verticals.some((key) => verticalKeys.includes(key))
+      ) {
+        ids.add(module.id);
+      }
+    }
+  }
+  return Array.from(ids);
+};
+
+// Convenience used by the plan-upgrade paths: a plan's own default ids, plus
+// whichever vertical modules this specific workspace's businessTypes unlock.
+const getDefaultEnabledModuleIdsForWorkspace = (selectedPlan = "basic", businessTypes = []) => {
+  const planIds = getDefaultEnabledModuleIdsForPlan(selectedPlan);
+  const verticalIds = getVerticalModuleIds(getWorkspaceVerticalKeys(businessTypes));
+  return Array.from(new Set([...planIds, ...verticalIds]));
 };
 
 const planAvailabilityFor = (moduleId) => {
@@ -342,6 +390,9 @@ module.exports = {
   MODULE_GROUPS,
   normalizePlan,
   getDefaultEnabledModuleIdsForPlan,
+  getWorkspaceVerticalKeys,
+  getVerticalModuleIds,
+  getDefaultEnabledModuleIdsForWorkspace,
   planAvailabilityFor,
   buildCatalogIndex,
   getPriceableCatalog,

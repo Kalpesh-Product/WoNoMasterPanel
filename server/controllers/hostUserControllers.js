@@ -993,6 +993,14 @@ const DEPARTMENT_ACCESS_BLUEPRINT = [
       { id: "virtual-office-sales", name: "Virtual Offices" },
       { id: "resource-pricing", name: "Resource & Pricing" },
       { id: "sales-architecture", name: "Sales Architecture" },
+      // mirrorFromId (self-referencing) carries each workspace's existing
+      // enabled/disabled state over from wherever this id used to live (Key
+      // Apps, before this move) instead of resetting it — see buildBlueprintNode.
+      { id: "cafe-management", name: "Cafe Management", mirrorFromId: "cafe-management" },
+      { id: "hostel-management", name: "Hostel Management", mirrorFromId: "hostel-management" },
+      { id: "co-living-management", name: "Co-living Management", mirrorFromId: "co-living-management" },
+      { id: "co-working-management", name: "Co-working Management", mirrorFromId: "co-working-management" },
+      { id: "meeting-room-management", name: "Meeting Room Management", mirrorFromId: "meeting-room-management" },
     ],
   },
   {
@@ -1107,11 +1115,6 @@ const KEY_APPS_BLUEPRINT = {
     { id: "website-builder", name: "Website Builder" },
     { id: "wono-nomad", name: "Wono Nomad" },
     { id: "website-leads", name: "Website Leads" },
-    { id: "cafe-management", name: "Cafe Management" },
-    { id: "hostel-management", name: "Hostel Management" },
-    { id: "co-living-management", name: "Co-living Management" },
-    { id: "co-working-management", name: "Co-working Management" },
-    { id: "meeting-room-management", name: "Meeting Room Management" },
   ],
 };
 
