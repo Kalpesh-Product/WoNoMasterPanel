@@ -36,6 +36,9 @@ const websiteThemeCatalogSchema = new mongoose.Schema(
     enabled: { type: Boolean, default: false },
     visible: { type: Boolean, default: true },
     featured: { type: Boolean, default: false },
+    // Shown in the "free templates" teaser on host.wono.co's homepage —
+    // admin picks which ones via the catalog instead of a hardcoded list.
+    showOnHostHome: { type: Boolean, default: false },
     sortOrder: { type: Number, default: 0, index: true },
     disabledReason: { type: String, trim: true, default: "Coming soon", maxlength: 200 },
     updatedBy: { type: String, trim: true, default: "" },
