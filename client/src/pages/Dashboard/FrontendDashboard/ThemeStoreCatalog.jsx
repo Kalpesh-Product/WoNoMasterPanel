@@ -11,6 +11,7 @@ import {
   Search,
   Smartphone,
   Star,
+  House,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -209,6 +210,14 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
     return ["all", ...values.sort((left, right) => titleCase(left).localeCompare(titleCase(right)))];
   }, [orderedThemes]);
 
+  const hostHomeThemes = useMemo(
+    () => orderedThemes.filter((theme) => theme.showOnHostHome),
+    [orderedThemes],
+  );
+  // Excludes whatever's currently being edited, so toggling it off then back
+  // on in the same session (without saving) doesn't trip the 4-item cap.
+  const otherHostHomeCount = hostHomeThemes.filter((theme) => theme._id !== editor?.theme?._id).length;
+
   const filteredThemes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return orderedThemes.filter((theme) => {
@@ -354,6 +363,15 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
               <Plus size={15} /> Add theme
             </button>
           </div>
+          {hostHomeThemes.length > 0 ? (
+            <div className="flex items-center gap-2 border-b border-slate-100 bg-blue-50/40 px-4 py-2 text-[11px] text-slate-600">
+              <House size={13} className="shrink-0 text-blue-600" />
+              <span>
+                <span className="font-pmedium">host.wono.co ({hostHomeThemes.length}/4):</span>{" "}
+                {hostHomeThemes.map((theme) => theme.name).join(", ")}
+              </span>
+            </div>
+          ) : null}
           <div className="grid grid-cols-[48px_minmax(280px,1.4fr)_minmax(130px,.55fr)_minmax(130px,.55fr)_132px] items-center border-b border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
             <span />
             <span className="flex items-center gap-2" aria-live="polite">
@@ -412,6 +430,7 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
                 <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                   {theme.heroImage ? <img src={theme.heroImage} alt="" className="h-full w-full object-cover object-top" /> : <ImageUp className="absolute inset-0 m-auto text-slate-300" size={20} />}
                   {theme.featured ? <Star size={16} className="absolute right-1.5 top-1.5 fill-amber-400 text-amber-400" /> : null}
+                  {theme.showOnHostHome ? <House size={14} className="absolute left-1.5 top-1.5 rounded-full bg-white/90 p-0.5 text-blue-600" title="Shown on host.wono.co" /> : null}
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-pmedium text-slate-900">{theme.name}</p>
@@ -560,8 +579,26 @@ const ThemeStoreCatalog = ({ embedded = false }) => {
                       <input type="checkbox" checked={form.featured} onChange={(event) => setForm((current) => ({ ...current, featured: event.target.checked }))} className="h-4 w-4 accent-[#2563EB]" />
                     </label>
                     <label className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-                      <span><span className="block text-xs font-pmedium text-slate-800">Show on host.wono.co homepage</span><span className="mt-1 block text-[10px] leading-4 text-slate-500">Appears in the free-templates teaser there (shows up to 4).</span></span>
-                      <input type="checkbox" checked={form.showOnHostHome} onChange={(event) => setForm((current) => ({ ...current, showOnHostHome: event.target.checked }))} className="h-4 w-4 accent-[#2563EB]" />
+                      <span>
+                        <span className="block text-xs font-pmedium text-slate-800">Show on host.wono.co homepage</span>
+                        <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+                          Appears in the free-templates teaser there — {hostHomeThemes.length}/4 selected
+                          {hostHomeThemes.length ? `: ${hostHomeThemes.map((theme) => theme.name).join(", ")}` : ""}
+                        </span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={form.showOnHostHome}
+                        disabled={!form.showOnHostHome && otherHostHomeCount >= 4}
+                        onChange={(event) => {
+                          if (event.target.checked && otherHostHomeCount >= 4) {
+                            toast.error("4 themes are already shown on host.wono.co — turn one off first");
+                            return;
+                          }
+                          setForm((current) => ({ ...current, showOnHostHome: event.target.checked }));
+                        }}
+                        className="h-4 w-4 accent-[#2563EB] disabled:cursor-not-allowed disabled:opacity-40"
+                      />
                     </label>
                   </section>
 
