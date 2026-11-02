@@ -6,6 +6,20 @@ const config = { singular: "Blog" };
 const createdAt = "2026-10-12T09:55:00Z";
 const deletedAt = "2026-10-30T13:06:05Z";
 
+test("approval and rejection display each event's saved reviewer", () => {
+  const entries = buildContributionTimeline({
+    createdAt, deletedAt,
+    moderationHistory: [
+      { status: "approved", date: "2026-10-13T12:00:00Z", actor: "Alice Reviewer" },
+      { status: "rejected", date: "2026-10-14T12:00:00Z", actor: "Bob Reviewer" },
+    ],
+  }, config);
+  assert.equal(entries[1].description, "Approved by Alice Reviewer.");
+  assert.equal(entries[2].description, "Rejected by Bob Reviewer.");
+  const [review] = buildContributionTimeline({ status: "approved", reviewedBy: "Alice Reviewer" }, config);
+  assert.equal(review.description, "Approved by Alice Reviewer.");
+});
+
 test("deletion always comes last, including equal, missing and later review dates", () => {
   for (const reviewDate of [deletedAt, undefined, "2026-10-30T13:06:06Z"]) {
     const entries = buildContributionTimeline({

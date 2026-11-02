@@ -242,7 +242,16 @@ const getBlogContributions = async (req, res) => {
 const updateBlogContributionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const response = await axios.patch(`${NOMADS_BASE_URL}/blogs/contributions/${id}/status`, req.body, {
+        const user = req.userData || {};
+        const reviewerName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+            || user.fullName || user.name || user.email || "Master Panel";
+        const payload = {
+            status: req.body.status,
+            rejectionReason: req.body.rejectionReason,
+            reviewedBy: reviewerName,
+            reviewedById: String(req.user || user._id || user.userId || user.id || ""),
+        };
+        const response = await axios.patch(`${NOMADS_BASE_URL}/blogs/contributions/${id}/status`, payload, {
             headers: adminHeaders(),
         });
         return res.status(200).json(response.data);
