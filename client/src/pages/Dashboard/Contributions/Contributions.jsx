@@ -228,7 +228,7 @@ const buildContributionTimeline = (item, config) => {
   const contributorName = getContributorName(item);
   const createdAt = getFirstSubmissionDate(item);
   const updatedAt = getLastEditedDate(item);
-  const status = String(item.status || "pending").toLowerCase();
+  const status = String(item.statusBeforeDeletion || item.status || "pending").toLowerCase();
   const editCount = Number(item.numberOfEdits ?? item.editCount ?? item.edits?.length ?? 0);
   const timeline = [];
 
@@ -270,8 +270,8 @@ const buildContributionTimeline = (item, config) => {
         date: entryDate,
         title: normalizeTimelineStatus(entryStatus),
         description: `${normalizeTimelineStatus(entryStatus)} by ${getActorName(entry?.reviewedBy || entry?.moderatedBy || entry?.actor)}.`,
-        details: entry?.reason || entry?.rejectionReason || "",
-        tone: entryStatus === "approved" ? "emerald" : entryStatus === "rejected" ? "rose" : "slate",
+        details: entry?.reason || entry?.deletionReason || entry?.rejectionReason || "",
+        tone: entryStatus === "deleted" ? "red" : entryStatus === "approved" ? "emerald" : entryStatus === "rejected" ? "rose" : "slate",
       });
     });
   } else if (["approved", "rejected"].includes(status)) {
@@ -283,12 +283,22 @@ const buildContributionTimeline = (item, config) => {
       details: status === "rejected" ? item.rejectionReason : "",
       tone: status === "approved" ? "emerald" : "rose",
     });
-  } else {
+  } else if (!item.deletedAt) {
     timeline.push({
       date: item.updatedAt || createdAt,
       title: "Pending Review",
       description: `Waiting for ${config.singular.toLowerCase()} review.`,
       tone: "slate",
+    });
+  }
+
+  if (item.deletedAt && !timeline.some((entry) => entry.title === "Deleted")) {
+    timeline.push({
+      date: item.deletedAt,
+      title: "Deleted",
+      description: `Deleted by ${contributorName}.`,
+      details: item.deletionReason || "",
+      tone: "red",
     });
   }
 
@@ -546,6 +556,7 @@ const TimelineModal = ({ item, config, onClose }) => {
     blue: "border-blue-200 bg-blue-50 text-blue-700",
     amber: "border-amber-200 bg-amber-50 text-amber-700",
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    red: "border-red-300 bg-red-100 text-red-800",
     rose: "border-rose-200 bg-rose-50 text-rose-700",
     slate: "border-slate-200 bg-slate-50 text-slate-600",
   };
@@ -627,6 +638,7 @@ const Contributions = () => {
   const { data: contributions = [], isPending, isError } = useQuery({
     queryKey: [activeConfig?.queryKey],
     enabled: supportsModeration,
+    refetchInterval: 30000,
     queryFn: async () => {
       const response = await axiosPrivate.get(activeConfig.endpoint, { headers: { "Cache-Control": "no-cache" } });
       return extractContributions(response);
@@ -757,7 +769,7 @@ const Contributions = () => {
                 <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
                   <div className="flex items-center gap-1.5 overflow-x-auto">
                     <button type="button" onClick={() => setStageFilter("all")} className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${stageFilter === "all" ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"}`}>All</button>
-                    {STATUSES.map((status) => (
+                    {(activeTab.type === "blog" ? [...STATUSES, "deleted"] : STATUSES).map((status) => (
                       <button key={status} type="button" onClick={() => setStageFilter(status)} className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${stageFilter === status ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200" : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"}`}>{formatLabel(status)}</button>
                     ))}
                   </div>
@@ -788,7 +800,7 @@ const Contributions = () => {
                         const contributor = getContributorName(item);
                         const status = String(item.status || "pending").toLowerCase();
                         const isActive = isContributionActive(item);
-                        const canToggleActive = typeof activeConfig.activeEndpoint === "function";
+                        const canToggleActive = status !== "deleted" && !item.deletedAt && typeof activeConfig.activeEndpoint === "function";
                         return (
                           <tr key={itemId} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-5 py-4"><div className="flex items-center gap-2.5"><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">{getInitials(contributor)}</div><p className="text-[12px] font-pmedium text-slate-900">{contributor}</p></div></td>
