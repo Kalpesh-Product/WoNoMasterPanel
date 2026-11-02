@@ -146,6 +146,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/destinations-data",
           },
           {
+            id: 38,
+            key: "dashboard.destination-data-analytics",
+            title: "Destination Data Analytics",
+            icon: LuChartLine,
+            route: "/dashboard/destination-data-analytics",
+          },
+          {
             id: 16,
             key: "dashboard.world-ranking-weights",
             title: "World Ranking Weights",

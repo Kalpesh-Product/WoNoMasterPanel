@@ -220,6 +220,8 @@ import {
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
+import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalyticsDashboard";
+import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
@@ -606,6 +608,10 @@ export const routes = createBrowserRouter([
                         element: <DestinationsData />,
                       },
                       {
+                        path: "ranking",
+                        element: <Navigate to="/dashboard/destination-data-analytics" replace />,
+                      },
+                      {
                         path: ":locationType",
                         children: [
                           {
@@ -623,6 +629,14 @@ export const routes = createBrowserRouter([
                         ],
                       },
                     ],
+                  },
+                  {
+                    path: "destination-data-analytics",
+                    element: <WonoDestinationAnalyticsDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking",
+                    element: <WonoDestinationAnalytics />,
                   },
                   {
                     path: "world-ranking-weights",

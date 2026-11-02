@@ -52,6 +52,9 @@ const {
 } = require("../controllers/hostListingControllers");
 const {
   getDestinationsData,
+  getWonoDestinationAnalytics,
+  createWonoDestination,
+  updateWonoDestination,
 } = require("../controllers/destinationDataControllers");
 const {
   getCompanyUnits,
@@ -116,6 +119,9 @@ router.get("/companies", getCompanies);
 router.get("/companies/overview", getCompanyOverview);
 router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
+router.get("/destination-analytics", getWonoDestinationAnalytics);
+router.post("/destination-analytics", createWonoDestination);
+router.patch("/destination-analytics/:id", updateWonoDestination);
 router.get("/host-companies", getHostLeadCompanies);
 router.post(
   "/transfer-nomad-listing",
