@@ -309,6 +309,9 @@ export default function AllEnquiryTable() {
                       const masterStatus = getMasterStatus(lead.status);
                       const hostStatus = lead.isEscalated === true ? (lead.hostPanelStatus || "Pending") : "Not Escalated";
                       const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
+                      // Website leads auto-escalate to HostPanel at creation (Nomads sets
+                      // status "Closed" + isEscalated true immediately) — no manual step needed.
+                      const isWebsiteLead = String(lead.source || "").toLowerCase() === "website";
                       const isEscalating = escalatingLeadId === lead._id;
                       const isSending = sendingPaymentLeadId === lead._id;
                       const paymentInfo = getPaymentInfo(lead);
@@ -325,8 +328,9 @@ export default function AllEnquiryTable() {
                           <td className="truncate px-3 py-4 font-pmedium text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
                           <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-master-status-column" : undefined}>
                             <select value={masterStatus} onChange={(event) => updateLeadMutation.mutate({ leadId: lead._id, status: event.target.value })}
-                              disabled={updateLeadMutation.isPending}
-                              className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(masterStatus)}`}>
+                              disabled={updateLeadMutation.isPending || isWebsiteLead}
+                              title={isWebsiteLead ? "Website leads auto-escalate — no manual close needed" : undefined}
+                              className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(masterStatus)} ${isWebsiteLead ? "cursor-not-allowed opacity-70" : ""}`}>
                               {MASTER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                             </select>
                           </td>
@@ -348,10 +352,10 @@ export default function AllEnquiryTable() {
                                 className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
                                 <CreditCard size={13} />
                               </button>
-                              <button type="button" disabled={lead.isEscalated === true || !canEscalate || escalateLeadMutation.isPending}
-                                title={lead.isEscalated ? "Already escalated" : canEscalate ? "Escalate to HostPanel" : "Close the Master lead before escalating"}
+                              <button type="button" disabled={lead.isEscalated === true || !canEscalate || escalateLeadMutation.isPending || isWebsiteLead}
+                                title={lead.isEscalated ? "Already escalated" : isWebsiteLead ? "Website leads auto-escalate — no manual step needed" : canEscalate ? "Escalate to HostPanel" : "Close the Master lead before escalating"}
                                 onClick={() => { setEscalatingLeadId(lead._id); escalateLeadMutation.mutate(lead); }}
-                                className={`rounded-lg px-2.5 py-2 text-[10px] font-pmedium transition ${lead.isEscalated ? "bg-emerald-50 text-emerald-700" : canEscalate ? "bg-blue-600 text-white hover:bg-blue-700" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}>
+                                className={`rounded-lg px-2.5 py-2 text-[10px] font-pmedium transition ${lead.isEscalated ? "bg-emerald-50 text-emerald-700" : (canEscalate && !isWebsiteLead) ? "bg-blue-600 text-white hover:bg-blue-700" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}>
                                 {lead.isEscalated ? "Escalated" : isEscalating ? "Escalating..." : "Escalate"}
                               </button>
                             </div>

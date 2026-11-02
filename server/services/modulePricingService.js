@@ -43,6 +43,9 @@ const updatePlanPricingSettings = async ({
   professionalAnnualPlanPriceUsd,
   freeTrialEnabled,
   freeTrialDurationDays,
+  basicLeadsLimit,
+  professionalLeadsLimit,
+  customLeadsLimit,
   updatedByEmail,
 }) => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -52,9 +55,28 @@ const updatePlanPricingSettings = async ({
   }
   if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
   if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
+  if (basicLeadsLimit != null) settings.basicLeadsLimit = Number(basicLeadsLimit);
+  if (professionalLeadsLimit != null) settings.professionalLeadsLimit = Number(professionalLeadsLimit);
+  // customLeadsLimit may be explicitly cleared to null (unlimited), so this
+  // checks for the key's presence rather than non-null — pass undefined to
+  // leave it untouched.
+  if (customLeadsLimit !== undefined) {
+    settings.customLeadsLimit = customLeadsLimit == null ? null : Number(customLeadsLimit);
+  }
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;
   await settings.save();
   return settings;
+};
+
+// Website-lead visibility cap per plan, for HostPanel's lead cap + the
+// public pricing endpoint. null = unlimited.
+const getLeadLimitsConfig = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  return {
+    basic: settings.basicLeadsLimit,
+    professional: settings.professionalLeadsLimit,
+    custom: settings.customLeadsLimit ?? null,
+  };
 };
 
 const getProfessionalPlanPriceUsd = async () => {
@@ -259,6 +281,7 @@ module.exports = {
   getProfessionalAnnualPlanPriceUsd,
   getProfessionalPlanPricing,
   getFreeTrialConfig,
+  getLeadLimitsConfig,
   getCustomPlanPricingBreakdown,
   computeCustomPlanMonthlyPrice,
   computeCustomPlanPrice,

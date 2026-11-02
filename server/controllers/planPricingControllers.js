@@ -8,6 +8,7 @@ const {
   getOrCreatePlanPricingSettings,
   getProfessionalPlanPricing,
   getFreeTrialConfig,
+  getLeadLimitsConfig,
   computeCustomPlanMonthlyPrice,
 } = require("../services/modulePricingService");
 const { resolveWorkspaceForCompany } = require("./planPaymentControllers");
@@ -63,6 +64,9 @@ const updateBasePricing = async (req, res, next) => {
       professionalAnnualPlanPriceUsd,
       freeTrialEnabled,
       freeTrialDurationDays,
+      basicLeadsLimit,
+      professionalLeadsLimit,
+      customLeadsLimit,
     } = req.body || {};
     const settings = await updatePlanPricingSettings({
       professionalPlanPriceUsd:
@@ -74,6 +78,15 @@ const updateBasePricing = async (req, res, next) => {
       freeTrialEnabled: freeTrialEnabled != null ? Boolean(freeTrialEnabled) : undefined,
       freeTrialDurationDays:
         freeTrialDurationDays != null ? Number(freeTrialDurationDays) : undefined,
+      basicLeadsLimit: basicLeadsLimit != null ? Number(basicLeadsLimit) : undefined,
+      professionalLeadsLimit:
+        professionalLeadsLimit != null ? Number(professionalLeadsLimit) : undefined,
+      // "" from a cleared number input means "unlimited" (null); omit the
+      // key entirely (undefined) only when the field wasn't sent at all.
+      customLeadsLimit:
+        "customLeadsLimit" in (req.body || {})
+          ? (customLeadsLimit === "" || customLeadsLimit == null ? null : Number(customLeadsLimit))
+          : undefined,
       updatedByEmail: req.user?.email || req.body?.updatedByEmail || "",
     });
     return res.status(200).json({ message: "Base plan pricing updated", settings });
@@ -169,12 +182,13 @@ const setCustomPlanModules = async (req, res, next) => {
 // the "Start Free Trial" action without a second round trip.
 const getPublicPlanPricing = async (req, res, next) => {
   try {
-    const [{ professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }, freeTrialConfig] =
-      await Promise.all([getProfessionalPlanPricing(), getFreeTrialConfig()]);
+    const [{ professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }, freeTrialConfig, leadLimits] =
+      await Promise.all([getProfessionalPlanPricing(), getFreeTrialConfig(), getLeadLimitsConfig()]);
     return res.status(200).json({
       professionalPlanPriceUsd,
       professionalAnnualPlanPriceUsd,
       ...freeTrialConfig,
+      leadLimits,
     });
   } catch (error) {
     next(error);

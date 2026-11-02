@@ -52,6 +52,24 @@ const planPricingSettingsSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    // Website-lead visibility cap per plan — how many website leads a host
+    // can see on Website Leads before HostPanel prompts them to request
+    // more. null = unlimited (Custom plan).
+    basicLeadsLimit: {
+      type: Number,
+      default: 5,
+      min: 0,
+    },
+    professionalLeadsLimit: {
+      type: Number,
+      default: 25,
+      min: 0,
+    },
+    customLeadsLimit: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
   },
   { timestamps: true },
 );

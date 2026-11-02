@@ -805,7 +805,7 @@ const buildBookingConfirmationBody = ({
     </td>
   </tr>`;
 
-const buildBookingConfirmationEmail = ({
+const buildBookingPaymentReceivedEmail = ({
   customerName,
   companyName,
   productType,
@@ -827,28 +827,36 @@ const buildBookingConfirmationEmail = ({
   }).format(amount || 0);
 
   return {
-    subject: "Booking Confirmed!",
+    subject: "Payment Received — Booking Confirmation Pending",
     html: renderNotificationEmail({
-      heroTitle: "Booking Confirmed!",
-      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your ${companyName || "WONO"} Reservation Is Confirmed</span>`,
+      heroTitle: "Payment Received!",
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your payment was successful</span><br/>The host will now finalize your meeting-room booking.`,
       greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">Thank you for your payment. Your <b class="email-heading">${companyName || "WONO"}</b> ${productType || "booking"} has been successfully confirmed.</p>
-        <p class="email-text" style="margin:8px 0 0;">We've included your booking and payment details below for easy reference.</p>
+        <p class="email-text" style="margin:0;">Thank you for your payment for <b class="email-heading">${productType || "your booking request"}</b> at <b class="email-heading">${companyName || "WONO"}</b>.</p>
+        <p class="email-text" style="margin:8px 0 0;">Payment is complete, but the meeting-room booking is not confirmed until the host creates it. You will receive a separate confirmation email with an MRB booking ID.</p>
       `,
-      bodyHtml: buildBookingConfirmationBody({
-        bookingId: bookingId || "-",
-        companyName: companyName || "-",
-        productType: productType || "-",
-        location: location || "-",
-        startDateLabel: formatLongDate(startDate),
-        endDateLabel: formatLongDate(endDate),
-        noOfPeople: noOfPeople ? `${noOfPeople} People` : "-",
-        formattedAmount,
-        paymentDateLabel: formatLongDate(paidAt || new Date()),
-        invoiceNumber,
-        paymentMethod: paymentMethod || "-",
-      }),
+      detailsTitle: "Payment & Request Details",
+      detailRows: [
+        ["Workspace", companyName || "-"],
+        ["Requested Room", productType || "-"],
+        ["Location", location || "-"],
+        ["Requested Date", formatLongDate(startDate)],
+        ["Guests", noOfPeople ? `${noOfPeople} People` : "-"],
+        ["Payment Status", "Paid"],
+        ["Amount Paid", formattedAmount],
+        ["Payment Date", formatLongDate(paidAt || new Date())],
+        ["Invoice Number", invoiceNumber || "-"],
+        ["Payment Method", paymentMethod || "-"],
+      ],
+      whatNextTitle: "What Happens Next?",
+      whatNextItems: [
+        "The host creates the meeting-room booking",
+        "You receive a separate confirmation email with your MRB booking ID",
+        "Show the MRB booking ID at the front desk when you arrive",
+      ],
+      noteTitle: "Your Invoice",
+      noteHtml: "Your payment invoice is attached to this email as a PDF for your records.",
     }),
   };
 };
@@ -3853,6 +3861,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       currency,
       description,
       paymentType,
+      sendEmail = true,
     } = req.body || {};
 
     const numericAmount = Number(amount);
@@ -3954,10 +3963,12 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
             currency: resolvedCurrency,
           });
 
-    await sendMail({
-      to: customerEmail,
-      ...paymentEmail,
-    });
+    if (sendEmail !== false) {
+      await sendMail({
+        to: customerEmail,
+        ...paymentEmail,
+      });
+    }
 
     return res.status(200).json({
       message: "Payment link email sent successfully",
@@ -3974,7 +3985,14 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 // All Enquiry table's Payment Status column.
 const getBookingPaymentStatuses = async (req, res, next) => {
   try {
-    const links = await BookingPaymentLink.find()
+    const requestedLeadIds = String(req.query?.leadIds || "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .slice(0, 200);
+    const links = await BookingPaymentLink.find(
+      requestedLeadIds.length > 0 ? { leadId: { $in: requestedLeadIds } } : {},
+    )
       .sort({ createdAt: -1 })
       .select("leadId status amount currency paidAt createdAt")
       .lean();
@@ -4081,7 +4099,7 @@ const handleStripeWebhook = async (req, res) => {
                       )
                     : undefined,
                 })
-              : buildBookingConfirmationEmail({
+              : buildBookingPaymentReceivedEmail({
                   customerName: updated.leadName,
                   companyName: updated.companyName,
                   productType: updated.productType,
