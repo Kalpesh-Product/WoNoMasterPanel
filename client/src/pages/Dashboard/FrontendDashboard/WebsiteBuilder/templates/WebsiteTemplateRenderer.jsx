@@ -1,14 +1,37 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { resolveTemplate } from "./templateRegistry";
+import TemplateIntroLoader from "./shared/TemplateIntroLoader";
+import TemplateBackToTop from "./shared/TemplateBackToTop";
+
+// Shown while a lazily-loaded template's own JS chunk is still downloading
+// (see templateRegistry.js) — without it the page is just blank white for
+// however long that takes, which reads as "broken" rather than "loading".
+const TemplateLoadingFallback = () => (
+  <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-white">
+    <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-sky-500" />
+    <p className="text-sm font-medium text-slate-500">Loading preview…</p>
+  </div>
+);
 
 const LIVE_PREVIEW_DRAFT_STORAGE_KEY = "website_builder_live_preview_draft";
 
 const mediaSrc = (value) =>
   typeof value === "string" ? value.trim() : String(value?.url || value?.src || "").trim();
 
+// sessionStorage first — see useWebsiteTemplateData's readPreviewDraftRaw for
+// why: keeps two tabs previewing different templates from overwriting each
+// other's draft in the one shared localStorage bucket for this origin.
+const readDraftRaw = () => {
+  try {
+    return sessionStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY) || localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
+
 const readPreviewMetadata = () => {
   try {
-    const raw = localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+    const raw = readDraftRaw();
     const draft = raw ? JSON.parse(raw) : null;
     return {
       title: String(draft?.companyName || "Website Preview").trim() || "Website Preview",
@@ -21,7 +44,7 @@ const readPreviewMetadata = () => {
 
 const readThemeVariant = () => {
   try {
-    const raw = localStorage.getItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY);
+    const raw = readDraftRaw();
     if (!raw) return "default";
     const draft = JSON.parse(raw);
     return String(draft?.themeVariant || "default").trim() || "default";
@@ -85,8 +108,19 @@ const WebsiteTemplateRenderer = () => {
   }, [metadata]);
 
   const previewOverride = new URLSearchParams(window.location.search).get("previewTemplate");
-  const { component: TemplateComponent } = resolveTemplate(previewOverride || themeVariant);
-  return <TemplateComponent />;
+  const resolvedTemplate = resolveTemplate(previewOverride || themeVariant);
+  const { component: TemplateComponent } = resolvedTemplate;
+  return (
+    <Suspense fallback={<TemplateLoadingFallback />}>
+      <TemplateIntroLoader
+        key={resolvedTemplate.id}
+        themeVariant={resolvedTemplate.id}
+        companyName={metadata.title}
+      />
+      <TemplateBackToTop themeVariant={resolvedTemplate.id} />
+      <TemplateComponent />
+    </Suspense>
+  );
 };
 
 export default WebsiteTemplateRenderer;

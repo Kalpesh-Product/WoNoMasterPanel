@@ -21,6 +21,14 @@ const TEMPLATE_KIND = {
     commons: "workspace",
     huddle: "meeting",
 };
+const OPENSTREETMAP_TEMPLATE_IDS = new Set([
+    "default",
+    "minimal-swiss",
+    "fresh-studio",
+    "warm-organic",
+    "emerald-studio",
+    "figma-make",
+]);
 const photo = (id, width = 1200) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=78`;
 const photoValue = (id, width = 1000) => ({ url: photo(id, width) });
 // Portrait crops centred on the face, for team photos (4:5, matching the team cards).
@@ -871,8 +879,11 @@ const demoBusinessFor = (kind, themeVariant) => {
 export const defaultKindForTemplate = (themeVariant) => TEMPLATE_KIND[themeVariant] || "workspace";
 // Pexels "Video of a House Interior" (free to use, no attribution needed); 2K file, 21 seconds.
 const CAMELIA_DEMO_VIDEO = "https://videos.pexels.com/video-files/7578546/7578546-uhd_2560_1440_30fps.mp4";
-// Pexels "A Bartender Making A Cocktail Drink" (free to use, no attribution needed); HD, portrait.
-const GRAND_BAR_DEMO_VIDEO = "https://videos.pexels.com/video-files/7608984/7608984-hd_720_1280_25fps.mp4";
+// Pexels "Mixologist Preparing Cocktail at Trendy Bar"; full-HD landscape footage
+// keeps the demo hero cinematic instead of forcing a portrait crop on desktop.
+const GRAND_BAR_DEMO_VIDEO = "https://videos.pexels.com/video-files/33462637/14237457_1920_1080_24fps.mp4";
+// Pexels "Barista Crafting Latte Art in Coffee Shop"; used only by the Aromatica demo preview.
+const AROMATICA_DEMO_VIDEO = "https://www.pexels.com/download/video/30090157/";
 const slugOf = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, "");
 const pageFor = (kind, business, slug) => ({
     name: business.page.name,
@@ -917,7 +928,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         themeVariant,
         // Camelia's hero plays a looping video when one is linked (see the builder's "Hero Video URL").
         // The sample clip is a placeholder for previews only; a real site sets its own link.
-        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : "",
+        heroVideoUrl: themeVariant === "camelia" ? CAMELIA_DEMO_VIDEO : themeVariant === "tulum" ? TULUM_DEMO_VIDEO : themeVariant === "grindelwald" ? GRINDELWALD_DEMO_VIDEO : themeVariant === "grandbar" ? GRAND_BAR_DEMO_VIDEO : themeVariant === "aromatica" ? AROMATICA_DEMO_VIDEO : "",
         styleConfig: {},
         sectionOverrides: {},
         vertical: primary.vertical,
@@ -953,7 +964,9 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         email: `hello@${handle}.com`,
         phone: "+91 98765 43210",
         address: primary.address,
-        mapUrl: themeVariant === "qerja" || themeVariant === "cali-hostel" ? `https://www.google.com/maps?q=${encodeURIComponent(primary.address)}&output=embed` : "https://www.openstreetmap.org/export/embed.html?bbox=77.58%2C12.96%2C77.65%2C12.99&layer=mapnik",
+        mapUrl: OPENSTREETMAP_TEMPLATE_IDS.has(themeVariant)
+            ? "https://www.openstreetmap.org/export/embed.html?bbox=77.58%2C12.96%2C77.65%2C12.99&layer=mapnik"
+            : `https://www.google.com/maps?q=${encodeURIComponent(primary.address)}&output=embed`,
         contactPersonName: primary.contactPersonName,
         contactPersonRole: primary.contactPersonRole,
         contactPersonEmail: `${primary.contactPersonName.split(" ")[0].toLowerCase()}@${handle}.com`,

@@ -168,7 +168,34 @@ export const GbMenuCard = ({ service, item, index }) => {
     </GbReveal>
   );
 };
-export const mapSrc = (address) =>
-  "https://www.google.com/maps?q=" +
-  encodeURIComponent(address || "Bengaluru") +
-  "&output=embed";
+export const mapSrc = (address, configuredUrl) => {
+  const fallback =
+    "https://www.google.com/maps?q=" +
+    encodeURIComponent(address || "Bengaluru") +
+    "&output=embed";
+  const value = String(configuredUrl || "").trim();
+  if (!value) return fallback;
+
+  try {
+    const url = new URL(value);
+    const isGoogleMap =
+      /(^|\.)google\.[a-z.]+$/i.test(url.hostname) ||
+      url.hostname === "maps.google.com";
+    const isEmbeddable =
+      url.pathname.includes("/maps/embed") ||
+      url.searchParams.get("output") === "embed";
+    if (isGoogleMap && isEmbeddable) return value;
+
+    const query =
+      url.searchParams.get("q") ||
+      url.searchParams.get("query") ||
+      address;
+    return query
+      ? "https://www.google.com/maps?q=" +
+          encodeURIComponent(query) +
+          "&output=embed"
+      : fallback;
+  } catch {
+    return fallback;
+  }
+};

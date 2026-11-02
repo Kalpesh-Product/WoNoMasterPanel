@@ -8,9 +8,11 @@ const masterPanelModules = [
     submenus: [
       { key: "dashboard.companies", label: "Companies" },
       { key: "dashboard.all-leads", label: "All Leads" },
+      { key: "dashboard.contributor-leads", label: "Contributor Leads" },
       { key: "dashboard.value-adds-leads", label: "Value Adds Leads" },
       { key: "dashboard.data-upload", label: "Data Upload" },
       { key: "dashboard.publish-listings", label: "Publish Listings" },
+      { key: "dashboard.contributions", label: "Contributions" },
       { key: "dashboard.nomad-signup-leads", label: "Nomad Signup Leads" },
       { key: "dashboard.company-verification-leads", label: "Company Verification Leads" },
       { key: "dashboard.companies-verified", label: "Companies Verified" },
@@ -24,6 +26,7 @@ const masterPanelModules = [
       { key: "dashboard.visa-countries", label: "Visa Countries" },
       { key: "dashboard.nomad-click-analytics", label: "Nomad Click Analytics" },
       { key: "dashboard.add-master-user", label: "Add Master User" },
+      { key: "dashboard.host-modules-content", label: "Host Modules Content" },
     ],
   },
   {

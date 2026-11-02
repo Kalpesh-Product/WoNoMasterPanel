@@ -9,7 +9,7 @@ import { Placeholder, StarRow } from "../shared/TplUI";
 import { Label, SlideIn } from "./LodgeUI";
 const img = (value) => (typeof value === "string" ? value : value?.url || "");
 const Hero = ({ eyebrow, title, intro }) => (
-  <section className="tp-wrap pb-12 pt-14 md:pb-16 md:pt-20">
+  <section className="tp-wrap ld-page-intro pb-12 pt-14 md:pb-16 md:pt-20">
     <SlideIn>
       <Label>{eyebrow}</Label>
     </SlideIn>
@@ -251,7 +251,7 @@ export const LodgeContact = () => {
         {showForm ? (
           <SlideIn>
             <div
-              className="rounded-2xl border p-8"
+              className="ld-form-panel rounded-2xl border p-8"
               style={{
                 borderColor: "color-mix(in srgb,var(--t-text) 16%,transparent)",
               }}
@@ -367,7 +367,7 @@ export const LodgePartner = () => {
         </SlideIn>
         <SlideIn delay={0.08}>
           <div
-            className="rounded-2xl border p-8"
+            className="ld-form-panel rounded-2xl border p-8"
             style={{
               borderColor: "color-mix(in srgb,var(--t-text) 16%,transparent)",
             }}
