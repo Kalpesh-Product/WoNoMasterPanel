@@ -41,6 +41,16 @@ const BreadCrumbComponent = () => {
   // Generate breadcrumb links
   const breadcrumbs = pathSegments.map((segment, index) => {
     const isLast = index === pathSegments.length - 1;
+    // "/destination-data-analytics/ranking/destination/:destination[/:category]" —
+    // the literal "destination" routing segment has no page of its own, so
+    // it is dropped and the chain goes Destination Data Analytics › Ranking
+    // › the destination (e.g. Dubai) › the category.
+    const isDestinationAnalyticsRouteSegment =
+      segment === "destination" &&
+      index > 1 &&
+      pathSegments[index - 1] === "ranking" &&
+      pathSegments[index - 2] === "destination-data-analytics";
+    if (isDestinationAnalyticsRouteSegment) return null;
     const isEditCompanyIdSegment =
       index >= 2 &&
       pathSegments[index - 1] === "edit" &&
@@ -97,7 +107,7 @@ const BreadCrumbComponent = () => {
         {displayText}
       </Link>
     );
-  });
+  }).filter(Boolean);
 
   // Only true for "/companies/:id/nomad-listings" and
   // "/host-companies/:id/nomad-listing" — both have a real Wono Nomads hub

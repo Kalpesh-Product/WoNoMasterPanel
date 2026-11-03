@@ -57,6 +57,11 @@ const {
   updateWonoDestination,
 } = require("../controllers/destinationDataControllers");
 const {
+  getDestinationListingSummary,
+  getDestinationListings,
+  updateDestinationListingInfo,
+} = require("../controllers/destinationListingControllers");
+const {
   getCompanyUnits,
   getCompanyRecoveryQueue,
   setUnitActiveStatus,
@@ -122,6 +127,9 @@ router.get("/destinations-data", getDestinationsData);
 router.get("/destination-analytics", getWonoDestinationAnalytics);
 router.post("/destination-analytics", createWonoDestination);
 router.patch("/destination-analytics/:id", updateWonoDestination);
+router.get("/destination-listings/summary", getDestinationListingSummary);
+router.get("/destination-listings", getDestinationListings);
+router.patch("/destination-listings/:id", updateDestinationListingInfo);
 router.get("/host-companies", getHostLeadCompanies);
 router.post(
   "/transfer-nomad-listing",

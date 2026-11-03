@@ -104,15 +104,15 @@ const WonoDestinationEditModal = ({ destination, onClose }) => {
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Destination</label>
-              <input className={`${inputCls} mt-1`} value={form.destination} onChange={(event) => setForm((prev) => ({ ...prev, destination: event.target.value }))} placeholder="e.g. Lisbon" />
+              <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.destination} onChange={(event) => setForm((prev) => ({ ...prev, destination: event.target.value }))} placeholder="e.g. Lisbon" />
             </div>
             <div>
               <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Country</label>
-              <input className={`${inputCls} mt-1`} value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} placeholder="e.g. Portugal" />
+              <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} placeholder="e.g. Portugal" />
             </div>
             <div>
               <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Continent</label>
-              <input className={`${inputCls} mt-1`} value={form.continent} onChange={(event) => setForm((prev) => ({ ...prev, continent: event.target.value }))} placeholder="e.g. Europe" />
+              <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.continent} onChange={(event) => setForm((prev) => ({ ...prev, continent: event.target.value }))} placeholder="e.g. Europe" />
             </div>
           </div>
 

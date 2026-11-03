@@ -158,14 +158,25 @@ const WonoDestinationAnalyticsDashboard = () => {
       data: continentSummary.map((item) => rows.filter((row) => row.continent === item.continent && row.priority === priority).length),
     })),
     options: {
-      chart: { type: "bar", stacked: true, toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", stacked: true, stackType: "100%", toolbar: { show: false } },
       colors: Object.keys(priorityMeta).map((priority) => priorityMeta[priority].color),
-      plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
-      dataLabels: { enabled: false },
-      xaxis: { categories: continentSummary.map((item) => item.continent), labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "9px" }, rotate: -35 } },
-      yaxis: { title: { text: "Destinations", style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
+      plotOptions: { bar: { borderRadius: 4, horizontal: true, barHeight: "55%", dataLabels: { position: "center" } } },
+      dataLabels: {
+        enabled: true,
+        style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px", colors: ["#fff"] },
+        formatter: (_value, opts) => {
+          const count = opts.w.config.series[opts.seriesIndex].data[opts.dataPointIndex];
+          return count > 0 ? count : "";
+        },
+      },
+      xaxis: {
+        categories: continentSummary.map((item) => `${item.continent} · ${((item.count / rows.length) * 100).toFixed(1)}%`),
+        max: 100,
+        labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" }, formatter: (value) => `${value}%` },
+      },
+      yaxis: { labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" } } },
       grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
-      legend: { position: "bottom", fontFamily: "Poppins, sans-serif", fontSize: "9px" },
+      legend: { position: "bottom", fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" },
       tooltip: { y: { formatter: (value) => `${value} destinations` } },
     },
   }), [rows, continentSummary]);
@@ -183,12 +194,12 @@ const WonoDestinationAnalyticsDashboard = () => {
   const countryBinsChart = useMemo(() => ({
     series: [{ name: "Countries", data: countryBins.map((item) => item.countries) }],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
       colors: ["#7C3AED"],
-      plotOptions: { bar: { borderRadius: 5, columnWidth: "46%" } },
-      dataLabels: { enabled: false },
-      xaxis: { categories: countryBins.map((item) => `${item.bin} destination${item.bin > 1 ? "s" : ""}`), labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "9px" } } },
-      yaxis: { title: { text: "Countries", style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
+      plotOptions: { bar: { borderRadius: 5, columnWidth: "46%", dataLabels: { position: "center" } } },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", colors: ["#fff"] } },
+      xaxis: { categories: countryBins.map((item) => `${item.bin} destination${item.bin > 1 ? "s" : ""}`), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" } } },
+      yaxis: { title: { text: "Countries", style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
       grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
       legend: { show: false },
       tooltip: { y: { formatter: (value) => `${value} countries` } },
@@ -198,12 +209,12 @@ const WonoDestinationAnalyticsDashboard = () => {
   const top5Chart = (items, color) => ({
     series: [{ name: "WoNo score", data: items.map((item) => item.score) }],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
       colors: [color],
-      plotOptions: { bar: { borderRadius: 6, columnWidth: "55%" } },
-      dataLabels: { enabled: true, offsetY: -18, style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", colors: ["#0F172A"] }, formatter: (value) => number.format(value) },
-      xaxis: { categories: items.map((item) => item.destination), labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
-      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
+      plotOptions: { bar: { borderRadius: 6, columnWidth: "55%", dataLabels: { position: "center" } } },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", colors: ["#fff"] }, formatter: (value) => number.format(value) },
+      xaxis: { categories: items.map((item) => item.destination), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
+      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
       grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
       legend: { show: false },
       tooltip: { y: { formatter: (value) => number.format(value) } },
@@ -216,17 +227,22 @@ const WonoDestinationAnalyticsDashboard = () => {
   const priorityChart = useMemo(() => ({
     series: prioritySummary.map((item) => item.count),
     options: {
-      chart: { type: "donut", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "donut", toolbar: { show: false } },
       labels: prioritySummary.map((item) => item.priority),
       colors: prioritySummary.map((item) => priorityMeta[item.priority].color),
-      dataLabels: { enabled: false },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" }, dropShadow: { enabled: false } },
       stroke: { width: 0 },
       legend: { show: false },
       plotOptions: {
         pie: {
           donut: {
             size: "67%",
-            labels: { show: true, total: { show: true, label: "Destinations", formatter: () => String(summary?.destinations || 0) } },
+            labels: {
+              show: true,
+              name: { fontSize: "12px" },
+              value: { fontSize: "14px", fontFamily: "Poppins-SemiBold, sans-serif" },
+              total: { show: true, label: "Destinations", fontSize: "11px", formatter: () => String(summary?.destinations || 0) },
+            },
           },
         },
       },
@@ -237,12 +253,12 @@ const WonoDestinationAnalyticsDashboard = () => {
   const priorityScoreChart = useMemo(() => ({
     series: [{ name: "Average score", data: prioritySummary.map((item) => Number(item.averageScore.toFixed(2))) }],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
       colors: prioritySummary.map((item) => priorityMeta[item.priority].color),
-      plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: "46%" } },
-      dataLabels: { enabled: false },
-      xaxis: { categories: prioritySummary.map((item) => item.priority), labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
-      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
+      plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: "46%", dataLabels: { position: "center" } } },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", colors: ["#fff"] }, formatter: (value) => number.format(value) },
+      xaxis: { categories: prioritySummary.map((item) => item.priority), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
+      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
       grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
       legend: { show: false },
       tooltip: { y: { formatter: (value) => number.format(value) } },
@@ -252,17 +268,22 @@ const WonoDestinationAnalyticsDashboard = () => {
   const continentShareChart = useMemo(() => ({
     series: continentSummary.map((item) => item.count),
     options: {
-      chart: { type: "donut", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "donut", toolbar: { show: false } },
       labels: continentSummary.map((item) => item.continent),
       colors: continentSummary.map((item) => item.color),
-      dataLabels: { enabled: false },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" }, dropShadow: { enabled: false } },
       stroke: { width: 0 },
-      legend: { position: "bottom", fontFamily: "Poppins, sans-serif", fontSize: "9px", itemMargin: { horizontal: 5, vertical: 1 } },
+      legend: { position: "bottom", fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px", itemMargin: { horizontal: 5, vertical: 1 } },
       plotOptions: {
         pie: {
           donut: {
             size: "67%",
-            labels: { show: true, total: { show: true, label: "Continents", formatter: () => String(summary?.continents || 0) } },
+            labels: {
+              show: true,
+              name: { fontSize: "12px" },
+              value: { fontSize: "14px", fontFamily: "Poppins-SemiBold, sans-serif" },
+              total: { show: true, label: "Continents", fontSize: "11px", formatter: () => String(summary?.continents || 0) },
+            },
           },
         },
       },
@@ -273,12 +294,12 @@ const WonoDestinationAnalyticsDashboard = () => {
   const continentScoreChart = useMemo(() => ({
     series: [{ name: "Average WoNo score", data: continentSummary.map((item) => Number(item.averageScore.toFixed(2))) }],
     options: {
-      chart: { type: "bar", toolbar: { show: false } },
+      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
       colors: continentSummary.map((item) => item.color),
-      plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: "50%" } },
-      dataLabels: { enabled: false },
-      xaxis: { categories: continentSummary.map((item) => item.continent), labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "9px" }, rotate: -35 } },
-      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins, sans-serif", fontSize: "10px" } } },
+      plotOptions: { bar: { borderRadius: 5, distributed: true, columnWidth: "50%", dataLabels: { position: "center" } } },
+      dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", colors: ["#fff"] }, formatter: (value) => number.format(value) },
+      xaxis: { categories: continentSummary.map((item) => item.continent), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" }, rotate: -35 } },
+      yaxis: { min: 0, max: 100, title: { text: "WoNo Score", style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } }, labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } } },
       grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
       legend: { show: false },
       tooltip: { y: { formatter: (value) => number.format(value) } },
@@ -325,199 +346,219 @@ const WonoDestinationAnalyticsDashboard = () => {
             </div>
 
             <section className="grid gap-4 xl:grid-cols-2">
-              <Panel title="Priority share" description="Destination count by onboarding band.">
-                <ReactApexChart options={priorityChart.options} series={priorityChart.series} type="donut" height={230} />
+              <Panel title="Priority Share" description="Destination count by onboarding band.">
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityChart.options} series={priorityChart.series} type="donut" height={230} />
                 <PriorityLegend prioritySummary={prioritySummary} mode="count" />
               </Panel>
-              <Panel title="Priority score comparison" description="Average WoNo score by onboarding band.">
-                <ReactApexChart options={priorityScoreChart.options} series={priorityScoreChart.series} type="bar" height={230} />
+              <Panel title="Priority Score Comparison" description="Average WoNo score by onboarding band.">
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityScoreChart.options} series={priorityScoreChart.series} type="bar" height={230} />
                 <PriorityLegend prioritySummary={prioritySummary} mode="score" />
               </Panel>
-              <Panel title="Continent share" description="Destination count by continent.">
-                <ReactApexChart options={continentShareChart.options} series={continentShareChart.series} type="donut" height={250} />
+              <Panel title="Continent Share" description="Destination count by continent.">
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={continentShareChart.options} series={continentShareChart.series} type="donut" height={250} />
               </Panel>
-              <Panel title="Continent score comparison" description="Average WoNo score by continent.">
-                <ReactApexChart options={continentScoreChart.options} series={continentScoreChart.series} type="bar" height={250} />
+              <Panel title="Continent Score Comparison" description="Average WoNo score by continent.">
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={continentScoreChart.options} series={continentScoreChart.series} type="bar" height={250} />
               </Panel>
             </section>
 
-            <Panel title="Priority mix by continent" description="How many destinations in each priority band, per continent.">
+            <Panel title="Priority Mix By Continent" description="How many destinations in each priority band, per continent.">
               <div className="px-2 pt-2">
-                <ReactApexChart options={priorityByContinentChart.options} series={priorityByContinentChart.series} type="bar" height={280} />
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityByContinentChart.options} series={priorityByContinentChart.series} type="bar" height={340} />
               </div>
             </Panel>
-            <Panel title="Destinations per country" description="How many countries have 1, 2, 3+ WoNo destinations.">
+            <Panel title="Destinations Per Country" description="How many countries have 1, 2, 3+ WoNo destinations.">
               <div className="px-2 pt-2">
-                <ReactApexChart options={countryBinsChart.options} series={countryBinsChart.series} type="bar" height={280} />
-              </div>
-            </Panel>
-
-            <section className="grid gap-3 xl:grid-cols-4">
-              {prioritySummary.map((item) => {
-                const meta = priorityMeta[item.priority];
-
-                return (
-                  <button
-                    key={item.priority}
-                    type="button"
-                    onClick={() => setActivePriority(item.priority)}
-                    className={`rounded-2xl border ${meta.border} ${meta.surface} p-4 text-left transition hover:-translate-y-0.5 ${activePriority === item.priority ? "ring-2 ring-offset-2" : ""}`}
-                    style={activePriority === item.priority ? { "--tw-ring-color": meta.color } : undefined}
-                  >
-                    <div className={`flex items-center justify-between text-[10px] uppercase tracking-widest ${meta.text}`}>
-                      <span>{item.priority}</span>
-                      <span>{item.rankRange}</span>
-                    </div>
-                    <h2 className="mt-2 text-sm text-slate-900 font-pmedium">{meta.label}</h2>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-[10px] text-slate-500">Destinations</p>
-                        <p className="mt-0.5 text-lg text-slate-900">{item.count}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-500">Average</p>
-                        <p className="mt-0.5 text-lg text-slate-900">{number.format(item.averageScore)}</p>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-[10px] text-slate-600">
-                      Range: {number.format(item.topDestination?.score || 0)} – {number.format(item.bottomScore)}
-                    </p>
-                    <p className="mt-1 truncate text-[10px] text-slate-600">Top: {item.topDestination?.destination}</p>
-                  </button>
-                );
-              })}
-            </section>
-
-            <Panel title={`Top 5 in ${activePriority}`} description="Highest-scoring destinations in the selected priority band.">
-              <div className="px-2 pt-2">
-                <ReactApexChart key={`top5-priority-${activePriority}`} options={top5PriorityChart.options} series={top5PriorityChart.series} type="bar" height={260} />
-              </div>
-            </Panel>
-
-            <Panel title={`${activePriority} ranked destinations`} description={`${priorityMeta[activePriority].reason} Showing all ${activePriorityData?.count || 0} destinations in rank order.`}>
-              <div className="max-h-[540px] overflow-auto">
-                <table className="w-full min-w-[840px] table-fixed text-left">
-                  <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
-                    <tr>
-                      <th className="w-[9%] px-5 py-3">Rank</th>
-                      <th className="w-[26%] px-5 py-3">Destination</th>
-                      <th className="w-[21%] px-5 py-3">Country</th>
-                      <th className="w-[19%] px-5 py-3">Continent</th>
-                      <th className="w-[15%] px-5 py-3 text-right">WoNo score</th>
-                      <th className="w-[10%] px-5 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(activePriorityData?.rows || []).map((item) => (
-                      <tr key={item.rank} className="transition hover:bg-slate-50">
-                        <td className="px-5 py-3.5 text-slate-500">#{item.rank}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-900" title={item.destination}>{item.destination}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-600" title={item.country}>{item.country}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-600" title={item.continent}>{item.continent}</td>
-                        <td className="px-5 py-3.5 text-right text-slate-900">{number.format(item.score)}</td>
-                        <td className="px-5 py-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDestination(item)}
-                            aria-label={`View ${item.destination} score details`}
-                            className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <ReactApexChart className="chart-tooltip-overflow-visible" options={countryBinsChart.options} series={countryBinsChart.series} type="bar" height={280} />
               </div>
             </Panel>
 
             <section>
-              <h2 className="text-sm text-slate-900 font-pmedium">Continent performance</h2>
-              <p className="mt-1 text-xs text-slate-500">Select a continent to see its top destinations and full ranked list below.</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {continentSummary.map((item) => (
-                  <button
-                    key={item.continent}
-                    type="button"
-                    onClick={() => setActiveContinent(item.continent)}
-                    className={`rounded-2xl border ${item.style.border} ${item.style.surface} p-4 text-left transition hover:-translate-y-0.5 ${selectedContinent === item.continent ? "ring-2 ring-offset-2" : ""}`}
-                    style={selectedContinent === item.continent ? { "--tw-ring-color": item.color } : undefined}
-                  >
-                    <div className={`flex items-center justify-between text-[10px] uppercase tracking-widest ${item.style.text}`}>
-                      <span>{item.continent}</span>
-                      <span>{item.count} destinations</span>
-                    </div>
-                    <h3 className="mt-2 text-sm text-slate-900 font-pmedium">Avg score {number.format(item.averageScore)}</h3>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-[10px] text-slate-500">Destinations</p>
-                        <p className="mt-0.5 text-lg text-slate-900">{item.count}</p>
+              <h2 className="text-sm text-slate-900 font-pmedium">Priority Bands</h2>
+              <p className="mt-1 text-xs font-pmedium text-slate-500">Select a priority to see its top destinations and full ranked list below.</p>
+              <div className="sticky top-0 z-20 -mx-2 bg-white px-2 pb-3 pt-2 lg:-mx-2.5 lg:px-2.5">
+                <div className="grid gap-2 xl:grid-cols-4">
+                  {prioritySummary.map((item) => {
+                    const meta = priorityMeta[item.priority];
+
+                  return (
+                    <button
+                      key={item.priority}
+                      type="button"
+                      onClick={() => setActivePriority(item.priority)}
+                      className={`rounded-2xl border ${meta.border} ${meta.surface} p-3 text-left font-pmedium transition hover:-translate-y-0.5 ${activePriority === item.priority ? "ring-2 ring-offset-2" : ""}`}
+                      style={activePriority === item.priority ? { "--tw-ring-color": meta.color } : undefined}
+                    >
+                      <div className={`flex items-center justify-between gap-2 text-[10px] font-pmedium uppercase tracking-widest ${meta.text}`}>
+                        <span className="truncate">{item.priority} · {meta.label}</span>
+                        <span className="shrink-0">{item.rankRange}</span>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-slate-500">Average</p>
-                        <p className="mt-0.5 text-lg text-slate-900">{number.format(item.averageScore)}</p>
+                      <div className="mt-2 grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-[10px] font-pmedium text-slate-500">Destinations</p>
+                          <p className="mt-0.5 text-lg text-slate-900">{item.count}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-pmedium text-slate-500">Average</p>
+                          <p className="mt-0.5 text-lg text-slate-900">{number.format(item.averageScore)}</p>
+                        </div>
                       </div>
-                    </div>
-                    <p className="mt-3 text-[10px] text-slate-600">
-                      Range: {number.format(item.topDestination?.score || 0)} – {number.format(item.lowScore)}
-                    </p>
-                    <p className="mt-1 truncate text-[10px] text-slate-600">Top: {item.topDestination?.destination}</p>
-                  </button>
-                ))}
+                      <p className="mt-2 truncate text-[10px] font-pmedium text-slate-600">Top: {item.topDestination?.destination}</p>
+                    </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-4">
+                <Panel title={`Top 5 In ${activePriority}`} description="Highest-scoring destinations in the selected priority band.">
+                  <div className="px-2 pt-2">
+                    <ReactApexChart className="chart-tooltip-overflow-visible" key={`top5-priority-${activePriority}`} options={top5PriorityChart.options} series={top5PriorityChart.series} type="bar" height={260} />
+                  </div>
+                </Panel>
+
+                <Panel title={`${activePriority} Ranked Destinations`} description={`${priorityMeta[activePriority].reason} Showing all ${activePriorityData?.count || 0} destinations in rank order.`}>
+                  <div className="max-h-[540px] overflow-auto">
+                    <table className="w-full min-w-[840px] table-fixed text-left">
+                      <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
+                        <tr>
+                          <th className="w-[9%] px-5 py-3">Rank</th>
+                          <th className="w-[26%] px-5 py-3">Destination</th>
+                          <th className="w-[21%] px-5 py-3">Country</th>
+                          <th className="w-[19%] px-5 py-3">Continent</th>
+                          <th className="w-[15%] px-5 py-3 text-right">WoNo score</th>
+                          <th className="w-[10%] px-5 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(activePriorityData?.rows || []).map((item) => (
+                          <tr key={item.rank} className="transition hover:bg-slate-50">
+                            <td className="px-5 py-3.5 text-slate-500">#{item.rank}</td>
+                            <td className="truncate px-5 py-3.5" title={item.destination}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(item.destination)}`)}
+                                className="truncate font-pmedium text-slate-900 hover:text-[#2563EB] hover:underline"
+                              >
+                                {item.destination}
+                              </button>
+                            </td>
+                            <td className="truncate px-5 py-3.5 text-slate-600" title={item.country}>{item.country}</td>
+                            <td className="truncate px-5 py-3.5 text-slate-600" title={item.continent}>{item.continent}</td>
+                            <td className="px-5 py-3.5 text-right text-slate-900">{number.format(item.score)}</td>
+                            <td className="px-5 py-3.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDestination(item)}
+                                aria-label={`View ${item.destination} score details`}
+                                className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Panel>
               </div>
             </section>
 
-            <Panel title={`Top 5 in ${selectedContinent}`} description="Highest-scoring destinations in the selected continent.">
-              <div className="px-2 pt-2">
-                <ReactApexChart key={`top5-continent-${selectedContinent}`} options={top5ContinentChart.options} series={top5ContinentChart.series} type="bar" height={260} />
+            <section>
+              <h2 className="text-sm text-slate-900 font-pmedium">Continent Performance</h2>
+              <p className="mt-1 text-xs font-pmedium text-slate-500">Select a continent to see its top destinations and full ranked list below.</p>
+              <div className="sticky top-0 z-20 -mx-2 bg-white px-2 pb-3 pt-2 lg:-mx-2.5 lg:px-2.5">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {continentSummary.map((item) => (
+                    <button
+                      key={item.continent}
+                      type="button"
+                      onClick={() => setActiveContinent(item.continent)}
+                      className={`rounded-2xl border ${item.style.border} ${item.style.surface} p-3 text-left font-pmedium transition hover:-translate-y-0.5 ${selectedContinent === item.continent ? "ring-2 ring-offset-2" : ""}`}
+                      style={selectedContinent === item.continent ? { "--tw-ring-color": item.color } : undefined}
+                    >
+                      <div className={`flex items-center justify-between gap-2 text-[10px] font-pmedium uppercase tracking-widest ${item.style.text}`}>
+                        <span className="truncate">{item.continent} · {item.count} destinations</span>
+                        <span className="shrink-0">{number.format(item.averageScore)}</span>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-[10px] font-pmedium text-slate-500">Destinations</p>
+                          <p className="mt-0.5 text-lg text-slate-900">{item.count}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-pmedium text-slate-500">Average</p>
+                          <p className="mt-0.5 text-lg text-slate-900">{number.format(item.averageScore)}</p>
+                        </div>
+                      </div>
+                      <p className="mt-2 truncate text-[10px] font-pmedium text-slate-600">Top: {item.topDestination?.destination}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </Panel>
 
-            <Panel title={`${selectedContinent} ranked destinations`} description={`Showing all ${continentRows.length} destinations in rank order.`}>
-              <div className="max-h-[540px] overflow-auto">
-                <table className="w-full min-w-[840px] table-fixed text-left">
-                  <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
-                    <tr>
-                      <th className="w-[9%] px-5 py-3">Rank</th>
-                      <th className="w-[26%] px-5 py-3">Destination</th>
-                      <th className="w-[21%] px-5 py-3">Country</th>
-                      <th className="w-[19%] px-5 py-3">Priority</th>
-                      <th className="w-[15%] px-5 py-3 text-right">WoNo score</th>
-                      <th className="w-[10%] px-5 py-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {continentRows.map((item) => (
-                      <tr key={item.rank} className="transition hover:bg-slate-50">
-                        <td className="px-5 py-3.5 text-slate-500">#{item.rank}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-900" title={item.destination}>{item.destination}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-600" title={item.country}>{item.country}</td>
-                        <td className="truncate px-5 py-3.5 text-slate-600">{item.priority}</td>
-                        <td className="px-5 py-3.5 text-right text-slate-900">{number.format(item.score)}</td>
-                        <td className="px-5 py-3.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDestination(item)}
-                            aria-label={`View ${item.destination} score details`}
-                            className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"
-                          >
-                            <Eye size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4 flex flex-col gap-4">
+                <Panel title={`Top 5 In ${selectedContinent}`} description="Highest-scoring destinations in the selected continent.">
+                  <div className="px-2 pt-2">
+                    <ReactApexChart className="chart-tooltip-overflow-visible" key={`top5-continent-${selectedContinent}`} options={top5ContinentChart.options} series={top5ContinentChart.series} type="bar" height={260} />
+                  </div>
+                </Panel>
+
+                <Panel title={`${selectedContinent} Ranked Destinations`} description={`Showing all ${continentRows.length} destinations in rank order.`}>
+                  <div className="max-h-[540px] overflow-auto">
+                    <table className="w-full min-w-[840px] table-fixed text-left">
+                      <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
+                        <tr>
+                          <th className="w-[9%] px-5 py-3">Rank</th>
+                          <th className="w-[26%] px-5 py-3">Destination</th>
+                          <th className="w-[21%] px-5 py-3">Country</th>
+                          <th className="w-[19%] px-5 py-3">Priority</th>
+                          <th className="w-[15%] px-5 py-3 text-right">WoNo score</th>
+                          <th className="w-[10%] px-5 py-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {continentRows.map((item) => (
+                          <tr key={item.rank} className="transition hover:bg-slate-50">
+                            <td className="px-5 py-3.5 font-pmedium text-slate-500">#{item.rank}</td>
+                            <td className="truncate px-5 py-3.5" title={item.destination}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(item.destination)}`)}
+                                className="truncate font-pmedium text-slate-900 hover:text-[#2563EB] hover:underline"
+                              >
+                                {item.destination}
+                              </button>
+                            </td>
+                            <td className="truncate px-5 py-3.5 font-pmedium text-slate-600" title={item.country}>{item.country}</td>
+                            <td className="truncate px-5 py-3.5 font-pmedium text-slate-600">{item.priority}</td>
+                            <td className="px-5 py-3.5 text-right font-pmedium text-slate-900">{number.format(item.score)}</td>
+                            <td className="px-5 py-3.5 text-right">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDestination(item)}
+                                aria-label={`View ${item.destination} score details`}
+                                className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Panel>
               </div>
-            </Panel>
+            </section>
 
             <button
               type="button"
               onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
-              className="group relative overflow-hidden rounded-[2rem] bg-slate-950 px-6 py-6 text-left text-white shadow-sm transition hover:bg-[#102A52] sm:px-8"
+              className="group relative overflow-hidden rounded-[2rem] font-pmedium bg-slate-950 px-6 py-6 text-left text-white shadow-sm transition hover:bg-[#102A52] sm:px-8"
             >
-              <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full bg-[#2563EB]/35 blur-3xl" />
+              <div className="absolute -right-12 -top-16 h-52 font-pmedium w-52 rounded-full bg-[#2563EB]/35 blur-3xl" />
               <div className="relative grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div>
                   {/* <p className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Destination data workspace</p> */}

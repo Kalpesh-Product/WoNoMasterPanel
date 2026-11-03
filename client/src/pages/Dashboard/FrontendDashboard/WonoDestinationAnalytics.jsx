@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { BarChart3, MapPin, Search, Layers3, Globe2, Eye, ArrowLeft, Plus, Pencil, CheckCircle2, XCircle } from "lucide-react";
+import { BarChart3, MapPin, Search, Layers3, Globe2, Eye, ArrowLeft, Plus, Pencil, CheckCircle2, XCircle, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -224,7 +224,9 @@ const WonoDestinationAnalytics = () => {
                       {rows.map((row) => (
                         <tr key={row._id || `${row.rank}-${row.destination}`} className="transition-colors hover:bg-slate-50/70">
                           <td className="px-5 py-3.5 font-pmedium text-slate-500">{row.rank ?? "—"}</td>
-                          <td className="px-5 py-3.5 font-pmedium text-slate-900">{row.destination}</td>
+                          <td className="px-5 py-3.5 font-pmedium">
+                            <button type="button" onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(row.destination)}`)} className="text-slate-900 underline-offset-2 transition hover:text-[#2563EB] hover:underline">{row.destination}</button>
+                          </td>
                           <td className="px-5 py-3.5 font-pmedium text-slate-600">{row.country}</td>
                           <td className="px-5 py-3.5 font-pmedium text-slate-600">{row.continent}</td>
                           <td className="px-5 py-3.5">{row.priority ? <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-pmedium ${priorityStyle[row.priority]}`}>{row.priority} · {row.priorityLabel}</span> : <span className="text-[10px] text-slate-400">—</span>}</td>
@@ -240,6 +242,7 @@ const WonoDestinationAnalytics = () => {
                           <td className="px-5 py-3.5 text-right font-pmedium text-slate-900">{row.score != null ? number.format(row.score) : "—"}</td>
                           <td className="px-5 py-3.5 text-right">
                             <div className="inline-flex items-center gap-1.5">
+                              {/* <button type="button" onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(row.destination)}`)} aria-label={`Open ${row.destination} dashboard`} title="Open destination dashboard" className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]"><LayoutDashboard size={12} /></button> */}
                               <button type="button" onClick={() => setSelectedDestination(row)} aria-label={`View ${row.destination}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]"><Eye size={12} /></button>
                               <button type="button" onClick={() => setEditingDestination(row)} aria-label={`Edit ${row.destination}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]"><Pencil size={12} /></button>
                               <button

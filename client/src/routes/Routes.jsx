@@ -222,6 +222,8 @@ import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
 import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalyticsDashboard";
 import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
+import WonoDestinationExecutiveDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationExecutiveDashboard";
+import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationCategoryDashboard";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
@@ -637,6 +639,14 @@ export const routes = createBrowserRouter([
                   {
                     path: "destination-data-analytics/ranking",
                     element: <WonoDestinationAnalytics />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination",
+                    element: <WonoDestinationExecutiveDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination/:category",
+                    element: <WonoDestinationCategoryDashboard />,
                   },
                   {
                     path: "world-ranking-weights",
