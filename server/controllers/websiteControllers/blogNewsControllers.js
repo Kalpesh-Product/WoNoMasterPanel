@@ -278,7 +278,16 @@ const getNewsContributions = async (req, res) => {
 const updateNewsContributionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const response = await axios.patch(`${NOMADS_BASE_URL}/news/contributions/${id}/status`, req.body, {
+        const user = req.userData || {};
+        const reviewerName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+            || user.fullName || user.name || user.email || "Master Panel";
+        const payload = {
+            status: req.body.status,
+            rejectionReason: req.body.rejectionReason,
+            reviewedBy: reviewerName,
+            reviewedById: String(req.user || user._id || user.userId || user.id || ""),
+        };
+        const response = await axios.patch(`${NOMADS_BASE_URL}/news/contributions/${id}/status`, payload, {
             headers: adminHeaders(),
         });
         return res.status(200).json(response.data);
@@ -306,7 +315,16 @@ const getEventContributions = async (req, res) => {
 const updateEventContributionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const response = await axios.patch(`${NOMADS_BASE_URL}/events/contributions/${id}/status`, req.body, {
+        const user = req.userData || {};
+        const reviewerName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+            || user.fullName || user.name || user.email || "Master Panel";
+        const payload = {
+            status: req.body.status,
+            rejectionReason: req.body.rejectionReason,
+            reviewedBy: reviewerName,
+            reviewedById: String(req.user || user._id || user.userId || user.id || ""),
+        };
+        const response = await axios.patch(`${NOMADS_BASE_URL}/events/contributions/${id}/status`, payload, {
             headers: adminHeaders(),
         });
         return res.status(200).json(response.data);
@@ -333,7 +351,16 @@ const getPlaceContributions = async (req, res) => {
 const updatePlaceContributionStatus = async (req, res) => {
     try {
         const { id } = req.params;
-        const response = await axios.patch(`${NOMADS_BASE_URL}/places/contributions/${id}/status`, req.body, {
+        const user = req.userData || {};
+        const reviewerName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+            || user.fullName || user.name || user.email || "Master Panel";
+        const payload = {
+            status: req.body.status,
+            rejectionReason: req.body.rejectionReason,
+            reviewedBy: reviewerName,
+            reviewedById: String(req.user || user._id || user.userId || user.id || ""),
+        };
+        const response = await axios.patch(`${NOMADS_BASE_URL}/places/contributions/${id}/status`, payload, {
             headers: adminHeaders(),
         });
         return res.status(200).json(response.data);

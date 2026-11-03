@@ -43,7 +43,6 @@ const CONTRIBUTION_CONFIG = {
     endpoint: "/api/blogs/contributions",
     statusEndpoint: (id) => `/api/blogs/contributions/${id}/status`,
     activeEndpoint: (id) => `/api/blogs/${id}`,
-    requiresRejectionReason: true,
     approvedToast: "Blog approved.",
     rejectedToast: "Blog rejected.",
     activeToast: (isActive) => `Blog marked as ${isActive ? "active" : "inactive"}.`,
@@ -585,7 +584,7 @@ const Contributions = () => {
   const selectedItem = useMemo(() => contributions.find((item) => (item._id || item.id) === selectedItemId), [contributions, selectedItemId]);
   const timelineItem = useMemo(() => contributions.find((item) => (item._id || item.id) === timelineItemId), [contributions, timelineItemId]);
   const beginStatusChange = (itemId, status) => {
-    if (status === "rejected" && activeConfig.requiresRejectionReason) {
+    if (status === "rejected") {
       const item = contributions.find((entry) => (entry._id || entry.id) === itemId);
       setRejectionTarget(item || null);
       setRejectionReason("");
