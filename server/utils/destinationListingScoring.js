@@ -65,18 +65,31 @@ const CATEGORY_FACTORS = {
 
 const CATEGORY_ALIASES = {
   coworking: "Coworking",
+  coworkings: "Coworking",
   coliving: "Coliving",
+  colivings: "Coliving",
   cafe: "Cafe",
+  cafes: "Cafe",
   café: "Cafe",
+  cafés: "Cafe",
   hostel: "Hostel",
+  hostels: "Hostel",
   meetingroom: "Meeting Room",
+  metingroom: "Meeting Room",
   "meeting room": "Meeting Room",
   "meeting rooms": "Meeting Room",
 };
 
 const normalizeCategory = (raw) => {
   const key = String(raw || "").trim().toLowerCase().replace(/\s+/g, " ");
-  return CATEGORY_ALIASES[key] || CATEGORY_ALIASES[key.replace(/\s+/g, "")] || raw;
+  const collapsed = key.replace(/\s+/g, "");
+  return (
+    CATEGORY_ALIASES[key] ||
+    CATEGORY_ALIASES[collapsed] ||
+    CATEGORY_ALIASES[key.replace(/s$/, "")] ||
+    CATEGORY_ALIASES[collapsed.replace(/s$/, "")] ||
+    raw
+  );
 };
 
 const PITCH_NO_WEBSITE = "Lead with FREE website, then WoNo listing and lead/customer tools.";

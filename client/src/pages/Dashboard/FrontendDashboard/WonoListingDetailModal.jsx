@@ -58,6 +58,12 @@ const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
               <p>Digital gaps: <span className="text-slate-900">{s.digitalGaps} / 3</span></p>
               <p>Near airport: <span className="text-slate-900">{listing.nearAirport ? "Yes" : "No"}</span></p>
               <p>Website: <span className="text-slate-900">{listing.hasWebsite ? "Yes" : "No"}</span></p>
+              {listing.airportName && <p>Airport: <span className="text-slate-900">{listing.airportName}</span></p>}
+              {listing.airportMapUrl && (
+                <p className="truncate">
+                  Airport map: <a href={listing.airportMapUrl} target="_blank" rel="noreferrer" className="text-[#2563EB] hover:underline">View on map</a>
+                </p>
+              )}
               {listing.inclusion && <p className="col-span-2">Inclusion: <span className="text-slate-900">{listing.inclusion}</span></p>}
             </div>
           </div>

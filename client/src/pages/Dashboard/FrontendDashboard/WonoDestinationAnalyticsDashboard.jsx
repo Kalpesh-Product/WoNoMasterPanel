@@ -469,7 +469,7 @@ const WonoDestinationAnalyticsDashboard = () => {
               <h2 className="text-sm text-slate-900 font-pmedium">Continent Performance</h2>
               <p className="mt-1 text-xs font-pmedium text-slate-500">Select a continent to see its top destinations and full ranked list below.</p>
               <div className="sticky top-0 z-20 -mx-2 bg-white px-2 pb-3 pt-2 lg:-mx-2.5 lg:px-2.5">
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
                   {continentSummary.map((item) => (
                     <button
                       key={item.continent}
@@ -479,7 +479,7 @@ const WonoDestinationAnalyticsDashboard = () => {
                       style={selectedContinent === item.continent ? { "--tw-ring-color": item.color } : undefined}
                     >
                       <div className={`flex items-center justify-between gap-2 text-[10px] font-pmedium uppercase tracking-widest ${item.style.text}`}>
-                        <span className="truncate">{item.continent} · {item.count} destinations</span>
+                        <span className="truncate">{item.continent} </span>
                         <span className="shrink-0">{number.format(item.averageScore)}</span>
                       </div>
                       <div className="mt-2 grid grid-cols-2 gap-3">

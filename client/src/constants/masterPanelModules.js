@@ -16,6 +16,7 @@ import {
   LuMessageSquareText,
   LuNewspaper,
   LuChartLine,
+  LuMapPin,
   LuPlane,
   LuShieldCheck,
   LuTicket,
@@ -149,7 +150,7 @@ export const MASTER_PANEL_MODULES = [
             id: 38,
             key: "dashboard.destination-data-analytics",
             title: "Destination Data Analytics",
-            icon: LuChartLine,
+            icon: LuMapPin,
             route: "/dashboard/destination-data-analytics",
           },
           {

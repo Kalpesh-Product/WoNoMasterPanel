@@ -171,6 +171,8 @@ import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
+import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
+import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -401,6 +403,14 @@ export const routes = createBrowserRouter([
                     // element: <ProductUpload />,
                     element: <UploadLayout />,
                     children: [
+                      {
+                        path: "destination-add-upload",
+                        element: <DestinationAddUpload />,
+                      },
+                      {
+                        path: "destination-reupload",
+                        element: <DestinationReuploadUpload />,
+                      },
                       {
                         path: "company-upload",
                         element: <CompaniesUpload />,

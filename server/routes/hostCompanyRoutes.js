@@ -60,7 +60,10 @@ const {
   getDestinationListingSummary,
   getDestinationListings,
   updateDestinationListingInfo,
+  bulkImportDestinationListings,
+  getUploadedDestinations,
 } = require("../controllers/destinationListingControllers");
+const { uploadSpreadsheets } = require("../config/multerConfig");
 const {
   getCompanyUnits,
   getCompanyRecoveryQueue,
@@ -128,8 +131,10 @@ router.get("/destination-analytics", getWonoDestinationAnalytics);
 router.post("/destination-analytics", createWonoDestination);
 router.patch("/destination-analytics/:id", updateWonoDestination);
 router.get("/destination-listings/summary", getDestinationListingSummary);
+router.get("/destination-listings/uploaded", getUploadedDestinations);
 router.get("/destination-listings", getDestinationListings);
 router.patch("/destination-listings/:id", updateDestinationListingInfo);
+router.post("/destination-listings/bulk-import", uploadSpreadsheets.array("files", 30), bulkImportDestinationListings);
 router.get("/host-companies", getHostLeadCompanies);
 router.post(
   "/transfer-nomad-listing",

@@ -1,4 +1,7 @@
+const ExcelJS = require("exceljs");
 const WonoDestinationListing = require("../models/WonoDestinationListing");
+const { parseDestinationRawData } = require("../utils/parseDestinationRawData");
+const { scoreListing } = require("../utils/destinationListingScoring");
 
 const CATEGORIES = ["Coworking", "Coliving", "Cafe", "Hostel", "Meeting Room"];
 const PRIORITIES = ["High Opportunity", "Medium Opportunity", "Lower Opportunity"];
@@ -141,4 +144,115 @@ const updateDestinationListingInfo = async (req, res, next) => {
   }
 };
 
-module.exports = { getDestinationListingSummary, getDestinationListings, updateDestinationListingInfo };
+// Every destination that already has at least one listing uploaded, with its
+// business count and when it was last touched — for the Reupload tab, and for
+// disabling already-added destinations on the Add New tab.
+const getUploadedDestinations = async (req, res, next) => {
+  try {
+    const rows = await WonoDestinationListing.aggregate([
+      {
+        $group: {
+          _id: "$destination",
+          count: { $sum: 1 },
+          lastUpdated: { $max: "$updatedAt" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+    return res.status(200).json({
+      destinations: rows.map((row) => ({ destination: row._id, count: row.count, lastUpdated: row.lastUpdated })),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Imports one or more city business-listing workbooks (.xlsx/.xlsm), scoring
+// every business and replacing that destination's listings wholesale — the
+// UI equivalent of scripts/importDestinationListings.js, run per uploaded file.
+const bulkImportDestinationListings = async (req, res, next) => {
+  try {
+    const files = req.files || [];
+    if (!files.length) return res.status(400).json({ message: "Upload at least one .xlsx/.xlsm file." });
+    // Set when the caller already knows the destination (e.g. picked from a
+    // dropdown on the Add New / Reupload tabs) — overrides the filename guess.
+    const destinationOverride = String(req.body.destination || "").trim();
+
+    const results = [];
+    for (const file of files) {
+      try {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(file.buffer);
+        const parsed = parseDestinationRawData(workbook, file.originalname);
+        const destination = destinationOverride || parsed.destination;
+
+        const byCategory = {};
+        parsed.businesses.forEach((b) => {
+          byCategory[b.category] = byCategory[b.category] || [];
+          byCategory[b.category].push(b);
+        });
+
+        const docs = parsed.businesses.map((b) => {
+          const scored = scoreListing(b, byCategory[b.category]);
+          return {
+            destination,
+            category: b.category,
+            businessName: b.businessName,
+            website: b.website,
+            address: b.address,
+            about: b.about,
+            googleMapUrl: b.googleMapUrl,
+            rating: b.rating,
+            totalReviews: b.totalReviews,
+            inclusion: b.inclusion,
+            hasWebsite: b.hasWebsite,
+            hasInstagram: b.hasInstagram,
+            hasFacebook: b.hasFacebook,
+            nearAirport: b.nearAirport,
+            airportName: b.airportName,
+            airportMapUrl: b.airportMapUrl,
+            email: b.email,
+            contact: b.contact,
+            linkedin: b.linkedin,
+            businessStatus: "Active",
+            scoring: {
+              needScore: scored.need.score,
+              categoryFitScore: scored.categoryFit.score,
+              businessActivityScore: scored.activity.score,
+              finalScore: scored.finalScore,
+              priority: scored.priority,
+              digitalGaps: scored.digitalGaps,
+              recommendedPitch: scored.recommendedPitch,
+            },
+          };
+        });
+
+        const deleted = await WonoDestinationListing.deleteMany({ destination });
+        const inserted = await WonoDestinationListing.insertMany(docs);
+
+        results.push({
+          filename: file.originalname,
+          success: true,
+          destination,
+          removed: deleted.deletedCount,
+          imported: inserted.length,
+          warnings: parsed.warnings,
+        });
+      } catch (fileError) {
+        results.push({ filename: file.originalname, success: false, error: fileError.message });
+      }
+    }
+
+    return res.status(200).json({ results });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getDestinationListingSummary,
+  getDestinationListings,
+  updateDestinationListingInfo,
+  bulkImportDestinationListings,
+  getUploadedDestinations,
+};

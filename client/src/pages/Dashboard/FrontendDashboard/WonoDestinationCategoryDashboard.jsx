@@ -269,7 +269,7 @@ const WonoDestinationCategoryDashboard = () => {
                 </div>
                 <div className="max-h-[560px] overflow-auto">
                   <table className="w-full min-w-[2150px] text-left">
-                    <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    <thead className="sticky top-0 z-30 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                       <tr>
                         <th className="whitespace-nowrap px-4 py-3">Rank</th>
                         <th className="whitespace-nowrap px-4 py-3">Business Name</th>
@@ -286,7 +286,7 @@ const WonoDestinationCategoryDashboard = () => {
                         <th className="whitespace-nowrap px-4 py-3">Plan</th>
                         <th className="whitespace-nowrap px-4 py-3">Owner</th>
                         <th className="px-4 py-3">Notes</th>
-                        <th className="sticky right-0 z-20 whitespace-nowrap border-l border-slate-200 bg-slate-50 px-4 py-3 text-right">Actions</th>
+                        <th className="sticky right-0 z-20 whitespace-nowrap border-l border-slate-200 bg-slate-50 px-4 py-3 text-right will-change-transform">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/80">
@@ -354,7 +354,7 @@ const WonoDestinationCategoryDashboard = () => {
                           </td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{item.owner || "—"}</td>
                           <td className="px-4 py-3.5 font-pmedium text-slate-600">{item.notes || "—"}</td>
-                          <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right group-hover:bg-blue-50/30">
+                          <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right will-change-transform group-hover:bg-blue-50/30">
                             <div className="inline-flex items-center gap-1.5">
                               <button type="button" onClick={() => setSelectedListing(item)} aria-label={`View ${item.businessName}`} title="View listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-[#2563EB]"><Eye size={14} /></button>
                               <button type="button" onClick={() => setEditingListing(item)} aria-label={`Edit ${item.businessName}`} title="Edit listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-amber-100 hover:text-amber-700"><Pencil size={14} /></button>

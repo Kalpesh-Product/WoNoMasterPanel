@@ -16,6 +16,8 @@ const wonoDestinationListingSchema = new mongoose.Schema(
     hasInstagram: { type: Boolean, default: false },
     hasFacebook: { type: Boolean, default: false },
     nearAirport: { type: Boolean, default: false },
+    airportName: { type: String, trim: true },
+    airportMapUrl: { type: String, trim: true },
     email: { type: String, trim: true },
     contact: { type: String, trim: true },
     linkedin: { type: String, trim: true },

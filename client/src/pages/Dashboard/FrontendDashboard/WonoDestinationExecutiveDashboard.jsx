@@ -314,7 +314,7 @@ const WonoDestinationExecutiveDashboard = () => {
                   <div className="px-2 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={categoryChart.options} series={categoryChart.series} type="bar" height={250} /></div>
                 </Panel>
                 <div className="md:col-span-2">
-                  <Panel title="Priority By Category" description="High, medium and lower opportunity across all five categories." clip={false}>
+                  <Panel title="Priority By Category" description="High, medium and lower opportunity across all five categories.">
                     <div className="chart-tooltip-overflow-visible px-3 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={categoryPriorityChart.options} series={categoryPriorityChart.series} type="bar" height={320} /></div>
                   </Panel>
                 </div>
@@ -423,7 +423,7 @@ const WonoDestinationExecutiveDashboard = () => {
                 </div>
                 <div className="max-h-[560px] overflow-auto">
                   <table className="w-full min-w-[2150px] text-left">
-                    <thead className="sticky top-0 z-10 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    <thead className="sticky top-0 z-30 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                       <tr>
                         <th className="whitespace-nowrap px-4 py-3">Business</th>
                         <th className="whitespace-nowrap px-4 py-3">Category</th>
@@ -439,7 +439,7 @@ const WonoDestinationExecutiveDashboard = () => {
                         <th className="whitespace-nowrap px-4 py-3">Plan</th>
                         <th className="whitespace-nowrap px-4 py-3">Owner</th>
                         <th className="px-4 py-3">Notes</th>
-                        <th className="sticky right-0 z-20 whitespace-nowrap border-l border-slate-200 bg-slate-50 px-4 py-3 text-right">Actions</th>
+                        <th className="sticky right-0 z-20 whitespace-nowrap border-l border-slate-200 bg-slate-50 px-4 py-3 text-right will-change-transform">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/80">
@@ -481,7 +481,7 @@ const WonoDestinationExecutiveDashboard = () => {
                           </td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{lead.owner || "—"}</td>
                           <td className="px-4 py-3.5 font-pmedium text-slate-600">{lead.notes || "—"}</td>
-                          <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right group-hover:bg-blue-50/30">
+                          <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right will-change-transform group-hover:bg-blue-50/30">
                             <div className="inline-flex items-center gap-1.5">
                               <button type="button" onClick={() => setSelectedLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Eye size={14} /></button>
                               <button type="button" onClick={() => setEditingLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Pencil size={14} /></button>

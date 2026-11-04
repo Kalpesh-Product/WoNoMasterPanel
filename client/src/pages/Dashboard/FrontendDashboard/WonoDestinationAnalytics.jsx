@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import React, { useEffect, useMemo, useState } from "react";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { BarChart3, MapPin, Search, Layers3, Globe2, Eye, ArrowLeft, Plus, Pencil, CheckCircle2, XCircle, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -42,19 +42,26 @@ const WonoDestinationAnalytics = () => {
   const axios = useAxiosPrivate();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [priority, setPriority] = useState("");
   const [continent, setContinent] = useState("");
   const [selectedDestination, setSelectedDestination] = useState(null);
   const [editingDestination, setEditingDestination] = useState(null);
 
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timeout);
+  }, [search]);
+
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["wono-destination-analytics", search, priority, continent],
+    queryKey: ["wono-destination-analytics", debouncedSearch, priority, continent],
     queryFn: async () => {
       const response = await axios.get("/api/hosts/destination-analytics", {
-        params: { search, priority, continent, limit: 250, includeInactive: true },
+        params: { search: debouncedSearch, priority, continent, limit: 250, includeInactive: true },
       });
       return response.data;
     },
+    placeholderData: keepPreviousData,
     staleTime: 5 * 60 * 1000,
   });
 
