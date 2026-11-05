@@ -321,10 +321,19 @@ const WonoDestinationAnalyticsDashboard = () => {
       <PageFrame>
         <div className="flex flex-col gap-4">
           <section>
-            
-            <h1 className="mt-1 text-title text-primary uppercase">
-              Destination sequence & ranking dashboard
-            </h1>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="mt-1 text-title text-primary uppercase">
+                Destination sequence & ranking dashboard
+              </h1>
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-white transition hover:bg-[#1d4ed8]"
+              >
+                Open full sequence & ranking
+                <ArrowRight size={14} />
+              </button>
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               Overall share, onboarding priorities, ranked destinations and continent performance from the approved 132-destination research set.
             </p>
@@ -553,24 +562,6 @@ const WonoDestinationAnalyticsDashboard = () => {
               </div>
             </section>
 
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
-              className="group relative overflow-hidden rounded-[2rem] font-pmedium bg-slate-950 px-6 py-6 text-left text-white shadow-sm transition hover:bg-[#102A52] sm:px-8"
-            >
-              <div className="absolute -right-12 -top-16 h-52 font-pmedium w-52 rounded-full bg-[#2563EB]/35 blur-3xl" />
-              <div className="relative grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-                <div>
-                  {/* <p className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Destination data workspace</p> */}
-                  <h2 className="mt-2 text-xl font-pmedium">Explore every score behind the sequence</h2>
-                  <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">Open the complete ranking to search and filter all 132 destinations. Each View detail exposes the 10 factor values and the exact weighted WoNo scoring calculation.</p>
-                </div>
-                <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-[10px] uppercase tracking-widest text-slate-950 transition group-hover:bg-blue-50">
-                  Open full sequence & ranking
-                  <ArrowRight size={14} />
-                </span>
-              </div>
-            </button>
             </>
           )}
         </div>

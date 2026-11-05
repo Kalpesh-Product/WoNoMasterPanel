@@ -25,6 +25,8 @@ const buildInitialForm = (listing) => ({
   email: listing?.email || "",
   contact: listing?.contact || "",
   linkedin: listing?.linkedin || "",
+  airportName: listing?.airportName || "",
+  airportMapUrl: listing?.airportMapUrl || "",
   businessStatus: listing?.businessStatus || "Active",
   status: listing?.status || "New",
   owner: listing?.owner || "",
@@ -36,7 +38,7 @@ const buildInitialForm = (listing) => ({
 
 const Field = ({ label, children }) => (
   <div>
-    <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">{label}</label>
+    <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">{label}</label>
     <div className="mt-1">{children}</div>
   </div>
 );
@@ -74,14 +76,14 @@ const WonoListingEditModal = ({ listing, onClose }) => {
       <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-5">
           <div>
-            <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Edit info — scores and factors are not editable here</p>
+            <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Edit info — scores and factors are not editable here</p>
             <h2 className="mt-1 text-lg font-pmedium text-slate-900">{listing.businessName}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200"><X size={16} /></button>
         </div>
         <div className="p-6">
           <div className="overflow-hidden rounded-2xl border border-slate-100">
-            <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Contact</div>
+            <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Contact</div>
             <div className="grid gap-3 px-5 py-4">
               <Field label="Website"><input className={inputCls} value={form.website} onChange={set("website")} /></Field>
               <div className="grid grid-cols-2 gap-3">
@@ -89,11 +91,15 @@ const WonoListingEditModal = ({ listing, onClose }) => {
                 <Field label="Contact"><input className={inputCls} value={form.contact} onChange={set("contact")} /></Field>
               </div>
               <Field label="LinkedIn"><input className={inputCls} value={form.linkedin} onChange={set("linkedin")} /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Airport name"><input className={inputCls} value={form.airportName} onChange={set("airportName")} /></Field>
+                <Field label="Airport map link"><input className={inputCls} value={form.airportMapUrl} onChange={set("airportMapUrl")} /></Field>
+              </div>
             </div>
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
-            <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Sales tracking</div>
+            <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Sales tracking</div>
             <div className="grid gap-3 px-5 py-4">
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Business status">

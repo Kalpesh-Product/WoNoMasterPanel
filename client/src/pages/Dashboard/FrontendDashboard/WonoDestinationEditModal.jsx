@@ -94,7 +94,7 @@ const WonoDestinationEditModal = ({ destination, onClose }) => {
       <section className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-white shadow-2xl">
         <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-6 py-5">
           <div>
-            <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">{isEditing ? "Edit destination" : "Add destination"}</p>
+            <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">{isEditing ? "Edit destination" : "Add destination"}</p>
             <h2 className="mt-1 text-lg font-pmedium text-slate-900">{isEditing ? destination.destination : "New destination"}</h2>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 transition-colors hover:bg-slate-200"><X size={16} /></button>
@@ -103,21 +103,21 @@ const WonoDestinationEditModal = ({ destination, onClose }) => {
         <div className="p-6">
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Destination</label>
+              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Destination</label>
               <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.destination} onChange={(event) => setForm((prev) => ({ ...prev, destination: event.target.value }))} placeholder="e.g. Lisbon" />
             </div>
             <div>
-              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Country</label>
+              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Country</label>
               <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.country} onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))} placeholder="e.g. Portugal" />
             </div>
             <div>
-              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Continent</label>
+              <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Continent</label>
               <input disabled={isEditing} className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500`} value={form.continent} onChange={(event) => setForm((prev) => ({ ...prev, continent: event.target.value }))} placeholder="e.g. Europe" />
             </div>
           </div>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
-            <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+            <div className="border-b border-slate-100 bg-slate-50 px-5 py-3 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
               Score factors — {missingCount === 0 ? "all 10 set" : `${missingCount} missing`}
             </div>
             {FACTOR_FIELDS.map(([key, label]) => (

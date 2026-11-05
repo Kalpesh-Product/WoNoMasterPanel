@@ -122,7 +122,7 @@ const getDestinationListings = async (req, res, next) => {
   }
 };
 
-const EDITABLE_INFO_FIELDS = ["website", "email", "contact", "linkedin", "businessStatus", "status", "owner", "notes", "nextAction", "plan"];
+const EDITABLE_INFO_FIELDS = ["website", "email", "contact", "linkedin", "airportName", "airportMapUrl", "businessStatus", "status", "owner", "notes", "nextAction", "plan"];
 
 const updateDestinationListingInfo = async (req, res, next) => {
   try {
@@ -133,6 +133,11 @@ const updateDestinationListingInfo = async (req, res, next) => {
     });
     if (req.body.dateOfActivation !== undefined) {
       updates.dateOfActivation = req.body.dateOfActivation ? new Date(req.body.dateOfActivation) : null;
+    }
+    // These flags aren't edited directly — they follow whichever info field proves them.
+    if (updates.website !== undefined) updates.hasWebsite = Boolean(updates.website);
+    if (updates.airportName !== undefined || updates.airportMapUrl !== undefined) {
+      updates.nearAirport = Boolean(updates.airportName || updates.airportMapUrl);
     }
 
     const listing = await WonoDestinationListing.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true }).lean();

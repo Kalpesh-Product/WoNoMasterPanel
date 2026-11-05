@@ -20,7 +20,7 @@ const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
           <div>
             <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-pmedium ${priorityStyle[s.priority]}`}>{s.priority}</span>
             <h2 className="mt-2 text-lg font-pmedium text-slate-900">{listing.businessName}</h2>
-            <p className="mt-1 text-xs font-pmedium text-slate-500">{listing.category} · {listing.address}</p>
+            <p className="mt-1 text-xs font-pmedium text-slate-500">{listing.category}</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 transition hover:bg-slate-200"><X size={16} /></button>
         </div>
@@ -56,14 +56,20 @@ const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-xs font-pmedium text-slate-600">
               <p>Rating: <span className="text-slate-900">{listing.rating} ({listing.totalReviews} reviews)</span></p>
               <p>Digital gaps: <span className="text-slate-900">{s.digitalGaps} / 3</span></p>
-              <p>Near airport: <span className="text-slate-900">{listing.nearAirport ? "Yes" : "No"}</span></p>
+              {listing.googleMapUrl && (
+                <p className="truncate">
+                  Google map: <a href={listing.googleMapUrl} target="_blank" rel="noreferrer" className="text-[#2563EB] hover:underline">View on map</a>
+                </p>
+              )}
               <p>Website: <span className="text-slate-900">{listing.hasWebsite ? "Yes" : "No"}</span></p>
+              <p>Near airport: <span className="text-slate-900">{listing.nearAirport ? "Yes" : "No"}</span></p>
               {listing.airportName && <p>Airport: <span className="text-slate-900">{listing.airportName}</span></p>}
               {listing.airportMapUrl && (
                 <p className="truncate">
                   Airport map: <a href={listing.airportMapUrl} target="_blank" rel="noreferrer" className="text-[#2563EB] hover:underline">View on map</a>
                 </p>
               )}
+              {listing.address && <p className="col-span-2 truncate">Address: <span className="text-slate-900">{listing.address}</span></p>}
               {listing.inclusion && <p className="col-span-2">Inclusion: <span className="text-slate-900">{listing.inclusion}</span></p>}
             </div>
           </div>
