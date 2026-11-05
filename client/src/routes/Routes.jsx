@@ -171,6 +171,8 @@ import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
+import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
+import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -220,6 +222,10 @@ import {
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
+import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalyticsDashboard";
+import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
+import WonoDestinationExecutiveDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationExecutiveDashboard";
+import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationCategoryDashboard";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
@@ -397,6 +403,14 @@ export const routes = createBrowserRouter([
                     // element: <ProductUpload />,
                     element: <UploadLayout />,
                     children: [
+                      {
+                        path: "destination-add-upload",
+                        element: <DestinationAddUpload />,
+                      },
+                      {
+                        path: "destination-reupload",
+                        element: <DestinationReuploadUpload />,
+                      },
                       {
                         path: "company-upload",
                         element: <CompaniesUpload />,
@@ -606,6 +620,10 @@ export const routes = createBrowserRouter([
                         element: <DestinationsData />,
                       },
                       {
+                        path: "ranking",
+                        element: <Navigate to="/dashboard/destination-data-analytics" replace />,
+                      },
+                      {
                         path: ":locationType",
                         children: [
                           {
@@ -623,6 +641,22 @@ export const routes = createBrowserRouter([
                         ],
                       },
                     ],
+                  },
+                  {
+                    path: "destination-data-analytics",
+                    element: <WonoDestinationAnalyticsDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking",
+                    element: <WonoDestinationAnalytics />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination",
+                    element: <WonoDestinationExecutiveDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination/:category",
+                    element: <WonoDestinationCategoryDashboard />,
                   },
                   {
                     path: "world-ranking-weights",

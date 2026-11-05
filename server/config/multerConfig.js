@@ -45,6 +45,24 @@ const createImageUpload = (maxFileSize) => multer({
   },
 });
 
+// Multer config for spreadsheet (.xlsx/.xlsm) bulk uploads
+const uploadSpreadsheets = multer({
+  storage,
+  limits: {
+    fileSize: 15 * 1024 * 1024, // 15 MB per file
+  },
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      file.mimetype === "application/vnd.ms-excel.sheet.macroEnabled.12"
+    ) {
+      return cb(null, true);
+    }
+    cb(new Error("Only .xlsx and .xlsm files are allowed"), false);
+  },
+});
+
 module.exports = upload;
 module.exports.uploadImages = createImageUpload(30 * 1024 * 1024);
 module.exports.uploadContentImages = createImageUpload(15 * 1024 * 1024);
+module.exports.uploadSpreadsheets = uploadSpreadsheets;

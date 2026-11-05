@@ -26,6 +26,8 @@ const UploadLayout = () => {
     { label: "Restaurants Upload", path: "restaurants-upload", heading: "Restaurants Upload", description: "Upload and manage restaurants." },
     { label: "Bulk Restaurant Images Upload", path: "bulk-restaurant-images-upload", heading: "Bulk Restaurant Images Upload", description: "Upload images in bulk for restaurants." },
     { label: "Restaurant Logo Upload", path: "restaurant-logo-upload", heading: "Restaurant Logo Upload", description: "Upload a logo for a restaurant." },
+    { label: "Add Destination Data", path: "destination-add-upload", heading: "Add Destination Data", description: "Upload a new destination's business-listing workbook." },
+    { label: "Reupload Destination Data", path: "destination-reupload", heading: "Reupload Destination Data", description: "Replace an already-uploaded destination's listings with a new file." },
   ];
 
   const filteredTabs = restrictedEmails.includes(userEmail)

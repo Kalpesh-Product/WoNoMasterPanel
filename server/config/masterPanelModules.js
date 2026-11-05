@@ -22,6 +22,7 @@ const masterPanelModules = [
       { key: "dashboard.reviews", label: "Reviews" },
       { key: "dashboard.value-adds-partners", label: "Value Adds Partners" },
       { key: "dashboard.destinations-data", label: "Destinations Data" },
+      { key: "dashboard.destination-data-analytics", label: "Destination Data Analytics" },
       { key: "dashboard.world-ranking-weights", label: "World Ranking Weights" },
       { key: "dashboard.visa-countries", label: "Visa Countries" },
       { key: "dashboard.nomad-click-analytics", label: "Nomad Click Analytics" },
