@@ -54,6 +54,10 @@ const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
           <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100">
             <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Business details</div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-xs font-pmedium text-slate-600">
+              <p>Continent: <span className="text-slate-900">{listing.continent || "—"}</span></p>
+              <p>Country: <span className="text-slate-900">{listing.country || "—"}</span></p>
+              <p>State: <span className="text-slate-900">{listing.state || "—"}</span></p>
+              <p>City: <span className="text-slate-900">{listing.city || "—"}</span></p>
               <p>Rating: <span className="text-slate-900">{listing.rating} ({listing.totalReviews} reviews)</span></p>
               <p>Digital gaps: <span className="text-slate-900">{s.digitalGaps} / 3</span></p>
               {listing.googleMapUrl && (
