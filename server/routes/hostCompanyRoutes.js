@@ -75,6 +75,7 @@ const {
   removePricingItem,
   setCustomPlanModules,
 } = require("../controllers/planPricingControllers");
+const { getHostInvoices } = require("../controllers/hostInvoiceControllers");
 
 //company
 router.post(
@@ -117,6 +118,7 @@ router.get("/companies/overview", getCompanyOverview);
 router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
 router.get("/host-companies", getHostLeadCompanies);
+router.get("/host-companies/:companyId/invoices", getHostInvoices);
 router.post(
   "/transfer-nomad-listing",
   setLogModule("Nomad Listings"),

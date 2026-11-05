@@ -96,11 +96,14 @@ function renderNotificationEmail({
   referenceValue,
   detailsTitle = "Your Details",
   detailRows = [],
+  secondaryDetailsTitle,
+  secondaryDetailRows = [],
   otpCode,
   totalPayable,
   ctaButton,
   whatNextTitle = "What Happens Next?",
   whatNextItems = [],
+  whatNextNumbered = false,
   noteTitle,
   noteHtml,
   signOffHtml,
@@ -115,13 +118,22 @@ function renderNotificationEmail({
       </tr>`,
     )
     .join("");
+  const secondaryDetailRowsHtml = secondaryDetailRows
+    .map(
+      ([label, value], index) => `
+      <tr>
+        <td class="email-label${index > 0 ? " email-divider" : ""}" style="padding:9px 0;width:45%;color:#8a93a3;${index > 0 ? "border-top:1px solid #eef2f8;" : ""}">${label}</td>
+        <td class="email-value${index > 0 ? " email-divider" : ""}" style="padding:9px 0;font-weight:500;text-align:right;color:#16233b;${index > 0 ? "border-top:1px solid #eef2f8;" : ""}">${value}</td>
+      </tr>`,
+    )
+    .join("");
 
   const whatNextHtml = whatNextItems
     .map(
-      (item) => `
+      (item, index) => `
       <tr>
         <td style="padding:6px 0;width:26px;vertical-align:top;">
-          <span class="email-badge" style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;font-size:11px;text-align:center;background-color:#e5f4fd;color:#0BA9EF;">&#10003;</span>
+          <span class="email-badge" style="display:inline-block;width:18px;height:18px;line-height:18px;border-radius:50%;font-size:11px;text-align:center;background-color:#e5f4fd;color:#0BA9EF;">${whatNextNumbered ? index + 1 : "&#10003;"}</span>
         </td>
         <td style="padding:6px 0;">${item}</td>
       </tr>`,
@@ -302,6 +314,17 @@ function renderNotificationEmail({
                 <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;">${detailsTitle}</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;color:#344054;">
                   ${detailRowsHtml}
+                </table>
+              </td>
+            </tr>`
+                : ""
+            }${
+              secondaryDetailRows.length
+                ? `<tr>
+              <td style="padding:28px 32px 4px;">
+                <p style="margin:0 0 12px;font-size:12px;font-weight:600;letter-spacing:0.5px;color:#0BA9EF;text-transform:uppercase;">${secondaryDetailsTitle || "Payment Breakdown"}</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="email-text" style="font-size:14px;color:#344054;">
+                  ${secondaryDetailRowsHtml}
                 </table>
               </td>
             </tr>`

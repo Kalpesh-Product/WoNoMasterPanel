@@ -236,6 +236,7 @@ import NomadReviews from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadR
 import NomadsLeads from "../pages/Dashboard/FrontendDashboard/WonoNomads/NomadsLeads";
 import UpgradePlan from "../pages/Dashboard/FrontendDashboard/UpgradePlan";
 import HostCompanyPlanHistory from "../pages/Dashboard/FrontendDashboard/HostCompanyPlanHistory";
+import HostInvoices from "../pages/Dashboard/FrontendDashboard/HostInvoices";
 import UnitsManagement from "../pages/Dashboard/FrontendDashboard/UnitsManagement";
 import WebsiteCreditRequests from "../pages/Dashboard/FrontendDashboard/WebsiteCreditRequests";
 import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupportTickets";
@@ -816,6 +817,10 @@ export const routes = createBrowserRouter([
                       {
                         path: ":companyId/plan-history",
                         element: <HostCompanyPlanHistory />,
+                      },
+                      {
+                        path: ":companyId/invoices",
+                        element: <HostInvoices />,
                       },
                       {
                         path: ":companyId/module-access",

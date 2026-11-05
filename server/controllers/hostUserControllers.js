@@ -813,48 +813,100 @@ const buildBookingPaymentReceivedEmail = ({
   location,
   startDate,
   endDate,
+  startTime,
+  endTime,
   noOfPeople,
   amount,
   currency,
+  unitRate,
+  duration,
+  durationUnit,
+  subtotalAmount,
+  discountAmount,
+  baseAmount,
+  platformFeePercent,
+  platformFeeAmount,
+  taxAmount,
   paidAt,
   invoiceNumber,
   paymentMethod,
+  transactionId,
+  serviceType,
 }) => {
-  const formattedAmount = new Intl.NumberFormat("en-IN", {
+  const moneyFormatter = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: String(currency || "INR").toUpperCase(),
     maximumFractionDigits: 2,
-  }).format(amount || 0);
+  });
+  const formatMoney = (value) => moneyFormatter.format(Number(value) || 0);
+  const formattedAmount = formatMoney(amount);
+  const formatClock = (value) => {
+    const match = String(value || "").trim().match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return String(value || "").trim();
+    const hour = Number(match[1]);
+    return `${hour % 12 || 12}:${match[2]} ${hour >= 12 ? "PM" : "AM"}`;
+  };
 
+  const stayType = serviceType === "hostel" || serviceType === "co-living";
+  const bookingLabel = serviceType === "hostel" ? "hostel stay" : serviceType === "co-living" ? "co-living stay" : "meeting-room booking";
+  const finalCode = stayType ? "RS" : "MRB";
+  const resolvedFeePercent = Number(platformFeePercent) || 7;
+  const resolvedBase = Number(baseAmount) || Number(subtotalAmount) || Math.round((Number(amount) / (1 + resolvedFeePercent / 100)) * 100) / 100;
+  const resolvedPlatformFee = Number(platformFeeAmount) || Math.max(0, Math.round((Number(amount) - resolvedBase) * 100) / 100);
+  const requestRows = [
+    ["Workspace", companyName || "-"],
+    ["Service", serviceType === "hostel" ? "Hostel" : serviceType === "co-living" ? "Co-living" : "Meeting Room"],
+    [stayType ? "Room" : "Meeting Room", productType || "-"],
+    ["Location", location || "-"],
+    [stayType ? "Check-in" : "Date", formatLongDate(startDate)],
+    ...(stayType && endDate ? [["Check-out", formatLongDate(endDate)]] : []),
+    ...(!stayType && (startTime || endTime)
+      ? [["Time", `${formatClock(startTime) || "-"} – ${formatClock(endTime) || "-"}`]]
+      : []),
+    ...(Number(duration) > 0
+      ? [["Duration", `${Number(duration)} ${durationUnit || (stayType ? "nights" : "hours")}`]]
+      : []),
+    [serviceType === "hostel" ? "Beds" : "Guests", noOfPeople ? `${noOfPeople} ${serviceType === "hostel" ? "Beds" : "People"}` : "-"],
+  ];
+  const paymentRows = [
+    ...(Number(unitRate) > 0
+      ? [[stayType ? "Nightly rate" : "Hourly rate", `${formatMoney(unitRate)} / ${stayType ? "night" : "hour"}`]]
+      : []),
+    ...(Number(subtotalAmount) > 0 && Number(discountAmount) > 0
+      ? [["Original subtotal", formatMoney(subtotalAmount)], ["Discount", `− ${formatMoney(discountAmount)}`]]
+      : []),
+    ["Booking subtotal", formatMoney(resolvedBase)],
+    ["WONO platform fee", `${resolvedFeePercent}% — ${formatMoney(resolvedPlatformFee)}`],
+    ...(Number(taxAmount) > 0 ? [["Taxes", formatMoney(taxAmount)]] : []),
+    ["Total paid", `<b>${formattedAmount}</b>`],
+    ["Payment Status", "Paid"],
+    ["Payment Date", formatLongDate(paidAt || new Date())],
+    ["Payment Method", paymentMethod || "-"],
+    ["Invoice Number", invoiceNumber || "-"],
+    ["Transaction ID", transactionId || "-"],
+  ];
   return {
     subject: "Payment Received — Booking Confirmation Pending",
     html: renderNotificationEmail({
       heroTitle: "Payment Received!",
-      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your payment was successful</span><br/>The host will now finalize your meeting-room booking.`,
+      heroSubtitle: `<span style="font-weight:700;color:#123a75;">Payment received — booking confirmation pending</span><br/>The host will now finalize your ${bookingLabel}.`,
       greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">Thank you for your payment for <b class="email-heading">${productType || "your booking request"}</b> at <b class="email-heading">${companyName || "WONO"}</b>.</p>
-        <p class="email-text" style="margin:8px 0 0;">Payment is complete, but the meeting-room booking is not confirmed until the host creates it. You will receive a separate confirmation email with an MRB booking ID.</p>
+        <p class="email-text" style="margin:0;">We received your payment of <b class="email-heading">${formattedAmount}</b> for <b class="email-heading">${productType || "your booking request"}</b> at <b class="email-heading">${companyName || "WONO"}</b>.</p>
+        <p class="email-text" style="margin:8px 0 0;">Your payment is complete, but the reservation will be confirmed after the host creates the booking. You will then receive a separate confirmation email containing your <b>${finalCode} booking ID</b>.</p>
       `,
-      detailsTitle: "Payment & Request Details",
-      detailRows: [
-        ["Workspace", companyName || "-"],
-        ["Requested Room", productType || "-"],
-        ["Location", location || "-"],
-        ["Requested Date", formatLongDate(startDate)],
-        ["Guests", noOfPeople ? `${noOfPeople} People` : "-"],
-        ["Payment Status", "Paid"],
-        ["Amount Paid", formattedAmount],
-        ["Payment Date", formatLongDate(paidAt || new Date())],
-        ["Invoice Number", invoiceNumber || "-"],
-        ["Payment Method", paymentMethod || "-"],
-      ],
+      detailsTitle: "Request Details",
+      detailRows: requestRows,
+      secondaryDetailsTitle: "Payment Breakdown",
+      secondaryDetailRows: paymentRows,
       whatNextTitle: "What Happens Next?",
       whatNextItems: [
-        "The host creates the meeting-room booking",
-        "You receive a separate confirmation email with your MRB booking ID",
-        "Show the MRB booking ID at the front desk when you arrive",
+        "Payment received &#10003;",
+        `The host creates and confirms the ${bookingLabel}`,
+        `You receive your ${finalCode} booking ID`,
+        `Show the ${finalCode} booking ID at the front desk when you arrive`,
       ],
+      whatNextNumbered: true,
       noteTitle: "Your Invoice",
       noteHtml: "Your payment invoice is attached to this email as a PDF for your records.",
     }),
@@ -3864,14 +3916,27 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       customerEmail,
       companyName,
       productType,
+      serviceType,
       startDate,
       endDate,
+      startTime,
+      endTime,
       noOfPeople,
       location,
       amount,
       currency,
+      unitRate,
+      duration,
+      durationUnit,
+      subtotalAmount,
+      discountAmount,
+      baseAmount,
+      platformFeePercent,
+      platformFeeAmount,
+      taxAmount,
       description,
       paymentType,
+      expiresAt,
       sendEmail = true,
     } = req.body || {};
 
@@ -3904,8 +3969,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 
     const resolvedCurrency = String(currency || "usd").toLowerCase();
 
-    const paymentLink = await stripe.paymentLinks.create({
-      line_items: [
+    const lineItems = [
         {
           price_data: {
             currency: resolvedCurrency,
@@ -3918,8 +3982,19 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
           },
           quantity: 1,
         },
-      ],
-    });
+      ];
+    const useExpiringSession = ["hostel", "co-living"].includes(serviceType) && expiresAt;
+    const paymentLink = useExpiringSession
+      ? await stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: customerEmail,
+          line_items: lineItems,
+          expires_at: Math.floor(new Date(expiresAt).getTime() / 1000),
+          success_url: `${String(process.env.NOMADS_APP_URL || "http://localhost:5173").replace(/\/$/, "")}/profile?tab=bookings&payment=success`,
+          cancel_url: `${String(process.env.NOMADS_APP_URL || "http://localhost:5173").replace(/\/$/, "")}/profile?tab=bookings&payment=cancelled`,
+        })
+      : await stripe.paymentLinks.create({ line_items: lineItems });
+    const paymentUrl = paymentLink.url;
 
     const resolvedBookingId =
       resolvedPaymentType === "plan_subscription"
@@ -3938,17 +4013,30 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
       registrationId: resolvedRegistrationId,
       companyName,
       productType,
+      serviceType: ["meeting-room", "hostel", "co-living"].includes(serviceType) ? serviceType : "booking",
       location,
       startDate: startDate || null,
       endDate: endDate || null,
+      startTime,
+      endTime,
       noOfPeople:
         noOfPeople != null && noOfPeople !== "" ? Number(noOfPeople) : null,
       description,
       paymentType: resolvedPaymentType,
       amount: numericAmount,
       currency: resolvedCurrency,
+      unitRate: Number(unitRate) || 0,
+      duration: Number(duration) || 0,
+      durationUnit,
+      subtotalAmount: Number(subtotalAmount) || 0,
+      discountAmount: Number(discountAmount) || 0,
+      baseAmount: Number(baseAmount) || 0,
+      platformFeePercent: Number(platformFeePercent) || 0,
+      platformFeeAmount: Number(platformFeeAmount) || 0,
+      taxAmount: Number(taxAmount) || 0,
       stripePaymentLinkId: paymentLink.id,
-      stripePaymentLinkUrl: paymentLink.url,
+      stripePaymentLinkUrl: paymentUrl,
+      stripeCheckoutSessionId: useExpiringSession ? paymentLink.id : "",
     });
 
     const paymentEmail =
@@ -3957,7 +4045,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
             customerName,
             companyName,
             planLabel: productType,
-            paymentLinkUrl: paymentLink.url,
+            paymentLinkUrl: paymentUrl,
             amount: numericAmount,
             currency: resolvedCurrency,
             requestId: resolvedRegistrationId,
@@ -3969,7 +4057,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
             startDate,
             endDate,
             noOfPeople,
-            paymentLinkUrl: paymentLink.url,
+            paymentLinkUrl: paymentUrl,
             amount: numericAmount,
             currency: resolvedCurrency,
           });
@@ -3983,7 +4071,7 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
 
     return res.status(200).json({
       message: "Payment link email sent successfully",
-      paymentLinkUrl: paymentLink.url,
+      paymentLinkUrl: paymentUrl,
     });
   } catch (error) {
     next(error);
@@ -4025,6 +4113,85 @@ const getBookingPaymentStatuses = async (req, res, next) => {
   }
 };
 
+// GET /api/hostpanel/booking-receipt?leadId= — a real Stripe Invoice for a
+// paid booking link (hosted_invoice_url + invoice_pdf), so HostPanel can
+// show/attach proof of payment (e.g. on its "Send Invoice to WONO" step)
+// without ever holding a Stripe key itself. The booking itself was paid via
+// a one-time Payment Link, which produces a Charge receipt, not a Stripe
+// Invoice object — so this creates a real Invoice for the same amount and
+// immediately marks it paid out-of-band (money already collected through
+// the Payment Link; this invoice documents it, it doesn't charge again).
+// Idempotent: the created invoice's id/urls are saved on the
+// BookingPaymentLink row, so a repeat call reuses it instead of creating a
+// new one each time.
+const getBookingReceipt = async (req, res, next) => {
+  try {
+    const leadId = String(req.query?.leadId || "").trim();
+    if (!leadId) {
+      return res.status(400).json({ message: "leadId is required" });
+    }
+    const link = await BookingPaymentLink.findOne({ leadId, status: "paid" }).sort({ paidAt: -1 });
+    if (!link) {
+      return res.status(404).json({ message: "No paid booking payment link found for this lead" });
+    }
+
+    if (link.stripeInvoiceUrl) {
+      return res.status(200).json({
+        invoiceUrl: link.stripeInvoiceUrl,
+        invoicePdf: link.stripeInvoicePdf,
+        amount: link.amount,
+        currency: link.currency,
+        paidAt: link.paidAt,
+      });
+    }
+
+    if (!link.leadEmail) {
+      return res.status(400).json({ message: "This booking has no customer email to invoice" });
+    }
+
+    // Reuse an existing Stripe Customer for this email instead of creating a
+    // new one on every invoice.
+    const existingCustomers = await stripe.customers.list({ email: link.leadEmail, limit: 1 });
+    const customer =
+      existingCustomers.data[0] ||
+      (await stripe.customers.create({ email: link.leadEmail, name: link.leadName || undefined }));
+
+    await stripe.invoiceItems.create({
+      customer: customer.id,
+      amount: Math.round(Number(link.amount) * 100),
+      currency: String(link.currency || "usd").toLowerCase(),
+      description: link.description || `${link.productType || "Booking"} — ${link.companyName || ""}`.trim(),
+    });
+
+    let invoice = await stripe.invoices.create({
+      customer: customer.id,
+      collection_method: "send_invoice",
+      days_until_due: 0,
+      auto_advance: false,
+      metadata: { leadId: link.leadId, bookingId: link.bookingId || "" },
+    });
+    invoice = await stripe.invoices.finalizeInvoice(invoice.id);
+    // Already collected via the Payment Link — this marks the invoice
+    // settled without charging the customer a second time.
+    invoice = await stripe.invoices.pay(invoice.id, { paid_out_of_band: true });
+
+    link.stripeInvoiceId = invoice.id;
+    link.stripeInvoiceUrl = invoice.hosted_invoice_url || "";
+    link.stripeInvoicePdf = invoice.invoice_pdf || "";
+    await link.save();
+
+    return res.status(200).json({
+      invoiceUrl: link.stripeInvoiceUrl,
+      invoicePdf: link.stripeInvoicePdf,
+      amount: link.amount,
+      currency: link.currency,
+      paidAt: link.paidAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // POST /api/host-user/stripe-webhook
 // Stripe calls this directly whenever a payment link is paid. Must receive the
 // raw (unparsed) request body — see the express.raw() wiring in server.js —
@@ -4050,7 +4217,7 @@ const handleStripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    if (session.payment_link) {
+    if (session.payment_link || session.id) {
       try {
         // The { status: { $ne: "paid" } } filter makes this an atomic
         // "transition once" — if Stripe redelivers this same event (it
@@ -4058,7 +4225,10 @@ const handleStripeWebhook = async (req, res) => {
         // left to update, so the confirmation email never sends twice.
         const updated = await BookingPaymentLink.findOneAndUpdate(
           {
-            stripePaymentLinkId: session.payment_link,
+            $or: [
+              ...(session.payment_link ? [{ stripePaymentLinkId: session.payment_link }] : []),
+              { stripeCheckoutSessionId: session.id },
+            ],
             status: { $ne: "paid" },
           },
           {
@@ -4114,15 +4284,28 @@ const handleStripeWebhook = async (req, res) => {
                   customerName: updated.leadName,
                   companyName: updated.companyName,
                   productType: updated.productType,
+                  serviceType: updated.serviceType,
                   bookingId: updated.bookingId,
                   location: updated.location,
                   startDate: updated.startDate,
                   endDate: updated.endDate,
+                  startTime: updated.startTime,
+                  endTime: updated.endTime,
                   noOfPeople: updated.noOfPeople,
                   amount: updated.amount,
                   currency: updated.currency,
+                  unitRate: updated.unitRate,
+                  duration: updated.duration,
+                  durationUnit: updated.durationUnit,
+                  subtotalAmount: updated.subtotalAmount,
+                  discountAmount: updated.discountAmount,
+                  baseAmount: updated.baseAmount,
+                  platformFeePercent: updated.platformFeePercent,
+                  platformFeeAmount: updated.platformFeeAmount,
+                  taxAmount: updated.taxAmount,
                   paidAt: updated.paidAt,
                   invoiceNumber,
+                  transactionId: session.payment_intent || session.id,
                   paymentMethod: session.payment_method_types?.[0]
                     ? session.payment_method_types[0].replace(/^\w/, (c) =>
                         c.toUpperCase(),
@@ -4146,9 +4329,12 @@ const handleStripeWebhook = async (req, res) => {
           // an already-paid one, in which case this is a safe no-op) — check
           // if it's a company-verification payment instead.
           const isKnownBookingLink = await BookingPaymentLink.exists({
-            stripePaymentLinkId: session.payment_link,
+            $or: [
+              ...(session.payment_link ? [{ stripePaymentLinkId: session.payment_link }] : []),
+              { stripeCheckoutSessionId: session.id },
+            ],
           });
-          if (!isKnownBookingLink) {
+          if (!isKnownBookingLink && session.payment_link) {
             const isKnownPlanLink = await PlanPaymentLink.exists({
               stripePaymentLinkId: session.payment_link,
             });
@@ -4189,6 +4375,7 @@ module.exports = {
   sendUpgradeSuccessEmail,
   sendBookingPaymentLinkEmail,
   getBookingPaymentStatuses,
+  getBookingReceipt,
   handleStripeWebhook,
   resolveHostPanelFrontendUrl,
 };

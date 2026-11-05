@@ -17,6 +17,7 @@ const { getHostPanelPlanInvoices } = require("../controllers/planPaymentControll
 const {
   sendBookingPaymentLinkEmail,
   getBookingPaymentStatuses,
+  getBookingReceipt,
 } = require("../controllers/hostUserControllers");
 
 router.use(setLogModule("HostPanel Verification Requests"));
@@ -32,5 +33,6 @@ router.get("/verification-requests/:id/history", getVerificationLeadHistory);
 router.get("/plan/:companyId/invoices", getHostPanelPlanInvoices);
 router.post("/booking-payment-links", sendBookingPaymentLinkEmail);
 router.get("/booking-payment-links", getBookingPaymentStatuses);
+router.get("/booking-receipt", getBookingReceipt);
 
 module.exports = router;

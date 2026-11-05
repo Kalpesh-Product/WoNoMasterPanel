@@ -6,6 +6,7 @@ import { statusPillClass } from "../../../lib/status-pill";
 const cards = [
     { title: "Upgrade Plan", path: "upgrade-plan" },
     { title: "Plan & Payment History", path: "plan-history" },
+    { title: "Invoices to WONO", path: "invoices" },
     { title: "Module Access", path: "module-access" },
     { title: "Units", path: "units" },
     { title: "Wono Nomads", path: "wono-nomads" },
