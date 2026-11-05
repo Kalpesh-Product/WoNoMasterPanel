@@ -8,12 +8,16 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import WonoDestinationDetailModal from "./WonoDestinationDetailModal";
 import WonoDestinationEditModal from "./WonoDestinationEditModal";
+import {
+  getDestinationContinentMeta,
+  getDestinationPriorityClasses,
+} from "./wonoDestinationAnalyticsTheme";
 
 const priorityStyle = {
-  P1: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  P2: "bg-blue-50 text-blue-700 border-blue-200",
-  P3: "bg-amber-50 text-amber-700 border-amber-200",
-  P4: "bg-slate-100 text-slate-600 border-slate-200",
+  P1: getDestinationPriorityClasses("P1"),
+  P2: getDestinationPriorityClasses("P2"),
+  P3: getDestinationPriorityClasses("P3"),
+  P4: getDestinationPriorityClasses("P4"),
 };
 
 const modelWeights = [
@@ -164,16 +168,32 @@ const WonoDestinationAnalytics = () => {
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-5 py-4">
                   <h2 className="text-sm font-pmedium text-slate-900">Continent distribution</h2>
                   <div className="mt-4 space-y-3">
-                    {(summary?.continentSummary || []).map((item) => (
-                      <div key={item.continent}>
-                        <div className="mb-1.5 flex items-center justify-between text-[10px] font-pmedium text-slate-500">
-                          <span>{item.continent}</span><span>{item.count} destinations · {number.format(item.averageScore)}</span>
+                    {(summary?.continentSummary || []).map((item) => {
+                      const continentMeta = getDestinationContinentMeta(item.continent);
+                      return (
+                        <div key={item.continent}>
+                          <div className="mb-1.5 flex items-center justify-between text-[10px] font-pmedium text-slate-500">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="h-2 w-2 rounded-full"
+                                style={{ backgroundColor: continentMeta.color }}
+                              />
+                              {item.continent}
+                            </span>
+                            <span>{item.count} destinations · {number.format(item.averageScore)}</span>
+                          </div>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                backgroundColor: continentMeta.color,
+                                width: `${(item.count / maxContinentCount) * 100}%`,
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                          <div className="h-full rounded-full bg-[#2563EB]" style={{ width: `${(item.count / maxContinentCount) * 100}%` }} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </section>

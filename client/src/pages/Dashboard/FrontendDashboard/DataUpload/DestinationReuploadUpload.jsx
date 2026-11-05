@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import DestinationListingUploadPanel from "./DestinationListingUploadPanel";
+import DestinationUploadCoverage from "./DestinationUploadCoverage";
 
 const selectCls = "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 
@@ -12,7 +13,7 @@ const DestinationReuploadUpload = () => {
   const [country, setCountry] = useState("");
   const [destination, setDestination] = useState("");
 
-  const { data: rankingData } = useQuery({
+  const { data: rankingData, isPending: isRankingPending } = useQuery({
     queryKey: ["wono-destination-analytics", "add-upload-list"],
     queryFn: async () => {
       const response = await axios.get("/api/hosts/destination-analytics", { params: { limit: 250, includeInactive: true } });
@@ -21,7 +22,7 @@ const DestinationReuploadUpload = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: uploadedData, refetch: refetchUploaded } = useQuery({
+  const { data: uploadedData, refetch: refetchUploaded, isPending: isUploadedPending } = useQuery({
     queryKey: ["wono-destination-listings-uploaded"],
     queryFn: async () => {
       const response = await axios.get("/api/hosts/destination-listings/uploaded");
@@ -30,11 +31,20 @@ const DestinationReuploadUpload = () => {
   });
 
   const uploadedNames = useMemo(() => new Set((uploadedData?.destinations || []).map((d) => d.destination)), [uploadedData]);
+  const rankingRows = useMemo(() => rankingData?.items || [], [rankingData]);
+  const totalDestinations = useMemo(
+    () => new Set(rankingRows.map((row) => row.destination)).size,
+    [rankingRows],
+  );
   // Only destinations that already have listings — same continent/country/destination
   // taxonomy as the ranking list, filtered down to the uploaded ones.
   const uploadedRows = useMemo(
-    () => (rankingData?.items || []).filter((r) => uploadedNames.has(r.destination)),
-    [rankingData, uploadedNames],
+    () => rankingRows.filter((r) => uploadedNames.has(r.destination)),
+    [rankingRows, uploadedNames],
+  );
+  const uploadedDestinationCount = useMemo(
+    () => new Set(uploadedRows.map((row) => row.destination)).size,
+    [uploadedRows],
   );
 
   const continents = useMemo(() => Array.from(new Set(uploadedRows.map((r) => r.continent))).sort(), [uploadedRows]);
@@ -52,11 +62,18 @@ const DestinationReuploadUpload = () => {
   const handleUploaded = () => {
     refetchUploaded();
     queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-uploaded"] });
+    queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-summary", destination] });
+    queryClient.invalidateQueries({ queryKey: ["wono-destination-listings", destination] });
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <DestinationUploadCoverage
+          total={totalDestinations}
+          uploaded={uploadedDestinationCount}
+          isLoading={isRankingPending || isUploadedPending}
+        />
         <p className="text-xs font-pmedium text-slate-500">Pick a destination that already has listings uploaded, then replace its data with a new file.</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">

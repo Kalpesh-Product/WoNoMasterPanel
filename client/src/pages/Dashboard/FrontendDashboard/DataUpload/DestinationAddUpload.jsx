@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import DestinationListingUploadPanel from "./DestinationListingUploadPanel";
+import DestinationUploadCoverage from "./DestinationUploadCoverage";
 
 const selectCls = "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 
@@ -12,7 +13,7 @@ const DestinationAddUpload = () => {
   const [country, setCountry] = useState("");
   const [destination, setDestination] = useState("");
 
-  const { data: rankingData } = useQuery({
+  const { data: rankingData, isPending: isRankingPending } = useQuery({
     queryKey: ["wono-destination-analytics", "add-upload-list"],
     queryFn: async () => {
       const response = await axios.get("/api/hosts/destination-analytics", { params: { limit: 250, includeInactive: true } });
@@ -21,7 +22,7 @@ const DestinationAddUpload = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: uploadedData, refetch: refetchUploaded } = useQuery({
+  const { data: uploadedData, refetch: refetchUploaded, isPending: isUploadedPending } = useQuery({
     queryKey: ["wono-destination-listings-uploaded"],
     queryFn: async () => {
       const response = await axios.get("/api/hosts/destination-listings/uploaded");
@@ -29,8 +30,13 @@ const DestinationAddUpload = () => {
     },
   });
 
-  const rows = rankingData?.items || [];
+  const rows = useMemo(() => rankingData?.items || [], [rankingData]);
   const uploadedNames = useMemo(() => new Set((uploadedData?.destinations || []).map((d) => d.destination)), [uploadedData]);
+  const totalDestinations = useMemo(() => new Set(rows.map((row) => row.destination)).size, [rows]);
+  const uploadedDestinationCount = useMemo(
+    () => new Set(rows.filter((row) => uploadedNames.has(row.destination)).map((row) => row.destination)).size,
+    [rows, uploadedNames],
+  );
 
   const continents = useMemo(() => Array.from(new Set(rows.map((r) => r.continent))).sort(), [rows]);
   const countries = useMemo(
@@ -48,12 +54,18 @@ const DestinationAddUpload = () => {
   const handleUploaded = () => {
     refetchUploaded();
     queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-uploaded"] });
-    setDestination("");
+    queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-summary", destination] });
+    queryClient.invalidateQueries({ queryKey: ["wono-destination-listings", destination] });
   };
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <DestinationUploadCoverage
+          total={totalDestinations}
+          uploaded={uploadedDestinationCount}
+          isLoading={isRankingPending || isUploadedPending}
+        />
         <p className="text-xs font-pmedium text-slate-500">Pick a destination that doesn&apos;t have listings yet, then upload its raw-data workbook.</p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">

@@ -15,6 +15,10 @@ import { useNavigate } from "react-router-dom";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import WonoDestinationDetailModal from "./WonoDestinationDetailModal";
+import {
+  getDestinationContinentMeta,
+  getDestinationPriorityMeta,
+} from "./wonoDestinationAnalyticsTheme";
 
 const number = new Intl.NumberFormat("en-IN", {
   minimumFractionDigits: 2,
@@ -23,48 +27,26 @@ const number = new Intl.NumberFormat("en-IN", {
 
 const priorityMeta = {
   P1: {
-    color: "#059669",
-    surface: "bg-emerald-50",
-    border: "border-emerald-200",
-    text: "text-emerald-700",
+    ...getDestinationPriorityMeta("P1"),
     label: "Immediate priority",
     reason: "First onboarding wave. Strongest combined client opportunity, demand and market readiness.",
   },
   P2: {
-    color: "#2563EB",
-    surface: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-700",
+    ...getDestinationPriorityMeta("P2"),
     label: "High priority",
     reason: "Second onboarding wave. Strong markets with a comparatively weaker factor than P1.",
   },
   P3: {
-    color: "#D97706",
-    surface: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-700",
+    ...getDestinationPriorityMeta("P3"),
     label: "Medium priority",
     reason: "Selective validation markets. Opportunity exists but strength is less consistent than P1/P2.",
   },
   P4: {
-    color: "#64748B",
-    surface: "bg-slate-100",
-    border: "border-slate-200",
-    text: "text-slate-600",
+    ...getDestinationPriorityMeta("P4"),
     label: "Low priority",
     reason: "Monitor or selectively test. Lowest-ranked markets in the current 132-destination set.",
   },
 };
-
-const continentColors = ["#2563EB", "#7C3AED", "#0D9488", "#D97706", "#DB2777", "#475569"];
-const continentStyles = [
-  { surface: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
-  { surface: "bg-violet-50", border: "border-violet-200", text: "text-violet-700" },
-  { surface: "bg-teal-50", border: "border-teal-200", text: "text-teal-700" },
-  { surface: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-  { surface: "bg-pink-50", border: "border-pink-200", text: "text-pink-700" },
-  { surface: "bg-slate-100", border: "border-slate-200", text: "text-slate-600" },
-];
 
 const Stat =({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]" }) => (
   <div className={`min-w-0 rounded-[2rem] border border-slate-100 border-l-4 ${border} bg-white px-4 py-4 shadow-sm`}>
@@ -134,12 +116,13 @@ const WonoDestinationAnalyticsDashboard = () => {
   ), [rows, summary]);
 
   const continentSummary = useMemo(() => (
-    (summary?.continentSummary || []).map((item, index) => {
+    (summary?.continentSummary || []).map((item) => {
       const continentRows = rows.filter((row) => row.continent === item.continent);
+      const continentMeta = getDestinationContinentMeta(item.continent);
       return {
         ...item,
-        color: continentColors[index],
-        style: continentStyles[index],
+        color: continentMeta.color,
+        style: continentMeta,
         topDestination: continentRows[0],
         lowScore: continentRows[continentRows.length - 1]?.score || 0,
       };

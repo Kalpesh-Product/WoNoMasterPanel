@@ -9,10 +9,15 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import WonoListingDetailModal from "./WonoListingDetailModal";
 import WonoListingEditModal from "./WonoListingEditModal";
+import { getDestinationPriorityMeta } from "./wonoDestinationAnalyticsTheme";
 
 const number = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-const priorityColors = {  "High Opportunity": "#059669", "Medium Opportunity": "#D97706", "Lower Opportunity": "#94A3B8" };
+const priorityColors = {
+  "High Opportunity": getDestinationPriorityMeta("High Opportunity").color,
+  "Medium Opportunity": getDestinationPriorityMeta("Medium Opportunity").color,
+  "Lower Opportunity": getDestinationPriorityMeta("Lower Opportunity").color,
+};
 const categoryColors = { Coworking: "#2563EB", Coliving: "#7C3AED", Cafe: "#D97706", Hostel: "#0D9488", "Meeting Room": "#DB2777" };
 const categoryStyles = {
   Coworking: { surface: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
@@ -224,7 +229,7 @@ const WonoDestinationExecutiveDashboard = () => {
     ],
     options: {
       chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
-      colors: ["#2563EB", "#F59E0B"],
+      colors: ["#175D9C", "#E26467"],
       plotOptions: { bar: { borderRadius: 4, columnWidth: "55%", dataLabels: { position: "center" } } },
       dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px", colors: ["#fff"] } },
       xaxis: { categories: (data?.digitalPresence || []).map((item) => item.channel), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" } } },

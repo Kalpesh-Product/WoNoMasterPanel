@@ -1,6 +1,9 @@
 const ExcelJS = require("exceljs");
 const WonoDestinationListing = require("../models/WonoDestinationListing");
-const { parseDestinationRawData } = require("../utils/parseDestinationRawData");
+const {
+  parseDestinationRawData,
+  workbookMatchesDestination,
+} = require("../utils/parseDestinationRawData");
 const { scoreListing } = require("../utils/destinationListingScoring");
 
 const CATEGORIES = ["Coworking", "Coliving", "Cafe", "Hostel", "Meeting Room"];
@@ -185,11 +188,50 @@ const bulkImportDestinationListings = async (req, res, next) => {
 
     const results = [];
     for (const file of files) {
+      let parsed;
       try {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(file.buffer);
-        const parsed = parseDestinationRawData(workbook, file.originalname);
+        parsed = parseDestinationRawData(workbook, file.originalname);
         const destination = destinationOverride || parsed.destination;
+
+        if (destinationOverride && !workbookMatchesDestination(parsed, destinationOverride)) {
+            results.push({
+              filename: file.originalname,
+              success: false,
+              destination,
+              totalRows: parsed.totalRows,
+              imported: 0,
+              failed: parsed.totalRows,
+              failures: [
+                {
+                  row: "Workbook",
+                  column: "City / Filename",
+                  value: `Selected: ${destinationOverride} · Filename: ${parsed.destination || "Unknown"} · City: ${parsed.cityFromData || "Blank"}`,
+                  reason: "The workbook does not match the selected destination. Nothing was changed.",
+                },
+                ...parsed.failures,
+              ],
+              warnings: parsed.warnings,
+              error: `This workbook appears to belong to "${parsed.cityFromData || parsed.destination || "another destination"}", not "${destinationOverride}".`,
+            });
+            continue;
+        }
+
+        if (!parsed.businesses.length) {
+          results.push({
+            filename: file.originalname,
+            success: false,
+            destination,
+            totalRows: parsed.totalRows,
+            imported: 0,
+            failed: parsed.failures.length,
+            failures: parsed.failures,
+            warnings: parsed.warnings,
+            error: "No valid business rows were found. Nothing was changed.",
+          });
+          continue;
+        }
 
         const byCategory = {};
         parsed.businesses.forEach((b) => {
@@ -240,11 +282,23 @@ const bulkImportDestinationListings = async (req, res, next) => {
           success: true,
           destination,
           removed: deleted.deletedCount,
+          totalRows: parsed.totalRows,
           imported: inserted.length,
+          failed: parsed.failures.length,
+          failures: parsed.failures,
           warnings: parsed.warnings,
         });
       } catch (fileError) {
-        results.push({ filename: file.originalname, success: false, error: fileError.message });
+        results.push({
+          filename: file.originalname,
+          success: false,
+          totalRows: parsed?.totalRows || 0,
+          imported: 0,
+          failed: parsed?.totalRows || 0,
+          failures: parsed?.failures || [],
+          warnings: parsed?.warnings || [],
+          error: fileError.message,
+        });
       }
     }
 
