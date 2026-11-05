@@ -9,6 +9,14 @@
 
 const { normalizeCategory } = require("./destinationListingScoring");
 
+const VALID_CATEGORIES = new Set([
+  "Coworking",
+  "Coliving",
+  "Cafe",
+  "Hostel",
+  "Meeting Room",
+]);
+
 const HEADER_ALIASES = {
   continent: ["continent"],
   country: ["country"],
@@ -33,7 +41,31 @@ const HEADER_ALIASES = {
   linkedin: ["linkedin"],
 };
 
+const COLUMN_WARNINGS = {
+  website: 'No "Website" column — website links were left blank.',
+  about: 'No "About"/"Description" column — category-fit text scoring may be lower.',
+  rating: 'No "Rating" column — ratings defaulted to 0.',
+  totalReviews: 'No "Total Reviews" column — review counts defaulted to 0.',
+  inclusion: 'No "Inclusion" column — inclusion details were left blank.',
+  hasWebsite: 'No "Website (Yes/No)" column — businesses were treated as missing a website.',
+  hasInstagram: 'No "Instagram (Yes/No)" column — businesses were treated as missing Instagram.',
+  hasFacebook: 'No "Facebook (Yes/No)" column — businesses were treated as missing Facebook.',
+  nearAirport: 'No "Near to Airport" column — businesses were treated as not near an airport.',
+  contact: 'No "Contact" column — contact values were left blank.',
+  email: 'No "Email" column — email values were left blank.',
+  linkedin: 'No "LinkedIn" column — LinkedIn values were left blank.',
+  googleMapUrl: 'No "Google Map" column — map links were left blank.',
+  airportName: 'No "Airport Name" column — airport names were left blank.',
+  airportMapUrl: 'No "Airport Map Link" column — airport map links were left blank.',
+};
+
 const normalizeHeader = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+const normalizeLocation = (value) => String(value || "")
+  .normalize("NFKD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
 
 const rawCellValue = (row, col) => {
   const v = row.getCell(col).value;
@@ -51,7 +83,7 @@ const cellStr = (row, col) => {
   return v === null || v === undefined ? "" : String(v).trim();
 };
 const cellBool = (row, col) => cellStr(row, col).toLowerCase() === "yes";
-const cellNum = (row, col) => Number(rawCellValue(row, col)) || 0;
+const cellNum = (row, col) => (col ? Number(rawCellValue(row, col)) || 0 : 0);
 
 // Picks the first sheet whose header row looks like a raw-data sheet
 // (has a "Business Name" column) instead of relying on a fixed sheet name.
@@ -83,11 +115,21 @@ const mostCommon = (values) => {
 
 const destinationFromFilename = (filename) => String(filename || "")
   .replace(/\.(xlsx|xlsm)$/i, "")
-  .replace(/[_\s]*analytics$/i, "")
+  .replace(/^linked[_\s-]*wono[_\s-]*/i, "")
+  .replace(/[_\s-]*analytics(?:[_\s-]*\d+(?:\.\d+)*)?$/i, "")
   .replace(/_/g, " ")
   .trim();
 
-// Returns { destination, country, continent, businesses, warnings } or
+const workbookMatchesDestination = (parsed, selectedDestination) => {
+  const selectedKey = normalizeLocation(selectedDestination);
+  if (!selectedKey) return true;
+
+  const filenameMatches = normalizeLocation(parsed?.destination) === selectedKey;
+  const cityKey = normalizeLocation(parsed?.cityFromData);
+  return filenameMatches || (Boolean(cityKey) && cityKey === selectedKey);
+};
+
+// Returns destination metadata, valid businesses, row failures, and warnings or
 // throws with a message naming what's missing, for the caller to report
 // per file instead of failing the whole batch.
 const parseDestinationRawData = (workbook, filename) => {
@@ -101,15 +143,53 @@ const parseDestinationRawData = (workbook, filename) => {
   }
 
   const businesses = [];
+  const failures = [];
   const cities = [];
   const countries = [];
   const continents = [];
+  let totalRows = 0;
 
   sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return;
-    const category = normalizeCategory(cellStr(row, columns.category));
+    totalRows += 1;
+
+    const rawCategory = cellStr(row, columns.category);
+    const category = normalizeCategory(rawCategory);
     const businessName = cellStr(row, columns.businessName);
-    if (!category || !businessName) return;
+    const issues = [];
+
+    if (!rawCategory) {
+      issues.push({
+        column: "Type / Category",
+        value: "Blank",
+        reason: 'Missing "Type"/"Category" value.',
+      });
+    } else if (!VALID_CATEGORIES.has(category)) {
+      issues.push({
+        column: "Type / Category",
+        value: rawCategory,
+        reason: `Unsupported category "${rawCategory}".`,
+      });
+    }
+    if (!businessName) {
+      issues.push({
+        column: "Business Name",
+        value: "Blank",
+        reason: 'Missing "Business Name" value.',
+      });
+    }
+
+    if (issues.length) {
+      failures.push({
+        row: rowNumber,
+        businessName: businessName || "—",
+        category: rawCategory || "—",
+        column: issues.map((issue) => issue.column).join(", "),
+        value: issues.map((issue) => `${issue.column}: ${issue.value}`).join(" · "),
+        reason: issues.map((issue) => issue.reason).join(" "),
+      });
+      return;
+    }
 
     if (columns.city) cities.push(cellStr(row, columns.city));
     if (columns.country) countries.push(cellStr(row, columns.country));
@@ -137,11 +217,9 @@ const parseDestinationRawData = (workbook, filename) => {
     });
   });
 
-  if (!businesses.length) throw new Error("No business rows found under the header row.");
-
   const warnings = [];
-  ["contact", "email", "linkedin", "googleMapUrl", "airportName", "airportMapUrl"].forEach((field) => {
-    if (!columns[field]) warnings.push(`No "${field}" column — left blank for every business.`);
+  Object.entries(COLUMN_WARNINGS).forEach(([field, warning]) => {
+    if (!columns[field]) warnings.push(warning);
   });
 
   // The filename is the reliable destination name (it's what the data team names
@@ -157,9 +235,16 @@ const parseDestinationRawData = (workbook, filename) => {
     destination,
     country: mostCommon(countries),
     continent: mostCommon(continents),
+    cityFromData,
     businesses,
+    totalRows,
+    failures,
     warnings,
   };
 };
 
-module.exports = { parseDestinationRawData, destinationFromFilename };
+module.exports = {
+  parseDestinationRawData,
+  destinationFromFilename,
+  workbookMatchesDestination,
+};

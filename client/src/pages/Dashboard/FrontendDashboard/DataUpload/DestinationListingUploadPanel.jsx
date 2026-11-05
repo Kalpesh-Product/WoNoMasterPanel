@@ -1,11 +1,93 @@
 import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, FileSpreadsheet, UploadCloud, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 
 const isSpreadsheet = (file) => /\.(xlsx|xlsm)$/i.test(file.name);
 const formatSize = (bytes) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`);
+
+const ImportResultSummary = ({ result }) => {
+  const totalRows = result.totalRows ?? result.imported ?? 0;
+  const imported = result.imported || 0;
+  const failed = result.failed ?? (result.success ? 0 : totalRows);
+
+  return (
+    <section className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
+        {result.success ? (
+          <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-600" />
+        ) : (
+          <X size={15} className="mt-0.5 shrink-0 text-rose-600" />
+        )}
+        <div>
+          <p className="text-xs font-pmedium text-slate-800">
+            {result.success ? "Import completed" : "Import could not be completed"}
+          </p>
+          {result.error && (
+            <p className="mt-1 text-[10px] font-pmedium text-rose-600">{result.error}</p>
+          )}
+          {result.success && result.removed > 0 && (
+            <p className="mt-1 text-[10px] font-pmedium text-slate-400">
+              Replaced {result.removed} previously stored businesses.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-slate-100">
+        <div className="px-3 py-3 text-center">
+          <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">Sheet rows</p>
+          <p className="mt-1 text-lg font-pmedium text-slate-800">{totalRows}</p>
+        </div>
+        <div className="px-3 py-3 text-center">
+          <p className="text-[9px] font-pmedium uppercase tracking-widest text-emerald-600">Imported</p>
+          <p className="mt-1 text-lg font-pmedium text-emerald-700">{imported}</p>
+        </div>
+        <div className="px-3 py-3 text-center">
+          <p className="text-[9px] font-pmedium uppercase tracking-widest text-rose-500">Failed</p>
+          <p className="mt-1 text-lg font-pmedium text-rose-600">{failed}</p>
+        </div>
+      </div>
+
+      {result.failures?.length > 0 && (
+        <div className="border-t border-rose-100 bg-rose-50/60 px-4 py-3">
+          <div className="flex items-center gap-2 text-[10px] font-pmedium uppercase tracking-widest text-rose-700">
+            <AlertTriangle size={13} />
+            Failed row reasons
+          </div>
+          <div className="mt-2 max-h-44 space-y-2 overflow-y-auto pr-1">
+            {result.failures.map((failure) => (
+              <div
+                key={`${failure.row}-${failure.column}-${failure.value}`}
+                className="rounded-lg border border-rose-100 bg-white px-3 py-2"
+              >
+                <p className="text-[10px] font-pmedium text-slate-700">
+                  Row {failure.row} · Column: {failure.column || "Unknown"}
+                </p>
+                {failure.value && (
+                  <p className="mt-0.5 text-[10px] font-pmedium text-slate-500">Value: {failure.value}</p>
+                )}
+                <p className="mt-0.5 text-[10px] font-pmedium text-rose-600">{failure.reason}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {result.warnings?.length > 0 && (
+        <div className="border-t border-amber-100 bg-amber-50/60 px-4 py-3">
+          <p className="text-[10px] font-pmedium uppercase tracking-widest text-amber-700">Workbook warnings</p>
+          <div className="mt-1.5 space-y-1">
+            {result.warnings.map((warning) => (
+              <p key={warning} className="text-[10px] font-pmedium text-amber-700">{warning}</p>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
 
 // Single-destination upload: the destination is already known (picked from a
 // dropdown or list by the caller), so it's sent as an explicit override and
@@ -25,7 +107,8 @@ const DestinationListingUploadPanel = ({ destination, onUploaded }) => {
     },
     onSuccess: (uploadResult) => {
       if (uploadResult.success) {
-        toast.success(`${destination}: imported ${uploadResult.imported} businesses.`);
+        const failedMessage = uploadResult.failed ? ` ${uploadResult.failed} rows failed.` : "";
+        toast.success(`${destination}: imported ${uploadResult.imported} businesses.${failedMessage}`);
         onUploaded?.();
       } else {
         toast.error(uploadResult.error || "Upload failed.");
@@ -96,16 +179,6 @@ const DestinationListingUploadPanel = ({ destination, onUploaded }) => {
         </label>
       )}
 
-      {result && (
-        <div className="mt-3 flex items-start gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2.5">
-          {result.success ? <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-600" /> : <X size={14} className="mt-0.5 shrink-0 text-rose-600" />}
-          <div className="text-[11px] font-pmedium text-slate-600">
-            {result.success ? `Removed ${result.removed}, imported ${result.imported}.` : result.error}
-            {result.warnings?.map((warning) => <p key={warning} className="mt-0.5 text-amber-600">{warning}</p>)}
-          </div>
-        </div>
-      )}
-
       <button
         type="button"
         disabled={!file || isPending}
@@ -114,6 +187,8 @@ const DestinationListingUploadPanel = ({ destination, onUploaded }) => {
       >
         {isPending ? "Uploading..." : "Upload"}
       </button>
+
+      {result && <ImportResultSummary result={result} />}
     </div>
   );
 };

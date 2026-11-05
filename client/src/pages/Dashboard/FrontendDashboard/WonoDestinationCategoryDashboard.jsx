@@ -9,13 +9,21 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import WonoListingDetailModal from "./WonoListingDetailModal";
 import WonoListingEditModal from "./WonoListingEditModal";
+import {
+  getDestinationPriorityClasses,
+  getDestinationPriorityMeta,
+} from "./wonoDestinationAnalyticsTheme";
 
 const number = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const priorityColors = { "High Opportunity": "#059669", "Medium Opportunity": "#D97706", "Lower Opportunity": "#94A3B8" };
+const priorityColors = {
+  "High Opportunity": getDestinationPriorityMeta("High Opportunity").color,
+  "Medium Opportunity": getDestinationPriorityMeta("Medium Opportunity").color,
+  "Lower Opportunity": getDestinationPriorityMeta("Lower Opportunity").color,
+};
 const priorityStyle = {
-  "High Opportunity": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Medium Opportunity": "bg-amber-50 text-amber-700 border-amber-200",
-  "Lower Opportunity": "bg-slate-100 text-slate-600 border-slate-200",
+  "High Opportunity": getDestinationPriorityClasses("High Opportunity"),
+  "Medium Opportunity": getDestinationPriorityClasses("Medium Opportunity"),
+  "Lower Opportunity": getDestinationPriorityClasses("Lower Opportunity"),
 };
 const STATUS_OPTIONS = ["New", "Contacted", "Follow-up", "Qualified", "Proposal", "Won", "Lost"];
 const BUSINESS_STATUS_OPTIONS = ["Active", "Permanently Closed", "Temporarily Closed"];
@@ -175,7 +183,7 @@ const WonoDestinationCategoryDashboard = () => {
     ],
     options: {
       chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
-      colors: ["#2563EB", "#F59E0B"],
+      colors: ["#175D9C", "#E26467"],
       plotOptions: { bar: { borderRadius: 4, columnWidth: "55%", dataLabels: { position: "center" } } },
       dataLabels: { enabled: true, style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px", colors: ["#fff"] } },
       xaxis: { categories: (data?.digitalPresence || []).map((item) => item.channel), labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" } } },

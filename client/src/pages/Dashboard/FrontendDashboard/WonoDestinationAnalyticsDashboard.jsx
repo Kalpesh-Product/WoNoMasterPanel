@@ -15,6 +15,10 @@ import { useNavigate } from "react-router-dom";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import WonoDestinationDetailModal from "./WonoDestinationDetailModal";
+import {
+  getDestinationContinentMeta,
+  getDestinationPriorityMeta,
+} from "./wonoDestinationAnalyticsTheme";
 
 const number = new Intl.NumberFormat("en-IN", {
   minimumFractionDigits: 2,
@@ -23,48 +27,26 @@ const number = new Intl.NumberFormat("en-IN", {
 
 const priorityMeta = {
   P1: {
-    color: "#059669",
-    surface: "bg-emerald-50",
-    border: "border-emerald-200",
-    text: "text-emerald-700",
+    ...getDestinationPriorityMeta("P1"),
     label: "Immediate priority",
     reason: "First onboarding wave. Strongest combined client opportunity, demand and market readiness.",
   },
   P2: {
-    color: "#2563EB",
-    surface: "bg-blue-50",
-    border: "border-blue-200",
-    text: "text-blue-700",
+    ...getDestinationPriorityMeta("P2"),
     label: "High priority",
     reason: "Second onboarding wave. Strong markets with a comparatively weaker factor than P1.",
   },
   P3: {
-    color: "#D97706",
-    surface: "bg-amber-50",
-    border: "border-amber-200",
-    text: "text-amber-700",
+    ...getDestinationPriorityMeta("P3"),
     label: "Medium priority",
     reason: "Selective validation markets. Opportunity exists but strength is less consistent than P1/P2.",
   },
   P4: {
-    color: "#64748B",
-    surface: "bg-slate-100",
-    border: "border-slate-200",
-    text: "text-slate-600",
+    ...getDestinationPriorityMeta("P4"),
     label: "Low priority",
     reason: "Monitor or selectively test. Lowest-ranked markets in the current 132-destination set.",
   },
 };
-
-const continentColors = ["#2563EB", "#7C3AED", "#0D9488", "#D97706", "#DB2777", "#475569"];
-const continentStyles = [
-  { surface: "bg-blue-50", border: "border-blue-200", text: "text-blue-700" },
-  { surface: "bg-violet-50", border: "border-violet-200", text: "text-violet-700" },
-  { surface: "bg-teal-50", border: "border-teal-200", text: "text-teal-700" },
-  { surface: "bg-amber-50", border: "border-amber-200", text: "text-amber-700" },
-  { surface: "bg-pink-50", border: "border-pink-200", text: "text-pink-700" },
-  { surface: "bg-slate-100", border: "border-slate-200", text: "text-slate-600" },
-];
 
 const Stat =({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]" }) => (
   <div className={`min-w-0 rounded-[2rem] border border-slate-100 border-l-4 ${border} bg-white px-4 py-4 shadow-sm`}>
@@ -134,12 +116,13 @@ const WonoDestinationAnalyticsDashboard = () => {
   ), [rows, summary]);
 
   const continentSummary = useMemo(() => (
-    (summary?.continentSummary || []).map((item, index) => {
+    (summary?.continentSummary || []).map((item) => {
       const continentRows = rows.filter((row) => row.continent === item.continent);
+      const continentMeta = getDestinationContinentMeta(item.continent);
       return {
         ...item,
-        color: continentColors[index],
-        style: continentStyles[index],
+        color: continentMeta.color,
+        style: continentMeta,
         topDestination: continentRows[0],
         lowScore: continentRows[continentRows.length - 1]?.score || 0,
       };
@@ -321,10 +304,19 @@ const WonoDestinationAnalyticsDashboard = () => {
       <PageFrame>
         <div className="flex flex-col gap-4">
           <section>
-            
-            <h1 className="mt-1 text-title text-primary uppercase">
-              Destination sequence & ranking dashboard
-            </h1>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h1 className="mt-1 text-title text-primary uppercase">
+                Destination sequence & ranking dashboard
+              </h1>
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
+                className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-white transition hover:bg-[#1d4ed8]"
+              >
+                Open full sequence & ranking
+                <ArrowRight size={14} />
+              </button>
+            </div>
             <p className="mt-1 text-xs text-slate-500">
               Overall share, onboarding priorities, ranked destinations and continent performance from the approved 132-destination research set.
             </p>
@@ -553,24 +545,6 @@ const WonoDestinationAnalyticsDashboard = () => {
               </div>
             </section>
 
-            <button
-              type="button"
-              onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
-              className="group relative overflow-hidden rounded-[2rem] font-pmedium bg-slate-950 px-6 py-6 text-left text-white shadow-sm transition hover:bg-[#102A52] sm:px-8"
-            >
-              <div className="absolute -right-12 -top-16 h-52 font-pmedium w-52 rounded-full bg-[#2563EB]/35 blur-3xl" />
-              <div className="relative grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-                <div>
-                  {/* <p className="text-[10px] uppercase tracking-[0.2em] text-blue-200">Destination data workspace</p> */}
-                  <h2 className="mt-2 text-xl font-pmedium">Explore every score behind the sequence</h2>
-                  <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-300">Open the complete ranking to search and filter all 132 destinations. Each View detail exposes the 10 factor values and the exact weighted WoNo scoring calculation.</p>
-                </div>
-                <span className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-[10px] uppercase tracking-widest text-slate-950 transition group-hover:bg-blue-50">
-                  Open full sequence & ranking
-                  <ArrowRight size={14} />
-                </span>
-              </div>
-            </button>
             </>
           )}
         </div>
