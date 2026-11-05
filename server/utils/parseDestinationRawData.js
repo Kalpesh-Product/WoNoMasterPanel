@@ -20,6 +20,7 @@ const VALID_CATEGORIES = new Set([
 const HEADER_ALIASES = {
   continent: ["continent"],
   country: ["country"],
+  state: ["state"],
   city: ["city"],
   category: ["type", "category"],
   businessName: ["business name", "name"],
@@ -57,6 +58,7 @@ const COLUMN_WARNINGS = {
   googleMapUrl: 'No "Google Map" column — map links were left blank.',
   airportName: 'No "Airport Name" column — airport names were left blank.',
   airportMapUrl: 'No "Airport Map Link" column — airport map links were left blank.',
+  state: 'No "State" column — state values were left blank.',
 };
 
 const normalizeHeader = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -198,6 +200,10 @@ const parseDestinationRawData = (workbook, filename) => {
     businesses.push({
       category,
       businessName,
+      continent: cellStr(row, columns.continent),
+      country: cellStr(row, columns.country),
+      state: cellStr(row, columns.state),
+      city: cellStr(row, columns.city),
       website: cellStr(row, columns.website),
       address: cellStr(row, columns.address),
       about: cellStr(row, columns.about),
