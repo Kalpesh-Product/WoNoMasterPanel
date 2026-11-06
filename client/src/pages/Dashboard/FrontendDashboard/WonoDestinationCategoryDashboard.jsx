@@ -55,8 +55,8 @@ const planStyle = {
   Custom: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
 };
 
-const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]" }) => (
-  <div className={`min-w-0 bg-white rounded-[2rem] border border-slate-100 border-l-4 ${border} px-5 py-5 shadow-sm`}>
+const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]", tour }) => (
+  <div data-tour={tour} className={`min-w-0 bg-white rounded-[2rem] border border-slate-100 border-l-4 ${border} px-5 py-5 shadow-sm`}>
     <div className={`flex items-center gap-2 whitespace-nowrap text-[9px] font-pmedium uppercase tracking-wider ${accent}`}>
       <Icon size={13} /> {label}
     </div>
@@ -64,8 +64,8 @@ const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "b
   </div>
 );
 
-const Panel = ({ title, description, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+const Panel = ({ title, description, children, tour }) => (
+  <section data-tour={tour} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
     <div className="border-b border-slate-100 px-5 py-4">
       <h2 className="text-sm font-pmedium text-slate-900">{title}</h2>
       {description && <p className="mt-1 text-xs font-pmedium text-slate-500">{description}</p>}
@@ -199,7 +199,7 @@ const WonoDestinationCategoryDashboard = () => {
         <div className="flex flex-col gap-4">
           <section>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(destination)}`)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 transition hover:border-blue-200 hover:text-[#2563EB]"><ArrowLeft size={13} /> {destination}</button>
+              <button type="button" data-tour="destination-category-header" onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(destination)}`)} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 transition hover:border-blue-200 hover:text-[#2563EB]"><ArrowLeft size={13} /> </button>
               <h1 className="text-title font-pmedium text-primary uppercase">{category} Dashboard</h1>
             </div>
             <p className="mt-1 text-xs font-pmedium text-slate-500">Every surveyed {category} business in {destination}, ranked by WoNo opportunity score.</p>
@@ -214,19 +214,19 @@ const WonoDestinationCategoryDashboard = () => {
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-                <Stat label="Total companies" value={data.total} icon={Layers3} />
-                <Stat label="No website" value={data.stats?.noWebsite || 0} icon={Briefcase} accent="text-rose-600" border="border-l-rose-500" />
-                <Stat label="2+ digital gaps" value={data.stats?.twoPlusDigitalGaps || 0} icon={Star} accent="text-violet-600" border="border-l-violet-500" />
-                <Stat label="High opportunity" value={data.priorityMix.find((p) => p.priority === "High Opportunity")?.count || 0} icon={Globe} accent="text-emerald-600" border="border-l-emerald-500" />
-                <Stat label="Medium opportunity" value={data.priorityMix.find((p) => p.priority === "Medium Opportunity")?.count || 0} icon={Globe} accent="text-amber-600" border="border-l-amber-500" />
-                <Stat label="Lower opportunity" value={data.priorityMix.find((p) => p.priority === "Lower Opportunity")?.count || 0} icon={Globe} accent="text-slate-500" border="border-l-slate-400" />
+                <Stat tour="destination-category-stat-total" label="Total companies" value={data.total} icon={Layers3} />
+                <Stat tour="destination-category-stat-no-website" label="No website" value={data.stats?.noWebsite || 0} icon={Briefcase} accent="text-rose-600" border="border-l-rose-500" />
+                <Stat tour="destination-category-stat-digital-gaps" label="2+ digital gaps" value={data.stats?.twoPlusDigitalGaps || 0} icon={Star} accent="text-violet-600" border="border-l-violet-500" />
+                <Stat tour="destination-category-stat-high" label="High opportunity" value={data.priorityMix.find((p) => p.priority === "High Opportunity")?.count || 0} icon={Globe} accent="text-emerald-600" border="border-l-emerald-500" />
+                <Stat tour="destination-category-stat-medium" label="Medium opportunity" value={data.priorityMix.find((p) => p.priority === "Medium Opportunity")?.count || 0} icon={Globe} accent="text-amber-600" border="border-l-amber-500" />
+                <Stat tour="destination-category-stat-lower" label="Lower opportunity" value={data.priorityMix.find((p) => p.priority === "Lower Opportunity")?.count || 0} icon={Globe} accent="text-slate-500" border="border-l-slate-400" />
               </div>
 
               <section className="grid gap-4 md:grid-cols-2">
-                <Panel title={`${category} Lead Priority Mix`} description="Opportunity band across this category's businesses.">
+                <Panel tour="destination-category-chart-priority-mix" title={`${category} Lead Priority Mix`} description="Opportunity band across this category's businesses.">
                   <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityChart.options} series={priorityChart.series} type="donut" height={250} />
                 </Panel>
-                <Panel title="Digital Presence Gaps" description="Website, Instagram and Facebook availability in this category.">
+                <Panel tour="destination-category-chart-digital-presence" title="Digital Presence Gaps" description="Website, Instagram and Facebook availability in this category.">
                   <div className="px-3 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={digitalPresenceChart.options} series={digitalPresenceChart.series} type="bar" height={250} /></div>
                 </Panel>
               </section>
@@ -238,7 +238,7 @@ const WonoDestinationCategoryDashboard = () => {
                 </div>
                 <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="relative min-w-0 flex-1">
+                    <div data-tour="destination-category-search" className="relative min-w-0 flex-1">
                       <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         value={search}
@@ -249,6 +249,7 @@ const WonoDestinationCategoryDashboard = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
+                        data-tour="destination-category-priority-filter"
                         value={priorityFilter}
                         onChange={(event) => setPriorityFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${priorityFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -257,6 +258,7 @@ const WonoDestinationCategoryDashboard = () => {
                         {Object.keys(priorityStyle).map((priority) => <option key={priority} value={priority}>{priority}</option>)}
                       </select>
                       <select
+                        data-tour="destination-category-status-filter"
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${statusFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -265,6 +267,7 @@ const WonoDestinationCategoryDashboard = () => {
                         {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
                       </select>
                       <select
+                        data-tour="destination-category-business-status-filter"
                         value={businessStatusFilter}
                         onChange={(event) => setBusinessStatusFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${businessStatusFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -275,7 +278,7 @@ const WonoDestinationCategoryDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="max-h-[560px] overflow-auto">
+                <div data-tour="destination-category-table" className="max-h-[560px] overflow-auto">
                   <table className="w-full min-w-[2150px] text-left">
                     <thead className="sticky top-0 z-30 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                       <tr>
@@ -364,8 +367,8 @@ const WonoDestinationCategoryDashboard = () => {
                           <td className="px-4 py-3.5 font-pmedium text-slate-600">{item.notes || "—"}</td>
                           <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right will-change-transform group-hover:bg-blue-50/30">
                             <div className="inline-flex items-center gap-1.5">
-                              <button type="button" onClick={() => setSelectedListing(item)} aria-label={`View ${item.businessName}`} title="View listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-[#2563EB]"><Eye size={14} /></button>
-                              <button type="button" onClick={() => setEditingListing(item)} aria-label={`Edit ${item.businessName}`} title="Edit listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-amber-100 hover:text-amber-700"><Pencil size={14} /></button>
+                              <button type="button" data-tour="destination-category-action-view" onClick={() => setSelectedListing(item)} aria-label={`View ${item.businessName}`} title="View listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-[#2563EB]"><Eye size={14} /></button>
+                              <button type="button" data-tour="destination-category-action-edit" onClick={() => setEditingListing(item)} aria-label={`Edit ${item.businessName}`} title="Edit listing" className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-amber-100 hover:text-amber-700"><Pencil size={14} /></button>
                             </div>
                           </td>
                         </tr>

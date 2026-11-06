@@ -115,7 +115,18 @@ const mostCommon = (values) => {
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || "";
 };
 
-const destinationFromFilename = (filename) => String(filename || "")
+// Browsers occasionally hand us a filename that's still percent-encoded
+// (e.g. "Ho%20Chi%20Minh%20City_Analytics.xlsx") rather than the real
+// characters — decode it defensively before cleaning it up.
+const decodeIfEncoded = (value) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+const destinationFromFilename = (filename) => decodeIfEncoded(String(filename || ""))
   .replace(/\.(xlsx|xlsm)$/i, "")
   .replace(/^linked[_\s-]*wono[_\s-]*/i, "")
   .replace(/[_\s-]*analytics(?:[_\s-]*\d+(?:\.\d+)*)?$/i, "")
