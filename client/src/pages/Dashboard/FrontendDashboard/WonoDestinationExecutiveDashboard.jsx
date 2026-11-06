@@ -56,8 +56,8 @@ const planStyle = {
   Custom: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
 };
 
-const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]" }) => (
-  <div className={`min-w-0 bg-white rounded-[2rem] border border-slate-100 border-l-4 ${border} px-5 py-5 shadow-sm`}>
+const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]", tour }) => (
+  <div data-tour={tour} className={`min-w-0 bg-white rounded-[2rem] border border-slate-100 border-l-4 ${border} px-5 py-5 shadow-sm`}>
     <div className={`flex items-center gap-2 whitespace-nowrap text-[9px] font-pmedium uppercase tracking-wider ${accent}`}>
       <Icon size={13} /> {label}
     </div>
@@ -65,8 +65,8 @@ const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "b
   </div>
 );
 
-const Panel = ({ title, description, children, clip = true }) => (
-  <section className={`${clip ? "overflow-hidden" : ""} rounded-2xl border border-slate-100 bg-white shadow-sm`}>
+const Panel = ({ title, description, children, clip = true, tour }) => (
+  <section data-tour={tour} className={`${clip ? "overflow-hidden" : ""} rounded-2xl border border-slate-100 bg-white shadow-sm`}>
     <div className="border-b border-slate-100 px-5 py-4">
       <h2 className="text-sm font-pmedium text-slate-900">{title}</h2>
       {description && <p className="mt-1 text-xs font-pmedium text-slate-500">{description}</p>}
@@ -86,7 +86,6 @@ const WonoDestinationExecutiveDashboard = () => {
   const [businessStatusFilter, setBusinessStatusFilter] = React.useState("All");
   const [search, setSearch] = React.useState("");
   const [fieldOverrides, setFieldOverrides] = React.useState({});
-  const [activeCategory, setActiveCategory] = React.useState(null);
 
   const { data, isPending, isError } = useQuery({
     queryKey: ["wono-destination-listings-summary", destination],
@@ -239,52 +238,13 @@ const WonoDestinationExecutiveDashboard = () => {
     },
   }), [data]);
 
-  const activeCategoryData = (data?.categories || []).find((item) => item.category === activeCategory);
-  const activeCategoryLeads = React.useMemo(() => (
-    (data?.priorityLeads || data?.topLeads || [])
-      .filter((lead) => lead.category === activeCategory)
-      .slice(0, 5)
-  ), [activeCategory, data]);
-
-  const categoryTopFiveChart = React.useMemo(() => ({
-    series: [{ name: "Opportunity score", data: activeCategoryLeads.map((lead) => Number(lead.scoring?.finalScore || 0)) }],
-    options: {
-      chart: { fontFamily: "Poppins-SemiBold, sans-serif", type: "bar", toolbar: { show: false } },
-      colors: [categoryColors[activeCategory] || "#2563EB"],
-      plotOptions: { bar: { borderRadius: 6, columnWidth: "55%", dataLabels: { position: "center" } } },
-      dataLabels: {
-        enabled: true,
-        formatter: (value) => number.format(value),
-        style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", colors: ["#fff"] },
-      },
-      xaxis: {
-        categories: activeCategoryLeads.map((lead) => lead.businessName),
-        labels: {
-          style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "9px" },
-          rotate: -20,
-          trim: true,
-          formatter: (value) => (value?.length > 18 ? `${value.slice(0, 18)}…` : value),
-        },
-      },
-      yaxis: {
-        min: 0,
-        max: 100,
-        title: { text: "Opportunity Score", style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px", fontWeight: 500, color: "#64748B" } },
-        labels: { style: { fontFamily: "Poppins-SemiBold, sans-serif", fontSize: "10px" } },
-      },
-      grid: { borderColor: "#E2E8F0", strokeDashArray: 3 },
-      legend: { show: false },
-      tooltip: { y: { formatter: (value) => `${number.format(value)} opportunity score` } },
-    },
-  }), [activeCategory, activeCategoryLeads]);
-
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-pregular text-[12px]">
       <PageFrame>
         <div className="flex flex-col gap-4">
           <section>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => navigate("/dashboard/destination-data-analytics/ranking")} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 transition hover:border-blue-200 hover:text-[#2563EB]"><ArrowLeft size={13} /> Ranking</button>
+              <button type="button" data-tour="destination-executive-header" onClick={() => navigate("/dashboard/destination-data-analytics/ranking")} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 transition hover:border-blue-200 hover:text-[#2563EB]"><ArrowLeft size={13} /> </button>
               <h1 className="text-title font-pmedium text-primary uppercase">{destination} — Executive Opportunity Dashboard</h1>
             </div>
             <p className="mt-1 text-xs font-pmedium text-slate-500">City-wide business opportunity scoring across WoNo's 5 target categories.</p>
@@ -297,54 +257,55 @@ const WonoDestinationExecutiveDashboard = () => {
           ) : isError ? (
             <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 font-pmedium text-red-700">Could not load this destination's analytics.</div>
           ) : !data?.exists ? (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-6 text-center font-pmedium text-amber-800">
-              Business listing analysis is not yet available for {destination}. The data team hasn't completed this destination's survey yet.
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-100 bg-amber-50 px-5 py-6 text-center font-pmedium text-amber-800">
+              <p>Business listing analysis is not yet available for {destination}. The data team hasn't completed this destination's survey yet.</p>
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard/data-upload/destination-add-upload")}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest text-white transition hover:bg-[#1d4ed8]"
+              >
+                Upload {destination}&apos;s data
+              </button>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-                <Stat label="Total businesses" value={data.totalBusinesses} icon={Layers3} />
-                <Stat label="No website" value={data.digitalPresence?.find((item) => item.channel === "Website")?.missing || 0} icon={Briefcase} accent="text-rose-600" border="border-l-rose-500" />
-                <Stat label="2+ digital gaps" value={(data.digitalGapsBuckets || []).filter((item) => item.gaps >= 2).reduce((sum, item) => sum + item.count, 0)} icon={Star} accent="text-violet-600" border="border-l-violet-500" />
-                <Stat label="High opportunity" value={data.priorityMix.find((p) => p.priority === "High Opportunity")?.count || 0} icon={Star} accent="text-emerald-600" border="border-l-emerald-500" />
-                <Stat label="Medium opportunity" value={data.priorityMix.find((p) => p.priority === "Medium Opportunity")?.count || 0} icon={Star} accent="text-amber-600" border="border-l-amber-500" />
-                <Stat label="Lower opportunity" value={data.priorityMix.find((p) => p.priority === "Lower Opportunity")?.count || 0} icon={Star} accent="text-slate-500" border="border-l-slate-400" />
+                <Stat tour="destination-executive-stat-total" label="Total businesses" value={data.totalBusinesses} icon={Layers3} />
+                <Stat tour="destination-executive-stat-no-website" label="No website" value={data.digitalPresence?.find((item) => item.channel === "Website")?.missing || 0} icon={Briefcase} accent="text-rose-600" border="border-l-rose-500" />
+                <Stat tour="destination-executive-stat-digital-gaps" label="2+ digital gaps" value={(data.digitalGapsBuckets || []).filter((item) => item.gaps >= 2).reduce((sum, item) => sum + item.count, 0)} icon={Star} accent="text-violet-600" border="border-l-violet-500" />
+                <Stat tour="destination-executive-stat-high" label="High opportunity" value={data.priorityMix.find((p) => p.priority === "High Opportunity")?.count || 0} icon={Star} accent="text-emerald-600" border="border-l-emerald-500" />
+                <Stat tour="destination-executive-stat-medium" label="Medium opportunity" value={data.priorityMix.find((p) => p.priority === "Medium Opportunity")?.count || 0} icon={Star} accent="text-amber-600" border="border-l-amber-500" />
+                <Stat tour="destination-executive-stat-lower" label="Lower opportunity" value={data.priorityMix.find((p) => p.priority === "Lower Opportunity")?.count || 0} icon={Star} accent="text-slate-500" border="border-l-slate-400" />
               </div>
 
               <section className="grid gap-4 md:grid-cols-2">
-                <Panel title="Overall Priority Mix" description="Opportunity band across every business.">
+                <Panel tour="destination-executive-chart-priority-mix" title="Overall Priority Mix" description="Opportunity band across every business.">
                   <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityChart.options} series={priorityChart.series} type="donut" height={250} />
                 </Panel>
-                <Panel title="Opportunity By Category" description="Average score per business category.">
+                <Panel tour="destination-executive-chart-category-score" title="Opportunity By Category" description="Average score per business category.">
                   <div className="px-2 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={categoryChart.options} series={categoryChart.series} type="bar" height={250} /></div>
                 </Panel>
                 <div className="md:col-span-2">
-                  <Panel title="Priority By Category" description="High, medium and lower opportunity across all five categories.">
+                  <Panel tour="destination-executive-chart-priority-by-category" title="Priority By Category" description="High, medium and lower opportunity across all five categories.">
                     <div className="chart-tooltip-overflow-visible px-3 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={categoryPriorityChart.options} series={categoryPriorityChart.series} type="bar" height={320} /></div>
                   </Panel>
                 </div>
                 <div className="md:col-span-2">
-                  <Panel title="Digital Presence" description="Website, Instagram and Facebook availability across the destination.">
+                  <Panel tour="destination-executive-chart-digital-presence" title="Digital Presence" description="Website, Instagram and Facebook availability across the destination.">
                     <div className="px-3 pt-2"><ReactApexChart className="chart-tooltip-overflow-visible" options={digitalPresenceChart.options} series={digitalPresenceChart.series} type="bar" height={260} /></div>
                   </Panel>
                 </div>
               </section>
 
-              <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <section data-tour="destination-executive-category-cards" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 {data.categories.map((item) => {
                   const style = categoryStyles[item.category] || categoryStyles.Coworking;
-                  const isActive = activeCategory === item.category;
                   return (
-                    <div
+                    <button
                       key={item.category}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setActiveCategory((current) => current === item.category ? null : item.category)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") setActiveCategory((current) => current === item.category ? null : item.category);
-                      }}
-                      className={`cursor-pointer rounded-2xl border ${style.border} ${style.surface} p-4 text-left transition hover:-translate-y-0.5 ${isActive ? "ring-2 ring-offset-2" : ""}`}
-                      style={isActive ? { "--tw-ring-color": categoryColors[item.category] } : undefined}
+                      type="button"
+                      onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(destination)}/${encodeURIComponent(item.category)}`)}
+                      className={`cursor-pointer rounded-2xl border ${style.border} ${style.surface} p-4 text-left transition hover:-translate-y-0.5`}
                     >
                       <div className={`flex items-center justify-between text-[10px] font-pmedium uppercase tracking-widest ${style.text}`}>
                         <span>{item.category}</span>
@@ -352,44 +313,18 @@ const WonoDestinationExecutiveDashboard = () => {
                       </div>
                       <p className="mt-2 text-lg font-pmedium text-slate-900">{item.count} businesses</p>
                       <p className="mt-1 text-[10px] font-pmedium text-slate-600">avg {number.format(item.averageScore)} · {item.highOpportunityCount} high opportunity</p>
-                      <div className="mt-2 flex items-center">
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(destination)}/${encodeURIComponent(item.category)}`);
-                          }}
-                          className="flex items-center gap-1 text-[10px] font-pmedium uppercase tracking-widest text-[#2563EB] hover:underline"
-                        >
-                          Open category <ArrowRight size={11} />
-                        </button>
-                      </div>
-                    </div>
+                      <span className="mt-2 flex items-center gap-1 text-[10px] font-pmedium uppercase tracking-widest text-[#2563EB]">
+                        Open category <ArrowRight size={11} />
+                      </span>
+                    </button>
                   );
                 })}
               </section>
 
-              {activeCategoryData ? (
-                <section className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
-                  <div className="flex flex-col gap-3 border-b border-slate-100 bg-blue-50/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-sm font-pmedium text-slate-900">Top 5 {activeCategoryData.category} Priority Leads</h2>
-                      <p className="mt-1 text-[11px] text-slate-500">Highest opportunity scores in this category.</p>
-                    </div>
-                    <button type="button" onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(destination)}/${encodeURIComponent(activeCategoryData.category)}`)} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-white transition hover:bg-blue-700">
-                      Open category <ArrowRight size={12} />
-                    </button>
-                  </div>
-                  <div className="px-3 py-3">
-                    <ReactApexChart className="chart-tooltip-overflow-visible" options={categoryTopFiveChart.options} series={categoryTopFiveChart.series} type="bar" height={300} />
-                  </div>
-                </section>
-              ) : null}
-
               <Panel title="All Priority Leads" description="Every surveyed business, ranked by opportunity score across all categories.">
                 <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-4">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <div className="relative min-w-0 flex-1">
+                    <div data-tour="destination-executive-search" className="relative min-w-0 flex-1">
                       <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         value={search}
@@ -400,6 +335,7 @@ const WonoDestinationExecutiveDashboard = () => {
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <select
+                        data-tour="destination-executive-priority-filter"
                         value={priorityFilter}
                         onChange={(event) => setPriorityFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${priorityFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -408,6 +344,7 @@ const WonoDestinationExecutiveDashboard = () => {
                         {Object.keys(priorityColors).map((priority) => <option key={priority} value={priority}>{priority}</option>)}
                       </select>
                       <select
+                        data-tour="destination-executive-status-filter"
                         value={statusFilter}
                         onChange={(event) => setStatusFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${statusFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -416,6 +353,7 @@ const WonoDestinationExecutiveDashboard = () => {
                         {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}
                       </select>
                       <select
+                        data-tour="destination-executive-business-status-filter"
                         value={businessStatusFilter}
                         onChange={(event) => setBusinessStatusFilter(event.target.value)}
                         className={`cursor-pointer rounded-lg border bg-white px-3 py-2.5 text-[11px] font-pmedium outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 ${businessStatusFilter === "All" ? "border-slate-200 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
@@ -426,7 +364,7 @@ const WonoDestinationExecutiveDashboard = () => {
                     </div>
                   </div>
                 </div>
-                <div className="max-h-[560px] overflow-auto">
+                <div data-tour="destination-executive-table" className="max-h-[560px] overflow-auto">
                   <table className="w-full min-w-[2150px] text-left">
                     <thead className="sticky top-0 z-30 border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                       <tr>
@@ -488,8 +426,8 @@ const WonoDestinationExecutiveDashboard = () => {
                           <td className="px-4 py-3.5 font-pmedium text-slate-600">{lead.notes || "—"}</td>
                           <td className="sticky right-0 z-10 whitespace-nowrap border-l border-slate-200 bg-white px-4 py-3.5 text-right will-change-transform group-hover:bg-blue-50/30">
                             <div className="inline-flex items-center gap-1.5">
-                              <button type="button" onClick={() => setSelectedLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Eye size={14} /></button>
-                              <button type="button" onClick={() => setEditingLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Pencil size={14} /></button>
+                              <button type="button" data-tour="destination-executive-action-view" onClick={() => setSelectedLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Eye size={14} /></button>
+                              <button type="button" data-tour="destination-executive-action-edit" onClick={() => setEditingLead(lead)} className="inline-flex rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-50 hover:text-[#2563EB]"><Pencil size={14} /></button>
                             </div>
                           </td>
                         </tr>

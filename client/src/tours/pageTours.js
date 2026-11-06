@@ -1484,6 +1484,521 @@ const PAGE_TOURS = [
     matches: exact("/dashboard/world-ranking-weights"),
   },
   {
+    id: "destination-data-analytics-overview",
+    version: 5,
+    title: "Destination Data Analytics",
+    description:
+      "The landing overview for all 132 approved destinations — priority bands, continent spread, and where each one ranks. This walkthrough covers every chart and card on the page, one at a time.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="destination-dashboard-header"]',
+        title: "\"View All 132 Destinations\" button",
+        description:
+          "Select this to leave the overview and open the full destination list — every one of the 132 approved destinations, in rank order, with search and filters. Nothing else on this page navigates away; everything else below stays on this same screen.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-stat-total"]',
+        title: "Total destinations",
+        description:
+          "The count of all approved destinations currently in the research set — right now, 132.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-stat-countries"]',
+        title: "Countries",
+        description:
+          "How many distinct countries those destinations are spread across.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-stat-continents"]',
+        title: "Continents",
+        description:
+          "How many continents are represented in the set.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-stat-avg-score"]',
+        title: "Average WoNo score",
+        description:
+          "The mean WoNo score across all 132 destinations — a quick read on how strong the set is as a whole.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-stat-top"]',
+        title: "Top destination",
+        description:
+          "The single highest-scoring destination right now, with its exact WoNo score.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-priority-share"]',
+        title: "Priority Share — donut chart",
+        description:
+          "How the 132 destinations split across the 4 onboarding priority bands (P1 Immediate, P2 High, P3 Medium, P4 Low). Each slice is a band's share of the total; the legend below shows the exact count per band.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-priority-score"]',
+        title: "Priority Score Comparison — bar chart",
+        description:
+          "One bar per priority band, showing its average WoNo score. Lets you see at a glance that P1 destinations score noticeably higher than P4 on average — it's not just a headcount split.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-continent-share"]',
+        title: "Continent Share — donut chart",
+        description:
+          "The same kind of split as Priority Share, but by continent instead of priority band — how many of the 132 destinations are in Asia, Europe, and so on.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-continent-score"]',
+        title: "Continent Score Comparison — bar chart",
+        description:
+          "One bar per continent, showing its average WoNo score, so you can compare how strong each region's destinations are on average, not just how many there are.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-priority-mix"]',
+        title: "Priority Mix By Continent — stacked bar chart",
+        description:
+          "One horizontal bar per continent, split into colored segments for P1–P4 — the segment widths show that continent's internal priority mix, and the number next to each continent's name is its share of all 132 destinations. Hover a segment for the exact count.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-country-bins"]',
+        title: "Destinations Per Country — bar chart",
+        description:
+          "Groups countries by how many approved destinations they contribute — e.g. the \"1 destination\" bar is how many countries have exactly one city in the set, \"2 destinations\" is how many have two, and so on.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-priority-bands"]',
+        title: "Priority band cards (P1–P4)",
+        description:
+          "Select any band to load its own Top 5 chart and full ranked table further down this same page — no page change. The selected card highlights and shows a \"View ranked list below\" hint; its destination count, average score and current top destination are shown right on the card.",
+        side: "bottom",
+        popoverClass: "master-panel-page-tour destination-dashboard-centered-tour",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-top5-priority"]',
+        title: "Top 5 In [priority band] — bar chart",
+        description:
+          "The 5 highest-scoring destinations within whichever priority band you selected above, with their exact WoNo scores — updates instantly when you pick a different band.",
+        side: "top",
+        popoverClass: "master-panel-page-tour destination-dashboard-centered-tour",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-priority-table"]',
+        title: "Priority ranked table",
+        description:
+          "The complete ranked list for the selected priority band. Select any destination name to open its Executive Opportunity Dashboard.",
+        side: "top",
+        popoverClass: "master-panel-page-tour destination-dashboard-table-tour",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-continent-cards"]',
+        title: "Continent cards",
+        description:
+          "Same idea as the priority band cards, but scoped by continent — select one to load its Top 5 chart and ranked table below, same page, no navigation.",
+        side: "bottom",
+        popoverClass: "master-panel-page-tour destination-dashboard-centered-tour",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-chart-top5-continent"]',
+        title: "Top 5 In [continent] — bar chart",
+        description:
+          "The 5 highest-scoring destinations within whichever continent you selected above — updates instantly when you pick a different continent.",
+        side: "top",
+        popoverClass: "master-panel-page-tour destination-dashboard-centered-tour",
+      },
+      {
+        selector: '[data-tour="destination-dashboard-continent-table"]',
+        title: "Continent ranked table",
+        description:
+          "The complete ranked list for the selected continent. Select any destination name to open its Executive Dashboard.",
+        side: "top",
+        popoverClass: "master-panel-page-tour destination-dashboard-table-tour",
+      },
+    ],
+    matches: exact("/dashboard/destination-data-analytics"),
+  },
+  {
+    id: "destination-ranking",
+    version: 3,
+    title: "Full Destination Ranking",
+    description:
+      "Every one of the 132 approved destinations with its WoNo score and all 10 factor values — search, filter, view or edit entries here. This walkthrough covers every stat, box and control on the page, one at a time.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="destination-ranking-header"]',
+        title: "Back to the overview",
+        description:
+          "Select this to return to the summary dashboard. Everything else on this page stays on this same list.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-stat-total"]',
+        title: "Total destinations",
+        description: "The count of all approved destinations in the research set — right now, 132.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-stat-countries"]',
+        title: "Countries",
+        description: "How many distinct countries those destinations are spread across.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-stat-continents"]',
+        title: "Continents",
+        description: "How many continents are represented in the set.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-stat-avg-score"]',
+        title: "Average WoNo score",
+        description: "The mean WoNo score across all 132 destinations.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-priority-bands"]',
+        title: "Priority bands",
+        description:
+          "A fixed breakdown of how many destinations sit in each priority band (P1–P4) and their average score — this comes straight from the approved ranking snapshot, not a live filter.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-continent-distribution"]',
+        title: "Continent distribution",
+        description:
+          "How the 132 destinations are spread across continents — bar length shows each continent's share, with its destination count and average score alongside.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-scoring-step-1"]',
+        title: "Step 1 — Convert source evidence into comparable scores",
+        description:
+          "Business listings, visitor arrivals, population, internet speed and other source values use different units, so each is first placed into a documented 0–100 performance band — these are WoNo's own anchor scores, not percentages published by the external sources.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-scoring-step-2"]',
+        title: "Step 2 — Build the Client Opportunity score",
+        description:
+          "The most business-focused inputs are combined first: Target Business Supply × 60% + Tourism/Accommodation Base × 25% + Market Scale × 15%.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-scoring-step-3"]',
+        title: "Step 3 — Apply the eight final-score weights",
+        description:
+          "Client Opportunity and 7 other pillar scores are each multiplied by their WoNo weight and summed into the final 0–100 WoNo score.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-scoring-step-4"]',
+        title: "Step 4 — Rank destinations and assign priority",
+        description:
+          "Priority (P1–P4) is based on the destination's position after every active destination is sorted by final score — it's a relative rank, not a fixed score cutoff.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-search"]',
+        title: "Search",
+        description: "Search by destination name, country or continent.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-priority-filter"]',
+        title: "Filter by priority",
+        description: "Narrow the table below to one priority band (P1–P4).",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-continent-filter"]',
+        title: "Filter by continent",
+        description: "Narrow the table below to one continent.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-ranking-table"]',
+        title: "The full list",
+        description:
+          "All matching destinations, sorted by rank, with country, continent, priority, active status and WoNo score.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destination-ranking-name-link"]',
+        title: "Open a destination",
+        description:
+          "Select any destination's name to open its Executive Opportunity Dashboard — the business-level data surveyed for that city.",
+        side: "right",
+      },
+      {
+        selector: '[data-tour="destination-ranking-action-view"]',
+        title: "View details",
+        description:
+          "The eye icon opens a read-only view of this destination's 10 factor values and its scoring breakdown.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="destination-ranking-action-edit"]',
+        title: "Edit a destination",
+        description:
+          "The pencil lets you adjust this destination's factor values. Once all 10 factors are set it becomes eligible to go active.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="destination-ranking-action-toggle"]',
+        title: "Activate or deactivate",
+        description:
+          "Switches whether this destination counts in the live ranking, without deleting it — it needs all 10 factors filled in before it can go active.",
+        side: "left",
+      },
+    ],
+    matches: exact("/dashboard/destination-data-analytics/ranking"),
+  },
+  {
+    id: "destination-executive-dashboard",
+    version: 2,
+    title: "Destination Executive Dashboard",
+    description:
+      "Business-level opportunity scoring for one destination — every surveyed business across WoNo's 5 target categories. This walkthrough covers every stat, chart, card and control on the page, one at a time.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="destination-executive-header"]',
+        title: "Back to the full ranking",
+        description: "Select this to return to the full 132-destination ranking list.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-total"]',
+        title: "Total businesses",
+        description: "How many businesses were surveyed in this destination, across all 5 categories.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-no-website"]',
+        title: "No website",
+        description: "How many of those businesses have no website at all.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-digital-gaps"]',
+        title: "2+ digital gaps",
+        description: "How many businesses are missing 2 or more of website, Instagram and Facebook.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-high"]',
+        title: "High opportunity",
+        description: "Businesses scored in the highest opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-medium"]',
+        title: "Medium opportunity",
+        description: "Businesses scored in the medium opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-stat-lower"]',
+        title: "Lower opportunity",
+        description: "Businesses scored in the lowest opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-chart-priority-mix"]',
+        title: "Overall Priority Mix",
+        description: "The share of every surveyed business that falls into the High, Medium and Lower opportunity bands.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-chart-category-score"]',
+        title: "Opportunity By Category",
+        description: "Average opportunity score for each of the 5 business categories, so you can see which one performs best here.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-chart-priority-by-category"]',
+        title: "Priority By Category",
+        description: "How High, Medium and Lower opportunity businesses are distributed within each category — not just the average, but the full spread.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-chart-digital-presence"]',
+        title: "Digital Presence",
+        description: "How many businesses have (vs. are missing) a website, Instagram page and Facebook page.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-category-cards"]',
+        title: "Open a category",
+        description:
+          "Select any category card — Coworking, Coliving, Cafe, Hostel or Meeting Room — to jump straight into that category's own dashboard for this destination.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-search"]',
+        title: "Search",
+        description: "Search by business name, category, owner or contact.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-priority-filter"]',
+        title: "Filter by priority",
+        description: "Narrow the table below to one opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-status-filter"]',
+        title: "Filter by lead status",
+        description: "Narrow the table below to one lead status, like New or Qualified.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-business-status-filter"]',
+        title: "Filter by business status",
+        description: "Narrow the table below to Active, Permanently Closed or Temporarily Closed businesses.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-executive-table"]',
+        title: "Every business, ranked",
+        description:
+          "All surveyed businesses across every category, sorted by opportunity score, with contact details, status, next action and plan.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destination-executive-action-view"]',
+        title: "View details",
+        description: "Opens a read-only detail view of this business's full survey data.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="destination-executive-action-edit"]',
+        title: "Edit a business",
+        description: "Opens the edit form for this business's details.",
+        side: "left",
+      },
+    ],
+    matches: (pathname) => /^\/dashboard\/destination-data-analytics\/ranking\/destination\/[^/]+$/.test(pathname),
+  },
+  {
+    id: "destination-category-dashboard",
+    version: 2,
+    title: "Category Dashboard",
+    description:
+      "One business category's opportunity scoring within a single destination — the deepest level of this module. This walkthrough covers every stat, chart and control on the page, one at a time.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="destination-category-header"]',
+        title: "Back to the Executive Dashboard",
+        description: "Select this to return up to this destination's Executive Opportunity Dashboard.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-total"]',
+        title: "Total companies",
+        description: "How many businesses in this category were surveyed for this destination.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-no-website"]',
+        title: "No website",
+        description: "How many of those businesses have no website at all.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-digital-gaps"]',
+        title: "2+ digital gaps",
+        description: "How many businesses are missing 2 or more of website, Instagram and Facebook.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-high"]',
+        title: "High opportunity",
+        description: "Businesses in this category scored in the highest opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-medium"]',
+        title: "Medium opportunity",
+        description: "Businesses in this category scored in the medium opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-stat-lower"]',
+        title: "Lower opportunity",
+        description: "Businesses in this category scored in the lowest opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-chart-priority-mix"]',
+        title: "Lead Priority Mix",
+        description: "The share of this category's businesses in the High, Medium and Lower opportunity bands.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-chart-digital-presence"]',
+        title: "Digital Presence Gaps",
+        description: "How many of this category's businesses have (vs. are missing) a website, Instagram page and Facebook page.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-search"]',
+        title: "Search",
+        description: "Search by business name, contact or owner.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-priority-filter"]',
+        title: "Filter by priority",
+        description: "Narrow the table below to one opportunity band.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-status-filter"]',
+        title: "Filter by lead status",
+        description: "Narrow the table below to one lead status, like New or Qualified.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-business-status-filter"]',
+        title: "Filter by business status",
+        description: "Narrow the table below to Active, Permanently Closed or Temporarily Closed businesses.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="destination-category-table"]',
+        title: "Every business in this category",
+        description:
+          "All surveyed businesses in this category for this destination, ranked by opportunity score, with contact details, status, next action and plan.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="destination-category-action-view"]',
+        title: "View a listing",
+        description: "Opens a read-only detail view of this business's full survey data.",
+        side: "left",
+      },
+      {
+        selector: '[data-tour="destination-category-action-edit"]',
+        title: "Edit a listing",
+        description: "Opens the edit form for this business's details.",
+        side: "left",
+      },
+    ],
+    matches: (pathname) => /^\/dashboard\/destination-data-analytics\/ranking\/destination\/[^/]+\/[^/]+$/.test(pathname),
+  },
+  {
     id: "visa-countries",
     version: 3,
     title: "Visa Countries",

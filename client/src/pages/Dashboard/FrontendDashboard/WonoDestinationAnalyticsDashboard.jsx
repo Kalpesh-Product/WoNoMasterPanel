@@ -4,6 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import {
   ArrowRight,
   BarChart3,
+  ChevronDown,
   Eye,
   Globe2,
   Layers3,
@@ -17,6 +18,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import WonoDestinationDetailModal from "./WonoDestinationDetailModal";
 import {
   getDestinationContinentMeta,
+  getDestinationPriorityClasses,
   getDestinationPriorityMeta,
 } from "./wonoDestinationAnalyticsTheme";
 
@@ -48,8 +50,8 @@ const priorityMeta = {
   },
 };
 
-const Stat =({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]" }) => (
-  <div className={`min-w-0 rounded-[2rem] border border-slate-100 border-l-4 ${border} bg-white px-4 py-4 shadow-sm`}>
+const Stat = ({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "border-l-[#2563EB]", tour }) => (
+  <div data-tour={tour} className={`min-w-0 rounded-[2rem] border border-slate-100 border-l-4 ${border} bg-white px-4 py-4 shadow-sm`}>
     <div className={`flex items-center gap-1.5 text-[9px] font-pmedium uppercase tracking-widest ${accent}`}>
       <Icon size={12} />
       <span className="truncate">{label}</span>
@@ -58,9 +60,9 @@ const Stat =({ label, value, icon: Icon, accent = "text-[#2563EB]", border = "bo
   </div>
 );
 
-const Panel = ({ title, description, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
-    <div className="border-b border-slate-100 px-5 py-4">
+const Panel = ({ title, description, children, tour, scrollMarginTop }) => (
+  <section data-tour={tour} style={scrollMarginTop ? { scrollMarginTop } : undefined} className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+    <div className="border-b border-slate-100 bg-white px-5 py-4">
       <h2 className="text-sm font-pmedium text-slate-900">{title}</h2>
       {description && <p className="mt-1 text-xs font-pmedium text-slate-500">{description}</p>}
     </div>
@@ -137,7 +139,7 @@ const WonoDestinationAnalyticsDashboard = () => {
 
   const priorityByContinentChart = useMemo(() => ({
     series: Object.keys(priorityMeta).map((priority) => ({
-      name: priority,
+      name: `${priority} · ${priorityMeta[priority].label}`,
       data: continentSummary.map((item) => rows.filter((row) => row.continent === item.continent && row.priority === priority).length),
     })),
     options: {
@@ -309,11 +311,12 @@ const WonoDestinationAnalyticsDashboard = () => {
                 Destination sequence & ranking dashboard
               </h1>
               <button
+                data-tour="destination-dashboard-header"
                 type="button"
                 onClick={() => navigate("/dashboard/destination-data-analytics/ranking")}
                 className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-white transition hover:bg-[#1d4ed8]"
               >
-                Open full sequence & ranking
+                View All 132 Destinations
                 <ArrowRight size={14} />
               </button>
             </div>
@@ -330,45 +333,47 @@ const WonoDestinationAnalyticsDashboard = () => {
           ) : (
             <>
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-              <Stat label="Total destinations" value={summary?.destinations || 0} icon={Layers3} />
-              <Stat label="Countries" value={summary?.countries || 0} icon={MapPin} accent="text-violet-600" border="border-l-violet-500" />
-              <Stat label="Continents" value={summary?.continents || 0} icon={Globe2} accent="text-amber-600" border="border-l-amber-500" />
-              <Stat label="Average WoNo score" value={number.format(summary?.averageScore || 0)} icon={BarChart3} accent="text-emerald-600" border="border-l-emerald-500" />
-              <Stat label="Top destination" value={rows[0] ? `${rows[0].destination} · ${number.format(rows[0].score)}` : "—"} icon={Star} accent="text-rose-600" border="border-l-rose-500" />
+              <Stat tour="destination-dashboard-stat-total" label="Total destinations" value={summary?.destinations || 0} icon={Layers3} />
+              <Stat tour="destination-dashboard-stat-countries" label="Countries" value={summary?.countries || 0} icon={MapPin} accent="text-violet-600" border="border-l-violet-500" />
+              <Stat tour="destination-dashboard-stat-continents" label="Continents" value={summary?.continents || 0} icon={Globe2} accent="text-amber-600" border="border-l-amber-500" />
+              <Stat tour="destination-dashboard-stat-avg-score" label="Average WoNo score" value={number.format(summary?.averageScore || 0)} icon={BarChart3} accent="text-emerald-600" border="border-l-emerald-500" />
+              <Stat tour="destination-dashboard-stat-top" label="Top destination" value={rows[0] ? `${rows[0].destination} · ${number.format(rows[0].score)}` : "—"} icon={Star} accent="text-rose-600" border="border-l-rose-500" />
             </div>
 
             <section className="grid gap-4 xl:grid-cols-2">
-              <Panel title="Priority Share" description="Destination count by onboarding band.">
+              <Panel tour="destination-dashboard-chart-priority-share" title="Priority Share" description="Destination count by onboarding band.">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityChart.options} series={priorityChart.series} type="donut" height={230} />
                 <PriorityLegend prioritySummary={prioritySummary} mode="count" />
               </Panel>
-              <Panel title="Priority Score Comparison" description="Average WoNo score by onboarding band.">
+              <Panel tour="destination-dashboard-chart-priority-score" title="Priority Score Comparison" description="Average WoNo score by onboarding band.">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityScoreChart.options} series={priorityScoreChart.series} type="bar" height={230} />
                 <PriorityLegend prioritySummary={prioritySummary} mode="score" />
               </Panel>
-              <Panel title="Continent Share" description="Destination count by continent.">
+              <Panel tour="destination-dashboard-chart-continent-share" title="Continent Share" description="Destination count by continent.">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={continentShareChart.options} series={continentShareChart.series} type="donut" height={250} />
               </Panel>
-              <Panel title="Continent Score Comparison" description="Average WoNo score by continent.">
+              <Panel tour="destination-dashboard-chart-continent-score" title="Continent Score Comparison" description="Average WoNo score by continent.">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={continentScoreChart.options} series={continentScoreChart.series} type="bar" height={250} />
               </Panel>
             </section>
 
-            <Panel title="Priority Mix By Continent" description="How many destinations in each priority band, per continent.">
+            <Panel tour="destination-dashboard-chart-priority-mix" title="Priority Mix By Continent" description="How many destinations in each priority band, per continent.">
               <div className="px-2 pt-2">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={priorityByContinentChart.options} series={priorityByContinentChart.series} type="bar" height={340} />
               </div>
             </Panel>
-            <Panel title="Destinations Per Country" description="How many countries have 1, 2, 3+ WoNo destinations.">
+            <Panel tour="destination-dashboard-chart-country-bins" title="Destinations Per Country" description="How many countries have 1, 2, 3+ WoNo destinations.">
               <div className="px-2 pt-2">
                 <ReactApexChart className="chart-tooltip-overflow-visible" options={countryBinsChart.options} series={countryBinsChart.series} type="bar" height={280} />
               </div>
             </Panel>
 
             <section>
-              <h2 className="text-sm text-slate-900 font-pmedium">Priority Bands</h2>
-              <p className="mt-1 text-xs font-pmedium text-slate-500">Select a priority to see its top destinations and full ranked list below.</p>
-              <div className="sticky top-0 z-20 -mx-2 bg-white px-2 pb-3 pt-2 lg:-mx-2.5 lg:px-2.5">
+              <div className="px-1 pb-3">
+                <h2 className="text-sm text-slate-900 font-pmedium">Priority Bands</h2>
+                <p className="mt-1 text-xs font-pmedium text-slate-500">Select a priority to see its top destinations and full ranked list below.</p>
+              </div>
+              <div data-tour="destination-dashboard-priority-bands" className="sticky top-0 z-20 bg-white py-2">
                 <div className="grid gap-2 xl:grid-cols-4">
                   {prioritySummary.map((item) => {
                     const meta = priorityMeta[item.priority];
@@ -396,6 +401,11 @@ const WonoDestinationAnalyticsDashboard = () => {
                         </div>
                       </div>
                       <p className="mt-2 truncate text-[10px] font-pmedium text-slate-600">Top: {item.topDestination?.destination}</p>
+                      {activePriority === item.priority && (
+                        <p className="mt-2 flex items-center gap-1 text-[10px] font-pmedium" style={{ color: meta.color }}>
+                          View ranked list below <ChevronDown size={11} />
+                        </p>
+                      )}
                     </button>
                     );
                   })}
@@ -403,13 +413,13 @@ const WonoDestinationAnalyticsDashboard = () => {
               </div>
 
               <div className="mt-4 flex flex-col gap-4">
-                <Panel title={`Top 5 In ${activePriority}`} description="Highest-scoring destinations in the selected priority band.">
+                <Panel tour="destination-dashboard-chart-top5-priority" title={`Top 5 In ${activePriority}`} description="Highest-scoring destinations in the selected priority band.">
                   <div className="px-2 pt-2">
                     <ReactApexChart className="chart-tooltip-overflow-visible" key={`top5-priority-${activePriority}`} options={top5PriorityChart.options} series={top5PriorityChart.series} type="bar" height={260} />
                   </div>
                 </Panel>
 
-                <Panel title={`${activePriority} Ranked Destinations`} description={`${priorityMeta[activePriority].reason} Showing all ${activePriorityData?.count || 0} destinations in rank order.`}>
+                <Panel tour="destination-dashboard-priority-table" title={`${activePriority} Ranked Destinations`} description={`${priorityMeta[activePriority].reason} Showing all ${activePriorityData?.count || 0} destinations in rank order.`}>
                   <div className="max-h-[540px] overflow-auto">
                     <table className="w-full min-w-[840px] table-fixed text-left">
                       <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
@@ -430,7 +440,7 @@ const WonoDestinationAnalyticsDashboard = () => {
                               <button
                                 type="button"
                                 onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(item.destination)}`)}
-                                className="truncate font-pmedium text-slate-900 hover:text-[#2563EB] hover:underline"
+                                className="truncate font-pmedium text-[#2563EB] hover:underline"
                               >
                                 {item.destination}
                               </button>
@@ -458,9 +468,11 @@ const WonoDestinationAnalyticsDashboard = () => {
             </section>
 
             <section>
-              <h2 className="text-sm text-slate-900 font-pmedium">Continent Performance</h2>
-              <p className="mt-1 text-xs font-pmedium text-slate-500">Select a continent to see its top destinations and full ranked list below.</p>
-              <div className="sticky top-0 z-20 -mx-2 bg-white px-2 pb-3 pt-2 lg:-mx-2.5 lg:px-2.5">
+              <div className="px-1 pb-3">
+                <h2 className="text-sm text-slate-900 font-pmedium">Continent Performance</h2>
+                <p className="mt-1 text-xs font-pmedium text-slate-500">Select a continent to see its top destinations and full ranked list below.</p>
+              </div>
+              <div data-tour="destination-dashboard-continent-cards" className="sticky top-0 z-20 bg-white py-2">
                 <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-6">
                   {continentSummary.map((item) => (
                     <button
@@ -485,19 +497,24 @@ const WonoDestinationAnalyticsDashboard = () => {
                         </div>
                       </div>
                       <p className="mt-2 truncate text-[10px] font-pmedium text-slate-600">Top: {item.topDestination?.destination}</p>
+                      {selectedContinent === item.continent && (
+                        <p className="mt-2 flex items-center gap-1 text-[10px] font-pmedium" style={{ color: item.color }}>
+                          View ranked list below <ChevronDown size={11} />
+                        </p>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="mt-4 flex flex-col gap-4">
-                <Panel title={`Top 5 In ${selectedContinent}`} description="Highest-scoring destinations in the selected continent.">
+                <Panel tour="destination-dashboard-chart-top5-continent" title={`Top 5 In ${selectedContinent}`} description="Highest-scoring destinations in the selected continent.">
                   <div className="px-2 pt-2">
                     <ReactApexChart className="chart-tooltip-overflow-visible" key={`top5-continent-${selectedContinent}`} options={top5ContinentChart.options} series={top5ContinentChart.series} type="bar" height={260} />
                   </div>
                 </Panel>
 
-                <Panel title={`${selectedContinent} Ranked Destinations`} description={`Showing all ${continentRows.length} destinations in rank order.`}>
+                <Panel tour="destination-dashboard-continent-table" title={`${selectedContinent} Ranked Destinations`} description={`Showing all ${continentRows.length} destinations in rank order.`}>
                   <div className="max-h-[540px] overflow-auto">
                     <table className="w-full min-w-[840px] table-fixed text-left">
                       <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] uppercase tracking-widest text-slate-400">
@@ -518,13 +535,15 @@ const WonoDestinationAnalyticsDashboard = () => {
                               <button
                                 type="button"
                                 onClick={() => navigate(`/dashboard/destination-data-analytics/ranking/destination/${encodeURIComponent(item.destination)}`)}
-                                className="truncate font-pmedium text-slate-900 hover:text-[#2563EB] hover:underline"
+                                className="truncate font-pmedium text-[#2563EB] hover:underline"
                               >
                                 {item.destination}
                               </button>
                             </td>
                             <td className="truncate px-5 py-3.5 font-pmedium text-slate-600" title={item.country}>{item.country}</td>
-                            <td className="truncate px-5 py-3.5 font-pmedium text-slate-600">{item.priority}</td>
+                            <td className="truncate px-5 py-3.5">
+                              {item.priority ? <span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-pmedium ${getDestinationPriorityClasses(item.priority)}`}>{item.priority} · {item.priorityLabel}</span> : <span className="text-[10px] text-slate-400">—</span>}
+                            </td>
                             <td className="px-5 py-3.5 text-right font-pmedium text-slate-900">{number.format(item.score)}</td>
                             <td className="px-5 py-3.5 text-right">
                               <button

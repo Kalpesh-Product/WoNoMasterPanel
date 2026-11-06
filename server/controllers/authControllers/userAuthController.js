@@ -96,8 +96,16 @@ const login = async (req, res, next) => {
     delete user.password;
     delete user.refreshToken;
 
+    // tourProgress (and passwordHistory) are never read from the decoded
+    // token by anything — tourControllers re-fetches tourProgress straight
+    // from the DB — but tourProgress keeps growing as more pages/tours ship,
+    // and embedding it here bloats the access token past Node's HTTP header
+    // size limit, since this token rides the Authorization header on every
+    // request (not just a cookie). Same bloat this file's refreshToken
+    // comment already describes, just surfacing one layer up.
+    const { tourProgress, passwordHistory, ...tokenUser } = user;
     const accessToken = jwt.sign(
-      { userInfo: { ...user } },
+      { userInfo: tokenUser },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "15m" }
     );

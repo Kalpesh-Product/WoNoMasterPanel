@@ -30,8 +30,14 @@ const refreshTokenController = async (req, res, next) => {
         // refresh token at login time, so access/role changes (e.g.
         // isSuperAdmin, allowedModules) take effect on next silent refresh
         // instead of requiring the user to log out and back in.
+        // tourProgress/passwordHistory are excluded the same way
+        // userAuthController's login does — nothing reads them from the
+        // decoded token, and tourProgress keeps growing, which was pushing
+        // this token (sent on every request's Authorization header) past
+        // Node's HTTP header size limit.
+        const { tourProgress, passwordHistory, ...tokenUser } = user;
         const accessToken = jwt.sign(
-          { userInfo: { ...user } },
+          { userInfo: tokenUser },
           process.env.ACCESS_TOKEN_SECRET,
           { expiresIn: "15m" }
         );
