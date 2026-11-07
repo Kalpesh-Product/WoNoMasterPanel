@@ -40,7 +40,20 @@ const HEADER_ALIASES = {
   contact: ["contact", "contact number", "phone"],
   email: ["email", "email id"],
   linkedin: ["linkedin"],
+  businessStatus: ["business status"],
 };
+
+const BUSINESS_STATUS_ALIASES = {
+  active: "Active",
+  open: "Active",
+  "permanently closed": "Permanently Closed",
+  "closed permanently": "Permanently Closed",
+  closed: "Permanently Closed",
+  "temporarily closed": "Temporarily Closed",
+  "closed temporarily": "Temporarily Closed",
+};
+
+const normalizeBusinessStatus = (raw) => BUSINESS_STATUS_ALIASES[normalizeHeader(raw)] || "Active";
 
 const COLUMN_WARNINGS = {
   website: 'No "Website" column — website links were left blank.',
@@ -59,6 +72,7 @@ const COLUMN_WARNINGS = {
   airportName: 'No "Airport Name" column — airport names were left blank.',
   airportMapUrl: 'No "Airport Map Link" column — airport map links were left blank.',
   state: 'No "State" column — state values were left blank.',
+  businessStatus: 'No "Business Status" column — businesses were treated as Active.',
 };
 
 const normalizeHeader = (value) => String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -231,6 +245,7 @@ const parseDestinationRawData = (workbook, filename) => {
       contact: cellStr(row, columns.contact),
       email: cellStr(row, columns.email),
       linkedin: cellStr(row, columns.linkedin),
+      businessStatus: normalizeBusinessStatus(cellStr(row, columns.businessStatus)),
     });
   });
 
