@@ -265,7 +265,7 @@ const bulkImportDestinationListings = async (req, res, next) => {
             email: b.email,
             contact: b.contact,
             linkedin: b.linkedin,
-            businessStatus: "Active",
+            businessStatus: b.businessStatus,
             scoring: {
               needScore: scored.need.score,
               categoryFitScore: scored.categoryFit.score,
