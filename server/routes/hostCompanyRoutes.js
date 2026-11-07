@@ -75,7 +75,8 @@ const {
   removePricingItem,
   setCustomPlanModules,
 } = require("../controllers/planPricingControllers");
-const { getHostInvoices } = require("../controllers/hostInvoiceControllers");
+const { getHostInvoices, markHostInvoiceAsPaid } = require("../controllers/hostInvoiceControllers");
+const verifyJwt = require("../middlewares/verifyJwt");
 
 //company
 router.post(
@@ -119,6 +120,7 @@ router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
 router.get("/host-companies", getHostLeadCompanies);
 router.get("/host-companies/:companyId/invoices", getHostInvoices);
+router.patch("/host-companies/:companyId/invoices/:invoiceId/mark-paid", verifyJwt, markHostInvoiceAsPaid);
 router.post(
   "/transfer-nomad-listing",
   setLogModule("Nomad Listings"),

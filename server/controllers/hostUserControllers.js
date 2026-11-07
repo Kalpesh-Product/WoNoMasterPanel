@@ -4240,6 +4240,38 @@ const handleStripeWebhook = async (req, res) => {
         );
 
         if (updated) {
+          // Push the payment status to HostPanel the instant Stripe confirms
+          // it, instead of HostPanel only finding out whenever someone next
+          // loads the Leads page (which polls this same data on a GET).
+          // Best-effort — never blocks this webhook's response to Stripe.
+          if (updated.paymentType !== "plan_subscription" && updated.leadId) {
+            const hostPanelBaseUrl = String(
+              process.env.HOST_PANEL_BE ||
+                (process.env.NODE_ENV === "production" ? "https://host.wono.co" : "http://localhost:5006"),
+            ).trim().replace(/\/+$/, "");
+            axios
+              .post(
+                `${hostPanelBaseUrl}/api/master-panel/payment-webhook`,
+                {
+                  leadId: updated.leadId,
+                  status: "paid",
+                  amount: updated.amount,
+                  currency: updated.currency,
+                  transactionId: updated.stripeCheckoutSessionId || updated.stripePaymentLinkId,
+                },
+                {
+                  headers: { "x-masterpanel-service-key": process.env.HOSTPANEL_SERVICE_API_KEY },
+                  timeout: 8000,
+                },
+              )
+              .catch((error) => {
+                console.error(
+                  "Could not push payment status to HostPanel:",
+                  error?.response?.data?.message || error?.message || error,
+                );
+              });
+          }
+
           const invoiceNumber = idGenerator("INV");
           const pdfBuffer = await generateInvoicePdf({
             invoiceNumber,
