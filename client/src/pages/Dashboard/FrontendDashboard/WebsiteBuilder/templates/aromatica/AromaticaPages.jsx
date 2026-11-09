@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "../motion";
+import { AnimatePresence, motion } from "../motion";
 import { groupByCategory } from "../serviceAdapter";
 import { ApplyForm, MessageForm, RoleSection } from "../shared/TplForms";
 import { FaqSection } from "../shared/TplParts";
@@ -15,19 +15,26 @@ export const AromaticaAbout = () => {
         mediaUrl(draft?.heroImages?.[1]) ||
         mediaUrl(draft?.heroImages?.[0]);
     const people = (t.team?.length ? t.team : t.founders) || [];
+    const storyImage = photo("about.story", mediaUrl(images[1]) || mediaUrl(images[2]) || heroImage);
+    const savedAboutTitle = c("about.title", "Coffee with a point of view");
+    const aboutTitle = /^(?:get|good) to know us$/i.test(savedAboutTitle.trim())
+        ? "Coffee with a point of view"
+        : savedAboutTitle;
     return (<>
-      <AromaPageHero eyebrow="Our roastery" title={c("about.title", "A better cup begins with better attention")} body={t.aboutParagraphs?.[0]} image={photo("about.hero", heroImage)}/>
+      <AromaPageHero eyebrow="Behind the cup" title={aboutTitle} body={t.aboutParagraphs?.[0]} image={photo("about.hero", heroImage)}/>
       <section className="aroma-about-story">
-        <div className="aroma-shell aroma-about-grid">
-          <AromaReveal>
-            <p className="aroma-kicker">Why we roast</p>
-            <h2>
-              Small lots.
-              <br />
-              Big character.
-            </h2>
+        <div className="aroma-shell aroma-about-editorial">
+          <AromaReveal className="aroma-about-visual">
+            <AromaImage src={storyImage} alt="Coffee roasted and prepared with care"/>
+            <span>From origin to cup</span>
           </AromaReveal>
-          <AromaReveal>
+          <AromaReveal className="aroma-about-copy">
+            <p className="aroma-kicker">What guides us</p>
+            <h2>
+              Small lots,
+              <br />
+              unmistakable character.
+            </h2>
             <p>
               {t.aboutParagraphs?.[1] ||
             "We work directly with importers and producers who value flavour, fairness and long-term relationships."}
@@ -50,12 +57,6 @@ export const AromaticaAbout = () => {
           </AromaReveal>
         </div>
       </section>
-      <section className="aroma-about-collage">
-        <div className="aroma-shell">
-          <AromaImage src={images[1] || t.homeHeroImage} alt="Coffee bar"/>
-          <AromaImage src={images[2] || images[0]} alt="Coffee detail"/>
-        </div>
-      </section>
       {people.length ? (<section className="aroma-team">
           <div className="aroma-shell">
             <div className="aroma-section-head">
@@ -75,8 +76,8 @@ export const AromaticaAbout = () => {
         </section>) : null}
       <section className="aroma-faq">
         <div className="aroma-shell">
-          <p className="aroma-kicker">Coffee questions</p>
-          <h2>Good to know</h2>
+          <p className="aroma-kicker">Questions, answered</p>
+          <h2>Before you visit</h2>
           <FaqSection faqs={draft?.faqs}/>
         </div>
       </section>
@@ -111,44 +112,71 @@ export const ServicesIndex = () => {
 export const ServicePage = ({ service }) => {
     const groups = groupByCategory(service.items);
     const { openLead } = useAromatica();
+    const menuImage = service.heroImage || service.cardImage || service.items.find((item) => item.image)?.image;
     return (<>
-      <AromaPageHero eyebrow="Our menu" title={service.heroHeading || service.name} body={service.heroSubHeading} image={service.heroImage}/>
+      <section className="aroma-menu-hero">
+        <AromaImage className="aroma-menu-hero-image" src={menuImage} alt={service.heroHeading || service.name} eager/>
+        <div className="aroma-menu-hero-shade"/>
+        <div className="aroma-shell aroma-menu-hero-inner">
+          <motion.div className="aroma-menu-hero-copy" initial={{ opacity: 0, y: 34 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.82, ease: [0.22, 1, 0.36, 1] }}>
+            <p className="aroma-kicker">Aromatica / all-day menu</p>
+            <h1>{service.heroHeading || service.name}</h1>
+            <p>{service.heroSubHeading}</p>
+            <div className="aroma-menu-hero-meta">
+              <span>
+                <b>{String(service.items.length).padStart(2, "0")}</b>
+                <small>house selections</small>
+              </span>
+              <span>
+                <b>{String(groups.length).padStart(2, "0")}</b>
+                <small>menu chapters</small>
+              </span>
+            </div>
+          </motion.div>
+          <span className="aroma-menu-hero-caption">Roasted carefully · served daily</span>
+        </div>
+      </section>
       <section className="aroma-menu-page">
         <div className="aroma-shell">
           <AromaReveal className="aroma-menu-overview">
-            <div>
-              <p className="aroma-kicker">Made throughout the day</p>
-              <h2>Choose your ritual</h2>
+            <div className="aroma-menu-overview-copy">
+              <p className="aroma-kicker">Find your order</p>
+              <h2>Start with what you crave.</h2>
             </div>
             <p>
-              Explore every category, open an item for its full story, or reserve
-              a table when you are ready to visit.
+              Bright and quick, deep and slow, or something worth sharing.
+              Browse by chapter, then open any selection for the full story.
             </p>
-            <div className="aroma-menu-category-index">
-              {groups.map((group, index) => (<span key={group.category || `category-${index}`}>
+            <div className={`aroma-menu-category-rail count-${Math.min(groups.length, 4)}`}>
+              {groups.map((group, index) => (<a href={`#aroma-menu-group-${index}`} key={group.category || `category-${index}`}>
                   <b>0{index + 1}</b>
-                  {group.category || service.name}
+                  <strong>{group.category || service.name}</strong>
                   <small>{group.items.length} items</small>
-                </span>))}
+                </a>))}
             </div>
           </AromaReveal>
-          {groups.map((group, groupIndex) => (<div className="aroma-menu-group" key={group.category || "menu"}>
+          {groups.map((group, groupIndex) => (<div className="aroma-menu-group" id={`aroma-menu-group-${groupIndex}`} key={group.category || "menu"}>
               <div className="aroma-menu-group-head">
                 <span>0{groupIndex + 1}</span>
                 <div>
-                  <p className="aroma-kicker">Freshly prepared</p>
+                  <p className="aroma-kicker">Menu chapter</p>
                   <h2>{group.category || service.name}</h2>
                 </div>
-                <small>{group.items.length} selections</small>
+                <small>{group.items.length} selections · made to order</small>
               </div>
               <div className={`aroma-menu-list count-${Math.min(group.items.length, 3)}`}>
                 {group.items.map((item, index) => (<AromaProductCard key={item.key} service={service} item={item} index={index}/>))}
               </div>
             </div>))}
           {service.leadEnabled ? (<div className="aroma-menu-cta">
-              <h2>Save a table for your next coffee.</h2>
-              <button type="button" onClick={() => openLead(service)}>
-                Reserve now <AromaArrow />
+              <p className="aroma-kicker">Planning a visit?</p>
+              <h2>Good coffee deserves a little time.</h2>
+              <p>
+                Come for the first pour, stay for another. We will have your
+                table ready.
+              </p>
+              <button type="button" className="aroma-primary" onClick={() => openLead(service)}>
+                Reserve a table <AromaArrow />
               </button>
             </div>) : null}
         </div>
@@ -266,20 +294,65 @@ export const AromaticaGallery = () => {
 };
 export const AromaticaTestimonials = () => {
     const { t, testimonials } = useAromatica();
+    const [reviewIndex, setReviewIndex] = useState(0);
+    const reviews = testimonials?.length
+        ? testimonials
+        : [
+            {
+                name: "Coffee guest",
+                text: "A warm room, thoughtful service and coffee worth slowing down for.",
+            },
+        ];
+    const activeReview = reviews[reviewIndex % reviews.length];
+    const changeReview = (direction) => {
+        setReviewIndex((current) => (current + direction + reviews.length) % reviews.length);
+    };
     return (<>
       <AromaPageHero eyebrow="Guest notes" title="Stories shared over coffee" image={t.homeHeroImage}/>
       <section className="aroma-testimonials aroma-testimonials-page">
         <div className="aroma-shell">
-          <div className="aroma-quote-grid">
-            {testimonials.map((review, index) => (<AromaReveal key={index} delay={index * 0.05}>
-                <span>“</span>
-                <p>{review.text || review.review || review.comment}</p>
-                <b>{review.name || review.author || "Coffee guest"}</b>
-              </AromaReveal>))}
+          <div className="aroma-reviews-page-head">
+            <div>
+              <p className="aroma-kicker">From our guests</p>
+              <h2>One story at a time.</h2>
+            </div>
+            <span>
+              {String((reviewIndex % reviews.length) + 1).padStart(2, "0")} /{" "}
+              {String(reviews.length).padStart(2, "0")}
+            </span>
           </div>
-          {t.showWriteReview ? (<button className="aroma-primary" type="button" onClick={t.openReviewModal}>
-              Write a review
-            </button>) : null}
+          <div className="aroma-reviews-carousel">
+            <button type="button" className="aroma-reviews-carousel-arrow is-previous" onClick={() => changeReview(-1)} aria-label="Previous review" disabled={reviews.length < 2}>
+              <AromaArrow />
+            </button>
+            <div className="aroma-reviews-carousel-stage">
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.article key={`${activeReview.name || activeReview.author}-${reviewIndex}`} initial={{ opacity: 0, x: 38 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -38 }} transition={{ duration: 0.46, ease: [0.22, 1, 0.36, 1] }}>
+                  <span className="aroma-reviews-quote">“</span>
+                  <blockquote>
+                    {activeReview.text ||
+            activeReview.review ||
+            activeReview.comment}
+                  </blockquote>
+                  <footer>
+                    <b>{activeReview.name || activeReview.author || "Coffee guest"}</b>
+                    {activeReview.role || activeReview.location ? (<small>{activeReview.role || activeReview.location}</small>) : null}
+                  </footer>
+                </motion.article>
+              </AnimatePresence>
+            </div>
+            <button type="button" className="aroma-reviews-carousel-arrow is-next" onClick={() => changeReview(1)} aria-label="Next review" disabled={reviews.length < 2}>
+              <AromaArrow />
+            </button>
+          </div>
+          <div className="aroma-reviews-page-footer">
+            <div className="aroma-reviews-dots" aria-label="Choose a review">
+              {reviews.map((_, index) => (<button type="button" className={index === reviewIndex % reviews.length ? "is-active" : ""} key={index} onClick={() => setReviewIndex(index)} aria-label={`Show review ${index + 1}`} aria-current={index === reviewIndex % reviews.length ? "true" : undefined}/>))}
+            </div>
+            {t.showWriteReview ? (<button className="aroma-primary" type="button" onClick={t.openReviewModal}>
+                Write a review
+              </button>) : null}
+          </div>
         </div>
       </section>
     </>);
@@ -315,17 +388,17 @@ export const AromaticaPartner = () => {
 };
 export const AromaticaCareers = () => {
     const { t } = useAromatica();
-    const [active, setActive] = useState(null);
+    const active = t.careersApplyJob;
     if (active)
         return (<section className="aroma-career-detail">
         <div className="aroma-shell">
-          <button type="button" className="aroma-text-link" onClick={() => setActive(null)}>
+          <button type="button" className="aroma-text-link" onClick={t.closeCareersJob}>
             ← All roles
           </button>
           <p className="aroma-kicker">Join the team</p>
-          <h1>{active.title || active.name}</h1>
-          <RoleSection title="The role" text={active.description || active.summary}/>
-          <RoleSection title="What you will bring" text={active.requirements} asList/>
+          <h1>{active.title || active.name || active.jobTitle}</h1>
+          {active.description || active.summary || active.aboutTheJob ? (<RoleSection title="The role" text={active.description || active.summary || active.aboutTheJob}/>) : null}
+          {active.requirements ? (<RoleSection title="What you will bring" text={active.requirements} asList/>) : null}
           <ApplyForm />
         </div>
       </section>);
@@ -333,10 +406,7 @@ export const AromaticaCareers = () => {
       <AromaPageHero eyebrow="Work with us" title="Curious people make better coffee" body="Join a team that cares about hospitality, craft and the details guests remember." image={t.aboutImages?.[2] || t.homeHeroImage}/>
       <section className="aroma-jobs">
         <div className="aroma-shell">
-          {t.careersJobsLoading ? (<p>Loading roles…</p>) : t.careersJobs?.length ? (t.careersJobs.map((job, index) => (<button type="button" key={job.id || index} onClick={() => {
-                setActive(job);
-                t.setCareersApplyJob?.(job);
-            }}>
+          {t.careersJobsLoading ? (<p>Loading roles…</p>) : t.careersJobs?.length ? (t.careersJobs.map((job, index) => (<button type="button" key={job.id || index} onClick={() => t.openCareersJob(job)}>
                 <span>0{index + 1}</span>
                 <h3>{job.title || job.name}</h3>
                 <p>{job.location || "At the roastery"}</p>
@@ -344,19 +414,29 @@ export const AromaticaCareers = () => {
               </button>))) : (<div className="aroma-empty">
               <h2>No open roles today.</h2>
               <p>We are always glad to meet thoughtful hospitality people.</p>
-              <button type="button" className="aroma-primary" onClick={t.openCareersGeneralApply}>
-                Send a general application
-              </button>
             </div>)}
+          <div className="aroma-general-application">
+            <p className="aroma-kicker">Do not see your role?</p>
+            <h2>Make your own introduction.</h2>
+            <p>
+              Tell us what you care about, where you shine and how you would
+              add something special to Aromatica.
+            </p>
+            <button type="button" className="aroma-primary" onClick={t.openCareersGeneralApply}>
+              Send a general application <AromaArrow />
+            </button>
+          </div>
         </div>
       </section>
     </>);
 };
 export const AromaticaContact = () => {
-    const { t } = useAromatica();
-    const map = t.contactAddress
-        ? `https://www.google.com/maps?q=${encodeURIComponent(t.contactAddress)}&output=embed`
-        : "";
+    const { t, draft } = useAromatica();
+    const configuredMap = String(draft?.mapUrl || "").trim();
+    const map = configuredMap ||
+        (t.contactAddress
+            ? `https://www.google.com/maps?q=${encodeURIComponent(t.contactAddress)}&output=embed`
+            : "");
     return (<>
       <AromaPageHero eyebrow="Visit us" title="Coffee tastes better together" body="Drop in for a cup, collect freshly roasted beans or reserve a table for your group."/>
       <section className="aroma-contact">

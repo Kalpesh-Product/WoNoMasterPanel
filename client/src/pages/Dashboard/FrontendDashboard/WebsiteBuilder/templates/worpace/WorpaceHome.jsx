@@ -28,8 +28,45 @@ const BENEFITS = [
   ],
 ];
 const Hero = () => {
-  const { t, draft, primary, openLead, c } = useWorpace();
+  const { t, draft, primary, c } = useWorpace();
   const hero = t.heroImages?.[0] || primary?.heroImage || t.galleryItems?.[0];
+  return (
+    <section className="wp-hero">
+      <div className="wp-hero-media">
+        {hero ? (
+          <motion.img src={hero} alt="Modern co-working space" initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 1.5, ease: [0.22, 1, 0.36, 1] }} />
+        ) : (
+          <Placeholder />
+        )}
+        <span />
+      </div>
+      <div className="wp-shell wp-hero-inner">
+        <div className="wp-hero-copy">
+          <motion.p className="wp-hero-kicker" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08, duration: 0.65 }}>
+            <span aria-hidden="true" />
+            {c("home.hero.eyebrow", "Space to focus. People to grow.")}
+          </motion.p>
+          <motion.h1 initial={{ opacity: 0, y: 44 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}>
+            {draft?.title || c("home.hero.title", "Creative workspace")}
+          </motion.h1>
+          <motion.p className="wp-hero-sub" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26, duration: 0.7 }}>
+            {draft?.subTitle || "A calm, design-led place to focus, collaborate and grow your next idea."}
+          </motion.p>
+          <motion.div className="wp-hero-actions" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38, duration: 0.65 }}>
+            <button type="button" className="wp-cta wp-cta-light" onClick={() => document.getElementById("wp-quick-reserve")?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+              {draft?.CTAButtonText || "Reserve a space"} {Icon.arrow()}
+            </button>
+            <button type="button" className="wp-hero-link" onClick={() => t.goToSection("products")}>
+              Explore workspaces {Icon.arrow()}
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+};
+const QuickReserve = () => {
+  const { primary, openLead, c } = useWorpace();
   const [date, setDate] = useState("");
   const [interest, setInterest] = useState("");
   const [people, setPeople] = useState("");
@@ -41,78 +78,13 @@ const Hero = () => {
     });
   };
   return (
-    <section className="wp-hero">
-      <div className="wp-shell">
-        <motion.h1
-          initial={{ opacity: 0, y: 44 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {draft?.title || c("home.hero.title", "CREATIVE WORKSPACE")}
-        </motion.h1>
-        <div className="wp-hero-meta">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="wp-hero-thumb">
-              {t.heroImages?.[1] ? (
-                <img src={t.heroImages[1]} alt="Collaborative workspace" />
-              ) : (
-                <Placeholder />
-              )}
-            </div>
-            <span className="wp-icon-box">↗</span>
-          </motion.div>
-          <motion.p
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            {draft?.subTitle ||
-              "A calm, design-led place to focus, collaborate and grow your next idea."}
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.48 }}
-          >
-            <strong>{c("home.hero.side", "Join the new work era")}</strong>
-            <button
-              type="button"
-              className="wp-cta wp-cta-light"
-              onClick={() => t.goToSection("products")}
-            >
-              {draft?.CTAButtonText || "Get Started"} {Icon.arrow()}
-            </button>
-          </motion.div>
+    <section className="wp-quick-reserve" id="wp-quick-reserve">
+      <div className="wp-shell wp-reserve">
+        <div className="wp-reserve-heading">
+          <p>Find your place</p>
+          <h2>{c("home.reserve.title", "Reserve your office space")}</h2>
         </div>
-        <motion.div
-          className="wp-hero-photo"
-          initial={{ clipPath: "inset(0 0 100% 0)" }}
-          animate={{ clipPath: "inset(0 0 0% 0)" }}
-          transition={{ duration: 1.15, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        >
-          {hero ? (
-            <motion.img
-              src={hero}
-              alt="Modern co-working space"
-              initial={{ scale: 1.08 }}
-              animate={{ scale: 1 }}
-              transition={{
-                duration: 1.5,
-                delay: 0.25,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-            />
-          ) : (
-            <Placeholder />
-          )}
-          <div className="wp-reserve">
-            <p>Best desk workspace</p>
-            <h2>{c("home.reserve.title", "Reserve your office space")}</h2>
-            <div className="wp-reserve-fields">
+        <div className="wp-reserve-fields">
               <label>
                 <small>Date</small>
                 <input
@@ -156,9 +128,7 @@ const Hero = () => {
               >
                 Get started with us {Icon.arrow()}
               </button>
-            </div>
-          </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
@@ -386,6 +356,7 @@ export const WorpaceHome = () => {
   return (
     <>
       <Hero />
+      <QuickReserve />
       <People />
       <Spaces />
       <Why />

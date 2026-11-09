@@ -1,6 +1,9 @@
 const axios = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const { fetchAllNomadListings } = require("./hostListingControllers");
+const WonoDestinationRanking = require("../models/WonoDestinationRanking");
+
+const priorityLabels = { P1: "Immediate Priority", P2: "High Priority", P3: "Medium Priority", P4: "Low Priority" };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 // Some Nomads collections are abnormally slow to query right now — `blogs`
@@ -567,4 +570,208 @@ const getDestinationsData = async (req, res, next) => {
   }
 };
 
-module.exports = { getDestinationsData };
+const computeClientOpportunity = (factors) => {
+  if (!factors) return null;
+  const { targetBusinessSupply, tourismAccommodationBase, marketScale } = factors;
+  if ([targetBusinessSupply, tourismAccommodationBase, marketScale].some((value) => typeof value !== "number")) return null;
+  return Number((targetBusinessSupply * 0.6 + tourismAccommodationBase * 0.25 + marketScale * 0.15).toFixed(2));
+};
+
+const computeFinalScore = (factors) => {
+  const clientOpportunity = computeClientOpportunity(factors);
+  if (clientOpportunity === null) return null;
+  const { nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare } = factors;
+  const weighted = [nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare];
+  if (weighted.some((value) => typeof value !== "number")) return null;
+  return Number((
+    clientOpportunity * 0.35
+    + nomadDemandCommunity * 0.20
+    + remoteWorkInfrastructure * 0.15
+    + businessJobsEcosystem * 0.10
+    + flightConnectivity * 0.07
+    + affordability * 0.05
+    + visaEntryAccessibility * 0.05
+    + safetyHealthcare * 0.03
+  ).toFixed(2));
+};
+
+const getMissingFactorKeys = (factors = {}) => WonoDestinationRanking.FACTOR_KEYS
+  .filter((key) => typeof factors[key] !== "number" || factors[key] < 0 || factors[key] > 100);
+
+const recomputeActiveRanking = async () => {
+  const activeRows = await WonoDestinationRanking.find({ isActive: true });
+  const scored = activeRows
+    .map((row) => ({ row, score: computeFinalScore(row.factors) }))
+    .sort((left, right) => right.score - left.score);
+
+  const total = scored.length;
+  const p1Count = Math.round(total * 0.2);
+  const p4Count = Math.round(total * 0.2);
+  const remaining = total - p1Count - p4Count;
+  const p2Count = Math.round(remaining / 2);
+
+  const operations = scored.map(({ row, score }, index) => {
+    const rank = index + 1;
+    let priority = "P3";
+    if (index < p1Count) priority = "P1";
+    else if (index < p1Count + p2Count) priority = "P2";
+    else if (index >= total - p4Count) priority = "P4";
+    return { updateOne: { filter: { _id: row._id }, update: { $set: { rank, priority, score } } } };
+  });
+
+  if (operations.length) await WonoDestinationRanking.bulkWrite(operations);
+};
+
+const getWonoDestinationAnalytics = async (req, res, next) => {
+  try {
+    const priority = String(req.query.priority || "").trim().toUpperCase();
+    const continent = normalizeSearchValue(req.query.continent);
+    const search = normalizeSearchValue(req.query.search);
+    const includeInactive = String(req.query.includeInactive || "").trim() === "true";
+
+    const dbRows = await WonoDestinationRanking.find(includeInactive ? {} : { isActive: true })
+      .sort({ rank: 1 })
+      .lean();
+    const rankingRows = dbRows.map((row) => ({
+      ...row,
+      priorityLabel: row.priority ? priorityLabels[row.priority] : null,
+      clientOpportunity: computeClientOpportunity(row.factors),
+      missingFactors: getMissingFactorKeys(row.factors),
+    }));
+    const activeRows = rankingRows.filter((row) => row.isActive);
+
+    const filtered = rankingRows.filter((row) => {
+      if (priority && row.priority !== priority) return false;
+      if (continent && normalizeSearchValue(row.continent) !== continent) return false;
+      if (!search) return true;
+      return [row.destination, row.country, row.continent, row.priority, row.priorityLabel]
+        .some((value) => normalizeSearchValue(value).includes(search));
+    });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(250, Math.max(1, parseInt(req.query.limit, 10) || 25));
+    const start = (page - 1) * limit;
+    const prioritySummary = Object.keys(priorityLabels).map((key) => {
+      const rows = activeRows.filter((row) => row.priority === key);
+      return {
+        priority: key,
+        label: priorityLabels[key],
+        count: rows.length,
+        rankRange: rows.length ? `${rows[0].rank}–${rows[rows.length - 1].rank}` : "—",
+        averageScore: rows.length ? Number((rows.reduce((sum, row) => sum + row.score, 0) / rows.length).toFixed(2)) : 0,
+      };
+    });
+    const continentSummary = Array.from(new Set(activeRows.map((row) => row.continent)))
+      .sort((left, right) => left.localeCompare(right))
+      .map((name) => {
+        const rows = activeRows.filter((row) => row.continent === name);
+        return {
+          continent: name,
+          count: rows.length,
+          averageScore: Number((rows.reduce((sum, row) => sum + row.score, 0) / rows.length).toFixed(2)),
+        };
+      });
+    return res.status(200).json({
+      items: filtered.slice(start, start + limit),
+      page,
+      limit,
+      total: filtered.length,
+      hasMore: page * limit < filtered.length,
+      summary: {
+        destinations: activeRows.length,
+        countries: new Set(activeRows.map((row) => row.country)).size,
+        continents: continentSummary.length,
+        averageScore: activeRows.length ? Number((activeRows.reduce((sum, row) => sum + row.score, 0) / activeRows.length).toFixed(2)) : 0,
+        pending: rankingRows.length - activeRows.length,
+        prioritySummary,
+        continentSummary,
+        sourceSnapshot: "2026-10-14",
+      },
+      filterOptions: {
+        continents: continentSummary.map((row) => row.continent),
+        priorities: Object.keys(priorityLabels).map((key) => ({ key, label: priorityLabels[key] })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createWonoDestination = async (req, res, next) => {
+  try {
+    const { destination, country, continent, factors = {}, isActive } = req.body;
+    if (!destination?.trim() || !country?.trim() || !continent?.trim()) {
+      return res.status(400).json({ message: "Destination, country and continent are required." });
+    }
+
+    const missingFactors = getMissingFactorKeys(factors);
+    if (isActive && missingFactors.length) {
+      return res.status(400).json({ message: `Cannot activate: missing factors — ${missingFactors.join(", ")}` });
+    }
+
+    const doc = await WonoDestinationRanking.create({
+      destination: destination.trim(),
+      country: country.trim(),
+      continent: continent.trim(),
+      factors,
+      isActive: Boolean(isActive) && !missingFactors.length,
+    });
+
+    await recomputeActiveRanking();
+    const saved = await WonoDestinationRanking.findById(doc._id).lean();
+    return res.status(201).json({
+      ...saved,
+      priorityLabel: saved.priority ? priorityLabels[saved.priority] : null,
+      clientOpportunity: computeClientOpportunity(saved.factors),
+      missingFactors: getMissingFactorKeys(saved.factors),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateWonoDestination = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const existing = await WonoDestinationRanking.findById(id);
+    if (!existing) return res.status(404).json({ message: "Destination not found." });
+
+    const { destination, country, continent, factors, isActive } = req.body;
+    if (destination?.trim()) existing.destination = destination.trim();
+    if (country?.trim()) existing.country = country.trim();
+    if (continent?.trim()) existing.continent = continent.trim();
+    if (factors && typeof factors === "object") {
+      existing.factors = { ...(existing.factors?.toObject?.() || existing.factors || {}), ...factors };
+    }
+
+    const nextActive = isActive === undefined ? existing.isActive : Boolean(isActive);
+    const missingFactors = getMissingFactorKeys(existing.factors);
+    if (nextActive && missingFactors.length) {
+      return res.status(400).json({ message: `Cannot activate: missing factors — ${missingFactors.join(", ")}` });
+    }
+    existing.isActive = nextActive;
+    if (!nextActive) {
+      existing.rank = null;
+      existing.priority = null;
+      existing.score = null;
+    }
+
+    await existing.save();
+    await recomputeActiveRanking();
+    const saved = await WonoDestinationRanking.findById(id).lean();
+    return res.status(200).json({
+      ...saved,
+      priorityLabel: saved.priority ? priorityLabels[saved.priority] : null,
+      clientOpportunity: computeClientOpportunity(saved.factors),
+      missingFactors: getMissingFactorKeys(saved.factors),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getDestinationsData,
+  getWonoDestinationAnalytics,
+  createWonoDestination,
+  updateWonoDestination,
+};

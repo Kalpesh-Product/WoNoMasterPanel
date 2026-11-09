@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { Typography } from "@mui/material";
 import Input from "@mui/joy/Input";
@@ -54,6 +54,103 @@ const stripSectionIds = (sections = []) =>
     return rest;
   });
 
+const openImagePreview = (event, src) => {
+  event.preventDefault();
+  let imageUrl;
+  try {
+    imageUrl = new URL(src, window.location.href);
+    if (!["http:", "https:", "blob:"].includes(imageUrl.protocol)) {
+      throw new Error("Invalid image URL");
+    }
+  } catch {
+    toast.error("Enter a valid image URL to preview.");
+    return;
+  }
+
+  // Embed the image so attachment headers cannot trigger a navigation download.
+  const previewWindow = window.open("about:blank", "_blank");
+  if (!previewWindow) {
+    toast.error("Allow pop-ups to open the image preview.");
+    return;
+  }
+  previewWindow.opener = null;
+  previewWindow.document.title = "Image preview";
+  const image = previewWindow.document.createElement("img");
+  image.src = imageUrl.href;
+  image.alt = "Image preview";
+  image.style.cssText = "max-width:100%;max-height:100vh;object-fit:contain";
+  previewWindow.document.body.style.cssText = "margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111";
+  previewWindow.document.body.appendChild(image);
+};
+
+const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) => {
+  const inputRef = useRef(null);
+  const [preview, setPreview] = useState("");
+
+  useEffect(() => {
+    if (!file) {
+      setPreview("");
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-3">
+      <div className="flex min-w-0 flex-col gap-2">
+        <label className="text-sm text-slate-700">Section Image URL</label>
+        <Input {...field} placeholder="Section Image URL" variant="outlined" color="neutral" disabled={disabled || !!file} />
+        {(preview || field.value) && (
+          <a
+            href={preview || field.value}
+            onClick={(event) => openImagePreview(event, preview || field.value)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="self-start text-sm text-primary underline"
+          >
+            Preview
+          </a>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col gap-2">
+        <label htmlFor={id} className="text-sm text-slate-700">Or upload a section image</label>
+        <input
+          id={id}
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          disabled={disabled}
+          className="w-full rounded-lg border border-slate-300 p-2 text-sm"
+          onChange={(event) => {
+            const selected = event.target.files?.[0];
+            if (!selected) return;
+            if (!["image/jpeg", "image/png", "image/webp"].includes(selected.type)) {
+              toast.error("Choose a JPEG, PNG, or WebP image.");
+              event.target.value = "";
+              return;
+            }
+            if (selected.size > 15 * 1024 * 1024) {
+              toast.error("The image must be 15 MB or smaller.");
+              event.target.value = "";
+              return;
+            }
+            onFileChange(selected);
+          }}
+        />
+        <p className="text-xs text-slate-500">JPEG, PNG, or WebP, up to 15 MB. The selected file replaces this section's image when you save.</p>
+        {file && (
+          <button type="button" disabled={disabled} className="self-start text-sm text-red-600 hover:underline" onClick={() => {
+            onFileChange(null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}>Remove selected image</button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const EditBlogNews = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -76,6 +173,21 @@ const EditBlogNews = () => {
   const isPlace = type === "place";
   const isRestaurant = type === "restaurant";
   const isEdit = !!stateItem?._id;
+  const supportsImageUploads = ["blog", "news", "event", "place"].includes(type);
+  const [mainImageFile, setMainImageFile] = useState(null);
+  const [sectionImageFiles, setSectionImageFiles] = useState({});
+  const [mainImagePreview, setMainImagePreview] = useState("");
+  const mainImageInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!mainImageFile) {
+      setMainImagePreview("");
+      return;
+    }
+    const preview = URL.createObjectURL(mainImageFile);
+    setMainImagePreview(preview);
+    return () => URL.revokeObjectURL(preview);
+  }, [mainImageFile]);
 
   const { data: fetchedItem, isFetching: isItemFetching } = useQuery({
     queryKey: [type, "detail", stateItem?._id],
@@ -101,6 +213,9 @@ const EditBlogNews = () => {
   });
 
   useEffect(() => {
+    setMainImageFile(null);
+    setSectionImageFiles({});
+    if (mainImageInputRef.current) mainImageInputRef.current.value = "";
     if (item) {
       reset({
         ...defaultValues,
@@ -139,14 +254,32 @@ const EditBlogNews = () => {
             : type === "restaurant"
               ? "restaurants"
               : "news";
-      const baseUrl =
-        isEvent || isPlace || isRestaurant
+      const baseUrl = isEvent || isPlace
+        ? `/api/destination-content/${type}`
+        : isRestaurant
           ? `${NOMADS_API_BASE_URL}/${resourceType}`
           : `/api/${resourceType}`;
       const url = `${baseUrl}${isEdit ? `/${item._id}` : ""}`;
       const method = isEdit ? "PATCH" : "POST";
 
-      const response = await axiosPrivate({ method, url, data: cleanData });
+      let payload = cleanData;
+      const sectionUploads = fields
+        .map((section, index) => ({ index, file: sectionImageFiles[section.id] }))
+        .filter(({ file }) => file);
+      if (supportsImageUploads && (mainImageFile || sectionUploads.length)) {
+        payload = new FormData();
+        Object.entries(cleanData).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            payload.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+          }
+        });
+        if (mainImageFile) payload.append("mainImageFile", mainImageFile);
+        sectionUploads.forEach(({ index, file }) => {
+          payload.append(`sectionImageFiles[${index}]`, file);
+        });
+      }
+
+      const response = await axiosPrivate({ method, url, data: payload });
       return response.data;
     },
     onSuccess: () => {
@@ -191,7 +324,7 @@ const EditBlogNews = () => {
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          className={`grid grid-cols-1 gap-4 ${supportsImageUploads ? "md:grid-cols-3" : "md:grid-cols-2"}`}
         >
           <Controller
             name="destination"
@@ -216,7 +349,7 @@ const EditBlogNews = () => {
             )}
           />
 
-          {isEvent || isPlace || isRestaurant ? (
+          {isRestaurant ? (
             <Controller
               name="serialNumber"
               control={control}
@@ -248,6 +381,7 @@ const EditBlogNews = () => {
                   variant="outlined"
                   color="neutral"
                 />
+
               </div>
             )}
           />
@@ -280,20 +414,99 @@ const EditBlogNews = () => {
             name="mainImage"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Main Image URL</label>
-                <Input
-                  {...field}
-                  placeholder="Type URL here"
-                  variant="outlined"
-                  color="neutral"
-                />
+              <div className={`grid gap-4 w-full mt-4 ${supportsImageUploads ? "col-span-full md:grid-cols-2" : "grid-cols-1"}`}>
+                <div className="flex min-w-0 flex-col gap-2">
+                  <label className="text-sm text-slate-700">Main Image URL</label>
+                  <Input
+                    {...field}
+                    placeholder="Type URL here"
+                    variant="outlined"
+                    color="neutral"
+                    disabled={supportsImageUploads && !!mainImageFile}
+                  />
+                  {supportsImageUploads && (mainImagePreview || field.value) && (
+                    <a
+                      href={mainImagePreview || field.value}
+                      onClick={(event) => openImagePreview(event, mainImagePreview || field.value)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="self-start text-sm text-primary underline"
+                    >
+                      Preview
+                    </a>
+                  )}
+                </div>
+                {supportsImageUploads && (
+                  <div className="flex min-w-0 flex-col gap-2">
+                    <label htmlFor="blog-main-image-file" className="text-sm text-slate-700">
+                      Or upload a main image
+                    </label>
+                    <input
+                      id="blog-main-image-file"
+                      ref={mainImageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={isPending}
+                      className="w-full rounded-lg border border-slate-300 p-2 text-sm"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+                          toast.error("Choose a JPEG, PNG, or WebP image.");
+                          event.target.value = "";
+                          return;
+                        }
+                        if (file.size > 15 * 1024 * 1024) {
+                          toast.error("The image must be 15 MB or smaller.");
+                          event.target.value = "";
+                          return;
+                        }
+                        setMainImageFile(file);
+                      }}
+                    />
+                    <p className="text-xs text-slate-500">
+                      JPEG, PNG, or WebP, up to 15 MB. The selected file replaces the URL image when you save.
+                    </p>
+                    {mainImageFile && (
+                      <button
+                        type="button"
+                        disabled={isPending}
+                        className="self-start text-sm text-red-600 hover:underline"
+                        onClick={() => {
+                          setMainImageFile(null);
+                          if (mainImageInputRef.current) mainImageInputRef.current.value = "";
+                        }}
+                      >
+                        Remove selected image
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           />
 
           {isEvent || isPlace || isRestaurant ? (
-            <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
+          {isEvent || isPlace ? (
+            <Controller
+              name="serialNumber"
+              control={control}
+              render={({ field }) => (
+                <div className="flex flex-col gap-2 w-full mt-4">
+                  <label className="text-sm text-slate-700">
+                    Serial Number
+                  </label>
+                  <Input
+                    {...field}
+                    placeholder="Serial number"
+                    variant="outlined"
+                    color="neutral"
+                  />
+                </div>
+              )}
+            />
+          ) : null}
               {(isRestaurant
                 ? [
                     "category",
@@ -350,7 +563,7 @@ const EditBlogNews = () => {
               ))}
             </div>
           ) : (
-            <div className="col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
               {["author", "source"].map((name) => (
                 <Controller
                   key={name}
@@ -408,7 +621,7 @@ const EditBlogNews = () => {
             </div>
           )}
 
-          <div className="col-span-2">
+          <div className="col-span-full">
             <Controller
               name={contentFieldName}
               control={control}
@@ -431,7 +644,7 @@ const EditBlogNews = () => {
             />
           </div>
 
-          <div className="col-span-2">
+          <div className="col-span-full">
             <div className="py-4 border-b border-gray-300">
               <span className="text-lg font-medium text-primary">Sections</span>
             </div>
@@ -444,46 +657,67 @@ const EditBlogNews = () => {
                   <span>Section {index + 1}</span>
                   <button
                     type="button"
-                    onClick={() => remove(index)}
+                    disabled={isPending}
+                    onClick={() => {
+                      setSectionImageFiles((current) => {
+                        const next = { ...current };
+                        delete next[field.id];
+                        return next;
+                      });
+                      remove(index);
+                    }}
                     className="text-red-500 text-sm hover:underline"
                   >
                     Remove
                   </button>
                 </div>
-                <Controller
-                  name={`sections.${index}.title`}
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mb-3">
-                      <label className="text-sm text-slate-700">
-                        Section Title
-                      </label>
-                      <Input
-                        {...field}
-                        placeholder="Section Title"
-                        variant="outlined"
-                        color="neutral"
+                <div>
+                  <Controller
+                    name={`sections.${index}.title`}
+                    control={control}
+                    render={({ field }) => (
+                      <div className="flex min-w-0 flex-col gap-2 w-full mb-3">
+                        <label className="text-sm text-slate-700">
+                          Section Title
+                        </label>
+                        <Input
+                          {...field}
+                          placeholder="Section Title"
+                          variant="outlined"
+                          color="neutral"
+                        />
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    name={`sections.${index}.image`}
+                    control={control}
+                    render={({ field }) => supportsImageUploads ? (
+                      <ContentSectionImageInput
+                        field={field}
+                        file={sectionImageFiles[fields[index].id]}
+                        id={`blog-section-image-${fields[index].id}`}
+                        disabled={isPending}
+                        onFileChange={(file) => setSectionImageFiles((current) => ({
+                          ...current,
+                          [fields[index].id]: file,
+                        }))}
                       />
-                    </div>
-                  )}
-                />
-                <Controller
-                  name={`sections.${index}.image`}
-                  control={control}
-                  render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mb-3">
-                      <label className="text-sm text-slate-700">
-                        Section Image URL
-                      </label>
-                      <Input
-                        {...field}
-                        placeholder="Section Image URL"
-                        variant="outlined"
-                        color="neutral"
-                      />
-                    </div>
-                  )}
-                />
+                    ) : (
+                      <div className="flex flex-col gap-2 w-full mb-3">
+                        <label className="text-sm text-slate-700">
+                          Section Image URL
+                        </label>
+                        <Input
+                          {...field}
+                          placeholder="Section Image URL"
+                          variant="outlined"
+                          color="neutral"
+                        />
+                      </div>
+                    )}
+                  />
+                </div>
                 <Controller
                   name={`sections.${index}.content`}
                   control={control}
@@ -507,13 +741,14 @@ const EditBlogNews = () => {
             <button
               type="button"
               onClick={() => append({ title: "", image: "", content: "" })}
+              disabled={isPending}
               className="text-primary text-sm"
             >
               + Add Section
             </button>
           </div>
 
-          <div className="col-span-2 flex gap-4 mt-6 justify-center">
+          <div className="col-span-full flex gap-4 mt-6 justify-center">
             <PrimaryButton
               type="submit"
               title={isPending ? "Saving..." : "Save"}

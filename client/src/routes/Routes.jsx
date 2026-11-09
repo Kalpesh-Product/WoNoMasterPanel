@@ -46,6 +46,7 @@ import FrontendFinLayout from "../pages/Dashboard/FrontendDashboard/FrontendFina
 import ThemeGrid from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ThemeGrid";
 import ViewTheme from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/ViewTheme";
 import PageDemo from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PageDemo";
+import PublicDemoPreview from "../pages/Dashboard/FrontendDashboard/WebsiteBuilder/PublicDemoPreview";
 import FrontendSettings from "../pages/Dashboard/FrontendDashboard/FrontendSettings/FrontendSettings";
 import AssetsLayout from "../pages/Assets/AssetsLayout";
 import AssetsDashboard from "../pages/Assets/AssetsDashboard";
@@ -155,6 +156,7 @@ import CompaniesRequestOverview from "../pages/Dashboard/FrontendDashboard/Compa
 import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/CompaniesRequestNomadListing";
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
+import ContributorLeads from "../pages/Dashboard/Leads/ContributorLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
@@ -169,6 +171,8 @@ import ProductImageUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/
 import CompaniesUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/CompaniesUpload";
 import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadListing";
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
+import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
+import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -187,7 +191,7 @@ import HostPanelLogs from "../pages/Dashboard/FrontendDashboard/HostPanelLogs";
 import HostPanelAnalytics from "../pages/Dashboard/FrontendDashboard/HostPanelAnalytics";
 import MasterPanelAnalytics from "../pages/Dashboard/FrontendDashboard/MasterPanelAnalytics";
 import WebsiteCreditsOverview from "../pages/Dashboard/FrontendDashboard/WebsiteCreditsOverview";
-import WebsiteTemplateRequests from "../pages/Dashboard/FrontendDashboard/WebsiteTemplateRequests";
+import WebsiteTemplatesWorkspace from "../pages/Dashboard/FrontendDashboard/WebsiteTemplatesWorkspace";
 import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
@@ -216,7 +220,12 @@ import {
   BecomeAContributorPartnersTable,
 } from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
+import Contributions from "../pages/Dashboard/Contributions/Contributions";
 import DestinationsData from "../pages/Dashboard/FrontendDashboard/DestinationsData";
+import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalyticsDashboard";
+import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
+import WonoDestinationExecutiveDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationExecutiveDashboard";
+import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationCategoryDashboard";
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
@@ -225,6 +234,7 @@ import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLe
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
 import NomadDestinationListingAnalytics from "../pages/Dashboard/FrontendDashboard/NomadDestinationListingAnalytics";
 import HostCompanies from "../pages/Dashboard/FrontendDashboard/HostCompanies";
+import HostModulesContent from "../pages/Dashboard/FrontendDashboard/HostModulesContent";
 import HostCompanyOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyOverview";
 import HostCompanyNomadListingOverview from "../pages/Dashboard/FrontendDashboard/HostCompanyNomadListingOverview";
 import WonoNomadsHome from "../pages/Dashboard/FrontendDashboard/WonoNomads/WonoNomadsHome";
@@ -266,6 +276,13 @@ export const routes = createBrowserRouter([
   {
     path: "/website-preview/*",
     element: <PageDemo />,
+  },
+  // Shareable version of the above for external links (e.g. the Nomads Theme
+  // Store) — loads sample content for :templateId itself, no localStorage
+  // write from a click handler required.
+  {
+    path: "/website-preview/demo/:templateId",
+    element: <PublicDemoPreview />,
   },
 
   {
@@ -326,6 +343,10 @@ export const routes = createBrowserRouter([
                     ],
                   },
                   {
+                    path: "contributor-leads/:contributorLeadTab?",
+                    element: <ContributorLeads />,
+                  },
+                  {
                     path: "value-adds-leads",
                     element: <ValueAddsLeads />,
                     children: [
@@ -383,6 +404,14 @@ export const routes = createBrowserRouter([
                     element: <UploadLayout />,
                     children: [
                       {
+                        path: "destination-add-upload",
+                        element: <DestinationAddUpload />,
+                      },
+                      {
+                        path: "destination-reupload",
+                        element: <DestinationReuploadUpload />,
+                      },
+                      {
                         path: "company-upload",
                         element: <CompaniesUpload />,
                       },
@@ -439,6 +468,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "publish-listings",
                     element: <PublishListings />,
+                  },
+                  {
+                    path: "contributions/:contributionTab?",
+                    element: <Contributions />,
                   },
                   {
                     path: "nomad-signup-leads",
@@ -514,12 +547,16 @@ export const routes = createBrowserRouter([
                     element: <MasterPanelAnalytics />,
                   },
                   {
+                    path: "host-modules-content",
+                    element: <HostModulesContent />,
+                  },
+                  {
                     path: "website-credits",
                     element: <WebsiteCreditsOverview />,
                   },
                   {
                     path: "website-templates",
-                    element: <WebsiteTemplateRequests />,
+                    element: <WebsiteTemplatesWorkspace />,
                   },
                   {
                     path: "company-reviews/:reviewTab?",
@@ -583,6 +620,10 @@ export const routes = createBrowserRouter([
                         element: <DestinationsData />,
                       },
                       {
+                        path: "ranking",
+                        element: <Navigate to="/dashboard/destination-data-analytics" replace />,
+                      },
+                      {
                         path: ":locationType",
                         children: [
                           {
@@ -600,6 +641,22 @@ export const routes = createBrowserRouter([
                         ],
                       },
                     ],
+                  },
+                  {
+                    path: "destination-data-analytics",
+                    element: <WonoDestinationAnalyticsDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking",
+                    element: <WonoDestinationAnalytics />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination",
+                    element: <WonoDestinationExecutiveDashboard />,
+                  },
+                  {
+                    path: "destination-data-analytics/ranking/destination/:destination/:category",
+                    element: <WonoDestinationCategoryDashboard />,
                   },
                   {
                     path: "world-ranking-weights",

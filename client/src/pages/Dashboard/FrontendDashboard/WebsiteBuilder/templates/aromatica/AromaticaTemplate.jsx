@@ -13,6 +13,7 @@ import { AromaticaBooking } from "./AromaticaBooking";
 import { AromaticaFooter, AromaticaHeader } from "./AromaticaChrome";
 import { AromaticaProvider } from "./AromaticaContext";
 import { AromaticaHome } from "./AromaticaHome";
+import { AromaArrow } from "./AromaticaUI";
 import { AromaticaAbout, AromaticaCareers, AromaticaContact, AromaticaGallery, AromaticaPartner, AromaticaTestimonials, ItemDetail, ServicePage, ServicesIndex, } from "./AromaticaPages";
 import { AROMATICA_CSS } from "./aromaticaTheme";
 const Loader = ({ name }) => (<motion.div className="aroma-loader" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.55 }}>
@@ -29,6 +30,7 @@ const AromaticaTemplate = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
+    const [showBackToTop, setShowBackToTop] = useState(false);
     const [leadTarget, setLeadTarget] = useState(null);
     useEffect(() => {
         const timer = window.setTimeout(() => setLoading(false), 1050);
@@ -42,6 +44,12 @@ const AromaticaTemplate = () => {
             document.body.style.overflow = "";
         };
     }, [leadTarget]);
+    useEffect(() => {
+        const handleScroll = () => setShowBackToTop(window.scrollY > 620);
+        handleScroll();
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
     useEffect(() => {
         if (!draft?.companyName && !draft?.companyLogo)
             return;
@@ -94,7 +102,10 @@ const AromaticaTemplate = () => {
             if (opts?.category)
                 params.set("cat", opts.category);
             const query = params.toString();
-            navigate(`/website-preview/page/products/${service.slug}${query ? `?${query}` : ""}`);
+            const previewPrefix = location.pathname.startsWith("/website-preview")
+                ? "/website-preview"
+                : "";
+            navigate(`${previewPrefix}/page/products/${service.slug}${query ? `?${query}` : ""}`);
         },
         goToItem: (service, item) => t.goToProductItem(service.slug, item.slug),
         navLabel: (section, fallback) => {
@@ -153,6 +164,11 @@ const AromaticaTemplate = () => {
         <ReviewModal />
         <Lightbox />
         <Toast />
+        <AnimatePresence>
+          {showBackToTop ? (<motion.button type="button" className="aroma-back-to-top" aria-label="Back to top" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} transition={{ duration: 0.25 }} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+              <AromaArrow />
+            </motion.button>) : null}
+        </AnimatePresence>
       </div>
     </AromaticaProvider>);
 };

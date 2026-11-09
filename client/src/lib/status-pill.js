@@ -5,6 +5,7 @@ export const STATUS_PILL_BASE =
 
 export function statusToneClass(value = "") {
   const v = String(value ?? "").toLowerCase();
+  if (v === "deleted") return "bg-red-800 text-white";
   if (/(reject|cancel|disable|inactive|expired|absent|lost|overdue|fail|declin|ban|high|late)/.test(v)) {
     return "bg-rose-50 text-rose-700";
   }

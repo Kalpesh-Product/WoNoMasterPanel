@@ -11,6 +11,8 @@ const allowedOrigins = [
   "http://localhost:5007",
   "http://localhost:3001",
   "http://localhost:4173",
+  "http://localhost:5174",
+  "http://host.localhost:5174",
   "http://localhost:3000",
   process.env.CORS_FRONTEND_URL,
   "http://localhost:5006/",
@@ -21,6 +23,7 @@ const allowedOrigins = [
 const regexAllowedOrigins = [
   /\.wono\.co$/, // any subdomain of wono.co
   /\.localhost:5173$/, // any subdomain of localhost:5173 (vite tenant sites)
+  /\.localhost:5174$/, // Nomads Vite tenant and marketing sites
 ];
 
 const corsConfig = {

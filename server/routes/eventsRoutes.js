@@ -1,6 +1,10 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
 const {
+  getEventContributions,
+  updateEventContributionStatus,
+} = require("../controllers/websiteControllers/blogNewsControllers");
+const {
   getAllEvents,
   createEvent,
   getNormalEvents,
@@ -11,6 +15,8 @@ const {
   bulkInsertEvents,
 } = require("../controllers/eventsController/eventsController");
 
+router.get("/contributions", getEventContributions);
+router.patch("/contributions/:id/status", updateEventContributionStatus);
 router.post("/create-event", createEvent);
 router.get("/all-events", getAllEvents);
 router.get("/get-events", getNormalEvents);
