@@ -7,5 +7,6 @@ export default defineConfig({
   plugins: [react(), eslint()],
   server: {
     port: 3007,
+    allowedHosts: [".trycloudflare.com"],
   },
 });

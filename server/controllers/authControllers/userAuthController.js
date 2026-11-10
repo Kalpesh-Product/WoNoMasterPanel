@@ -17,10 +17,15 @@ const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[\d\W]).+$/;
 // cookie has to use these same attributes too, or the browser won't match it
 // to the one it actually stored and silently no-ops the clear.
 const isProdEnv = process.env.NODE_ENV === "production";
-const masterPanelCookieOptions = {
-  httpOnly: true,
-  sameSite: isProdEnv ? "None" : "Lax",
-  secure: isProdEnv,
+// req.secure is also true in dev behind an HTTPS proxy (Cloudflare tunnel,
+// "trust proxy" is on), where the frontend is cross-site and needs "None".
+const masterPanelCookieOptions = (req) => {
+  const isHttps = isProdEnv || req.secure;
+  return {
+    httpOnly: true,
+    sameSite: isHttps ? "None" : "Lax",
+    secure: isHttps,
+  };
 };
 
 const validateStrongPassword = (password) => {
@@ -129,7 +134,7 @@ const login = async (req, res, next) => {
     await AdminUser.findOneAndUpdate({ email }, { refreshToken }).lean().exec();
 
     res.cookie("masterPannelCookie", refreshToken, {
-      ...masterPanelCookieOptions,
+      ...masterPanelCookieOptions(req),
       maxAge: 15 * 24 * 60 * 60 * 1000,
     });
 
@@ -197,14 +202,14 @@ const logout = async (req, res, next) => {
     const refreshToken = cookies?.masterPannelCookie;
     const user = await AdminUser.findOne({ refreshToken }).lean().exec();
     if (!user) {
-      res.clearCookie("masterPannelCookie", masterPanelCookieOptions);
+      res.clearCookie("masterPannelCookie", masterPanelCookieOptions(req));
       return res.sendStatus(201);
     }
 
     await AdminUser.findOneAndUpdate({ refreshToken }, { refreshToken: "" })
       .lean()
       .exec();
-    res.clearCookie("masterPannelCookie", masterPanelCookieOptions);
+    res.clearCookie("masterPannelCookie", masterPanelCookieOptions(req));
     res.sendStatus(201);
   } catch (error) {
     next(error);
