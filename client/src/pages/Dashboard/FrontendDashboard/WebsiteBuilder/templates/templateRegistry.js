@@ -26,6 +26,7 @@ const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
+const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
 const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
@@ -306,6 +307,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#11110f",
             accent: "#11110f",
             font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["workspace"],
+        supportsBooking: true,
+    },
+    cobox: {
+        id: "cobox",
+        name: "Cobox",
+        description: "Warm co-working design — full-bleed photographic hero, glass rating card, custom blend cursor, space discovery cards and rounded editorial sections.",
+        component: CoboxTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#102b32",
+            accent: "#dff39e",
+            font: "'Sora', sans-serif",
         },
         recommendedFor: ["workspace"],
         supportsBooking: true,
