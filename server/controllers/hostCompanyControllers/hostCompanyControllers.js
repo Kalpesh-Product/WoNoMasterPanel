@@ -1134,6 +1134,11 @@ const startTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Mirrors Workspace.selectedPlan below — without this, HostLeadCompany.plan
+    // stays "basic" through the whole trial, so a payment-link sent while
+    // trialing computes previousPlan as "basic" (computeChangeType treats it
+    // as changeType "initial", i.e. a first-ever upgrade) instead of "renewal".
+    leadCompany.plan = "professional";
     await leadCompany.save();
 
     // Computed per workspace, not once for the whole company — a company can
@@ -1278,6 +1283,9 @@ const claimBonusTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Same reasoning as startTrial above — keeps a payment-link sent during
+    // this bonus trial from being mis-computed as changeType "initial".
+    leadCompany.plan = "professional";
     leadCompany.bonusTrialOffer.active = false;
     leadCompany.bonusTrialOffer.claimedAt = now;
     await leadCompany.save();

@@ -571,6 +571,10 @@ const applyPaidPlanToWorkspace = async (link) => {
             planExpiryDate: link.periodEnd,
             planLastPaidAt: link.paidAt || new Date(),
             planExpiryWarningSentAt: null,
+            // A real payment converts a trial into a paid subscription — never
+            // leave isTrialing true after this, or the dashboard keeps showing
+            // the trial-renewal banner even though the host already paid.
+            isTrialing: false,
             enabledModuleIds: restoredModuleIds,
             preDowngradeEnabledModuleIds: [],
             ...(link.plan === "custom" && link.customModuleIds?.length
@@ -597,6 +601,9 @@ const applyPaidPlanToWorkspace = async (link) => {
         paymentStatus: true,
         paymentConfirmedAt: link.paidAt || new Date(),
         upgradeStatus: "active",
+        // A real payment ends any trial — otherwise a converted paying
+        // customer still shows "trialing" on the staff analytics dashboard.
+        subscriptionStatus: "active",
       },
       // Only set inviteUnlockedAt if not already set — a company that pays,
       // gets invited, then later renews should not have its original
