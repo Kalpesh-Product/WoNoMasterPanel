@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { AnimatePresence, motion, useScrolled } from "../motion";
+import { AnimatePresence, motion as Motion, useScrolled } from "../motion";
 import { resolveSectionFromSlug } from "../useWebsiteTemplateData";
 import { SOCIAL_ICON } from "../socialIcons";
 import { useCobox } from "./CoboxContext";
+import { externalUrl } from "./coboxLinks";
 import { CCtaButton, CEyebrow, CIcon } from "./CoboxUI";
 const Brand = ({ light }) => {
     const { draft } = useCobox();
@@ -17,14 +18,20 @@ const Brand = ({ light }) => {
     </span>);
 };
 export const CoboxHeader = () => {
-    const { t } = useCobox();
+    const { t, primary, openLead, c } = useCobox();
     const scrolled = useScrolled(24);
     const [open, setOpen] = useState(false);
     const links = (t.navItems || []).map((item) => ({
         slug: item.slug,
         label: item.name,
     }));
-    const cta = () => t.goToSection("contact");
+    const showTour = t.contactPageEnabled || primary?.leadEnabled;
+    const cta = () => {
+        if (t.contactPageEnabled)
+            t.goToSection("contact");
+        else if (primary?.leadEnabled)
+            openLead(primary);
+    };
     return (<>
       <div className={`cbx-headwrap ${scrolled ? "is-scrolled" : ""}`}>
         <header className="cbx-headbar">
@@ -39,22 +46,25 @@ export const CoboxHeader = () => {
               </button>))}
           </nav>
           <div className="cbx-headend">
-            <CCtaButton onClick={cta}>Schedule a Free Tour</CCtaButton>
-            <button type="button" className="cbx-burger" aria-label="Open menu" onClick={() => setOpen(true)}>
+            {showTour ? <CCtaButton onClick={cta}>{c("header.tour", "Schedule a Free Tour")}</CCtaButton> : null}
+            <button type="button" className="cbx-burger" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(true)}>
               {CIcon.menu()}
             </button>
           </div>
         </header>
       </div>
       <AnimatePresence>
-        {open ? (<motion.div className="cbx-drawer" style={{ position: "fixed", inset: 0, zIndex: 80 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        {open ? (<Motion.div className="cbx-drawer" role="dialog" aria-modal="true" aria-label="Mobile menu" onKeyDown={(event) => {
+                if (event.key === "Escape")
+                    setOpen(false);
+            }} style={{ position: "fixed", inset: 0, zIndex: 80 }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <button type="button" aria-label="Close menu" onClick={() => setOpen(false)} style={{
                 position: "absolute",
                 inset: 0,
                 background: "rgba(8,24,28,.6)",
                 backdropFilter: "blur(4px)",
             }}/>
-            <motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} style={{
+            <Motion.aside initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }} style={{
                 position: "absolute",
                 right: 0,
                 top: 0,
@@ -106,20 +116,22 @@ export const CoboxHeader = () => {
                     </span>
                   </button>))}
               </nav>
-              <CCtaButton className="mt-auto" onClick={() => {
-                setOpen(false);
-                cta();
-            }}>
-                Schedule a Free Tour
-              </CCtaButton>
-            </motion.aside>
-          </motion.div>) : null}
+              {showTour ? (<CCtaButton className="mt-auto" onClick={() => {
+                    setOpen(false);
+                    cta();
+                }}>
+                  {c("header.tour", "Schedule a Free Tour")}
+                </CCtaButton>) : null}
+            </Motion.aside>
+          </Motion.div>) : null}
       </AnimatePresence>
     </>);
 };
 export const CoboxFooter = () => {
     const { t, draft, services, c } = useCobox();
-    const socials = Object.entries(t.socialLinks || {}).filter(([, value]) => value);
+    const newsletter = externalUrl(c("footer.newsletterUrl", ""));
+    const terms = externalUrl(c("footer.termsUrl", ""));
+    const privacy = externalUrl(c("footer.privacyUrl", ""));
     const quick = (t.navItems || []).slice(0, 5);
     return (<footer className="cbx-footer">
       <div className="cbx-shell">
@@ -164,7 +176,7 @@ export const CoboxFooter = () => {
               {c("footer.about", `We are more than just a workspace — we're a thriving community where professionals, startups and innovators come together to collaborate, create and grow.`)}
             </p>
             <div className="cbx-socials">
-              {socials.slice(0, 4).map(([key, url]) => (<a key={key} href={String(url)} target="_blank" rel="noreferrer" aria-label={key}>
+              {t.footerSocialLinks.filter(({ href }) => href).map(({ key, href }) => (<a key={key} href={href} target="_blank" rel="noreferrer" aria-label={key}>
                   {SOCIAL_ICON[key] || key.slice(0, 1).toUpperCase()}
                 </a>))}
             </div>
@@ -177,44 +189,32 @@ export const CoboxFooter = () => {
                 </button>))}
             </div>
           </div>
-          <div>
-            <h4>Services</h4>
-            <div className="cbx-footer-links">
-              {services.slice(0, 5).map((service) => (<button type="button" key={service.key} onClick={() => t.goToProductPage(service.slug)}>
-                  {service.name}
-                </button>))}
-            </div>
-          </div>
-          <div>
-            <h4>Subscribe to our newsletter</h4>
-            <form className="cbx-news" onSubmit={(event) => {
-            event.preventDefault();
-            t.goToSection("contact");
-        }}>
-              <input type="email" required placeholder="Email Address*" aria-label="Email Address"/>
-              <button type="submit" aria-label="Subscribe">
-                {CIcon.send()}
-              </button>
-            </form>
-            <p className="cbx-footer-note">
-              * Subscribe now for workspace tips and community updates.
-            </p>
-          </div>
+          {t.productsPageEnabled && services.length ? (<div>
+              <h4>Services</h4>
+              <div className="cbx-footer-links">
+                {services.slice(0, 5).map((service) => (<button type="button" key={service.key} onClick={() => t.goToProductPage(service.slug)}>
+                    {service.name}
+                  </button>))}
+              </div>
+            </div>) : null}
+          {newsletter ? (<div>
+              <h4>Subscribe to our newsletter</h4>
+              <a className="cbx-news" href={newsletter} target="_blank" rel="noreferrer">
+                Subscribe <i aria-hidden="true">{CIcon.send()}</i>
+              </a>
+              <p className="cbx-footer-note">Get workspace tips and community updates.</p>
+            </div>) : null}
         </div>
 
         <div className="cbx-footer-bottom">
           <span>
-            © {new Date().getFullYear()} {draft?.companyName || "Cobox"}. All rights
-            reserved.
+            {t.footerCopyrightText ||
+            ("© " + new Date().getFullYear() + " " + (draft?.companyName || "Cobox") + ". All rights reserved.")}
           </span>
-          <div>
-            <button type="button" onClick={() => t.goToSection("contact")}>
-              Terms &amp; conditions
-            </button>
-            <button type="button" onClick={() => t.goToSection("contact")}>
-              Privacy policy
-            </button>
-          </div>
+          {terms || privacy ? (<div>
+              {terms ? <a href={terms}>Terms &amp; conditions</a> : null}
+              {privacy ? <a href={privacy}>Privacy policy</a> : null}
+            </div>) : null}
         </div>
       </div>
     </footer>);

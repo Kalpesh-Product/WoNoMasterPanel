@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
     { templateId: "workscape", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "brixspace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "worpace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "cobox", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "qerja", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "camelia", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tulum", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },

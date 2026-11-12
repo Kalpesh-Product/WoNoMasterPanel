@@ -6,11 +6,14 @@ import { LeadFormPanel } from "../shared/TplLead";
 import { useCobox } from "./CoboxContext";
 import { CCtaButton, CEyebrow, CIcon, CPageHero, CPlaceholder, CReveal, } from "./CoboxUI";
 import { CoboxFaq } from "./CoboxHome";
+import { externalUrl } from "./coboxLinks";
 const srcOf = (value) => typeof value === "string" ? value : String(value?.url || value?.src || "");
 const SpaceCard = ({ service, item }) => {
     const { goToItem, openLead } = useCobox();
     const image = item.images?.[0] || item.image || service.cardImage || service.heroImage;
     return (<article className="cbx-space-card" role="link" tabIndex={0} aria-label={`View ${item.title}`} onClick={() => goToItem(service, item)} onKeyDown={(event) => {
+            if (event.target !== event.currentTarget)
+                return;
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 goToItem(service, item);
@@ -29,12 +32,12 @@ const SpaceCard = ({ service, item }) => {
             </div>) : null}
           <div className="cbx-space-foot">
             <b>{priceWithUnit(item.price, item.priceUnit) || "On request"}</b>
-            <button type="button" onClick={(event) => {
-            event.stopPropagation();
-            openLead(service, item);
-        }}>
-              Reserve {CIcon.arrow(14)}
-            </button>
+            {service.leadEnabled ? (<button type="button" onClick={(event) => {
+                event.stopPropagation();
+                openLead(service, item);
+            }}>
+                {service.profile.labels.itemCta} {CIcon.arrow(14)}
+              </button>) : null}
           </div>
         </div>
       </div>
@@ -84,9 +87,9 @@ export const ServicePage = ({ service }) => {
     return (<>
       <CPageHero title={service.heroHeading || service.heading} eyebrow={service.name} image={service.heroImage || service.cardImage}>
         {service.heroSubHeading ? <p>{service.heroSubHeading}</p> : null}
-        <CCtaButton onClick={() => openLead(service)}>
-          {service.profile.labels.cta}
-        </CCtaButton>
+        {service.leadEnabled ? (<CCtaButton onClick={() => openLead(service)}>
+            {service.profile.labels.cta}
+          </CCtaButton>) : null}
       </CPageHero>
       <section className="cbx-page">
         <div className="cbx-shell">
@@ -104,32 +107,32 @@ export const ServicePage = ({ service }) => {
             </div>)}
         </div>
       </section>
-      <section className="cbx-cta">
-        <div className="cbx-shell cbx-cta-grid">
-          <div>
-            <CEyebrow light>{c("services.form.eyebrow", "Book a space")}</CEyebrow>
-            <h2>{c("services.form.title", "Tell us how you like to work")}</h2>
-            <p>
-              {c("services.form.body", "Share your date, team size and preferred setup. We will recommend the best available space.")}
-            </p>
-            <div className="cbx-contact-lines">
-              {t.contactPhone ? (<p>
-                  <small>Phone</small>
-                  <a href={`tel:${String(t.contactPhone).replace(/[^\d+]/g, "")}`}>
-                    {t.contactPhone}
-                  </a>
-                </p>) : null}
-              {t.contactEmail ? (<p>
-                  <small>Email</small>
-                  <a href={`mailto:${t.contactEmail}`}>{t.contactEmail}</a>
-                </p>) : null}
+      {service.leadEnabled ? (<section className="cbx-cta">
+          <div className="cbx-shell cbx-cta-grid">
+            <div>
+              <CEyebrow light>{c("services.form.eyebrow", "Book a space")}</CEyebrow>
+              <h2>{c("services.form.title", "Tell us how you like to work")}</h2>
+              <p>
+                {c("services.form.body", "Share your date, team size and preferred setup. We will recommend the best available space.")}
+              </p>
+              <div className="cbx-contact-lines">
+                {t.contactPhone ? (<p>
+                    <small>Phone</small>
+                    <a href={`tel:${String(t.contactPhone).replace(/[^\d+]/g, "")}`}>
+                      {t.contactPhone}
+                    </a>
+                  </p>) : null}
+                {t.contactEmail ? (<p>
+                    <small>Email</small>
+                    <a href={`mailto:${t.contactEmail}`}>{t.contactEmail}</a>
+                  </p>) : null}
+              </div>
+            </div>
+            <div className="cbx-form-card">
+              <LeadFormPanel service={service}/>
             </div>
           </div>
-          <div className="cbx-form-card">
-            <LeadFormPanel service={service}/>
-          </div>
-        </div>
-      </section>
+        </section>) : null}
     </>);
 };
 export const ItemDetail = ({ service, item, }) => {
@@ -173,9 +176,9 @@ export const ItemDetail = ({ service, item, }) => {
                     {line}
                   </li>))}
               </ul>) : null}
-            <CCtaButton onClick={() => openLead(service, item)}>
-              {service.profile.labels.itemCta}
-            </CCtaButton>
+            {service.leadEnabled ? (<CCtaButton onClick={() => openLead(service, item)}>
+                {service.profile.labels.itemCta}
+              </CCtaButton>) : null}
           </aside>
         </div>
       </section>
@@ -193,9 +196,9 @@ export const ItemDetail = ({ service, item, }) => {
 export const CoboxAbout = () => {
     const { t, draft, navLabel, c } = useCobox();
     const photos = (draft?.aboutPageImages || []).map(srcOf).filter(Boolean);
-    const people = (t.founders || []);
+    const people = t.isSectionEnabled("about_founders") ? t.founders : [];
     return (<>
-      <CPageHero title={navLabel("about", draft?.aboutTitle || "About us")} eyebrow={c("about.eyebrow", "About us")} image={photos[0] || t.aboutIntroImage}/>
+      <CPageHero title={draft?.aboutPageHeading || navLabel("about", "About us")} eyebrow={c("about.eyebrow", "About us")} image={photos[0] || t.aboutIntroImage}/>
       <section className="cbx-page">
         <div className="cbx-shell cbx-about-story">
           <div>
@@ -206,6 +209,12 @@ export const CoboxAbout = () => {
             {(t.aboutIntroBlocks || []).map((line, index) => (<p key={index}>{line}</p>))}
           </div>
         </div>
+        {t.aboutNarrativeBlocks.length ? (<div className="cbx-shell cbx-about-narrative">
+            {t.aboutNarrativeBlocks.map(({ title, body }) => (<article key={title}>
+                <h3>{title}</h3>
+                <p>{body}</p>
+              </article>))}
+          </div>) : null}
         <div className="cbx-shell cbx-about-imgs">
           {[
             photos[1] || t.galleryItems?.[1],
@@ -218,7 +227,7 @@ export const CoboxAbout = () => {
               </CReveal>))}
         </div>
       </section>
-      {people.length ? (<section className="cbx-team">
+      {people.length || (t.isSectionEnabled("about_team") && t.aboutPageImageCards.length) ? (<section className="cbx-team">
           <div className="cbx-shell">
             <div className="cbx-head center">
               <CEyebrow>{c("about.team.eyebrow", "Our team")}</CEyebrow>
@@ -228,6 +237,13 @@ export const CoboxAbout = () => {
               </h2>
             </div>
             <div className="cbx-team-grid">
+              {t.isSectionEnabled("about_team") ? t.aboutPageImageCards.map((card, index) => (<CReveal key={card.title || index} delay={index * 0.05}>
+                  <article className="cbx-team-card">
+                    {srcOf(card.image) ? <img src={srcOf(card.image)} alt=""/> : null}
+                    {card.title ? <h3>{card.title}</h3> : null}
+                    {card.description ? <p>{card.description}</p> : null}
+                  </article>
+                </CReveal>)) : null}
               {people.map((person, index) => (<CReveal key={person.name || index} delay={index * 0.05}>
                   <article className="cbx-team-card">
                     {srcOf(person.image) ? (<img src={srcOf(person.image)} alt={person.name}/>) : (<CPlaceholder text={person.name}/>)}
@@ -270,7 +286,7 @@ export const CoboxTestimonials = () => {
             {(t.testimonials || []).map((item, index) => (<CReveal key={item.key || index} delay={index * 0.04}>
                 <article>
                   <span className="cbx-stars">
-                    {"★".repeat(Math.max(1, Math.round(item.rating || 5)))}
+                    {Number(item.rating) > 0 ? "★".repeat(Math.min(5, Math.round(item.rating))) : null}
                   </span>
                   <blockquote>
                     “{item.text || item.review || item.message || item.testimony}”
@@ -317,6 +333,9 @@ export const CoboxPartner = () => {
 export const CoboxContact = () => {
     const { t, draft, primary, navLabel } = useCobox();
     const hours = groupOpeningHours(draft?.openingHours);
+    const mapQuery = t.contactAddress ? encodeURIComponent(t.contactAddress) : "";
+    const mapUrl = externalUrl(draft?.mapUrl || "") ||
+        (mapQuery ? "https://www.google.com/maps?q=" + mapQuery + "&output=embed" : "");
     const showForm = draft?.contactEnableInquiryForm !== false;
     return (<>
       <CPageHero title={draft?.contactPageHeading || navLabel("contact", "Contact us")} eyebrow="Get in touch" image={t.galleryItems?.[4]}/>
@@ -342,7 +361,9 @@ export const CoboxContact = () => {
                 </p>) : null}
               {t.contactAddress ? (<p>
                   <small>Address</small>
-                  <span>{t.contactAddress}</span>
+                  <a href={"https://www.google.com/maps/search/?api=1&query=" + mapQuery} target="_blank" rel="noreferrer">
+                    {t.contactAddress}
+                  </a>
                 </p>) : null}
             </div>
             {hours.length ? (<div className="cbx-hours">
@@ -358,8 +379,8 @@ export const CoboxContact = () => {
             </div>) : null}
         </div>
       </section>
-      {draft?.mapUrl ? (<section className="cbx-map">
-          <iframe title="Map" src={draft.mapUrl} loading="lazy"/>
+      {mapUrl ? (<section className="cbx-map">
+          <iframe title="Workspace location" src={mapUrl} loading="lazy"/>
         </section>) : null}
       <CoboxFaq faqs={draft?.faqs}/>
     </>);

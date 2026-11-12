@@ -7,7 +7,7 @@ export const CoboxCursor = () => {
         if (!node)
             return;
         if (typeof window.matchMedia !== "function" ||
-            !window.matchMedia("(pointer: fine)").matches) {
+            !window.matchMedia("(pointer: fine) and (prefers-reduced-motion: no-preference)").matches) {
             return;
         }
         const label = node.querySelector(".cbx-cursor-text");

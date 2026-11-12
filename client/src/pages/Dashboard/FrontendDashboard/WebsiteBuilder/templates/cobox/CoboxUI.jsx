@@ -1,5 +1,5 @@
 import React from "react";
-import { motion } from "../motion";
+import { motion as Motion } from "../motion";
 const svg = (children, size = 18) => (<svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     {children}
   </svg>);
@@ -28,25 +28,28 @@ export const CIcon = {
     chevronLeft: (size = 18) => svg(<path d="m14 6-6 6 6 6"/>, size),
     chevronRight: (size = 18) => svg(<path d="m10 6 6 6-6 6"/>, size),
 };
-export const CReveal = ({ children, delay = 0, className }) => (<motion.div className={className} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}>
+export const CReveal = ({ children, delay = 0, className }) => (<Motion.div className={className} initial={{ opacity: 0, y: 26 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.12 }} transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}>
     {children}
-  </motion.div>);
+  </Motion.div>);
 export const CEyebrow = ({ children, light }) => (<p className={`cbx-eyebrow ${light ? "is-light" : ""}`}>{children}</p>);
 export const CPlaceholder = ({ text = "Cobox" }) => (<div className="cbx-placeholder">{text}</div>);
-export const CStars = ({ value = 5, count = 5, }) => (<span className="cbx-stars" aria-label={`${value} out of 5`}>
-    {"★".repeat(Math.max(1, Math.min(5, Math.round(value))))}
-    <span aria-hidden="true" style={{ opacity: 0.25 }}>
-      {"★".repeat(Math.max(0, 5 - Math.round(value)))}
-    </span>
-  </span>);
+export const CStars = ({ value }) => {
+    const filled = Math.max(0, Math.min(5, Math.round(value)));
+    return (<span className="cbx-stars" aria-label={`${value} out of 5`}>
+      {"★".repeat(filled)}
+      <span aria-hidden="true" style={{ opacity: 0.25 }}>
+        {"★".repeat(5 - filled)}
+      </span>
+    </span>);
+};
 export const CPageHero = ({ title, eyebrow, image, children }) => (<section className="cbx-page-hero">
     {image ? <img className="cbx-page-hero-bg" src={image} alt=""/> : null}
     <div className="cbx-shell">
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
+      <Motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
         {eyebrow ? <CEyebrow light>{eyebrow}</CEyebrow> : null}
         <h1>{title}</h1>
         {children}
-      </motion.div>
+      </Motion.div>
     </div>
   </section>);
 export const CCtaButton = ({ children, onClick, type = "button", variant = "accent", className = "", disabled, ariaLabel, }) => (<button type={type} onClick={onClick} disabled={disabled} aria-label={ariaLabel} className={`cbx-btn ${variant === "ghost" ? "is-ghost" : ""} ${variant === "light" ? "is-light" : ""} ${className}`.trim()}>

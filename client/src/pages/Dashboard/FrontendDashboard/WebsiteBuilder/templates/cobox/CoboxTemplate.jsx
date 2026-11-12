@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "../motion";
+import { useLocation } from "react-router-dom";
+import { AnimatePresence, motion as Motion } from "../motion";
 import { normalizeSlug, resolveSectionFromSlug, useWebsiteTemplateData, } from "../useWebsiteTemplateData";
 import { buildServices, } from "../serviceAdapter";
 import { averageRating, openStatus, resolvePrimaryKind, resolvePrimaryService, } from "../templateKit";
@@ -16,21 +16,20 @@ import { COBOX_CSS } from "./coboxTheme";
 import { CoboxAbout, CoboxCareers, CoboxContact, CoboxGallery, CoboxPartner, CoboxTestimonials, ItemDetail, ServicePage, ServicesIndex, } from "./CoboxPages";
 import { CoboxLeadModal } from "./CoboxBooking";
 import { CoboxCursor } from "./CoboxCursor";
-const Loader = ({ name }) => (<motion.div className="cbx-loader" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
-    <motion.div className="cbx-loader-box" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+const Loader = ({ name }) => (<Motion.div className="cbx-loader" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.45 }}>
+    <Motion.div className="cbx-loader-box" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <span className="cbx-loader-mark">
         {String(name || "Cobox").trim().charAt(0).toUpperCase()}
       </span>
       <b>{name || "Cobox"}</b>
       <small>Space to create</small>
       <em />
-    </motion.div>
-  </motion.div>);
+    </Motion.div>
+  </Motion.div>);
 const CoboxTemplate = () => {
     const t = useWebsiteTemplateData();
     const { draft } = t;
     const location = useLocation();
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [leadTarget, setLeadTarget] = useState(null);
     useEffect(() => {
@@ -56,6 +55,8 @@ const CoboxTemplate = () => {
       </div>);
     }
     const openLead = (service, item = null, prefill) => {
+        if (!service.leadEnabled)
+            return;
         t.openLeadModal({
             ...(service.page || {}),
             ...(item?.raw || {}),
@@ -79,16 +80,7 @@ const CoboxTemplate = () => {
         rating,
         status,
         openLead,
-        goToService: (service, opts) => {
-            const params = new URLSearchParams(opts?.search || {});
-            if (opts?.category)
-                params.set("cat", opts.category);
-            const query = params.toString();
-            if (query)
-                navigate(`/website-preview/page/products/${service.slug}?${query}`);
-            else
-                t.goToProductPage(service.slug);
-        },
+        goToService: (service) => t.goToProductPage(service.slug),
         goToItem: (service, item) => t.goToProductItem(service.slug, item.slug),
         navLabel: (section, fallback) => {
             const match = (t.navItems || []).find((item) => resolveSectionFromSlug(item.slug) === section);
@@ -134,11 +126,11 @@ const CoboxTemplate = () => {
           {loading ? <Loader name={draft.companyName || "Cobox"}/> : null}
         </AnimatePresence>
         <CoboxHeader />
-        <motion.main key={location.pathname} className="cbx-main" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+        <Motion.main key={location.pathname} className="cbx-main" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
           {renderPage()}
-        </motion.main>
-        <CoboxFooter />
-        <CoboxLeadModal open={Boolean(leadTarget)} onClose={closeLead} service={leadTarget?.service || null} item={leadTarget?.item || null}/>
+        </Motion.main>
+        {t.isSectionEnabled("home_footer") ? <CoboxFooter /> : null}
+        <CoboxLeadModal open={Boolean(leadTarget && t.selectedLeadProduct)} onClose={closeLead} service={leadTarget?.service || null} item={leadTarget?.item || null}/>
         <ReviewModal />
         <Lightbox />
         <Toast />

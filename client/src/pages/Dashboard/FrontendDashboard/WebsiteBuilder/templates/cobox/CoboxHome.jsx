@@ -1,37 +1,35 @@
 import React, { useRef, useState } from "react";
-import { motion } from "../motion";
+import { motion as Motion } from "../motion";
 import { priceWithUnit } from "../templateKit";
 import { LeadFormPanel } from "../shared/TplLead";
 import { MessageForm } from "../shared/TplForms";
 import { useCobox } from "./CoboxContext";
+import { externalUrl } from "./coboxLinks";
 import { CCtaButton, CEyebrow, CIcon, CPlaceholder, CReveal, CStars, } from "./CoboxUI";
-const FACE_POOL = [
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&crop=faces&w=120&h=120&q=80",
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&crop=faces&w=120&h=120&q=80",
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&crop=faces&w=120&h=120&q=80",
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&crop=faces&w=120&h=120&q=80",
-];
+const isDemo = (draft) => draft?.searchKey === "demo-preview" && draft?.companyId === "demo";
 const srcOf = (value) => typeof value === "string" ? value : String(value?.url || value?.src || "");
-const PeopleStack = ({ images = [], more, }) => (<span className="cbx-people-stack">
-    {(images.length ? images.slice(0, 4) : FACE_POOL.slice(0, 3)).map((image, index) => image ? <img key={image + index} src={image} alt=""/> : null)}
-    {more ? <span>+{more}</span> : null}
-  </span>);
+const PeopleStack = ({ images = [] }) => images.length ? (<span className="cbx-people-stack">
+    {images.slice(0, 4).map((image, index) => image ? <img key={image + index} src={image} alt=""/> : null)}
+  </span>) : null;
 const Hero = () => {
-    const { t, draft, services, primary, rating, c } = useCobox();
+    const { t, draft, services, primary, rating, openLead, c } = useCobox();
+    const demo = isDemo(draft);
+    const satisfaction = c("home.hero.satisfaction", demo ? "95%" : "");
+    const clientCount = c("home.hero.clientCount", demo ? "1,000+" : "");
+    const review = t.testimonials.find((entry) => entry.text || entry.review || entry.message || entry.testimony);
+    const quote = c("home.hero.quote", review?.text || review?.review || review?.message || review?.testimony || (demo ? "A perfect balance of comfort and productivity." : ""));
     const hero = t.heroImages?.[0] || primary?.heroImage || t.galleryItems?.[0] || "";
     const avatars = (t.testimonials || [])
         .map((item) => srcOf(item.image))
         .filter(Boolean)
         .slice(0, 4);
-    const marquee = services.length > 0
-        ? services.map((service) => service.name)
-        : ["Flexible desks", "Private offices", "Meeting rooms", "Day passes"];
+    const marquee = services.map((service) => service.name);
     return (<section className="cbx-hero">
       {hero ? <img className="cbx-hero-bg" src={hero} alt=""/> : null}
       <span className="cbx-hero-shade" aria-hidden="true"/>
       <div className="cbx-hero-grid">
         <div className="cbx-hero-copy">
-          <motion.div initial={{ opacity: 0, y: 34 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
+          <Motion.div initial={{ opacity: 0, y: 34 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}>
             <CEyebrow light>
               {c("home.hero.eyebrow", "Your space to create")}
             </CEyebrow>
@@ -44,41 +42,44 @@ const Hero = () => {
             c("home.hero.body", "Discover modern, inspiring and fully equipped workspaces designed to fuel creativity, collaboration and growth.")}
             </p>
             <div className="cbx-hero-actions">
-              <CCtaButton onClick={() => primary ? t.goToProductPage(primary.slug) : t.goToSection("products")}>
-                {draft?.CTAButtonText || "Book a trial visit"}
-              </CCtaButton>
+              {t.contactPageEnabled || t.productsPageEnabled || primary?.leadEnabled ? (<CCtaButton onClick={() => {
+                if (t.contactPageEnabled)
+                    t.goToSection("contact");
+                else if (primary?.leadEnabled)
+                    openLead(primary);
+                else if (primary)
+                    t.goToProductPage(primary.slug);
+                else
+                    t.goToSection("products");
+            }}>
+                  {draft?.CTAButtonText || "Book a trial visit"}
+                </CCtaButton>) : null}
               <div className="cbx-people">
                 <PeopleStack images={avatars}/>
-                <span>
-                  <b>95%</b> — client satisfaction rate
-                </span>
+                {satisfaction ? <span><b>{satisfaction}</b> — client satisfaction rate</span> : null}
               </div>
             </div>
-          </motion.div>
+          </Motion.div>
         </div>
-        <motion.aside className="cbx-hero-rating" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}>
-          <p className="cbx-hero-quote">
-            “
-            {c("home.hero.quote", "A perfect balance of comfort and productivity.")}
-            ”
-          </p>
-          <PeopleStack images={avatars}/>
-          <p className="cbx-hero-rating-label">Google Rating</p>
-          <div className="cbx-hero-stars">
-            <CStars value={Math.round(rating.avg || 5)}/>
-            <span>({(rating.avg || 5).toFixed(1)})</span>
-          </div>
-        </motion.aside>
-        <motion.div className="cbx-hero-clients" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}>
-          <p>
-            <span>1,000+</span> trusted clients worldwide
-          </p>
-          <div className="cbx-marquee" aria-hidden="true">
-            <div className="cbx-marquee-track">
-              {[...marquee, ...marquee].map((name, index) => (<span key={`${name}-${index}`}>{name}</span>))}
+        {quote || rating.count > 0 ? (<Motion.aside className="cbx-hero-rating" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}>
+            {quote ? <p className="cbx-hero-quote">“{quote}”</p> : null}
+            <PeopleStack images={avatars}/>
+            {rating.count ? (<>
+                <p className="cbx-hero-rating-label">Member rating</p>
+                <div className="cbx-hero-stars">
+                  <CStars value={rating.avg}/>
+                  <span>({rating.avg.toFixed(1)})</span>
+                </div>
+              </>) : null}
+          </Motion.aside>) : null}
+        {clientCount || marquee.length > 0 ? (<Motion.div className="cbx-hero-clients" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}>
+            {clientCount ? <p><span>{clientCount}</span> trusted clients worldwide</p> : null}
+            <div className="cbx-marquee" aria-hidden="true">
+              <div className="cbx-marquee-track">
+                {[...marquee, ...marquee].map((name, index) => (<span key={`${name}-${index}`}>{name}</span>))}
+              </div>
             </div>
-          </div>
-        </motion.div>
+          </Motion.div>) : null}
       </div>
     </section>);
 };
@@ -93,6 +94,14 @@ const About = () => {
     const cardImage = photo("home.about.image", images[0] || fallback[2] || fallback[0]) || "";
     const accentImage = photo("home.about.accentImage", images[1] || fallback[3] || fallback[1]) || "";
     const spaces = services.reduce((total, service) => total + service.items.length, 0);
+    const demo = isDemo(draft);
+    const workspaceCount = c("home.about.stats.workspaces", demo ? "40+" : spaces ? String(spaces) : "");
+    const stats = [
+        [c("home.about.stats.clients", demo ? "500+" : ""), "Happy clients"],
+        [c("home.about.stats.retention", demo ? "95%" : ""), "Client retention"],
+        [c("home.about.stats.startups", demo ? "50+" : ""), "Successful startups"],
+        [workspaceCount, "Flexible workspaces"],
+    ].filter(([value]) => value);
     return (<section className="cbx-section cbx-about">
       <div className="cbx-shell">
         <div className="cbx-head center">
@@ -163,7 +172,7 @@ const About = () => {
           <CReveal delay={0.12}>
             <article className="cbx-about-card is-accent">
               <div>
-                <h2>500+</h2>
+                {workspaceCount ? <h2>{workspaceCount}</h2> : null}
                 <h3>
                   {c("home.about.card3.title", "Flexible workspaces")}
                 </h3>
@@ -183,22 +192,17 @@ const About = () => {
           </CReveal>
         </div>
 
-        <div className="cbx-stat-band">
-          <h3 style={{ fontSize: 18, fontWeight: 400 }}>
-            {c("home.about.stats.title", "A few more facts about us in numbers")}
-          </h3>
-          <div className="cbx-stat-grid">
-            {[
-            ["500+", "Happy clients"],
-            ["95%", "Client retention"],
-            ["50+", "Successful startups"],
-            ["40+", "Flexible workspaces"],
-        ].map(([value, label]) => (<div className="cbx-stat" key={label}>
-                <h4>{value}</h4>
-                <span>{label}</span>
-              </div>))}
-          </div>
-        </div>
+        {stats.length > 0 && t.isSectionEnabled("home_stats") ? (<div className="cbx-stat-band">
+            <h3 style={{ fontSize: 18, fontWeight: 400 }}>
+              {c("home.about.stats.title", "A few more facts about us in numbers")}
+            </h3>
+            <div className="cbx-stat-grid">
+              {stats.map(([value, label]) => (<div className="cbx-stat" key={label}>
+                  <h4>{value}</h4>
+                  <span>{label}</span>
+                </div>))}
+            </div>
+          </div>) : null}
       </div>
     </section>);
 };
@@ -257,6 +261,7 @@ const Services = () => {
 };
 const WhatWeDo = () => {
     const { t, draft, c, photo } = useCobox();
+    const clientCount = c("home.why.clients", isDemo(draft) ? "1.8k" : "");
     const fallback = t.galleryItems || [];
     const main = photo("home.do.image1", fallback[2] || fallback[0] || draft?.aboutIntroImage) || "";
     const sub = photo("home.do.image2", fallback[4] || fallback[1]) || "";
@@ -276,7 +281,7 @@ const WhatWeDo = () => {
             {sub ? <img className="cbx-photo" src={sub} alt="Community"/> : <CPlaceholder />}
           </div>
           <div className="cbx-do-client">
-            <h3>1.8k</h3>
+            {clientCount ? <h3>{clientCount}</h3> : null}
             <p>
               {c("home.do.client", "Our exceptional spaces and personalised service keep clients coming back.")}
             </p>
@@ -304,7 +309,9 @@ const WhatWeDo = () => {
     </section>);
 };
 const VideoBand = () => {
-    const { t, c, photo } = useCobox();
+    const { t, draft, c, photo } = useCobox();
+    const video = externalUrl(c("home.video.url", draft?.heroVideoUrl ||
+        (isDemo(draft) ? "https://www.youtube.com/watch?v=Y-x0efG1seA" : "")));
     const image = photo("home.video.image", t.galleryItems?.[1] || t.heroImages?.[1]) || "";
     const list = [
         c("home.video.item1", "Take a virtual tour of our workspace"),
@@ -312,15 +319,17 @@ const VideoBand = () => {
         c("home.video.item3", "Experience our community in action"),
         c("home.video.item4", "Explore our exclusive amenities"),
     ];
+    if (!video && !image)
+        return null;
     return (<section className="cbx-video">
       {image ? <img className="cbx-video-bg" src={image} alt=""/> : null}
       <div className="cbx-shell">
         <h2>
           {c("home.video.title", "Experience our dynamic co-working culture through engaging video")}
         </h2>
-        <button type="button" className="cbx-play" aria-label="Play workspace video" onClick={() => t.openGalleryViewer(0)}>
-          {CIcon.play(26)}
-        </button>
+        {video ? (<a href={video} target="_blank" rel="noreferrer" className="cbx-play" aria-label="Play workspace video (opens in a new tab)">
+            {CIcon.play(26)}
+          </a>) : null}
         <div className="cbx-video-list">
           {list.map((line) => (<span key={line}>{line}</span>))}
         </div>
@@ -330,7 +339,7 @@ const VideoBand = () => {
 const Projects = () => {
     const { t, services, c, photo } = useCobox();
     const gallery = t.galleryItems || [];
-    const fromServices = services.slice(0, 2).map((service, index) => ({
+    const fromServices = (t.productsPageEnabled ? services : []).slice(0, 2).map((service, index) => ({
         key: service.key,
         tag: service.profile.labels.tag,
         title: service.heroHeading || service.heading,
@@ -350,9 +359,11 @@ const Projects = () => {
                 ? "Designing a modern co-working hub for creative entrepreneurs"
                 : "Transforming shared office spaces into collaborative communities",
             image,
-            onClick: () => t.goToSection("gallery"),
+            onClick: () => t.openGalleryViewer(index),
         });
     });
+    if (!cards.length)
+        return null;
     return (<section className="cbx-section cbx-projects">
       <div className="cbx-shell">
         <div className="cbx-head center">
@@ -390,7 +401,13 @@ const Projects = () => {
     </section>);
 };
 const Process = () => {
-    const { t, c } = useCobox();
+    const { t, draft, c } = useCobox();
+    const demo = isDemo(draft);
+    const stats = [
+        [c("home.about.stats.clients", demo ? "500+" : ""), "Happy clients"],
+        [c("home.about.stats.retention", demo ? "95%" : ""), "Client retention"],
+        [c("home.about.stats.workspaces", demo ? "50+" : ""), "Flexible workspaces"],
+    ].filter(([value]) => value);
     const avatars = (t.testimonials || [])
         .map((item) => srcOf(item.image))
         .filter(Boolean)
@@ -425,16 +442,12 @@ const Process = () => {
               Loved by teams of every size
             </span>
           </div>
-          <div className="cbx-process-stats">
-            {[
-            ["500+", "Happy clients"],
-            ["95%", "Client retention"],
-            ["50+", "Flexible workspaces"],
-        ].map(([value, label]) => (<div key={label}>
-                <h4>{value}</h4>
-                <span>{label}</span>
-              </div>))}
-          </div>
+          {stats.length > 0 && t.isSectionEnabled("home_stats") ? (<div className="cbx-process-stats">
+              {stats.map(([value, label]) => (<div key={label}>
+                  <h4>{value}</h4>
+                  <span>{label}</span>
+                </div>))}
+            </div>) : null}
         </CReveal>
         <div>
           {steps.map((step, index) => (<CReveal key={step.title} delay={index * 0.06}>
@@ -451,7 +464,7 @@ const Process = () => {
     </section>);
 };
 const Pricing = () => {
-    const { t, services, primary, openLead, c } = useCobox();
+    const { services, primary, openLead, c } = useCobox();
     const sources = services.length > 1
         ? services.map((service) => ({ service, item: service.items[0] || null }))
         : primary
@@ -460,9 +473,7 @@ const Pricing = () => {
     const list = sources.slice(0, 4).map(({ service, item }) => ({
         key: item?.key || service?.key || "plan",
         title: services.length > 1 ? service?.name || "" : item?.title || "",
-        features: (item?.features?.length
-            ? item.features
-            : ["Furnished workspace", "Fast Wi-Fi", "Community access", "Meeting-room credits"]).slice(0, 4),
+        features: (item?.features || []).slice(0, 4),
         price: item ? priceWithUnit(item.price, item.priceUnit) : "",
         service,
         item,
@@ -492,9 +503,9 @@ const Pricing = () => {
                     <p className="cbx-plan-note">
                       {c("home.pricing.note", "Flexible terms, no long lock-in")}
                     </p>
-                    <CCtaButton onClick={() => openLead(plan.service, plan.item || null)}>
-                      Get started
-                    </CCtaButton>
+                    {plan.service.leadEnabled ? (<CCtaButton onClick={() => openLead(plan.service, plan.item || null)}>
+                        Get started
+                      </CCtaButton>) : null}
                   </div>
                 </article>
               </CReveal>))}
@@ -505,7 +516,9 @@ const Pricing = () => {
     </section>);
 };
 const WhyUs = () => {
-    const { t, c, photo } = useCobox();
+    const { t, draft, c, photo } = useCobox();
+    const demo = isDemo(draft);
+    const workspaceCount = c("home.about.stats.workspaces", demo ? "50+" : "");
     const image = photo("home.why.image", t.galleryItems?.[6] || t.galleryItems?.[0]) || "";
     return (<section className="cbx-section cbx-band cbx-why">
       <div className="cbx-shell cbx-why-grid">
@@ -520,18 +533,18 @@ const WhyUs = () => {
           <div className="cbx-why-list">
             {[
             [
-                "1.8k",
+                c("home.why.clients", demo ? "1.8k" : ""),
                 c("home.why.item1.title", "Happy clients"),
                 c("home.why.item1.body", "We've supported hundreds of professionals and startups."),
             ],
             [
-                "95%",
+                c("home.about.stats.retention", demo ? "95%" : ""),
                 c("home.why.item2.title", "Client retention rate"),
                 c("home.why.item2.body", "Our commitment to service excellence keeps businesses with us."),
             ],
         ].map(([value, title, body]) => (<div className="cbx-why-item" key={title}>
                 <i>{CIcon.spark(20)}</i>
-                <h4>{value}</h4>
+                {value ? <h4>{value}</h4> : null}
                 <div>
                   <h3>{title}</h3>
                   <p>{body}</p>
@@ -545,7 +558,7 @@ const WhyUs = () => {
             <div className="cbx-why-float">
               <div>
                 <p>{c("home.why.cta", "Fully equipped workspace")}</p>
-                <h3>50+</h3>
+                {workspaceCount ? <h3>{workspaceCount}</h3> : null}
               </div>
               <CCtaButton variant="ghost" onClick={() => t.goToSection("contact")}>
                 Book a visit
@@ -596,26 +609,25 @@ const CoreValues = () => {
           <CReveal delay={0.06}>
             <article className="cbx-value-card">
               <div className="cbx-value-body">
-                <div className="cbx-value-quote">
-                  {srcOf(review?.image) ? (<img src={srcOf(review.image)} alt=""/>) : null}
-                  <div>
-                    <p>{review?.name || "Brooklyn Simmons"}</p>
-                    <small>{review?.role || "Member"}</small>
-                  </div>
-                </div>
+                {review ? (<div className="cbx-value-quote">
+                    {srcOf(review?.image) ? (<img src={srcOf(review.image)} alt=""/>) : null}
+                    <div>
+                      <p>{review.name || review.author || "Member"}</p>
+                      <small>{review?.role || "Member"}</small>
+                    </div>
+                  </div>) : null}
                 <h3>{c("home.values.card2.title", "Innovation")}</h3>
                 <p>
                   {c("home.values.card2.body", "Every professional works differently. That's why we offer workspaces and plans that adapt.")}
                 </p>
                 <div className="cbx-value-counts">
-                  <div>
-                    <h4>500+</h4>
-                    <span>Projects completed</span>
-                  </div>
-                  <div>
-                    <h4>250+</h4>
-                    <span>Professionals working</span>
-                  </div>
+                  {[
+            [c("home.values.projects", isDemo(draft) ? "500+" : ""), "Projects completed"],
+            [c("home.values.members", isDemo(draft) ? "250+" : ""), "Professionals working"],
+        ].filter(([value]) => value).map(([value, label]) => (<div key={label}>
+                      <h4>{value}</h4>
+                      <span>{label}</span>
+                    </div>))}
                 </div>
               </div>
             </article>
@@ -661,7 +673,8 @@ const Testimonials = () => {
     const rail = useRef(null);
     const reviews = (t.testimonials || []).slice(0, 6);
     const image = photo("home.reviews.image", t.galleryItems?.[8] || t.galleryItems?.[1]) || "";
-    const average = rating.avg || 4.9;
+    if (!reviews.length && !t.showWriteReview)
+        return null;
     const scroll = (direction) => {
         const node = rail.current;
         if (!node)
@@ -678,30 +691,31 @@ const Testimonials = () => {
           <h2>
             {c("home.reviews.title", "Real testimonials from our thriving co-working community")}
           </h2>
-          <div className="cbx-rating-box">
-            <div>
-              <b>{average.toFixed(1)}/5</b>
-              <p>Based on {reviews.length || 1} reviews</p>
-            </div>
-            <div>
-              <CStars value={Math.round(average)}/>
-              <p>Google reviews</p>
-            </div>
-          </div>
-          <div className="cbx-review-nav">
-            <button type="button" aria-label="Previous reviews" onClick={() => scroll(-1)}>
-              {CIcon.chevronLeft()}
-            </button>
-            <button type="button" aria-label="Next reviews" onClick={() => scroll(1)}>
-              {CIcon.chevronRight()}
-            </button>
-          </div>
+          {rating.count > 0 ? (<div className="cbx-rating-box">
+              <div>
+                <b>{rating.avg.toFixed(1)}/5</b>
+                <p>{rating.count} {rating.count === 1 ? "review" : "reviews"}</p>
+              </div>
+              <div>
+                <CStars value={rating.avg}/>
+                <p>Member reviews</p>
+              </div>
+            </div>) : null}
+          {reviews.length > 1 ? (<div className="cbx-review-nav">
+              <button type="button" aria-label="Previous reviews" onClick={() => scroll(-1)}>
+                {CIcon.chevronLeft()}
+              </button>
+              <button type="button" aria-label="Next reviews" onClick={() => scroll(1)}>
+                {CIcon.chevronRight()}
+              </button>
+            </div>) : null}
+          {t.showWriteReview ? <CCtaButton onClick={t.openReviewModal}>Write a review</CCtaButton> : null}
         </CReveal>
         <div className="cbx-review-rail" ref={rail}>
           {reviews.map((review, index) => (<article className="cbx-review" key={review.key || index}>
-              <CStars value={review.rating || 5}/>
+              {Number(review.rating) > 0 ? <CStars value={Number(review.rating)}/> : null}
               <blockquote>
-                “{String(review.text || review.review || "").replace(/^"|"$/g, "")}”
+                “{String(review.text || review.review || review.message || review.testimony || "").replace(/^"|"$/g, "")}”
               </blockquote>
               <footer>
                 {srcOf(review.image) ? (<img src={srcOf(review.image)} alt=""/>) : null}
@@ -793,20 +807,22 @@ const ContactBand = () => {
     </section>);
 };
 export const CoboxHome = () => {
-    const { draft } = useCobox();
+    const { t, draft } = useCobox();
+    const enabled = t.isSectionEnabled;
+    const showServices = t.productsPageEnabled && enabled("home_products");
     return (<>
-      <Hero />
-      <About />
-      <Services />
-      <WhatWeDo />
-      <VideoBand />
-      <Projects />
-      <Process />
-      <Pricing />
-      <WhyUs />
-      <CoreValues />
-      <Testimonials />
-      <CoboxFaq faqs={draft?.faqs}/>
-      <ContactBand />
+      {enabled("home_hero") ? <Hero /> : null}
+      {enabled("home_about") ? <About /> : null}
+      {showServices && enabled("home_services") ? <Services /> : null}
+      {enabled("home_inclusions") ? <WhatWeDo /> : null}
+      {enabled("home_video") ? <VideoBand /> : null}
+      {enabled("home_gallery") ? <Projects /> : null}
+      {enabled("home_steps") ? <Process /> : null}
+      {showServices && enabled("home_pricing") ? <Pricing /> : null}
+      {enabled("home_why") ? <WhyUs /> : null}
+      {enabled("home_values") ? <CoreValues /> : null}
+      {enabled("home_testimonials") ? <Testimonials /> : null}
+      {enabled("home_faq") ? <CoboxFaq faqs={draft?.faqs}/> : null}
+      {enabled("home_contact") ? <ContactBand /> : null}
     </>);
 };
