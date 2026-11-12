@@ -24,8 +24,11 @@ const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"))
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
+const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
+const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
+const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
@@ -97,6 +100,29 @@ export const TEMPLATE_REGISTRY = {
             fg: "#f2eee7",
             accent: "#aa8867",
             font: "'Cormorant Garamond', Georgia, serif",
+        },
+        recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    tinyhome: {
+        id: "tinyhome",
+        name: "Tiny Home",
+        description: "A minimalist cabin theme with a full-bleed photo hero, a compact stays catalog, and an enquiry form.",
+        component: TinyHomeTemplate,
+        swatch: { bg: "#ffffff", fg: "#272724", accent: "#353932", font: "'Spinnaker', sans-serif" },
+        recommendedFor: ["coLiving"],
+        supportsBooking: true,
+    },
+    restobar: {
+        id: "restobar",
+        name: "Restobar",
+        description: "A dark café and bistro theme with a four-panel photo hero, category menus, and table reservations.",
+        component: RestobarTemplate,
+        swatch: {
+            bg: "#101519",
+            fg: "#f5f0e9",
+            accent: "#c29a77",
+            font: "'Merriweather', Georgia, serif",
         },
         recommendedFor: ["menu"],
         supportsBooking: true,
@@ -310,6 +336,15 @@ export const TEMPLATE_REGISTRY = {
         },
         recommendedFor: ["workspace"],
         supportsBooking: true,
+    },
+    coplace: {
+      id: "coplace",
+      name: "CoPlace",
+      description: "A mint-accented coworking template with a circular photo hero, workspace plans, and tour enquiries.",
+      component: CoPlaceTemplate,
+      swatch: { bg: "#edf8fa", fg: "#10292d", accent: "#28c49a", font: "'Raleway', sans-serif" },
+      recommendedFor: ["workspace"],
+      supportsBooking: true,
     },
     cobox: {
         id: "cobox",
