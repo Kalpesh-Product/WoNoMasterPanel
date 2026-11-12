@@ -28,6 +28,7 @@ const UploadLayout = () => {
     { label: "Restaurant Logo Upload", path: "restaurant-logo-upload", heading: "Restaurant Logo Upload", description: "Upload a logo for a restaurant." },
     { label: "Add Destination Data", path: "destination-add-upload", heading: "Add Destination Data", description: "Upload a new destination's business-listing workbook." },
     { label: "Reupload Destination Data", path: "destination-reupload", heading: "Reupload Destination Data", description: "Replace an already-uploaded destination's listings with a new file." },
+    { label: "Listings Data Update", path: "listings-data-update", heading: "Listings Data Update", description: "Refresh ratings, review counts and inactive status for live nomad listings." },
   ];
 
   const filteredTabs = restrictedEmails.includes(userEmail)

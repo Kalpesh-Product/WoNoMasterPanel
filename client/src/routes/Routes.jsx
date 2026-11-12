@@ -173,6 +173,7 @@ import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadList
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
 import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
 import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
+import ListingsDataUpdate from "../pages/Dashboard/FrontendDashboard/DataUpload/ListingsDataUpdate";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -410,6 +411,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "destination-reupload",
                         element: <DestinationReuploadUpload />,
+                      },
+                      {
+                        path: "listings-data-update",
+                        element: <ListingsDataUpdate />,
                       },
                       {
                         path: "company-upload",

@@ -4,6 +4,7 @@ const { default: mongoose } = require("mongoose");
 // const { default: axios } = require("axios");
 const axios = require("axios");
 const FormData = require("form-data");
+const ExcelJS = require("exceljs");
 const {
   handleFileUpload,
   handleFileDelete,
@@ -300,6 +301,196 @@ const bulkUploadData = async (req, res) => {
     res.status(status).json({
       success: false,
       message: data,
+    });
+  }
+};
+
+// Listings Data Update: parses the data team's "Business ALL Data" xlsx
+// (11k+ rows) and forwards compact rows to the Nomads backend, which owns
+// the companies collection. Blank Ratings/Total Reviews cells are skipped —
+// they must never overwrite live values with 0. IN-ACTIVE rows only get
+// isPublic:false on the Nomads side; nothing is ever force-published.
+const bulkUpdateListingStats = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file provided" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const norm = (v) =>
+      String(v ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+
+    // Columns found by header text, not fixed position — same defensive
+    // approach as parseDestinationRawData.js, since the team's sheets vary.
+    let sheet = null;
+    let cols = null;
+    for (const ws of workbook.worksheets) {
+      const header = ws.getRow(1);
+      const map = {};
+      for (let c = 1; c <= (ws.actualColumnCount || ws.columnCount); c += 1) {
+        const h = norm(header.getCell(c).value);
+        if (h === "business id") map.businessId = c;
+        else if (h === "ratings" || h === "rating") map.ratings = c;
+        else if (h === "total reviews") map.totalReviews = c;
+        else if (h === "status" || h === "business status") map.status = c;
+      }
+      if (map.businessId) {
+        sheet = ws;
+        cols = map;
+        break;
+      }
+    }
+    if (!sheet) {
+      return res
+        .status(400)
+        .json({ message: 'No sheet with a "Business ID" column found' });
+    }
+
+    const cellStr = (row, c) => {
+      if (!c) return "";
+      let v = row.getCell(c).value;
+      if (v && typeof v === "object" && "result" in v) v = v.result;
+      if (v && typeof v === "object" && "richText" in v)
+        v = v.richText.map((t) => t.text).join("");
+      return v === null || v === undefined ? "" : String(v).trim();
+    };
+
+    const warnings = [];
+    if (!cols.ratings)
+      warnings.push('No "Ratings" column — ratings were not updated.');
+    if (!cols.totalReviews)
+      warnings.push('No "Total Reviews" column — review counts were not updated.');
+    if (!cols.status)
+      warnings.push('No "STATUS" column — no listings were made private.');
+
+    const updates = [];
+    const failures = [];
+    const rowByBusinessId = new Map();
+    let totalRows = 0;
+    let skippedNothingToUpdate = 0;
+    let blankRatings = 0;
+    let blankReviews = 0;
+
+    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      totalRows += 1;
+
+      const businessId = cellStr(row, cols.businessId);
+      if (!businessId) {
+        failures.push({
+          row: rowNumber,
+          column: "Business ID",
+          value: "Blank",
+          reason: 'Missing "Business ID" value — row skipped.',
+        });
+        return;
+      }
+      rowByBusinessId.set(businessId, rowNumber);
+
+      const update = { businessId };
+
+      const ratingsStr = cellStr(row, cols.ratings).replace(/,/g, "");
+      if (ratingsStr === "") blankRatings += 1;
+      else {
+        const ratings = Number(ratingsStr);
+        if (Number.isFinite(ratings) && ratings >= 0 && ratings <= 5) {
+          update.ratings = ratings;
+        } else {
+          failures.push({
+            row: rowNumber,
+            column: "Ratings",
+            value: ratingsStr,
+            reason: "Not a number between 0 and 5 — rating left unchanged.",
+          });
+        }
+      }
+
+      const reviewsStr = cellStr(row, cols.totalReviews).replace(/,/g, "");
+      if (reviewsStr === "") blankReviews += 1;
+      else {
+        const reviews = Number(reviewsStr);
+        if (Number.isFinite(reviews) && reviews >= 0) {
+          update.totalReviews = reviews;
+        } else {
+          failures.push({
+            row: rowNumber,
+            column: "Total Reviews",
+            value: reviewsStr,
+            reason: "Not a valid review count — reviews left unchanged.",
+          });
+        }
+      }
+
+      // "IN-ACTIVE" / "INACTIVE" / "In Active" all count as inactive.
+      const status = norm(cellStr(row, cols.status)).replace(/[^a-z]/g, "");
+      if (status === "inactive") update.makePrivate = true;
+      else if (status && status !== "active") {
+        failures.push({
+          row: rowNumber,
+          column: "STATUS",
+          value: cellStr(row, cols.status),
+          reason: 'Expected "ACTIVE" or "IN-ACTIVE" — visibility left unchanged.',
+        });
+      }
+
+      if (Object.keys(update).length === 1) {
+        skippedNothingToUpdate += 1;
+        return;
+      }
+      updates.push(update);
+    });
+
+    if (!updates.length) {
+      return res.status(400).json({
+        message:
+          "No rows with a Business ID and at least one of Ratings / Total Reviews / inactive Status found",
+        totalRows,
+        failed: failures.length,
+        failures,
+        warnings,
+      });
+    }
+
+    const response = await axios.patch(
+      `${NOMADS_BASE}/company/bulk-update-company-stats`,
+      { updates },
+    );
+
+    (response.data.unmatchedBusinessIds || []).forEach((id) => {
+      failures.push({
+        row: rowByBusinessId.get(id) ?? "—",
+        column: "Business ID",
+        value: id,
+        reason: "No listing with this Business ID in the database — row skipped.",
+      });
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Listings data update completed",
+      totalRows,
+      sent: response.data.processed,
+      matched: response.data.matched,
+      updated: response.data.modified,
+      markedPrivate: response.data.markedPrivate,
+      blankRatings,
+      blankReviews,
+      skippedNothingToUpdate,
+      failed: failures.length,
+      failures,
+      warnings,
+    });
+  } catch (err) {
+    const status = err.response?.status || 500;
+    console.error("[bulkUpdateListingStats] error:", err.response?.data || err.message);
+    return res.status(status).json({
+      success: false,
+      message:
+        err.response?.data?.message || err.message || "Listings update failed",
     });
   }
 };
@@ -1337,6 +1528,7 @@ module.exports = {
   verifyPassword,
   changePassword,
   bulkUploadData,
+  bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
   bulkReuploadImages,

@@ -3,6 +3,7 @@ import { IconButton, Avatar, Box, Chip } from "@mui/material";
 import { LuImageUp } from "react-icons/lu";
 import { MdDelete } from "react-icons/md";
 import { AiOutlineArrowUp, AiOutlineArrowDown } from "react-icons/ai";
+import { UploadCloud } from "lucide-react";
 import MuiModal from "./MuiModal";
 
 const UploadMultipleFilesInput = ({
@@ -17,6 +18,10 @@ const UploadMultipleFilesInput = ({
   maxFiles = 10,
   maxFileSize,
   dataTour, // optional data-tour anchor for the drag/drop-and-browse row
+  // "compact" (default, unchanged everywhere else) is the original inline
+  // row. "spacious" is a bigger, full-width, icon-led dropzone — opt in
+  // per call site so this shared component's other 10+ usages are untouched.
+  variant = "compact",
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
@@ -205,40 +210,70 @@ const UploadMultipleFilesInput = ({
       />
 
       {/* Trigger / Display */}
-      <div className="flex flex-col">
-        <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">
-          {label} (max {maxFiles})
-        </label>
-        <div
+      {variant === "spacious" ? (
+        <label
           data-tour={dataTour}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`mt-1 flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-pmedium ${
-            disabled
-              ? "border-slate-200/60 bg-slate-50 text-slate-400"
-              : isDragging
-              ? "border-[#2563EB] bg-[#2563EB]/5"
-              : "border-slate-200/60 bg-white"
+          htmlFor={id ?? "multiple-file-upload"}
+          className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-7 text-center transition ${
+            disabled || reachedLimit
+              ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-60"
+              : "cursor-pointer"
+          } ${
+            isDragging
+              ? "border-[#2563EB] bg-blue-50/60"
+              : "border-slate-200 bg-white hover:border-[#2563EB]/40 hover:bg-blue-50/30"
           }`}
         >
-          <span className={`truncate ${displayValue ? "text-[#0F172A]" : "text-slate-400"}`}>
+          <UploadCloud size={22} className={isDragging ? "text-[#2563EB]" : "text-slate-400"} />
+          <span className={`text-xs font-pmedium ${displayValue ? "text-slate-900" : "text-slate-600"}`}>
             {displayValue ||
               (isDragging
-                ? "Drop files here..."
-                : `Choose or drop up to ${maxFiles} files...`)}
+                ? "Drop files here"
+                : "Drag & drop images here, or click to browse")}
           </span>
-          <label
-            htmlFor={id ?? "multiple-file-upload"}
-            title={reachedLimit ? `Limit ${maxFiles} files` : "Select files"}
-            className={`shrink-0 rounded p-1 text-[#2563EB] hover:bg-[#2563EB]/10 ${
-              disabled || reachedLimit ? "pointer-events-none opacity-40" : "cursor-pointer"
+          <span className="text-[10px] font-pmedium text-slate-400">
+            {label} · max {maxFiles}
+          </span>
+        </label>
+      ) : (
+        <div className="flex flex-col">
+          <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">
+            {label} (max {maxFiles})
+          </label>
+          <div
+            data-tour={dataTour}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`mt-1 flex w-full items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-[13px] font-pmedium ${
+              disabled
+                ? "border-slate-200/60 bg-slate-50 text-slate-400"
+                : isDragging
+                ? "border-[#2563EB] bg-[#2563EB]/5"
+                : "border-slate-200/60 bg-white"
             }`}
           >
-            <LuImageUp size={16} />
-          </label>
+            <span className={`truncate ${displayValue ? "text-[#0F172A]" : "text-slate-400"}`}>
+              {displayValue ||
+                (isDragging
+                  ? "Drop files here..."
+                  : `Choose or drop up to ${maxFiles} files...`)}
+            </span>
+            <label
+              htmlFor={id ?? "multiple-file-upload"}
+              title={reachedLimit ? `Limit ${maxFiles} files` : "Select files"}
+              className={`shrink-0 rounded p-1 text-[#2563EB] hover:bg-[#2563EB]/10 ${
+                disabled || reachedLimit ? "pointer-events-none opacity-40" : "cursor-pointer"
+              }`}
+            >
+              <LuImageUp size={16} />
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Chips list */}
       {value?.length > 0 && (

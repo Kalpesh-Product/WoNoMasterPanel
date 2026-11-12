@@ -1,9 +1,9 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import PrimaryButton from "../../../../components/PrimaryButton";
-import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import UploadResultSummary from "./UploadResultSummary";
+import { UploadCard, UploadPanel, FileDropzone, UploadSubmitButton, formatFileSize } from "./UploadUI";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const TYPE_MAP = {
@@ -15,14 +15,10 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const PlacesUpload = () => {
   const axios = useAxiosPrivate();
-  const inputRef = useRef(null);
   const [file, setFile] = useState(null);
   const [error, setError] = useState(null);
 
-  const filename = file?.name ?? "No file selected";
-  const filesize = useMemo(() => (file ? humanSize(file.size) : ""), [file]);
-
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending, data: uploadResult, error: uploadError } = useMutation({
     mutationKey: ["places-bulk-upload"],
     mutationFn: async ({ file }) => {
       const { api, formKey } = TYPE_MAP;
@@ -38,7 +34,6 @@ const PlacesUpload = () => {
       setError(null);
       toast.success(data?.message || "Upload successful");
       setFile(null);
-      if (inputRef.current) inputRef.current.value = "";
     },
     onError: (err) => {
       toast.error(err?.response?.data?.message || "Upload failed");
@@ -57,7 +52,7 @@ const PlacesUpload = () => {
 
     if (!isCsv) return fail("Please select a .csv file.");
     if (f.size > MAX_BYTES)
-      return fail(`File too large. Max allowed: ${humanSize(MAX_BYTES)}.`);
+      return fail(`File too large. Max allowed: ${formatFileSize(MAX_BYTES)}.`);
 
     setFile(f);
 
@@ -72,86 +67,36 @@ const PlacesUpload = () => {
     setError(msg);
   }
 
-  function onInputChange(e) {
-    const f = e.target.files?.[0] ?? null;
-    validateAndSet(f);
-  }
-
   function handleUpload() {
     if (!file) return setError("Select a CSV file first.");
     mutate({ file });
   }
 
-  const handleReset = () => {
-    setError(null);
-    setFile(null);
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
   return (
-    <div className="p-0">
-        <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
-          <div>
-            <h4 className="text-2xl font-semibold">Bulk Upload</h4>
-            <p className="text-sm text-gray-600">
-              Choose a places CSV and submit it for bulk upload.
-            </p>
-          </div>
-
-          <input
-            ref={inputRef}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={onInputChange}
-            className="hidden"
-            id="places-csv-input"
-          />
-          <div
-            data-tour="data-upload-dropzone" className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
-            onClick={() => inputRef.current?.click()}
-          >
-            <p className="font-medium">
-              {file ? "Change file" : "Upload your CSV here (click to browse)"}
-            </p>
-            {filename && (
-              <p className="text-sm text-gray-600">
-                Selected: {filename} {filesize && `- ${filesize}`}
-              </p>
-            )}
-          </div>
-
-          <p className="text-xs text-gray-500">
-            Accepted type: <code>.csv</code>. Max size: {humanSize(MAX_BYTES)}.
-          </p>
-          {error && <div className="text-sm text-red-600">{error}</div>}
-
-          <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
-            <PrimaryButton
-              type="button"
-              title={isPending ? "Uploading..." : "Upload"}
-              handleSubmit={handleUpload}
-              isLoading={isPending}
-              disabled={!file || isPending}
-            />
-            <SecondaryButton
-              type="button"
-              title="Reset"
-              handleSubmit={handleReset}
-              disabled={isPending && !file}
-            />
-          </div>
-        </div>
-    </div>
+    <UploadCard title="Places Upload" description="Upload a places CSV for bulk insert.">
+      <UploadPanel>
+        <FileDropzone
+          file={file}
+          onPick={validateAndSet}
+          onRemove={() => setFile(null)}
+          accept=".csv,text/csv"
+          hint={`.csv · Max ${formatFileSize(MAX_BYTES)}`}
+          dataTour="data-upload-dropzone"
+          disabled={isPending}
+        />
+        {error && <div className="mt-2 text-xs text-rose-600">{error}</div>}
+        <UploadSubmitButton
+          onClick={handleUpload}
+          disabled={!file || isPending}
+          pending={isPending}
+        />
+        <UploadResultSummary data={uploadResult} error={uploadError} />
+      </UploadPanel>
+    </UploadCard>
   );
 };
 
 export default PlacesUpload;
-
-function humanSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 async function quickPeek(file) {
   const blob = file.slice(0, 1024);
