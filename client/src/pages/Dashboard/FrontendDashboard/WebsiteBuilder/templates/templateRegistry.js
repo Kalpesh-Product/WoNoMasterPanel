@@ -24,6 +24,7 @@ const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"))
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
+const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
@@ -97,6 +98,20 @@ export const TEMPLATE_REGISTRY = {
             fg: "#f2eee7",
             accent: "#aa8867",
             font: "'Cormorant Garamond', Georgia, serif",
+        },
+        recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    restobar: {
+        id: "restobar",
+        name: "Restobar",
+        description: "A dark café and bistro theme with a four-panel photo hero, category menus, and table reservations.",
+        component: RestobarTemplate,
+        swatch: {
+            bg: "#101519",
+            fg: "#f5f0e9",
+            accent: "#c29a77",
+            font: "'Merriweather', Georgia, serif",
         },
         recommendedFor: ["menu"],
         supportsBooking: true,

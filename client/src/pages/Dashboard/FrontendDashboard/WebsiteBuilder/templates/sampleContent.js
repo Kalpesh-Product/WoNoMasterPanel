@@ -9,7 +9,7 @@
 import { DEMO_BUSINESSES } from "./demoContent";
 import { buildDemoPreviewDraft, defaultKindForTemplate } from "./demoPreviewData";
 import { SERVICE_CHOICES, serviceNameToKind } from "./serviceChoices";
-export const SAMPLE_TEMPLATE_IDS = ["savor", "tastyc", "grandbar", "aromatica", "flowspace", "workscape", "brixspace", "worpace", "cobox", "qerja", "wayfarer", "travigo", "lodge", "cali-hostel", "tulum", "grindelwald", "haven", "camelia", "commons", "huddle"];
+export const SAMPLE_TEMPLATE_IDS = ["savor", "tastyc", "grandbar", "aromatica", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "qerja", "wayfarer", "travigo", "lodge", "cali-hostel", "tulum", "grindelwald", "haven", "camelia", "commons", "huddle"];
 export const hasSampleContent = (themeVariant) => SAMPLE_TEMPLATE_IDS.includes(String(themeVariant || "").trim());
 // The builder rejects images over 1 MB, so anything larger is skipped rather than failing a save.
 const MAX_IMAGE_BYTES = 1024 * 1024 - 2048;
@@ -150,7 +150,7 @@ export const buildSampleContent = async ({ themeVariant, services, companyName, 
             values[key] = draft[key];
     });
     const [heroImages, gallery, aboutPageImages, aboutPageImageCards, founders, testimonials, pages] = await Promise.all([
-        serviceOnly ? [] : loadMany(draft.heroImages, LIMITS.hero),
+        serviceOnly ? [] : loadMany(draft.heroImages, themeVariant === "restobar" ? 4 : LIMITS.hero),
         serviceOnly ? [] : loadMany(draft.gallery, LIMITS.gallery),
         serviceOnly ? [] : loadMany(draft.aboutPageImages, LIMITS.about),
         Promise.all((serviceOnly ? [] : draft.aboutPageImageCards || []).map(async (card) => ({ title: card.title, description: card.description, enabled: true, image: await load(card.image) }))),
