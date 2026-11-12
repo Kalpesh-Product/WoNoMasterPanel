@@ -161,6 +161,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/world-ranking-weights",
           },
           {
+            id: 39,
+            key: "dashboard.world-ranking-weights-v2",
+            title: "World Ranking (Algo 2.0)",
+            icon: LuChartLine,
+            route: "/dashboard/world-ranking-weights-v2",
+          },
+          {
             id: 17,
             key: "dashboard.visa-countries",
             title: "Visa Countries",

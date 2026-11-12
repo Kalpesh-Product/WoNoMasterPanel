@@ -229,6 +229,7 @@ import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboa
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import WorldRankingWeightsV2 from "../pages/Dashboard/FrontendDashboard/WorldRankingWeightsV2";
 import PublishListings from "../pages/Dashboard/FrontendDashboard/PublishListings";
 import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLeads";
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
@@ -661,6 +662,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "world-ranking-weights",
                     element: <WorldRankingWeights />,
+                  },
+                  {
+                    path: "world-ranking-weights-v2",
+                    element: <WorldRankingWeightsV2 />,
                   },
                   {
                     path: "visa-countries",
