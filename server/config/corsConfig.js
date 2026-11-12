@@ -24,6 +24,7 @@ const regexAllowedOrigins = [
   /\.wono\.co$/, // any subdomain of wono.co
   /\.localhost:5173$/, // any subdomain of localhost:5173 (vite tenant sites)
   /\.localhost:5174$/, // Nomads Vite tenant and marketing sites
+  /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/, // Cloudflare quick tunnels (dev sharing)
 ];
 
 const corsConfig = {
