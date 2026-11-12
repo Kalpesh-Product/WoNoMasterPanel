@@ -9,6 +9,7 @@ const TEMPLATE_KIND = {
     workscape: "meeting",
     brixspace: "meeting",
     worpace: "workspace",
+    cobox: "workspace",
     qerja: "workspace",
     wayfarer: "hostel",
     travigo: "hostel",
@@ -846,6 +847,46 @@ const AROMATICA_DEMO_BUSINESS = (() => {
         extra: { ...base.extra, menuItems: items.map(toMenuItem) },
     };
 })();
+// Cobox uses bright, architectural co-working photography with a warm, soft cut.
+const coboxPhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
+const coboxValue = (id, width = 1200) => ({ url: coboxPhoto(id, width) });
+const COBOX_PHOTOS = {
+    hero: ["3182759", "3183190", "3182827"],
+    spaces: ["3182812", "3184416", "3182811", "3182765", "3182826", "3182833", "3184287", "3205570", "3768904", "3861958", "4348404", "7654118"],
+};
+const COBOX_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.workspace;
+    const items = base.pageItems || [];
+    return {
+        ...base,
+        companyName: "Cobox",
+        title: "Flexible co-working spaces tailored to your needs",
+        subTitle: "Discover modern, inspiring and fully equipped workspaces designed to fuel creativity, collaboration and growth.",
+        cta: "Book a trial visit",
+        heroImages: COBOX_PHOTOS.hero.map((id) => coboxPhoto(id, 1900)),
+        gallery: [...COBOX_PHOTOS.hero, ...COBOX_PHOTOS.spaces].map((id) => coboxPhoto(id, 1450)),
+        aboutImages: [COBOX_PHOTOS.spaces[0], COBOX_PHOTOS.spaces[3], COBOX_PHOTOS.spaces[6]].map((id) => coboxPhoto(id, 1200)),
+        aboutTitle: "A workspace shaped around the way you work",
+        aboutPageStory: "Cobox brings flexible desks, private cabins and meeting rooms together in one calm, well-run building.",
+        founders: [
+            { name: "Mira Shah", role: "Founder & Workplace Director", bio: "Mira shapes calm, useful spaces where independent people and growing teams can do their best work.", image: coboxValue("3769021", 900) },
+            { name: "Arjun Mehta", role: "Community Lead", bio: "Arjun connects members, hosts thoughtful events and makes every new arrival feel at home.", image: coboxValue("2379004", 900) },
+        ],
+        address: "18 Residency Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Choose a workspace that fits",
+            heroSubHeading: "Desks, cabins and suites designed for focused work and easy collaboration.",
+            heroImage: coboxPhoto(COBOX_PHOTOS.hero[0], 1900),
+            cardImage: coboxPhoto(COBOX_PHOTOS.hero[1], 1100),
+        },
+        pageItems: items.map((item, index) => ({
+            ...item,
+            images: COBOX_PHOTOS.spaces.slice(index * 2, index * 2 + 3).map((id) => coboxValue(id)),
+        })),
+    };
+})();
+
 const demoBusinessFor = (kind, themeVariant) => {
     if (themeVariant === "tastyc" && kind === "menu")
         return TASTYC_DEMO_BUSINESS;
@@ -861,6 +902,8 @@ const demoBusinessFor = (kind, themeVariant) => {
         return BRIXSPACE_DEMO_BUSINESS;
     if (themeVariant === "worpace" && kind === "workspace")
         return WORPACE_DEMO_BUSINESS;
+    if (themeVariant === "cobox" && kind === "workspace")
+        return COBOX_DEMO_BUSINESS;
     if (themeVariant === "qerja" && kind === "workspace")
         return QERJA_DEMO_BUSINESS;
     if (themeVariant === "travigo" && kind === "hostel")

@@ -15,7 +15,7 @@ const {
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
 } = require("../services/modulePricingService");
-const { getDefaultEnabledModuleIdsForPlan } = require("../config/hostWorkspaceModuleCatalog");
+const { getDefaultEnabledModuleIdsForWorkspace } = require("../config/hostWorkspaceModuleCatalog");
 
 const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
 const PLAN_RANK = { basic: 0, professional: 1, custom: 2 };
@@ -525,8 +525,6 @@ const getHostCompanyPlanHistory = async (req, res, next) => {
 // tracking row. Shared by the webhook and, for symmetry, could be reused by
 // a manual "resync" action later if ever needed.
 const applyPaidPlanToWorkspace = async (link) => {
-  const defaultModuleIds = getDefaultEnabledModuleIdsForPlan(link.plan);
-
   // link.workspaceId is a snapshot taken at PAYMENT-LINK CREATION time — null
   // there correctly means "not registered yet" at that moment, but the host
   // can go on to complete registration (creating their workspace on Basic)
@@ -542,6 +540,12 @@ const applyPaidPlanToWorkspace = async (link) => {
   if (workspaceId) {
     const workspace = await Workspace.findById(workspaceId);
     if (workspace) {
+      // Per-workspace, not just per-plan: a workspace's business vertical
+      // (Cafe, Hostel, etc.) unlocks its own modules (Cafe Management, Cafe
+      // Orders, ...) on top of the plan's own defaults — those are never
+      // part of getDefaultEnabledModuleIdsForPlan, only ever granted via
+      // whatever's written into enabledModuleIds.
+      const defaultModuleIds = getDefaultEnabledModuleIdsForWorkspace(link.plan, workspace.businessTypes);
       // For Custom, the specific add-on modules staff priced and the host
       // actually paid for (link.customModuleIds) must be part of what's
       // ENABLED, not just recorded for billing — otherwise a host who paid
@@ -567,6 +571,10 @@ const applyPaidPlanToWorkspace = async (link) => {
             planExpiryDate: link.periodEnd,
             planLastPaidAt: link.paidAt || new Date(),
             planExpiryWarningSentAt: null,
+            // A real payment converts a trial into a paid subscription — never
+            // leave isTrialing true after this, or the dashboard keeps showing
+            // the trial-renewal banner even though the host already paid.
+            isTrialing: false,
             enabledModuleIds: restoredModuleIds,
             preDowngradeEnabledModuleIds: [],
             ...(link.plan === "custom" && link.customModuleIds?.length
@@ -593,6 +601,9 @@ const applyPaidPlanToWorkspace = async (link) => {
         paymentStatus: true,
         paymentConfirmedAt: link.paidAt || new Date(),
         upgradeStatus: "active",
+        // A real payment ends any trial — otherwise a converted paying
+        // customer still shows "trialing" on the staff analytics dashboard.
+        subscriptionStatus: "active",
       },
       // Only set inviteUnlockedAt if not already set — a company that pays,
       // gets invited, then later renews should not have its original

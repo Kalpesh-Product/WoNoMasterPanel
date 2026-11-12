@@ -18,9 +18,14 @@ const MODULE_GROUPS = [
       { id: "tasks", label: "Tasks" },
       { id: "tickets", label: "Tickets" },
       { id: "leave-requests", label: "Leave Requests" },
-      { id: "meeting-room-system", label: "Meeting Room Booking" },
+      // Co-working does not get this — it has its own Co-working Management
+      // module instead; kept in sync with HostPanel's workspaceModuleCatalog.ts.
+      { id: "meeting-room-system", label: "Meeting Room Booking", verticals: ["meeting-rooms"] },
       { id: "printouts", label: "Printouts" },
       { id: "calendar", label: "Calendar" },
+      { id: "cafe-orders", label: "Cafe Orders", verticals: ["cafe"] },
+      { id: "hostel-booking", label: "Hostel Booking", verticals: ["hostel"] },
+      { id: "room-booking", label: "Room Booking", verticals: ["co-living"] },
     ],
   },
   {
@@ -76,8 +81,12 @@ const MODULE_GROUPS = [
         id: "administration-department",
         label: "Administration Department",
         tabs: [
+          // Tenant Companies: parked, not granted on any plan/vertical for now.
           { id: "tenant-companies-admin", label: "Tenant Companies" },
-          { id: "bookings", label: "Bookings" },
+          // Bookings: only once a workspace has more than one vertical
+          // selected — a single-vertical workspace already manages bookings
+          // from within that vertical's own management page.
+          { id: "bookings", label: "Bookings", requiresMultipleVerticals: true },
           { id: "visitors-management", label: "Visitors Management" },
           { id: "resource-management", label: "Resource Management" },
           { id: "house-keeping", label: "House Keeping" },
@@ -89,10 +98,17 @@ const MODULE_GROUPS = [
         label: "Sales Department",
         tabs: [
           { id: "leads-management", label: "Leads Management" },
-          { id: "tenant-companies-sales", label: "Tenant Companies" },
-          { id: "virtual-office-sales", label: "Virtual Offices" },
-          { id: "resource-pricing", label: "Resource & Pricing" },
-          { id: "sales-architecture", label: "Sales Architecture" },
+          { id: "cafe-management", label: "Cafe Management", verticals: ["cafe"] },
+          { id: "hostel-management", label: "Hostel Management", verticals: ["hostel"] },
+          { id: "co-living-management", label: "Co-living Management", verticals: ["co-living"] },
+          { id: "co-working-management", label: "Co-working Management", verticals: ["co-working"] },
+          { id: "meeting-room-management", label: "Meeting Room Management", verticals: ["meeting-rooms"] },
+          // Resource & Pricing and Sales Architecture: only once a workspace
+          // spans more than one vertical (single-vertical workspaces manage
+          // resources from within their own management page already).
+          { id: "resource-pricing", label: "Resource & Pricing", requiresMultipleVerticals: true },
+          { id: "virtual-office-sales", label: "Virtual Offices", verticals: ["co-working"] },
+          { id: "sales-architecture", label: "Sales Architecture", requiresMultipleVerticals: true },
         ],
       },
       {
@@ -158,7 +174,8 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   // Professional+.
   "tech-website-builder",
   "tickets",
-  "meeting-room-system",
+  // NOT "meeting-room-system" — granted per-vertical now (getVerticalModuleIds),
+  // not a flat Professional default. Kept in sync with HostPanel's.
   "printouts",
   // "printout-management" (Administration Department admin console) is a
   // separate id from "printouts" (common self-service module) so this list
@@ -169,16 +186,16 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   "workspace-management",
   // Administration Department is a Professional default — kept in sync with
   // HostPanel's PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
-  "tenant-companies-admin",
-  "bookings",
+  // NOT "tenant-companies-admin" / "resource-management" — parked, not
+  // granted on any plan for now.
+  // NOT "bookings" — requires more than one vertical selected.
   "visitors-management",
-  "resource-management",
   "house-keeping",
   "leads-management",
   "tenant-companies-sales",
-  "virtual-office-sales",
-  "resource-pricing",
-  "sales-architecture",
+  // NOT "virtual-office-sales" — co-working vertical only now.
+  // NOT "resource-pricing" / "sales-architecture" — require more than one
+  // vertical selected.
 ]);
 
 const canPlanAccess = (plan = "basic", moduleId = "") => {
@@ -210,6 +227,62 @@ const getDefaultEnabledModuleIdsForPlan = (selectedPlan = "basic") => {
     }
   }
   return Array.from(ids);
+};
+
+// Mirrored from HostPanel's VERTICAL_KEY_BY_BUSINESS_TYPE /
+// getWorkspaceVerticalKeys / getVerticalModuleIds (workspaceModuleCatalog.ts)
+// — needed so every plan-upgrade path here (trial start, bonus trial, mark
+// as paid, Stripe webhook) can grant a workspace's vertical modules (Cafe
+// Management, Cafe Orders, etc.) on top of the plan's own defaults, instead
+// of silently omitting them. getDefaultEnabledModuleIdsForPlan above never
+// includes these — they're not plan defaults, they're vertical-gated.
+const VERTICAL_KEY_BY_BUSINESS_TYPE = {
+  "co-working": "co-working",
+  "co-living": "co-living",
+  hostels: "hostel",
+  hostel: "hostel",
+  workation: "workation",
+  "meeting rooms": "meeting-rooms",
+  cafe: "cafe",
+};
+
+const getWorkspaceVerticalKeys = (businessTypes = []) => {
+  const keys = new Set();
+  for (const businessType of Array.isArray(businessTypes) ? businessTypes : []) {
+    const key = VERTICAL_KEY_BY_BUSINESS_TYPE[String(businessType || "").trim().toLowerCase()];
+    if (key) keys.add(key);
+  }
+  return Array.from(keys);
+};
+
+// A module can be gated by specific named verticals ("verticals": [...]),
+// by needing more than one vertical selected at all ("requiresMultipleVerticals"),
+// or both — kept in sync with HostPanel's isVisibleForVerticals.
+const isVisibleForVerticals = (module, verticalKeys = []) => {
+  if (module.requiresMultipleVerticals && verticalKeys.length <= 1) return false;
+  if (Array.isArray(module.verticals) && !module.verticals.some((key) => verticalKeys.includes(key))) return false;
+  return true;
+};
+
+const getVerticalModuleIds = (verticalKeys = []) => {
+  const ids = new Set();
+  for (const section of MODULE_GROUPS) {
+    for (const module of collectLeafModules(section.items || [])) {
+      const isGated = Array.isArray(module.verticals) || Boolean(module.requiresMultipleVerticals);
+      if (isGated && isVisibleForVerticals(module, verticalKeys)) {
+        ids.add(module.id);
+      }
+    }
+  }
+  return Array.from(ids);
+};
+
+// Convenience used by the plan-upgrade paths: a plan's own default ids, plus
+// whichever vertical modules this specific workspace's businessTypes unlock.
+const getDefaultEnabledModuleIdsForWorkspace = (selectedPlan = "basic", businessTypes = []) => {
+  const planIds = getDefaultEnabledModuleIdsForPlan(selectedPlan);
+  const verticalIds = getVerticalModuleIds(getWorkspaceVerticalKeys(businessTypes));
+  return Array.from(new Set([...planIds, ...verticalIds]));
 };
 
 const planAvailabilityFor = (moduleId) => {
@@ -334,6 +407,9 @@ module.exports = {
   MODULE_GROUPS,
   normalizePlan,
   getDefaultEnabledModuleIdsForPlan,
+  getWorkspaceVerticalKeys,
+  getVerticalModuleIds,
+  getDefaultEnabledModuleIdsForWorkspace,
   planAvailabilityFor,
   buildCatalogIndex,
   getPriceableCatalog,

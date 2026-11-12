@@ -19,7 +19,7 @@ const {
   patchNomadListingsCache,
   fetchAllNomadListings,
 } = require("../hostListingControllers");
-const { getDefaultEnabledModuleIdsForPlan } = require("../../config/hostWorkspaceModuleCatalog");
+const { getDefaultEnabledModuleIdsForWorkspace } = require("../../config/hostWorkspaceModuleCatalog");
 const { getFreeTrialConfig } = require("../../services/modulePricingService");
 
 const serviceOptions = [
@@ -1134,22 +1134,35 @@ const startTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Mirrors Workspace.selectedPlan below — without this, HostLeadCompany.plan
+    // stays "basic" through the whole trial, so a payment-link sent while
+    // trialing computes previousPlan as "basic" (computeChangeType treats it
+    // as changeType "initial", i.e. a first-ever upgrade) instead of "renewal".
+    leadCompany.plan = "professional";
     await leadCompany.save();
 
-    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
-    await Workspace.updateMany(
-      { companyId: normalizedCompanyId },
-      {
-        $set: {
-          selectedPlan: "professional",
-          planStatus: "active",
-          planStartDate: now,
-          planExpiryDate: trialEndAt,
-          planExpiryWarningSentAt: null,
-          isTrialing: true,
-          enabledModuleIds: professionalModuleIds,
-        },
-      },
+    // Computed per workspace, not once for the whole company — a company can
+    // have multiple workspaces with different business verticals, each of
+    // which unlocks different vertical modules (Cafe Management, etc.) on
+    // top of the shared Professional-plan defaults.
+    const trialWorkspaces = await Workspace.find({ companyId: normalizedCompanyId }).select("_id businessTypes");
+    await Promise.all(
+      trialWorkspaces.map((workspace) =>
+        Workspace.updateOne(
+          { _id: workspace._id },
+          {
+            $set: {
+              selectedPlan: "professional",
+              planStatus: "active",
+              planStartDate: now,
+              planExpiryDate: trialEndAt,
+              planExpiryWarningSentAt: null,
+              isTrialing: true,
+              enabledModuleIds: getDefaultEnabledModuleIdsForWorkspace("professional", workspace.businessTypes),
+            },
+          },
+        ),
+      ),
     );
 
     return res.status(200).json({
@@ -1270,23 +1283,32 @@ const claimBonusTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Same reasoning as startTrial above — keeps a payment-link sent during
+    // this bonus trial from being mis-computed as changeType "initial".
+    leadCompany.plan = "professional";
     leadCompany.bonusTrialOffer.active = false;
     leadCompany.bonusTrialOffer.claimedAt = now;
     await leadCompany.save();
 
-    const professionalModuleIds = getDefaultEnabledModuleIdsForPlan("professional");
-    await Workspace.updateMany(
-      { companyId: normalizedCompanyId },
-      {
-        $set: {
-          selectedPlan: "professional",
-          planStatus: "active",
-          planExpiryDate: trialEndAt,
-          planExpiryWarningSentAt: null,
-          isTrialing: true,
-          enabledModuleIds: professionalModuleIds,
-        },
-      },
+    // See startTrial above — computed per workspace, not once for the whole
+    // company, since each workspace can have its own business vertical.
+    const bonusTrialWorkspaces = await Workspace.find({ companyId: normalizedCompanyId }).select("_id businessTypes");
+    await Promise.all(
+      bonusTrialWorkspaces.map((workspace) =>
+        Workspace.updateOne(
+          { _id: workspace._id },
+          {
+            $set: {
+              selectedPlan: "professional",
+              planStatus: "active",
+              planExpiryDate: trialEndAt,
+              planExpiryWarningSentAt: null,
+              isTrialing: true,
+              enabledModuleIds: getDefaultEnabledModuleIdsForWorkspace("professional", workspace.businessTypes),
+            },
+          },
+        ),
+      ),
     );
 
     return res.status(200).json({
@@ -1387,11 +1409,13 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
         // actually gates modules on, via canPlanAccess()) untouched. Master
         // panel and HostPanel share the same DB, so this writes directly
         // into HostPanel's Workspace collection, same pattern already used
-        // by updateWorkspaceEnabledModules above. Module *visibility* is
-        // computed live from selectedPlan on every HostPanel request
-        // (buildWorkspaceModulesStructure), so no enabledModuleIds
-        // recomputation is needed here for the plan's own defaults to
-        // unlock.
+        // by updateWorkspaceEnabledModules above. Module *visibility* for
+        // the plan's own defaults (BASIC_DEFAULT_IDS/PROFESSIONAL_DEFAULT_IDS)
+        // is computed live from selectedPlan on every HostPanel request
+        // (buildWorkspaceModulesStructure) — but vertical modules (Cafe
+        // Management, etc.) are NOT: they only ever come from whatever's
+        // stored in enabledModuleIds, so this must recompute and write that
+        // too, per workspace (each can have its own business vertical).
         if (WORKSPACE_PLAN_VALUES.has(requestedPlan)) {
           const companyIdRegex = buildCompanyIdPrefixRegex(company.companyId);
           const companyNameRegex = buildExactCaseInsensitiveRegex(
@@ -1403,10 +1427,26 @@ const updateUpgradePaymentStatus = async (req, res, next) => {
           if (companyNameRegex)
             matchOr.push({ businessName: { $regex: companyNameRegex } });
           if (matchOr.length) {
-            workspacePlanUpdate = await Workspace.updateMany(
-              { $or: matchOr, isActive: true },
-              { $set: { selectedPlan: requestedPlan } },
+            const matchingWorkspaces = await Workspace.find({ $or: matchOr, isActive: true }).select(
+              "_id businessTypes",
             );
+            await Promise.all(
+              matchingWorkspaces.map((workspace) =>
+                Workspace.updateOne(
+                  { _id: workspace._id },
+                  {
+                    $set: {
+                      selectedPlan: requestedPlan,
+                      enabledModuleIds: getDefaultEnabledModuleIdsForWorkspace(
+                        requestedPlan,
+                        workspace.businessTypes,
+                      ),
+                    },
+                  },
+                ),
+              ),
+            );
+            workspacePlanUpdate = { modifiedCount: matchingWorkspaces.length };
           }
         }
       }
