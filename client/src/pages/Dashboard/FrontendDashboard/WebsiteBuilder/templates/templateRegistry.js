@@ -25,6 +25,7 @@ const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
 const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
+const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
@@ -100,6 +101,15 @@ export const TEMPLATE_REGISTRY = {
             font: "'Cormorant Garamond', Georgia, serif",
         },
         recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    tinyhome: {
+        id: "tinyhome",
+        name: "Tiny Home",
+        description: "A minimalist cabin theme with a full-bleed photo hero, a compact stays catalog, and an enquiry form.",
+        component: TinyHomeTemplate,
+        swatch: { bg: "#ffffff", fg: "#272724", accent: "#353932", font: "'Spinnaker', sans-serif" },
+        recommendedFor: ["coLiving"],
         supportsBooking: true,
     },
     restobar: {
