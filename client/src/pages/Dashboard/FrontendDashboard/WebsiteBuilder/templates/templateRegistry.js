@@ -28,6 +28,7 @@ const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
 const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
+const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
@@ -335,6 +336,15 @@ export const TEMPLATE_REGISTRY = {
         },
         recommendedFor: ["workspace"],
         supportsBooking: true,
+    },
+    coplace: {
+      id: "coplace",
+      name: "CoPlace",
+      description: "A mint-accented coworking template with a circular photo hero, workspace plans, and tour enquiries.",
+      component: CoPlaceTemplate,
+      swatch: { bg: "#edf8fa", fg: "#10292d", accent: "#28c49a", font: "'Raleway', sans-serif" },
+      recommendedFor: ["workspace"],
+      supportsBooking: true,
     },
     cobox: {
         id: "cobox",
