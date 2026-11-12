@@ -369,6 +369,7 @@ const UPLOAD_ACTION_TABS = {
   "bulk-insert-companies": "Company Upload",
   "bulk-add-company-images": "Product Images Upload",
   "bulk-upload-data": "Products Upload",
+  "bulk-update-listing-stats": "Listings Data Update",
   "bulk-upload-images": "Bulk Upload Images",
   "bulk-reupload-images": "Bulk Reupload Images",
   "upload-single-image": "Upload Single Image",

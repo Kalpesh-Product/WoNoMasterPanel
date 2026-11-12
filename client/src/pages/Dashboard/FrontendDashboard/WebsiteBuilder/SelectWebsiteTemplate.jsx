@@ -71,7 +71,8 @@ export const TemplatePicker = ({ onClose }) => {
     const recommendedIds = useMemo(() => getRecommendedTemplateIds(kinds).filter((id) => !isHidden(id) && availability[id]?.enabled !== false), [kinds, availability]);
     const builderBasePath = location.pathname.replace(/\/select-template\/?$/, "").replace(/\/$/, "");
     const handlePreview = (templateId) => {
-        const draft = buildDemoPreviewDraft(templateId, services);
+        const usesOwnDemo = ["restobar", "tinyhome", "coplace"].includes(templateId);
+        const draft = buildDemoPreviewDraft(templateId, usesOwnDemo ? [] : services);
         localStorage.setItem(LIVE_PREVIEW_DRAFT_STORAGE_KEY, JSON.stringify(draft));
         window.open("/website-preview", "_blank", "noopener,noreferrer");
     };

@@ -173,6 +173,7 @@ import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadList
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
 import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
 import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
+import ListingsDataUpdate from "../pages/Dashboard/FrontendDashboard/DataUpload/ListingsDataUpdate";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -229,6 +230,7 @@ import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboa
 import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
+import WorldRankingWeightsV2 from "../pages/Dashboard/FrontendDashboard/WorldRankingWeightsV2";
 import PublishListings from "../pages/Dashboard/FrontendDashboard/PublishListings";
 import NomadSignupLeads from "../pages/Dashboard/FrontendDashboard/NomadSignupLeads";
 import NomadClickAnalytics from "../pages/Dashboard/FrontendDashboard/NomadClickAnalytics";
@@ -410,6 +412,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "destination-reupload",
                         element: <DestinationReuploadUpload />,
+                      },
+                      {
+                        path: "listings-data-update",
+                        element: <ListingsDataUpdate />,
                       },
                       {
                         path: "company-upload",
@@ -661,6 +667,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "world-ranking-weights",
                     element: <WorldRankingWeights />,
+                  },
+                  {
+                    path: "world-ranking-weights-v2",
+                    element: <WorldRankingWeightsV2 />,
                   },
                   {
                     path: "visa-countries",
