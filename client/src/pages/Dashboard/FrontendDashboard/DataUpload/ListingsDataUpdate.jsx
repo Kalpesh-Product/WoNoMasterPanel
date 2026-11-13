@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { TemplateDownloadLink } from "./UploadUI";
 
 const isSpreadsheet = (file) => /\.(xlsx|xlsm)$/i.test(file.name);
 const formatSize = (bytes) =>
@@ -181,10 +182,12 @@ const ListingsDataUpdate = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-        <p className="text-xs font-pmedium text-slate-700">
-          Upload the <span className="text-[#2563EB]">Business ALL Data</span>{" "}
-          workbook to refresh live nomad listings.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-pmedium text-slate-700">
+            Upload the <span className="text-[#2563EB]">Business ALL Data</span> workbook to refresh live nomad listings.
+          </p>
+          <TemplateDownloadLink href="/templates/listings-data-update-template.xlsx" />
+        </div>
         <p className="mt-1 text-[10px] font-pmedium text-slate-400">
           Rows are matched by Business ID. Ratings and Total Reviews update only
           where the sheet has a value — blank cells are left untouched. Rows

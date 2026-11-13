@@ -73,7 +73,11 @@ const PlacesUpload = () => {
   }
 
   return (
-    <UploadCard title="Places Upload" description="Upload a places CSV for bulk insert.">
+    <UploadCard
+      title="Places Upload"
+      description="Upload a places CSV for bulk insert."
+      templateHref="/templates/places-template.xlsx"
+    >
       <UploadPanel>
         <FileDropzone
           file={file}
