@@ -24,6 +24,7 @@ const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"))
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
+const ItalianoTemplate = lazy(() => import("./italiano/ItalianoTemplate"));
 const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
 const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
@@ -112,6 +113,15 @@ export const TEMPLATE_REGISTRY = {
         swatch: { bg: "#ffffff", fg: "#272724", accent: "#353932", font: "'Spinnaker', sans-serif" },
         recommendedFor: ["coLiving"],
         supportsBooking: true,
+    },
+    italiano: {
+      id: "italiano",
+      name: "Italiano",
+      description: "A dark Italian café template with a cinematic carousel, editorial story, and table reservations.",
+      component: ItalianoTemplate,
+      swatch: { bg: "#131211", fg: "#f5f0e9", accent: "#d4ae74", font: "'Cormorant Garamond', serif" },
+      recommendedFor: ["menu"],
+      supportsBooking: true,
     },
     restobar: {
         id: "restobar",

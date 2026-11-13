@@ -7,7 +7,7 @@ const WebsiteTemplateSettings = require("../../models/website/WebsiteTemplateSet
 const Workspace = require("../../models/hostCompany/Workspace");
 
 const PLAN_KEYS = ["basic", "professional", "custom"];
-const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "tinyhome", "commons", "huddle", "lodge", "grindelwald"];
+const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "tinyhome", "commons", "huddle", "lodge", "grindelwald"];
 const DEFAULT_SETTINGS = {
   key: "global",
   limitPeriod: "monthly",
@@ -25,6 +25,7 @@ const DEFAULT_SETTINGS = {
     { templateId: "tastyc", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grandbar", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "aromatica", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "italiano", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "restobar", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "flowspace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "workscape", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },

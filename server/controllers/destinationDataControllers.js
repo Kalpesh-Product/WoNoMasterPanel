@@ -301,6 +301,7 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
         eventCount: 0,
         placeCount: 0,
         restaurantCount: 0,
+        publicListingCount: 0,
         coworkingCount: 0,
         colivingCount: 0,
         hostelCount: 0,
@@ -339,7 +340,9 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
     const countField = listingTypeCountField(listing?.companyType);
     if (!countField) return;
     const entry = ensureDestination(listing);
-    if (entry) entry[countField] += 1;
+    if (!entry) return;
+    entry[countField] += 1;
+    if (listing.isPublic === true) entry.publicListingCount += 1;
   });
 
   return destinationEntries
@@ -408,12 +411,12 @@ const getCachedDestinationStats = async ({ includeListings = false } = {}) => {
 const summarize = (items) =>
   items.reduce(
     (counts, item) => ({
-      destinations: counts.destinations + 1,
       blogs: counts.blogs + item.blogCount,
       news: counts.news + item.newsCount,
       events: counts.events + item.eventCount,
       places: counts.places + item.placeCount,
       restaurants: counts.restaurants + item.restaurantCount,
+      publicListings: counts.publicListings + item.publicListingCount,
       coworking: counts.coworking + item.coworkingCount,
       coliving: counts.coliving + item.colivingCount,
       hostels: counts.hostels + item.hostelCount,
@@ -421,12 +424,12 @@ const summarize = (items) =>
       cafes: counts.cafes + item.cafeCount,
     }),
     {
-      destinations: 0,
       blogs: 0,
       news: 0,
       events: 0,
       places: 0,
       restaurants: 0,
+      publicListings: 0,
       coworking: 0,
       coliving: 0,
       hostels: 0,
@@ -503,9 +506,10 @@ const getDestinationsData = async (req, res, next) => {
     const allItems = await getCachedDestinationStats({
       includeListings: activeTab === "listings",
     });
-    const scopedItems = allItems.filter((item) =>
-      activeTab === "listings" ? hasListingData(item) : hasContentData(item),
-    );
+    const contentItems = allItems.filter(hasContentData);
+    const scopedItems = activeTab === "listings"
+      ? allItems.filter(hasListingData)
+      : contentItems;
     const country = normalizeSearchValue(req.query.country);
     const state = normalizeSearchValue(req.query.state);
     const city = normalizeSearchValue(req.query.city);
@@ -562,7 +566,10 @@ const getDestinationsData = async (req, res, next) => {
       limit,
       total,
       hasMore: page * limit < total,
-      counts: summarize(scopedItems),
+      counts: {
+        destinations: contentItems.length,
+        ...summarize(scopedItems),
+      },
       filterOptions: { countries, states, cities },
     });
   } catch (error) {

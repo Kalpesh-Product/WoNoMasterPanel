@@ -66,13 +66,19 @@ const CONTENT_STATS = [
 ];
 
 const LISTING_STATS = [
-  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  CONTENT_STATS[0],
+  { label: "Public Listings", valueKey: "publicListings", textColor: "text-emerald-600", borderColor: "border-l-emerald-500" },
   { label: "Coworking", valueKey: "coworking", textColor: "text-sky-600", borderColor: "border-l-sky-500" },
   { label: "Coliving", valueKey: "coliving", textColor: "text-teal-600", borderColor: "border-l-teal-500" },
   { label: "Hostels", valueKey: "hostels", textColor: "text-indigo-600", borderColor: "border-l-indigo-500" },
   { label: "Meeting Rooms", valueKey: "meetingRooms", textColor: "text-fuchsia-600", borderColor: "border-l-fuchsia-500" },
   { label: "Cafes", valueKey: "cafes", textColor: "text-orange-600", borderColor: "border-l-orange-500" },
 ];
+
+const SUMMARY_STATS_GRID = {
+  content: "grid grid-cols-2 md:grid-cols-6 gap-3",
+  listings: "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3",
+};
 
 const CONTENT_COLUMNS = [
   { label: "Blogs", countKey: "blogCount", type: "blog" },
@@ -97,6 +103,7 @@ const EMPTY_COUNTS = {
   events: 0,
   places: 0,
   restaurants: 0,
+  publicListings: 0,
   coworking: 0,
   coliving: 0,
   hostels: 0,
@@ -278,7 +285,7 @@ const fetchFirstSuccessfulArray = async (axios, endpoints) => {
   return [];
 };
 
-const DestinationsDataSkeleton = () => (
+const DestinationsDataSkeleton = ({ stats, gridClassName }) => (
   <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
     <PageFrame>
       <div className="flex flex-col gap-4 animate-pulse">
@@ -287,13 +294,13 @@ const DestinationsDataSkeleton = () => (
           <div className="h-3 w-full max-w-lg rounded-full bg-slate-100" />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
-          {Array.from({ length: 6 }).map((_, index) => (
+        <div className={`${gridClassName} mb-3 shrink-0`}>
+          {stats.map((stat) => (
             <div
-              key={index}
+              key={stat.valueKey}
               className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"
             >
-              <div className="h-2.5 w-24 rounded-full bg-slate-200 mb-3" />
+              <div className="h-2.5 w-24 max-w-full rounded-full bg-slate-200 mb-3" />
               <div className="h-4 w-12 rounded-full bg-slate-200" />
             </div>
           ))}
@@ -1092,7 +1099,12 @@ const DestinationsData = () => {
   };
 
   if (currentView === "summary" && isSummaryLoading && !summaryData) {
-    return <DestinationsDataSkeleton />;
+    return (
+      <DestinationsDataSkeleton
+        stats={summaryStats}
+        gridClassName={SUMMARY_STATS_GRID[effectiveSummaryTab]}
+      />
+    );
   }
 
   return (
@@ -1167,7 +1179,7 @@ const DestinationsData = () => {
                   </NavLink>
                 ))}
               </div>
-              <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div data-tour="destinations-data-stats" className={SUMMARY_STATS_GRID[effectiveSummaryTab]}>
                 {summaryStats.map((stat) => (
                   <div
                     key={stat.valueKey}
