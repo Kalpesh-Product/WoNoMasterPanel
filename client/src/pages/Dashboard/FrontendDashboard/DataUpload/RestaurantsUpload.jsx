@@ -29,6 +29,12 @@ const TYPE_MAP = {
   },
 };
 
+const TEMPLATE_BY_KIND = {
+  restaurants: "/templates/restaurants-template.xlsx",
+  poc: "/templates/poc-upload-template.csv",
+  reviews: "/templates/reviews-upload-template.csv",
+};
+
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const RestaurantsUpload = () => {
@@ -95,6 +101,7 @@ const RestaurantsUpload = () => {
     <UploadCard
       title="Restaurants Upload"
       description="Choose the restaurant upload type and submit the matching CSV."
+      templateHref={TEMPLATE_BY_KIND[kind]}
     >
       <UploadPanel>
         <div className="mb-3" data-tour="data-upload-type">

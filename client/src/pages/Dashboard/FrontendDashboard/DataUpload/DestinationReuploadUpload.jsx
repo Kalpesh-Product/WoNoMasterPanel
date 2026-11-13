@@ -4,6 +4,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import DestinationListingUploadPanel from "./DestinationListingUploadPanel";
 import DestinationUploadCoverage from "./DestinationUploadCoverage";
+import { TemplateDownloadLink } from "./UploadUI";
 
 const selectCls = "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
 
@@ -69,6 +70,10 @@ const DestinationReuploadUpload = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <h4 className="text-xs font-pmedium text-slate-700">Reupload Destination Data</h4>
+          <TemplateDownloadLink href="/templates/destination-data-template.xlsx" />
+        </div>
         <DestinationUploadCoverage
           total={totalDestinations}
           uploaded={uploadedDestinationCount}

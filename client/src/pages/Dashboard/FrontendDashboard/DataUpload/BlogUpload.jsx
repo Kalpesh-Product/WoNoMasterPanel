@@ -77,6 +77,7 @@ const BlogUpload = () => {
     <UploadCard
       title="Blogs Upload"
       description="Upload the blogs CSV. Example header: Main Title, Main Content, Author, Date, Destination."
+      templateHref="/templates/blogs-template.xlsx"
     >
       <UploadPanel>
         <FileDropzone

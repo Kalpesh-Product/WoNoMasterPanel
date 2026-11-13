@@ -30,6 +30,12 @@ const TYPE_MAP = {
   },
 };
 
+const TEMPLATE_BY_KIND = {
+  products: "/templates/products-upload-template.csv",
+  poc: "/templates/poc-upload-template.csv",
+  reviews: "/templates/reviews-upload-template.csv",
+};
+
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 const ProductsUpload = () => {
@@ -109,6 +115,7 @@ const ProductsUpload = () => {
     <UploadCard
       title="Products Upload"
       description="Choose the upload type and provide a CSV."
+      templateHref={TEMPLATE_BY_KIND[kind]}
     >
       <UploadPanel>
         <div className="mb-3" data-tour="data-upload-type">
