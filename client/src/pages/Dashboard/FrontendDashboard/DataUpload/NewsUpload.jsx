@@ -79,6 +79,7 @@ const NewsUpload = () => {
     <UploadCard
       title="News Upload"
       description="Upload the news CSV. Example header: Main Title, Main Content, Author, Date, Destination."
+      templateHref="/templates/news-template.xlsx"
     >
       <UploadPanel>
         <FileDropzone

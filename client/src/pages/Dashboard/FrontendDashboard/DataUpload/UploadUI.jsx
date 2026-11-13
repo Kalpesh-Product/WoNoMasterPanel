@@ -1,5 +1,5 @@
 import React from "react";
-import { FileSpreadsheet, ImageOff, UploadCloud, X } from "lucide-react";
+import { Download, FileSpreadsheet, ImageOff, UploadCloud, X } from "lucide-react";
 
 // Shared visual shell for every Data Upload tab — matches Listings Data
 // Update / Add Destination Data: white card header, slate dropzone panel,
@@ -11,14 +11,33 @@ export const formatFileSize = (bytes) =>
     ? `${Math.round(bytes / 1024)} KB`
     : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-export const UploadCard = ({ title, description, children }) => (
+// A blank xlsx/csv with the exact headers the matching endpoint expects —
+// so the data team starts from a file that's already shaped right.
+export const TemplateDownloadLink = ({ href, label = "Download Template" }) => {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      download
+      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-pmedium text-[#2563EB] transition hover:bg-[#2563EB]/10"
+    >
+      <Download size={12} />
+      {label}
+    </a>
+  );
+};
+
+export const UploadCard = ({ title, description, templateHref, templateLabel, children }) => (
   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-    {(title || description) && (
-      <div className="mb-4">
-        {title && <h4 className="text-xs font-pmedium text-slate-700">{title}</h4>}
-        {description && (
-          <p className="mt-1 text-[10px] font-pmedium text-slate-400">{description}</p>
-        )}
+    {(title || description || templateHref) && (
+      <div className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          {title && <h4 className="text-xs font-pmedium text-slate-700">{title}</h4>}
+          {description && (
+            <p className="mt-1 text-[10px] font-pmedium text-slate-400">{description}</p>
+          )}
+        </div>
+        <TemplateDownloadLink href={templateHref} label={templateLabel} />
       </div>
     )}
     {children}

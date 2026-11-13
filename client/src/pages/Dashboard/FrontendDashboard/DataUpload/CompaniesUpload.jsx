@@ -77,6 +77,7 @@ const CompaniesUpload = () => {
     <UploadCard
       title="Company Upload"
       description="Upload the companies CSV. Example header: Business Name, Website, City, State, Country."
+      templateHref="/templates/company-upload-template.xlsx"
     >
       <UploadPanel>
         <FileDropzone
