@@ -394,7 +394,7 @@ export const CoboxCareers = () => {
                 ? "General application"
                 : getCareersJobTitle(job)} eyebrow={t.careersDirectApply ? "Join our team" : getCareersJobMeta(job)}/>
         <section className="cbx-page">
-          <div className="cbx-shell cbx-career-detail">
+          <div className={`cbx-shell cbx-career-detail${t.careersDirectApply ? " cbx-career-detail--general" : ""}`}>
             {!t.careersDirectApply ? (<div>
                 <RoleSection title="About this role" text={job.aboutTheJob}/>
                 <RoleSection title="Key responsibilities" text={job.keyResponsibilities} asList/>
