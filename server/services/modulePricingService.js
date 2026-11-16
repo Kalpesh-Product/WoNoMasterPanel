@@ -41,6 +41,8 @@ const deleteModulePricing = (itemId) => ModulePricing.deleteOne({ itemId });
 const updatePlanPricingSettings = async ({
   professionalPlanPriceUsd,
   professionalAnnualPlanPriceUsd,
+  basicPlanPriceUsd,
+  basicPlanAnnualPriceUsd,
   freeTrialEnabled,
   freeTrialDurationDays,
   updatedByEmail,
@@ -50,6 +52,8 @@ const updatePlanPricingSettings = async ({
   if (professionalAnnualPlanPriceUsd != null) {
     settings.professionalAnnualPlanPriceUsd = professionalAnnualPlanPriceUsd;
   }
+  if (basicPlanPriceUsd != null) settings.basicPlanPriceUsd = basicPlanPriceUsd;
+  if (basicPlanAnnualPriceUsd != null) settings.basicPlanAnnualPriceUsd = basicPlanAnnualPriceUsd;
   if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
   if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;
@@ -77,6 +81,22 @@ const getProfessionalAnnualPlanPriceUsd = async () => {
       ) / 100;
 };
 
+// Basic plan is free ($0) unless/until staff set a price here — nothing in
+// the app reads these yet (Basic billing is a future toggle), but the
+// numbers can already be set from Master Panel.
+const getBasicPlanPriceUsd = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  return settings.basicPlanPriceUsd;
+};
+
+const getBasicAnnualPlanPriceUsd = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  const annual = Number(settings.basicPlanAnnualPriceUsd);
+  return Number.isFinite(annual) && annual > 0
+    ? annual
+    : Math.round(Number(settings.basicPlanPriceUsd) * MONTHS_PER_BILLING_CYCLE * 100) / 100;
+};
+
 // Both rates in one call for public endpoints that serve the pricing cards.
 const getProfessionalPlanPricing = async () => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -89,6 +109,20 @@ const getProfessionalPlanPricing = async () => {
       Number.isFinite(annual) && annual > 0
         ? annual
         : settings.professionalPlanPriceUsd,
+  };
+};
+
+// Basic's equivalent of getProfessionalPlanPricing, for the same public
+// endpoint. 0 is a valid "still free" value here (unlike Professional,
+// which is never meant to be $0) — callers treat 0/null the same way:
+// "nothing to show, keep the static copy".
+const getBasicPlanPricing = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  const annual = Number(settings.basicPlanAnnualPriceUsd);
+  return {
+    basicPlanPriceUsd: settings.basicPlanPriceUsd,
+    basicPlanAnnualPriceUsd:
+      Number.isFinite(annual) && annual > 0 ? annual : settings.basicPlanPriceUsd,
   };
 };
 
@@ -257,6 +291,9 @@ module.exports = {
   updatePlanPricingSettings,
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
+  getBasicPlanPriceUsd,
+  getBasicAnnualPlanPriceUsd,
+  getBasicPlanPricing,
   getProfessionalPlanPricing,
   getFreeTrialConfig,
   getCustomPlanPricingBreakdown,

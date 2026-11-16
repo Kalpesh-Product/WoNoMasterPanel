@@ -2760,7 +2760,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean(),
         companyNameRegex
@@ -2769,7 +2769,7 @@ const getCompanyMembers = async (req, res, next) => {
               isActive: true,
             })
               .select(
-                "_id workspaceName companyId businessName modules enabledModuleIds selectedPlan",
+                "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
               )
               .lean()
           : Promise.resolve([]),
@@ -2817,7 +2817,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId businessName modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean()
       : [];
@@ -2932,6 +2932,7 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
+        businessTypes: Array.isArray(workspace?.businessTypes) ? workspace.businessTypes : [],
         modules: workspace?.modules || [],
         enabledModuleIds: sanitizedEnabled,
         selectedPlan: String(workspace?.selectedPlan || "basic")
@@ -2965,6 +2966,7 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName,
+        businessTypes: Array.isArray(workspaceDoc?.businessTypes) ? workspaceDoc.businessTypes : [],
         modules: workspaceDoc?.modules || [],
         enabledModuleIds: sanitizedEnabled,
         selectedPlan: String(workspaceDoc?.selectedPlan || "basic")

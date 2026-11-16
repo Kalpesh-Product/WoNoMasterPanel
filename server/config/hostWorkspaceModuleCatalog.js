@@ -81,14 +81,14 @@ const MODULE_GROUPS = [
         id: "administration-department",
         label: "Administration Department",
         tabs: [
-          // Tenant Companies: parked, not granted on any plan/vertical for now.
-          { id: "tenant-companies-admin", label: "Tenant Companies" },
+          // Tenant Companies: Professional+ for co-working workspaces.
+          { id: "tenant-companies-admin", label: "Tenant Companies", verticals: ["co-working"] },
           // Bookings: only once a workspace has more than one vertical
           // selected — a single-vertical workspace already manages bookings
           // from within that vertical's own management page.
           { id: "bookings", label: "Bookings", requiresMultipleVerticals: true },
           { id: "visitors-management", label: "Visitors Management" },
-          { id: "resource-management", label: "Resource Management" },
+          { id: "resource-management", label: "Resource Management", verticals: ["hostel", "co-living", "co-working"] },
           { id: "house-keeping", label: "House Keeping" },
           { id: "printout-management", label: "Printout Management" },
         ],
@@ -103,9 +103,8 @@ const MODULE_GROUPS = [
           { id: "co-living-management", label: "Co-living Management", verticals: ["co-living"] },
           { id: "co-working-management", label: "Co-working Management", verticals: ["co-working"] },
           { id: "meeting-room-management", label: "Meeting Room Management", verticals: ["meeting-rooms"] },
-          // Resource & Pricing and Sales Architecture: only once a workspace
-          // spans more than one vertical (single-vertical workspaces manage
-          // resources from within their own management page already).
+          // Resource & Pricing remains the cross-vertical Sales view and is
+          // only needed once a workspace spans more than one vertical.
           { id: "resource-pricing", label: "Resource & Pricing", requiresMultipleVerticals: true },
           { id: "virtual-office-sales", label: "Virtual Offices", verticals: ["co-working"] },
           { id: "sales-architecture", label: "Sales Architecture", requiresMultipleVerticals: true },
@@ -186,8 +185,8 @@ const PROFESSIONAL_DEFAULT_IDS = new Set([
   "workspace-management",
   // Administration Department is a Professional default — kept in sync with
   // HostPanel's PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
-  // NOT "tenant-companies-admin" / "resource-management" — parked, not
-  // granted on any plan for now.
+  // NOT "tenant-companies-admin" — co-working vertical only.
+  // NOT "resource-management" — hostel, co-living, or co-working vertical only.
   // NOT "bookings" — requires more than one vertical selected.
   "visitors-management",
   "house-keeping",
@@ -280,8 +279,11 @@ const getVerticalModuleIds = (verticalKeys = []) => {
 // Convenience used by the plan-upgrade paths: a plan's own default ids, plus
 // whichever vertical modules this specific workspace's businessTypes unlock.
 const getDefaultEnabledModuleIdsForWorkspace = (selectedPlan = "basic", businessTypes = []) => {
-  const planIds = getDefaultEnabledModuleIdsForPlan(selectedPlan);
-  const verticalIds = getVerticalModuleIds(getWorkspaceVerticalKeys(businessTypes));
+  const normalizedPlan = normalizePlan(selectedPlan);
+  const planIds = getDefaultEnabledModuleIdsForPlan(normalizedPlan);
+  const verticalIds = normalizedPlan === "basic"
+    ? []
+    : getVerticalModuleIds(getWorkspaceVerticalKeys(businessTypes));
   return Array.from(new Set([...planIds, ...verticalIds]));
 };
 

@@ -105,15 +105,12 @@ const PROFESSIONAL_PLAN_MODULE_IDS = [
   "workspace-management",
   // Administration Department is a Professional default — kept in sync with
   // HostPanel's PROFESSIONAL_DEFAULT_IDS (workspaceModuleCatalog.ts).
-  "tenant-companies-admin",
   "bookings",
   "visitors-management",
-  "resource-management",
   "house-keeping",
   "leads-management",
   "tenant-companies-sales",
   "virtual-office-sales",
-  "resource-pricing",
   "sales-architecture",
 ];
 
@@ -125,6 +122,30 @@ const PLAN_MODULE_ID_SETS = {
 };
 
 const PLAN_LABELS = { basic: "Basic", professional: "Professional", custom: "Custom" };
+
+const getWorkspaceVerticalKeys = (businessTypes = []) => {
+  const keys = new Set();
+  (Array.isArray(businessTypes) ? businessTypes : []).forEach((businessType) => {
+    const value = String(businessType || "").trim().toLowerCase();
+    if (value === "co-working") keys.add("co-working");
+    if (value === "co-living") keys.add("co-living");
+    if (value === "hostel" || value === "hostels") keys.add("hostel");
+  });
+  return keys;
+};
+
+const getPlanModuleIds = (tier, businessTypes = []) => {
+  const ids = new Set(PLAN_MODULE_ID_SETS[tier] || []);
+  if (tier === "basic") return Array.from(ids);
+
+  const verticalKeys = getWorkspaceVerticalKeys(businessTypes);
+  if (verticalKeys.has("co-working")) ids.add("tenant-companies-admin");
+  if (["hostel", "co-living", "co-working"].some((key) => verticalKeys.has(key))) {
+    ids.add("resource-management");
+  }
+  if (verticalKeys.size > 1) ids.add("resource-pricing");
+  return Array.from(ids);
+};
 
 // Custom and Professional share the same id set, so an exact match against
 // that set is ambiguous by ids alone — break the tie using the workspace's
@@ -145,7 +166,7 @@ const DEPARTMENT_GROUP_CONTAINER_IDS = new Set([
   "it-department",
 ]);
 
-const computeActivePlanTier = (enabledIdSet, selectedPlan) => {
+const computeActivePlanTier = (enabledIdSet, selectedPlan, businessTypes = []) => {
   const meaningfulIds = Array.from(enabledIdSet).filter(
     (id) => !DEPARTMENT_GROUP_CONTAINER_IDS.has(id),
   );
@@ -153,7 +174,7 @@ const computeActivePlanTier = (enabledIdSet, selectedPlan) => {
   const isExactMatch = (ids) =>
     ids.length === meaningfulIds.length && ids.every((id) => meaningfulIdSet.has(id));
   if (isExactMatch(BASIC_PLAN_MODULE_IDS)) return "basic";
-  if (isExactMatch(PROFESSIONAL_PLAN_MODULE_IDS)) {
+  if (isExactMatch(getPlanModuleIds("professional", businessTypes))) {
     return String(selectedPlan || "").trim().toLowerCase() === "custom" ? "custom" : "professional";
   }
   return "custom";
@@ -1185,8 +1206,12 @@ const ModuleAccess = () => {
   );
 
   const activePlanTier = useMemo(
-    () => computeActivePlanTier(workspaceDraftEnabledIdSet, selectedWorkspace?.selectedPlan),
-    [workspaceDraftEnabledIdSet, selectedWorkspace?.selectedPlan],
+    () => computeActivePlanTier(
+      workspaceDraftEnabledIdSet,
+      selectedWorkspace?.selectedPlan,
+      selectedWorkspace?.businessTypes,
+    ),
+    [workspaceDraftEnabledIdSet, selectedWorkspace?.selectedPlan, selectedWorkspace?.businessTypes],
   );
 
   // Founders bypass per-member grants entirely in HostPanel (they always get
@@ -1201,7 +1226,7 @@ const ModuleAccess = () => {
   const [pendingPlanTier, setPendingPlanTier] = useState(null);
 
   const applyPlanPreset = (tier) => {
-    const targetIds = Array.from(PLAN_MODULE_ID_SETS[tier] || []);
+    const targetIds = getPlanModuleIds(tier, selectedWorkspace?.businessTypes);
     setTreeState(buildStateFromEnabledKeys(activeModuleSections, targetIds));
   };
 

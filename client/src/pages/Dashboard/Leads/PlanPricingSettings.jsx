@@ -17,6 +17,8 @@ const PlanPricingSettings = () => {
   const queryClient = useQueryClient();
   const [professionalPrice, setProfessionalPrice] = useState("");
   const [annualPrice, setAnnualPrice] = useState("");
+  const [basicPrice, setBasicPrice] = useState("");
+  const [basicAnnualPrice, setBasicAnnualPrice] = useState("");
   const [freeTrialEnabled, setFreeTrialEnabled] = useState(false);
   const [freeTrialDurationDays, setFreeTrialDurationDays] = useState("30");
   const [isTrialCompaniesOpen, setIsTrialCompaniesOpen] = useState(false);
@@ -44,6 +46,12 @@ const PlanPricingSettings = () => {
     setAnnualPrice(
       data.settings.professionalAnnualPlanPriceUsd != null
         ? String(data.settings.professionalAnnualPlanPriceUsd)
+        : "",
+    );
+    setBasicPrice(String(data.settings.basicPlanPriceUsd ?? 0));
+    setBasicAnnualPrice(
+      data.settings.basicPlanAnnualPriceUsd != null
+        ? String(data.settings.basicPlanAnnualPriceUsd)
         : "",
     );
     setFreeTrialEnabled(Boolean(data.settings.freeTrialEnabled));
@@ -74,6 +82,9 @@ const PlanPricingSettings = () => {
         professionalPlanPriceUsd: Number(professionalPrice),
         professionalAnnualPlanPriceUsd:
           annualPrice === "" || annualPrice == null ? null : Number(annualPrice),
+        basicPlanPriceUsd: Number(basicPrice),
+        basicPlanAnnualPriceUsd:
+          basicAnnualPrice === "" || basicAnnualPrice == null ? null : Number(basicAnnualPrice),
         freeTrialEnabled,
         freeTrialDurationDays: Number(freeTrialDurationDays),
       });
@@ -82,7 +93,7 @@ const PlanPricingSettings = () => {
     onSuccess: () => {
       setPriceTouched(false);
       queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
-      toast.success("Professional plan pricing updated");
+      toast.success("Plan pricing updated");
     },
     onError: (error) =>
       toast.error(error?.response?.data?.message || "Failed to update pricing"),
@@ -174,6 +185,53 @@ const PlanPricingSettings = () => {
                 onChange={(e) => {
                   setPriceTouched(true);
                   setAnnualPrice(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => saveBaseMutation.mutate()}
+              disabled={saveBaseMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[11px] font-pmedium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
+            >
+              <Save size={12} />
+              Save Prices
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <h2 className="text-[13px] font-pmedium text-slate-700">Basic Plan Price</h2>
+          <p className="text-[11px] font-pmedium text-slate-500 max-w-2xl">
+            Basic is free today this provision is for later where you can set a price for the Basic plan. The Annual rate is the full yearly price (e.g. $199/yr) charged once, in advance, for a 12-month cycle — the save shown to hosts is the discount vs paying the monthly rate for 12 months. Leave it blank to offer monthly billing only.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="max-w-xs w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Basic Plan (USD / month)
+              </label>
+              <input
+                type="number"
+                value={basicPrice}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicPrice(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <div className="max-w-xs w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Basic Plan Annual (USD / year)
+              </label>
+              <input
+                type="number"
+                value={basicAnnualPrice}
+                placeholder="Blank = no discount"
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicAnnualPrice(e.target.value);
                 }}
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
               />
