@@ -19,6 +19,7 @@ const PlanPricingSettings = () => {
   const [annualPrice, setAnnualPrice] = useState("");
   const [basicPrice, setBasicPrice] = useState("");
   const [basicAnnualPrice, setBasicAnnualPrice] = useState("");
+  const [basicFreeDurationMonths, setBasicFreeDurationMonths] = useState("6");
   const [freeTrialEnabled, setFreeTrialEnabled] = useState(false);
   const [freeTrialDurationDays, setFreeTrialDurationDays] = useState("30");
   const [isTrialCompaniesOpen, setIsTrialCompaniesOpen] = useState(false);
@@ -54,6 +55,7 @@ const PlanPricingSettings = () => {
         ? String(data.settings.basicPlanAnnualPriceUsd)
         : "",
     );
+    setBasicFreeDurationMonths(String(data.settings.basicFreeDurationMonths ?? 6));
     setFreeTrialEnabled(Boolean(data.settings.freeTrialEnabled));
     setFreeTrialDurationDays(String(data.settings.freeTrialDurationDays ?? 30));
   }, [data, priceTouched]);
@@ -85,6 +87,7 @@ const PlanPricingSettings = () => {
         basicPlanPriceUsd: Number(basicPrice),
         basicPlanAnnualPriceUsd:
           basicAnnualPrice === "" || basicAnnualPrice == null ? null : Number(basicAnnualPrice),
+        basicFreeDurationMonths: Number(basicFreeDurationMonths),
         freeTrialEnabled,
         freeTrialDurationDays: Number(freeTrialDurationDays),
       });
@@ -236,6 +239,21 @@ const PlanPricingSettings = () => {
                 className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
               />
             </div>
+            <div className="max-w-[160px] w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Free Period (months)
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={basicFreeDurationMonths}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicFreeDurationMonths(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
             <button
               type="button"
               onClick={() => saveBaseMutation.mutate()}
@@ -246,6 +264,10 @@ const PlanPricingSettings = () => {
               Save Prices
             </button>
           </div>
+          <p className="text-[10px] font-pmedium text-slate-400 max-w-2xl">
+            Free Period isn't counted down or enforced anywhere yet — it's
+            groundwork for a future "free for N months, then pay" cutoff.
+          </p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">

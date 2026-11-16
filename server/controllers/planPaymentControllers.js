@@ -14,10 +14,12 @@ const {
   getCustomPlanPricingBreakdown,
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
+  getBasicPlanPriceUsd,
+  getBasicAnnualPlanPriceUsd,
 } = require("../services/modulePricingService");
 const { getDefaultEnabledModuleIdsForWorkspace } = require("../config/hostWorkspaceModuleCatalog");
 
-const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
+const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
 const PLAN_RANK = { basic: 0, professional: 1, custom: 2 };
 
 const normalizeBillingCycle = (value) =>
@@ -116,8 +118,10 @@ const computeProjectedPeriod = (currentExpiryDate, billingCycle = "monthly") => 
 };
 
 // Shared by the signup-lead "Send Payment Link" action and the
-// already-onboarded-workspace upgrade/renewal flow. Basic never calls this —
-// it's free and skips payment entirely.
+// already-onboarded-workspace upgrade/renewal flow. Basic only calls this
+// while staff have set a real Basic price above $0 — while it's $0, Basic
+// skips payment entirely (see the basicPlanPriceUsd guard in
+// sendPlanPaymentLink below, which never lets a $0 request reach here).
 const createAndSendPlanPaymentLink = async ({
   leadId = null,
   companyId,
@@ -133,8 +137,8 @@ const createAndSendPlanPaymentLink = async ({
 }) => {
   const normalizedPlan = String(plan || "").toLowerCase();
   const cycle = normalizeBillingCycle(billingCycle);
-  if (!["professional", "custom"].includes(normalizedPlan)) {
-    throw new Error("plan must be 'professional' or 'custom'");
+  if (!["basic", "professional", "custom"].includes(normalizedPlan)) {
+    throw new Error("plan must be 'basic', 'professional' or 'custom'");
   }
   if (!leadEmail) throw new Error("leadEmail is required");
 
@@ -153,7 +157,11 @@ const createAndSendPlanPaymentLink = async ({
       ? cycle === "annual"
         ? await getProfessionalAnnualPlanPriceUsd()
         : await getProfessionalPlanPriceUsd()
-      : await computeCustomPlanPrice(customModuleIds, cycle, customPriceOverrides, customOverallDiscountUsd);
+      : normalizedPlan === "basic"
+        ? cycle === "annual"
+          ? await getBasicAnnualPlanPriceUsd()
+          : await getBasicPlanPriceUsd()
+        : await computeCustomPlanPrice(customModuleIds, cycle, customPriceOverrides, customOverallDiscountUsd);
 
   const { start: projectedStart, end: projectedEnd } = computeProjectedPeriod(
     workspace?.planExpiryDate,
@@ -254,8 +262,15 @@ const sendPlanPaymentLink = async (req, res, next) => {
       billingCycle,
     } = req.body || {};
     if (!companyId) return res.status(400).json({ message: "companyId is required" });
-    if (!["professional", "custom"].includes(String(plan || "").toLowerCase())) {
-      return res.status(400).json({ message: "plan must be 'professional' or 'custom'" });
+    const normalizedRequestedPlan = String(plan || "").toLowerCase();
+    if (!["basic", "professional", "custom"].includes(normalizedRequestedPlan)) {
+      return res.status(400).json({ message: "plan must be 'basic', 'professional' or 'custom'" });
+    }
+    // Basic only takes a payment link once staff have actually set a real
+    // price — while it's $0, there's nothing to charge, so refuse instead
+    // of minting a pointless Stripe link for $0.
+    if (normalizedRequestedPlan === "basic" && !((await getBasicPlanPriceUsd()) > 0)) {
+      return res.status(400).json({ message: "Basic plan is currently free — no payment link needed." });
     }
 
     const resolvedCompanyId = String(companyId).trim();

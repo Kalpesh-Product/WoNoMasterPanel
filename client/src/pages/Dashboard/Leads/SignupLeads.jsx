@@ -252,6 +252,10 @@ const SignupLeads = () => {
       return response?.data || { settings: {}, rows: [] };
     },
   });
+  // Basic only needs a payment link once staff have set a real price above
+  // $0 — while it's $0 the whole payment UI stays exactly as it was (Free
+  // Plan badge, approval alone unlocks the invite).
+  const basicIsChargeable = Number(planPricing?.settings?.basicPlanPriceUsd) > 0;
 
   const { data: paymentStatusByLeadId = {} } = useQuery({
     queryKey: ["planPaymentStatuses"],
@@ -406,9 +410,9 @@ const SignupLeads = () => {
   const handleSendPlanPayment = (lead) => {
     const plan = normalizePlanValue(lead?.goals);
 
-    if (plan === "professional") {
+    if (plan === "basic" || plan === "professional") {
       setSendingPaymentLeadId(lead._id);
-      sendPlanPaymentLinkMutation.mutate({ lead, plan: "professional" });
+      sendPlanPaymentLinkMutation.mutate({ lead, plan });
       return;
     }
 
@@ -804,7 +808,7 @@ const SignupLeads = () => {
                         const canInvite =
                           statusVal === "closed" &&
                           !["registered", "joined"].includes(inviteStatus) &&
-                          (planVal === "basic" || paymentInfo.isPaid);
+                          ((planVal === "basic" && !basicIsChargeable) || paymentInfo.isPaid);
                         const isSending = sendingInviteId === lead._id;
                         const isSendingPayment =
                           sendingPaymentLeadId === lead._id;
@@ -943,7 +947,7 @@ const SignupLeads = () => {
                               data-tour="signup-leads-payment-status-column"
                               className="px-5 py-4"
                             >
-                              {planVal === "basic" ? (
+                              {planVal === "basic" && !basicIsChargeable ? (
                                 <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan
                                 </span>
@@ -959,7 +963,7 @@ const SignupLeads = () => {
                               data-tour="signup-leads-payment-link-column"
                               className="px-5 py-4 text-center"
                             >
-                              {planVal === "basic" ? (
+                              {planVal === "basic" && !basicIsChargeable ? (
                                 <span className="inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider bg-blue-50 text-blue-700">
                                   Free Plan
                                 </span>
@@ -980,9 +984,13 @@ const SignupLeads = () => {
                                       ? `Send $${lead?.billingCycle === "annual"
                                           ? planPricing?.settings?.professionalAnnualPlanPriceUsd ?? "..."
                                           : planPricing?.settings?.professionalPlanPriceUsd ?? "..."} Link`
-                                      : (savedSelections[String(lead._id)]?.moduleIds || []).length
-                                        ? `Send Link · ${savedSelections[String(lead._id)].moduleIds.length} modules`
-                                        : "Select Modules & Send Link"}
+                                      : planVal === "basic"
+                                        ? `Send $${lead?.billingCycle === "annual"
+                                            ? planPricing?.settings?.basicPlanAnnualPriceUsd ?? "..."
+                                            : planPricing?.settings?.basicPlanPriceUsd ?? "..."} Link`
+                                        : (savedSelections[String(lead._id)]?.moduleIds || []).length
+                                          ? `Send Link · ${savedSelections[String(lead._id)].moduleIds.length} modules`
+                                          : "Select Modules & Send Link"}
                                 </button>
                               )}
                             </td>

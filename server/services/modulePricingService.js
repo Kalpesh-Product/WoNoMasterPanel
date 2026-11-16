@@ -43,6 +43,7 @@ const updatePlanPricingSettings = async ({
   professionalAnnualPlanPriceUsd,
   basicPlanPriceUsd,
   basicPlanAnnualPriceUsd,
+  basicFreeDurationMonths,
   freeTrialEnabled,
   freeTrialDurationDays,
   updatedByEmail,
@@ -54,6 +55,7 @@ const updatePlanPricingSettings = async ({
   }
   if (basicPlanPriceUsd != null) settings.basicPlanPriceUsd = basicPlanPriceUsd;
   if (basicPlanAnnualPriceUsd != null) settings.basicPlanAnnualPriceUsd = basicPlanAnnualPriceUsd;
+  if (basicFreeDurationMonths != null) settings.basicFreeDurationMonths = Number(basicFreeDurationMonths);
   if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
   if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;

@@ -13,6 +13,7 @@ const {
   handleVerificationPaymentWebhookEvent,
 } = require("./companyVerificationPaymentsControllers");
 const { handlePlanPaymentWebhookEvent } = require("./planPaymentControllers");
+const { getBasicPlanPriceUsd } = require("../services/modulePricingService");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -2569,9 +2570,10 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    // Payment gate: Basic is free and skips this entirely (approval alone is
-    // enough). Professional/Custom require a confirmed plan payment first —
-    // inviteUnlockedAt is set by the plan-payment webhook the moment
+    // Payment gate: Basic skips this entirely while it's free (price $0 —
+    // approval alone is enough). The moment staff set a real Basic price on
+    // Plan Pricing settings, Basic is gated exactly like Professional/Custom
+    // — inviteUnlockedAt is set by the plan-payment webhook the moment
     // handlePlanPaymentWebhookEvent applies a paid PlanPaymentLink (see
     // planPaymentControllers.js), never by the client.
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -2587,7 +2589,10 @@ const sendInviteEmail = async (req, res, next) => {
         ? "professional"
         : "basic";
 
-    if (normalizedPlan !== "basic" && !lead?.inviteUnlockedAt) {
+    const requiresPlanPayment =
+      normalizedPlan === "basic" ? (await getBasicPlanPriceUsd()) > 0 : true;
+
+    if (requiresPlanPayment && !lead?.inviteUnlockedAt) {
       return res.status(400).json({
         message: "Invite can only be sent after the plan payment has been confirmed",
       });

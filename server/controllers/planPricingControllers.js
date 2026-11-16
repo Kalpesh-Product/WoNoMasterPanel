@@ -64,6 +64,7 @@ const updateBasePricing = async (req, res, next) => {
       professionalAnnualPlanPriceUsd,
       basicPlanPriceUsd,
       basicPlanAnnualPriceUsd,
+      basicFreeDurationMonths,
       freeTrialEnabled,
       freeTrialDurationDays,
     } = req.body || {};
@@ -77,6 +78,8 @@ const updateBasePricing = async (req, res, next) => {
       basicPlanPriceUsd: basicPlanPriceUsd != null ? Number(basicPlanPriceUsd) : undefined,
       basicPlanAnnualPriceUsd:
         basicPlanAnnualPriceUsd != null ? Number(basicPlanAnnualPriceUsd) : undefined,
+      basicFreeDurationMonths:
+        basicFreeDurationMonths != null ? Number(basicFreeDurationMonths) : undefined,
       freeTrialEnabled: freeTrialEnabled != null ? Boolean(freeTrialEnabled) : undefined,
       freeTrialDurationDays:
         freeTrialDurationDays != null ? Number(freeTrialDurationDays) : undefined,

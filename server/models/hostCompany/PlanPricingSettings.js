@@ -46,6 +46,16 @@ const planPricingSettingsSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    // How many months a new company stays on Basic for free before it's
+    // required to pay (e.g. 6). Nothing reads this yet — the actual
+    // countdown (setting planExpiryDate at Basic signup, the
+    // reminder/expiry cron jobs, and locking a workspace once it lapses)
+    // is separate work that spans HostPanel too. This is groundwork only.
+    basicFreeDurationMonths: {
+      type: Number,
+      default: 6,
+      min: 1,
+    },
     // Master switch for the Professional free-trial offer, plus how long a
     // newly-started trial runs. Changing freeTrialDurationDays only affects
     // trials started after the change — a trial already in progress keeps
