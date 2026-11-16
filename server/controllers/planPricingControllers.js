@@ -7,6 +7,7 @@ const {
   updatePlanPricingSettings,
   getOrCreatePlanPricingSettings,
   getProfessionalPlanPricing,
+  getBasicPlanPricing,
   getFreeTrialConfig,
   computeCustomPlanMonthlyPrice,
 } = require("../services/modulePricingService");
@@ -48,7 +49,7 @@ const getPlanPricing = async (req, res, next) => {
   }
 };
 
-// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd, freeTrialEnabled?, freeTrialDurationDays? }
+// PATCH /api/hosts/plan-pricing/settings  { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd, basicPlanPriceUsd?, basicPlanAnnualPriceUsd?, freeTrialEnabled?, freeTrialDurationDays? }
 // professionalAnnualPlanPriceUsd is the FULL yearly total (e.g. $1,999/yr)
 // for yearly billing (e.g. $165 → the host is charged $1,980 upfront for a
 // 12-month cycle). Custom has no separate base price — it's always this
@@ -61,6 +62,8 @@ const updateBasePricing = async (req, res, next) => {
     const {
       professionalPlanPriceUsd,
       professionalAnnualPlanPriceUsd,
+      basicPlanPriceUsd,
+      basicPlanAnnualPriceUsd,
       freeTrialEnabled,
       freeTrialDurationDays,
     } = req.body || {};
@@ -71,6 +74,9 @@ const updateBasePricing = async (req, res, next) => {
         professionalAnnualPlanPriceUsd != null
           ? Number(professionalAnnualPlanPriceUsd)
           : undefined,
+      basicPlanPriceUsd: basicPlanPriceUsd != null ? Number(basicPlanPriceUsd) : undefined,
+      basicPlanAnnualPriceUsd:
+        basicPlanAnnualPriceUsd != null ? Number(basicPlanAnnualPriceUsd) : undefined,
       freeTrialEnabled: freeTrialEnabled != null ? Boolean(freeTrialEnabled) : undefined,
       freeTrialDurationDays:
         freeTrialDurationDays != null ? Number(freeTrialDurationDays) : undefined,
@@ -169,11 +175,16 @@ const setCustomPlanModules = async (req, res, next) => {
 // the "Start Free Trial" action without a second round trip.
 const getPublicPlanPricing = async (req, res, next) => {
   try {
-    const [{ professionalPlanPriceUsd, professionalAnnualPlanPriceUsd }, freeTrialConfig] =
-      await Promise.all([getProfessionalPlanPricing(), getFreeTrialConfig()]);
+    const [
+      { professionalPlanPriceUsd, professionalAnnualPlanPriceUsd },
+      { basicPlanPriceUsd, basicPlanAnnualPriceUsd },
+      freeTrialConfig,
+    ] = await Promise.all([getProfessionalPlanPricing(), getBasicPlanPricing(), getFreeTrialConfig()]);
     return res.status(200).json({
       professionalPlanPriceUsd,
       professionalAnnualPlanPriceUsd,
+      basicPlanPriceUsd,
+      basicPlanAnnualPriceUsd,
       ...freeTrialConfig,
     });
   } catch (error) {
