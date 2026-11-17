@@ -12,7 +12,13 @@ const PlanPaymentLink = require("../models/PlanPaymentLink");
 const {
   handleVerificationPaymentWebhookEvent,
 } = require("./companyVerificationPaymentsControllers");
-const { handlePlanPaymentWebhookEvent } = require("./planPaymentControllers");
+const {
+  handlePlanPaymentWebhookEvent,
+  handleTrialSubscriptionCheckoutCompleted,
+  handleSubscriptionInvoicePaid,
+  handleSubscriptionCanceled,
+  handleSubscriptionPaymentFailed,
+} = require("./planPaymentControllers");
 const { getBasicPlanPriceUsd } = require("../services/modulePricingService");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
@@ -4039,7 +4045,16 @@ const handleStripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    if (session.payment_link) {
+    // Subscription-mode sessions (startTrialCheckout) have no payment_link
+    // at all — that's the Payment-Link-only branch below — so they're
+    // routed by mode instead.
+    if (session.mode === "subscription") {
+      try {
+        await handleTrialSubscriptionCheckoutCompleted(session);
+      } catch (error) {
+        console.error("Failed to finalize trial subscription checkout:", error);
+      }
+    } else if (session.payment_link) {
       try {
         // The { status: { $ne: "paid" } } filter makes this an atomic
         // "transition once" — if Stripe redelivers this same event (it
@@ -4154,6 +4169,24 @@ const handleStripeWebhook = async (req, res) => {
           error,
         );
       }
+    }
+  } else if (event.type === "invoice.paid") {
+    try {
+      await handleSubscriptionInvoicePaid(event.data.object);
+    } catch (error) {
+      console.error("Failed to process subscription invoice.paid:", error);
+    }
+  } else if (event.type === "customer.subscription.deleted") {
+    try {
+      await handleSubscriptionCanceled(event.data.object);
+    } catch (error) {
+      console.error("Failed to process customer.subscription.deleted:", error);
+    }
+  } else if (event.type === "invoice.payment_failed") {
+    try {
+      await handleSubscriptionPaymentFailed(event.data.object);
+    } catch (error) {
+      console.error("Failed to process invoice.payment_failed:", error);
     }
   }
 

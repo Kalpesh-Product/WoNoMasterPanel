@@ -70,6 +70,30 @@ const planPricingSettingsSchema = new mongoose.Schema(
       default: 30,
       min: 1,
     },
+    // An optional, staff-named Stripe Promotion Code to use INSTEAD of the
+    // system's own free-trial coupon below (e.g. a branded "LAUNCH100" for
+    // a marketing push) — never both at once, never stacked. Empty = just
+    // use the system coupon, which is what actually makes the trial free;
+    // this field never controls whether the trial itself is free.
+    activeTrialPromotionCodeId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Auto-provisioned once (getOrCreateSystemFreeTrialCoupon,
+    // modulePricingService.js) and reused forever — a Stripe Coupon,
+    // 100% off, duration "once". This is THE mechanism that makes the
+    // free trial actually free: startTrialCheckout applies it to every
+    // trial's first invoice instead of using Stripe's own trial_period_days,
+    // so that invoice is a real $199 charge discounted to $0 (visible
+    // breakdown, not a blank "free trial" placeholder), and nothing ever
+    // re-applies it after that one invoice. Staff never edit this
+    // directly — it's not the same thing as the named promo codes above.
+    systemFreeTrialCouponId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     updatedByEmail: {
       type: String,
       trim: true,

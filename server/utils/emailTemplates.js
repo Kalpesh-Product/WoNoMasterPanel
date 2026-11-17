@@ -852,7 +852,94 @@ const buildTrialEndedEmail = ({ customerName, companyName, modulesLost = [] }) =
   }),
 });
 
+// Sent on invoice.payment_failed — the auto-charge (trial end, or any later
+// renewal) on a card-backed subscription didn't go through. Mirrors how
+// ChatGPT/most SaaS billing emails work: say what failed, what happens
+// next (Stripe's own retry schedule), and a direct link to fix the card
+// without needing to log in first.
+const buildSubscriptionPaymentFailedEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  amount,
+  nextRetryDate,
+  billingPortalUrl,
+}) => ({
+  subject: "Action Needed: Your WONO Payment Failed",
+  html: renderNotificationEmail({
+    heroTitle: "Payment Failed",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">We couldn't charge your card for ${companyName}'s ${planLabel}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">We tried to charge the card on file for <b class="email-heading">${companyName}</b>'s ${planLabel} but the payment didn't go through.${nextRetryDate ? ` We'll try again automatically on <b class="email-heading">${formatLongDate(nextRetryDate)}</b>.` : ""} Please update your card to keep your plan active${nextRetryDate ? "" : " and avoid losing access"}.</p>
+      `,
+    detailsTitle: "Payment Summary",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", planLabel],
+      [
+        "Amount Due",
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0),
+      ],
+      ...(nextRetryDate ? [["Next Attempt", formatLongDate(nextRetryDate)]] : []),
+    ],
+    ctaButton: billingPortalUrl ? { href: billingPortalUrl, label: "Update Payment Method" } : undefined,
+  }),
+});
+
+// Sent on customer.subscription.deleted — the host (or staff, via the
+// billing portal) canceled a card-backed subscription.
+const buildSubscriptionCanceledEmail = ({ customerName, companyName, planLabel, accessUntil }) => ({
+  subject: `Your ${planLabel} Subscription Was Canceled`,
+  html: renderNotificationEmail({
+    heroTitle: "Subscription Canceled",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName}'s ${planLabel} won't renew</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your ${planLabel} subscription for <b class="email-heading">${companyName}</b> has been canceled and won't be charged again.${accessUntil ? ` You'll keep full access until <b class="email-heading">${formatLongDate(accessUntil)}</b>, after which your workspace moves to the Basic plan.` : ""} Changed your mind? You can restart anytime from Plan &amp; Billing.</p>
+      `,
+  }),
+});
+
+// Sent by the plan-expiry-reminder cron, 5 days before a CARD-BACKED
+// trial's planExpiryDate — distinct from buildTrialExpiryReminderEmail,
+// which says "renew now" and doesn't apply here: this subscription
+// auto-charges on its own, so the host doesn't need to do anything unless
+// they want to cancel first.
+const buildAutopayUpcomingChargeEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  chargeDate,
+  amount,
+  billingPortalUrl,
+}) => ({
+  subject: "Your WONO Free Trial Is Ending Soon",
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Is Ending Soon",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your card will be charged on ${formatLongDate(chargeDate)}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your free trial of the ${planLabel} for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${formatLongDate(chargeDate)}</b>. We'll automatically charge the card on file then to continue your plan — no action needed. If you'd rather not continue, you can cancel anytime before that date.</p>
+      `,
+    detailsTitle: "What Happens Next",
+    detailRows: [
+      ["Company", companyName],
+      ["Plan", planLabel],
+      ["Charge Date", formatLongDate(chargeDate)],
+      [
+        "Amount",
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount || 0),
+      ],
+    ],
+    ctaButton: billingPortalUrl ? { href: billingPortalUrl, label: "Manage or Cancel Subscription" } : undefined,
+  }),
+});
+
 module.exports = emailTemplates;
+module.exports.buildSubscriptionPaymentFailedEmail = buildSubscriptionPaymentFailedEmail;
+module.exports.buildSubscriptionCanceledEmail = buildSubscriptionCanceledEmail;
+module.exports.buildAutopayUpcomingChargeEmail = buildAutopayUpcomingChargeEmail;
 module.exports.toDMY = toDMY;
 module.exports.referenceDateStamp = referenceDateStamp;
 module.exports.formatSubmittedOn = formatSubmittedOn;

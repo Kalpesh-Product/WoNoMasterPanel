@@ -23,7 +23,9 @@ const resolveModulesLost = (plan) => {
 // contend). Fires once planExpiryDate has actually passed with no renewal
 // payment — a successful renewal (planPaymentControllers.js
 // applyPaidPlanToWorkspace) always pushes planExpiryDate forward first, so a
-// paid workspace never matches this query.
+// paid workspace never matches this query. For a card-backed subscription
+// (startTrialCheckout), this is only a safety net — see the past_due gate
+// below — not the primary downgrade path.
 //
 // Downgrade mechanics: resolveIsUnlocked() in HostPanel's
 // workspaceModuleCatalog.ts unlocks any module id present in
@@ -42,8 +44,35 @@ schedule.scheduleJob({ rule: "0 7 * * *", tz: "UTC" }, async () => {
       planExpiryDate: { $lt: now },
     });
 
+    // Card-backed companies (started their trial through startTrialCheckout)
+    // are normally downgraded immediately by handleSubscriptionCanceled the
+    // moment Stripe confirms the subscription is truly over
+    // (customer.subscription.deleted) — this cron is only a safety net for
+    // them, for the case that event never arrives (e.g. the Stripe account
+    // is configured to mark a subscription "unpaid" instead of canceling
+    // it after exhausting retries). subscriptionStatus keyed by companyId
+    // below, so each workspace can be checked cheaply.
+    const cardBackedStatusByCompanyId = new Map(
+      (await HostLeadCompany.find({ stripeCustomerId: { $ne: "" } }).select("companyId subscriptionStatus").lean()).map(
+        (c) => [c.companyId, c.subscriptionStatus],
+      ),
+    );
+
     for (const workspace of workspaces) {
       try {
+        // Our planExpiryDate is only an ESTIMATE for a card-backed company
+        // (computed from freeTrialDurationDays, not Stripe's own billing
+        // cycle) — it can drift a day or two from when Stripe actually
+        // attempts the charge. Downgrading just because that estimate
+        // passed would risk locking out someone Stripe hasn't even tried
+        // to charge yet. Only act once a charge attempt has actually
+        // failed (subscriptionStatus "past_due", set by
+        // handleSubscriptionPaymentFailed) — otherwise wait for Stripe's
+        // own webhooks (invoice.paid extends the date; invoice.payment_failed
+        // sets past_due; customer.subscription.deleted downgrades directly).
+        if (cardBackedStatusByCompanyId.has(workspace.companyId)) {
+          if (cardBackedStatusByCompanyId.get(workspace.companyId) !== "past_due") continue;
+        }
         const previousPlan = workspace.selectedPlan;
         const wasTrialing = Boolean(workspace.isTrialing);
         const modulesLost = resolveModulesLost(previousPlan);

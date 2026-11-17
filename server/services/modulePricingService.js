@@ -1,5 +1,6 @@
 const ModulePricing = require("../models/hostCompany/ModulePricing");
 const PlanPricingSettings = require("../models/hostCompany/PlanPricingSettings");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const getOrCreatePlanPricingSettings = async () => {
   let settings = await PlanPricingSettings.findOne({ singletonKey: "default" });
@@ -46,6 +47,7 @@ const updatePlanPricingSettings = async ({
   basicFreeDurationMonths,
   freeTrialEnabled,
   freeTrialDurationDays,
+  activeTrialPromotionCodeId,
   updatedByEmail,
 }) => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -58,9 +60,41 @@ const updatePlanPricingSettings = async ({
   if (basicFreeDurationMonths != null) settings.basicFreeDurationMonths = Number(basicFreeDurationMonths);
   if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
   if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
+  // "" (the "None" option) is a valid, meaningful value here — turns
+  // auto-apply off — so this checks undefined specifically, not != null.
+  if (activeTrialPromotionCodeId !== undefined) {
+    settings.activeTrialPromotionCodeId = String(activeTrialPromotionCodeId || "").trim();
+  }
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;
   await settings.save();
   return settings;
+};
+
+const getActiveTrialPromotionCodeId = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  return settings.activeTrialPromotionCodeId || "";
+};
+
+// Makes the free trial's first charge actually $0 — a real $199 invoice
+// discounted to $0 (full line-item breakdown visible), not Stripe's own
+// trial_period_days (which skips billing entirely and shows a blank
+// "free trial" placeholder with no price to discount). Created once and
+// reused forever; "once" means it applies to exactly one invoice ever
+// per subscription, so the second real charge is always full price.
+const getOrCreateSystemFreeTrialCoupon = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  if (settings.systemFreeTrialCouponId) {
+    try {
+      const existing = await stripe.coupons.retrieve(settings.systemFreeTrialCouponId);
+      if (!existing.deleted) return existing.id;
+    } catch (error) {
+      // Deleted/missing on Stripe's side — fall through and recreate.
+    }
+  }
+  const coupon = await stripe.coupons.create({ percent_off: 100, duration: "once" });
+  settings.systemFreeTrialCouponId = coupon.id;
+  await settings.save();
+  return coupon.id;
 };
 
 const getProfessionalPlanPriceUsd = async () => {
@@ -296,6 +330,8 @@ module.exports = {
   getBasicPlanPriceUsd,
   getBasicAnnualPlanPriceUsd,
   getBasicPlanPricing,
+  getActiveTrialPromotionCodeId,
+  getOrCreateSystemFreeTrialCoupon,
   getProfessionalPlanPricing,
   getFreeTrialConfig,
   getCustomPlanPricingBreakdown,
