@@ -24,8 +24,13 @@ const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"))
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
+const ItalianoTemplate = lazy(() => import("./italiano/ItalianoTemplate"));
+const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
+const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
+const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
+const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
 const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
@@ -96,6 +101,38 @@ export const TEMPLATE_REGISTRY = {
             fg: "#f2eee7",
             accent: "#aa8867",
             font: "'Cormorant Garamond', Georgia, serif",
+        },
+        recommendedFor: ["menu"],
+        supportsBooking: true,
+    },
+    tinyhome: {
+        id: "tinyhome",
+        name: "Tiny Home",
+        description: "A minimalist cabin theme with a full-bleed photo hero, a compact stays catalog, and an enquiry form.",
+        component: TinyHomeTemplate,
+        swatch: { bg: "#ffffff", fg: "#272724", accent: "#353932", font: "'Spinnaker', sans-serif" },
+        recommendedFor: ["coLiving"],
+        supportsBooking: true,
+    },
+    italiano: {
+      id: "italiano",
+      name: "Italiano",
+      description: "A dark Italian café template with a cinematic carousel, editorial story, and table reservations.",
+      component: ItalianoTemplate,
+      swatch: { bg: "#131211", fg: "#f5f0e9", accent: "#d4ae74", font: "'Cormorant Garamond', serif" },
+      recommendedFor: ["menu"],
+      supportsBooking: true,
+    },
+    restobar: {
+        id: "restobar",
+        name: "Restobar",
+        description: "A dark café and bistro theme with a four-panel photo hero, category menus, and table reservations.",
+        component: RestobarTemplate,
+        swatch: {
+            bg: "#101519",
+            fg: "#f5f0e9",
+            accent: "#c29a77",
+            font: "'Merriweather', Georgia, serif",
         },
         recommendedFor: ["menu"],
         supportsBooking: true,
@@ -306,6 +343,29 @@ export const TEMPLATE_REGISTRY = {
             fg: "#11110f",
             accent: "#11110f",
             font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["workspace"],
+        supportsBooking: true,
+    },
+    coplace: {
+      id: "coplace",
+      name: "CoPlace",
+      description: "A mint-accented coworking template with a circular photo hero, workspace plans, and tour enquiries.",
+      component: CoPlaceTemplate,
+      swatch: { bg: "#edf8fa", fg: "#10292d", accent: "#28c49a", font: "'Raleway', sans-serif" },
+      recommendedFor: ["workspace"],
+      supportsBooking: true,
+    },
+    cobox: {
+        id: "cobox",
+        name: "Cobox",
+        description: "Warm co-working design — full-bleed photographic hero, glass rating card, custom blend cursor, space discovery cards and rounded editorial sections.",
+        component: CoboxTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#102b32",
+            accent: "#dff39e",
+            font: "'Sora', sans-serif",
         },
         recommendedFor: ["workspace"],
         supportsBooking: true,

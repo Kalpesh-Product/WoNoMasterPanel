@@ -2,13 +2,13 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
-import PrimaryButton from "../../../../components/PrimaryButton";
-import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import UploadMultipleFilesInput from "../../../../components/UploadMultipleFilesInput";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import UploadResultSummary from "./UploadResultSummary";
+import { UploadCard, UploadPanel, UploadActions, ExistingImageThumb, muiFieldSx } from "./UploadUI";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const API_BASE = NOMADS_API_BASE_URL;
@@ -29,6 +29,7 @@ const BulkUploadImages = () => {
   const [error, setError] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedImage, setSelectedImage] = useState(null);
 
   // ✅ cleanup previews when images change
   useEffect(() => {
@@ -140,6 +141,35 @@ const BulkUploadImages = () => {
     }
   }, [types, companyType]);
 
+  // ✅ Fetch this company's already-live images, so the upload cap (10 per
+  // company) accounts for what's already there, not just this session's pick.
+  const { data: fetchedListing } = useQuery({
+    queryKey: ["company-images", companyId, companyType],
+    enabled: !!companyId && !!companyType,
+    queryFn: async () => {
+      const company = companies.find((c) => c._id === companyId);
+      if (!company?.companyId) return [];
+
+      const res = await axios.get(
+        `${API_BASE}/company/get-listings/${company.companyId}`,
+      );
+      const all = Array.isArray(res.data) ? res.data : [];
+      return all.filter(
+        (item) => item.companyType === companyType.toLowerCase(),
+      );
+    },
+  });
+
+  const existingImages = useMemo(
+    () =>
+      Array.isArray(fetchedListing)
+        ? fetchedListing.flatMap((item) => item.images || [])
+        : [],
+    [fetchedListing],
+  );
+  const remainingSlots = Math.max(0, MAX_FILES - existingImages.length);
+  const atLimit = !!companyId && remainingSlots === 0;
+
   // ✅ mutation for upload
   // const { mutate, isPending } = useMutation({
   //   mutationFn: async ({ companyId, images }) => {
@@ -190,7 +220,7 @@ const BulkUploadImages = () => {
   //   },
   // });
 
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending, data: uploadResult, error: uploadError } = useMutation({
     mutationFn: async ({ companyId, images }) => {
       const form = new FormData();
       form.append("companyId", companyId);
@@ -271,20 +301,25 @@ const BulkUploadImages = () => {
   };
 
   return (
-    <div className="p-0">
-      <div className="py-6 px-0 sm:p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+    <>
+    <UploadCard
+      title="Bulk Upload Images"
+      description="Pick a company, then upload up to 10 .webp images for it."
+    >
+      <UploadPanel>
           {isLoading ? (
-            <p>Loading companies...</p>
+            <p className="text-xs font-pmedium text-slate-500">Loading companies...</p>
           ) : (
             <>
               {/* Country / Company Type / Company */}
-              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
+              <div data-tour="data-upload-target-picker" className="grid gap-3 sm:grid-cols-3">
               <TextField
                 select
                 size="small"
                 fullWidth
                 label="Country"
                 value={country}
+                sx={muiFieldSx}
                 onChange={(e) => {
                   setCountry(e.target.value);
                   setCompanyType("");
@@ -306,6 +341,7 @@ const BulkUploadImages = () => {
                 fullWidth
                 label="Company Type"
                 value={companyType}
+                sx={muiFieldSx}
                 onChange={(e) => {
                   setCompanyType(e.target.value);
                   setCompanyId("");
@@ -321,28 +357,17 @@ const BulkUploadImages = () => {
               </TextField>
 
               {/* Company */}
-              {/* <TextField
-                select
-                size="small"
-                fullWidth
-                label="Company"
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                disabled={!companyType}
-              >
-                {filteredCompanies.map((c) => (
-                  <MenuItem key={c._id} value={c._id}>
-                    {c.companyName}
-                  </MenuItem>
-                ))}
-              </TextField> */}
               <TextField
                 select
                 size="small"
                 fullWidth
                 label="Company"
                 value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
+                sx={muiFieldSx}
+                onChange={(e) => {
+                  setCompanyId(e.target.value);
+                  setImages([]);
+                }}
                 disabled={!companyType}
                 SelectProps={{
                   MenuProps: {
@@ -386,46 +411,92 @@ const BulkUploadImages = () => {
               </TextField>
               </div>
 
+              {/* Existing images + remaining slots */}
+              {companyId && companyType && (
+                <div className="mt-4">
+                  <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                    Current images ({existingImages.length} of {MAX_FILES})
+                  </p>
+                  {existingImages.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-3">
+                      {existingImages.map((img) => (
+                        <ExistingImageThumb
+                          key={img._id || img.url}
+                          src={img.url}
+                          onClick={() => setSelectedImage(img.url)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  <p className={`mt-2 text-xs font-pmedium ${atLimit ? "text-rose-600" : "text-slate-500"}`}>
+                    {atLimit
+                      ? `This company already has the maximum of ${MAX_FILES} images — remove some on the Reupload tab before adding more.`
+                      : `${remainingSlots} more image${remainingSlots === 1 ? "" : "s"} can be added.`}
+                  </p>
+                </div>
+              )}
+
               {/* File Input */}
-              <UploadMultipleFilesInput
-                value={images}
-                onChange={setImages}
-                label="Company Images"
-                maxFiles={MAX_FILES}
-                maxFileSize={MAX_BYTES}
-                allowedExtensions={["webp"]}
-                id="bulk-upload-images"
-                previewType="image"
-                dataTour="data-upload-dropzone"
-              />
-
-              <p className="text-xs text-gray-500">
-                Accepted type: <code>.webp</code>. Max size:{" "}
-                {humanSize(MAX_BYTES)}. Max files: {MAX_FILES}.
-              </p>
-
-              {error && <div className="text-sm text-red-600">{error}</div>}
-
-              {/* Actions */}
-              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
-                <PrimaryButton
-                  type="button"
-                  title={isPending ? "Uploading…" : "Upload"}
-                  handleSubmit={handleUpload}
-                  isLoading={isPending}
-                  disabled={!images.length || !companyId || isPending}
-                />
-                <SecondaryButton
-                  type="button"
-                  title="Reset"
-                  handleSubmit={handleReset}
-                  disabled={isPending && !images.length}
+              <div className="mt-4">
+                <UploadMultipleFilesInput
+                  value={images}
+                  onChange={setImages}
+                  label="Company Images"
+                  maxFiles={companyId ? remainingSlots : MAX_FILES}
+                  maxFileSize={MAX_BYTES}
+                  allowedExtensions={["webp"]}
+                  id="bulk-upload-images"
+                  previewType="image"
+                  dataTour="data-upload-dropzone"
+                  variant="spacious"
+                  disabled={atLimit}
                 />
               </div>
+
+              <p className="text-xs font-pmedium text-gray-500">
+                Accepted type: <code>.webp</code>. Max size:{" "}
+                {humanSize(MAX_BYTES)}. Max files: {MAX_FILES} per company.
+              </p>
+
+              {error && <div className="mt-2 text-xs text-rose-600">{error}</div>}
+
+              {/* Actions */}
+              <div className="mt-4" data-tour="data-upload-actions">
+                <UploadActions
+                  onUpload={handleUpload}
+                  onReset={handleReset}
+                  pending={isPending}
+                  uploadDisabled={!images.length || !companyId || isPending || atLimit}
+                  resetDisabled={isPending && !images.length}
+                />
+              </div>
+
+              <UploadResultSummary data={uploadResult} error={uploadError} />
             </>
           )}
+      </UploadPanel>
+    </UploadCard>
+    {selectedImage && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+        onClick={() => setSelectedImage(null)}
+      >
+        <div className="relative max-w-4xl max-h-[90vh]">
+          <img
+            src={selectedImage}
+            alt="Preview"
+            className="max-w-full max-h-[90vh] rounded-lg shadow-lg"
+          />
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-2 right-2 text-white text-2xl font-bold bg-black/60 rounded-full px-3 hover:bg-black/80"
+          >
+            ×
+          </button>
         </div>
-    </div>
+      </div>
+    )}
+    </>
   );
 };
 

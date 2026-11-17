@@ -3,6 +3,7 @@ const {
   verifyPassword,
   changePassword,
   bulkUploadData,
+  bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
   bulkReuploadImages,
@@ -17,6 +18,7 @@ const {
 } = require("../controllers/adminUserControllers");
 const { getTourProgress, saveTourProgress } = require("../controllers/tourControllers");
 const upload = require("../config/multerConfig");
+const { uploadSpreadsheets } = require("../config/multerConfig");
 const { setLogModule } = require("../middlewares/logContext");
 
 const router = require("express").Router();
@@ -37,6 +39,12 @@ router.post(
   upload.single("file"),
   setLogModule("Data Upload"),
   bulkUploadData,
+);
+router.post(
+  "/bulk-update-listing-stats",
+  uploadSpreadsheets.single("file"),
+  setLogModule("Data Upload"),
+  bulkUpdateListingStats,
 );
 router.post(
   "/bulk-upload-images",

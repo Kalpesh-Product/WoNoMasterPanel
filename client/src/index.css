@@ -181,7 +181,13 @@
 
 
 .apexcharts-canvas {
-  overflow: hidden !important; 
+  overflow: hidden !important;
+}
+
+/* Lets a chart's tooltip render outside the canvas bounds instead of being
+   clipped (needed when hovering a row near the top/edge of the chart). */
+.chart-tooltip-overflow-visible .apexcharts-canvas {
+  overflow: visible !important;
 }
 @media (min-width: 1024px) {
   .login-buttons {

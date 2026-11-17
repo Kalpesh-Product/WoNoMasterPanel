@@ -33,6 +33,19 @@ const planPricingSettingsSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    // Basic plan price — $0 today, so Basic stays free in practice. Staff can
+    // set these from Master Panel ahead of actually turning on Basic
+    // billing (a separate future toggle); nothing reads these yet.
+    basicPlanPriceUsd: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    basicPlanAnnualPriceUsd: {
+      type: Number,
+      default: null,
+      min: 0,
+    },
     // Master switch for the Professional free-trial offer, plus how long a
     // newly-started trial runs. Changing freeTrialDurationDays only affects
     // trials started after the change — a trial already in progress keeps

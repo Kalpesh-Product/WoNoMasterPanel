@@ -27,6 +27,14 @@ const workspaceSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    // Mirrored from HostPanel's real Workspace schema (server/models/Workspace.ts)
+    // so plan-upgrade paths here can compute which vertical modules (Cafe
+    // Management, Cafe Orders, etc.) a workspace should get — without this,
+    // Mongoose silently drops the field on every read since it's not declared.
+    businessTypes: {
+      type: [String],
+      default: [],
+    },
     selectedPlan: {
       type: String,
       enum: ["basic", "professional", "custom"],

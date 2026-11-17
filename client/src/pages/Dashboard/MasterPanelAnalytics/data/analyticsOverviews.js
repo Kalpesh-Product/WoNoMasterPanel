@@ -285,6 +285,21 @@ const EXTRA_CHARTS = {
     },
   ],
 
+  "dashboard.world-ranking-weights-v2": [
+    {
+      title: "Active Entries by Continent",
+      type: "bars",
+      build: ({ data }) =>
+        topN(countBy(data.weights.filter((w) => w.isActive), "continent"), 6),
+    },
+    {
+      title: "Active Entries by Country",
+      type: "bars",
+      build: ({ data }) =>
+        topN(countBy(data.weights.filter((w) => w.isActive), "country"), 8),
+    },
+  ],
+
   "dashboard.logs": [
     {
       title: "Top Actions",

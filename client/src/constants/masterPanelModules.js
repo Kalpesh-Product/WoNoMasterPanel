@@ -16,6 +16,7 @@ import {
   LuMessageSquareText,
   LuNewspaper,
   LuChartLine,
+  LuMapPin,
   LuPlane,
   LuShieldCheck,
   LuTicket,
@@ -146,11 +147,25 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/destinations-data",
           },
           {
+            id: 38,
+            key: "dashboard.destination-data-analytics",
+            title: "Destination Data Analytics",
+            icon: LuMapPin,
+            route: "/dashboard/destination-data-analytics",
+          },
+          {
             id: 16,
             key: "dashboard.world-ranking-weights",
             title: "World Ranking Weights",
             icon: LuChartLine,
             route: "/dashboard/world-ranking-weights",
+          },
+          {
+            id: 39,
+            key: "dashboard.world-ranking-weights-v2",
+            title: "World Ranking (Algo 2.0)",
+            icon: LuChartLine,
+            route: "/dashboard/world-ranking-weights-v2",
           },
           {
             id: 17,

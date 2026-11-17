@@ -984,6 +984,53 @@ export const TAB_OVERVIEWS = {
     ],
   },
 
+  "dashboard.world-ranking-weights-v2": {
+    sources: [
+      {
+        key: "weights",
+        url: `${NOMADS_API_BASE_URL}/state-wise-weight-v2`,
+        pick: pickGenericArray,
+      },
+    ],
+    cards: [
+      { label: "Total Entries", value: ({ data }) => data.weights.length, icon: BarChart3, tone: 0 },
+      {
+        label: "Active",
+        value: ({ data }) => data.weights.filter((w) => w.isActive).length,
+        icon: CheckCircle2,
+        tone: 1,
+      },
+      {
+        label: "Inactive",
+        value: ({ data }) => data.weights.filter((w) => !w.isActive).length,
+        icon: AlertCircle,
+        tone: 2,
+      },
+      { label: "Countries", value: ({ data }) => distinctCount(data.weights, "country"), icon: Globe, tone: 3 },
+    ],
+    charts: [
+      {
+        title: "Status",
+        type: "donut",
+        build: ({ data }) =>
+          [
+            { label: "Active", value: data.weights.filter((w) => w.isActive).length },
+            { label: "Inactive", value: data.weights.filter((w) => !w.isActive).length },
+          ].filter((d) => d.value > 0),
+      },
+      {
+        title: "Entries per Country",
+        type: "bars",
+        build: ({ data }) => topN(countBy(data.weights, "country"), 6),
+      },
+      {
+        title: "Entries per Continent",
+        type: "bars",
+        build: ({ data }) => topN(countBy(data.weights, "continent"), 6),
+      },
+    ],
+  },
+
   "dashboard.visa-countries": {
     sources: [
       {
