@@ -26,6 +26,7 @@ const masterPanelModules = [
       { key: "dashboard.world-ranking-weights", label: "World Ranking Weights" },
       { key: "dashboard.world-ranking-weights-v2", label: "World Ranking (Algo 2.0)" },
       { key: "dashboard.visa-countries", label: "Visa Countries" },
+      { key: "dashboard.visa-countries-v2", label: "Visa Countries (Algo 2.0)" },
       { key: "dashboard.nomad-click-analytics", label: "Nomad Click Analytics" },
       { key: "dashboard.add-master-user", label: "Add Master User" },
       { key: "dashboard.host-modules-content", label: "Host Modules Content" },

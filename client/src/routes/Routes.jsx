@@ -250,6 +250,7 @@ import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupport
 // import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
+import VisaCountriesV2 from "../pages/Dashboard/FrontendDashboard/VisaCountriesV2";
 
 export const routes = createBrowserRouter([
   {
@@ -675,6 +676,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "visa-countries",
                     element: <VisaCountries />,
+                  },
+                  {
+                    path: "visa-countries-v2",
+                    element: <VisaCountriesV2 />,
                   },
                   {
                     path: "master-panel-users",
