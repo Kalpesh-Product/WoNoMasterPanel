@@ -780,6 +780,57 @@ const buildPlanStartedEmail = ({ customerName, companyName, planLabel, startDate
   }),
 });
 
+// Sent once, the moment a card-backed trial (startTrialCheckout) actually
+// completes — same "ChatGPT-style" shape as their own "Your new plan" email:
+// a real invoice breakdown (plan amount, tax, discount, total — not just a
+// bare "it started" line), the real $0 invoice PDF attached by the caller,
+// and a direct link to manage/cancel. Distinct from buildPlanStartedEmail
+// above, which is the no-card/Payment-Link flow's equivalent.
+const buildTrialStartedEmail = ({
+  customerName,
+  companyName,
+  planLabel,
+  trialEndAt,
+  planAmountUsd,
+  taxUsd = 0,
+  hostedInvoiceUrl,
+  billingPortalUrl,
+}) => ({
+  subject: `Your ${planLabel} Is Activated — One Month Free Trial`,
+  html: renderNotificationEmail({
+    heroTitle: "Your Free Trial Has Started",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the ${planLabel}</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">You've successfully started your free trial of the <b class="email-heading">${planLabel}</b> for <b class="email-heading">${companyName}</b>. Enjoy your first month free — after your trial ends on <b class="email-heading">${formatLongDate(trialEndAt)}</b>, your subscription will automatically renew and the card on file will be charged. You can cancel anytime before then.</p>
+      `,
+    detailsTitle: "Plan Amount",
+    detailRows: [
+      [
+        planLabel,
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(planAmountUsd || 0),
+      ],
+      [
+        "Tax",
+        new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(taxUsd || 0),
+      ],
+      [
+        "Discount",
+        `-${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(planAmountUsd || 0)}`,
+      ],
+      ["Total", "$0.00"],
+    ],
+    noteTitle: "Billing",
+    noteHtml:
+      '<p class="email-text" style="margin:0;">By subscribing, you authorize us to automatically charge the subscription cost to the card on file until canceled.</p>',
+    ctaButton: hostedInvoiceUrl
+      ? { href: hostedInvoiceUrl, label: "View Invoice" }
+      : billingPortalUrl
+        ? { href: billingPortalUrl, label: "Manage Subscription" }
+        : undefined,
+  }),
+});
+
 // Sent by the plan-expiry-reminder cron, 5 days before planExpiryDate.
 const buildPlanExpiryReminderEmail = ({
   customerName,
@@ -936,10 +987,44 @@ const buildAutopayUpcomingChargeEmail = ({
   }),
 });
 
+// Sent on customer.subscription.updated the moment cancel_at_period_end
+// flips to true — i.e. right when the host clicks "Cancel subscription" in
+// the billing portal, same timing as ChatGPT's own "Your plan will not
+// renew" email. Access itself isn't affected here; it continues until
+// accessUntil, when customer.subscription.deleted actually downgrades it.
+const buildSubscriptionWillNotRenewEmail = ({ customerName, companyName, planLabel, accessUntil }) => ({
+  subject: "Your WONO Plan Will Not Renew",
+  html: renderNotificationEmail({
+    heroTitle: "Your Plan Will Not Renew",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName}'s ${planLabel} is set to cancel</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Your ${planLabel} subscription for <b class="email-heading">${companyName}</b> will not renew and will be canceled, but is still available until the end of your billing period on <b class="email-heading">${formatLongDate(accessUntil)}</b>. If you change your mind, you can resume your subscription anytime from Plan &amp; Billing.</p>
+      `,
+  }),
+});
+
+// Sent on customer.subscription.updated the moment cancel_at_period_end
+// flips back to false — the host changed their mind after canceling.
+const buildSubscriptionResumedEmail = ({ customerName, companyName, planLabel }) => ({
+  subject: "Your WONO Plan Will Continue",
+  html: renderNotificationEmail({
+    heroTitle: "Your Plan Will Continue",
+    heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName}'s ${planLabel} will renew as normal</span>`,
+    greetingHtml: `
+        <p style="margin:0 0 4px;">Hello ${customerName},</p>
+        <p class="email-text" style="margin:0;">Good news — your ${planLabel} subscription for <b class="email-heading">${companyName}</b> has been resumed and will renew as normal. Thanks for staying with us!</p>
+      `,
+  }),
+});
+
 module.exports = emailTemplates;
 module.exports.buildSubscriptionPaymentFailedEmail = buildSubscriptionPaymentFailedEmail;
 module.exports.buildSubscriptionCanceledEmail = buildSubscriptionCanceledEmail;
 module.exports.buildAutopayUpcomingChargeEmail = buildAutopayUpcomingChargeEmail;
+module.exports.buildTrialStartedEmail = buildTrialStartedEmail;
+module.exports.buildSubscriptionWillNotRenewEmail = buildSubscriptionWillNotRenewEmail;
+module.exports.buildSubscriptionResumedEmail = buildSubscriptionResumedEmail;
 module.exports.toDMY = toDMY;
 module.exports.referenceDateStamp = referenceDateStamp;
 module.exports.formatSubmittedOn = formatSubmittedOn;

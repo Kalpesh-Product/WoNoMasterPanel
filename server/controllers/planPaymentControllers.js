@@ -9,6 +9,9 @@ const {
   buildPlanStartedEmail,
   buildSubscriptionPaymentFailedEmail,
   buildSubscriptionCanceledEmail,
+  buildTrialStartedEmail,
+  buildSubscriptionWillNotRenewEmail,
+  buildSubscriptionResumedEmail,
 } = require("../utils/emailTemplates");
 const {
   computeCustomPlanPrice,
@@ -940,14 +943,23 @@ const handleTrialSubscriptionCheckoutCompleted = async (session) => {
     { upsert: true },
   );
 
+  // Same ChatGPT-style shape as their own "Your new plan" email — a real
+  // invoice breakdown (not just "it started") with the $0 invoice PDF
+  // attached, since it's already fetched right above.
+  const professionalPlanPriceUsd = await getProfessionalPlanPriceUsd();
   await sendMail({
     to: leadCompany.pocEmail,
-    ...buildPlanStartedEmail({
+    ...buildTrialStartedEmail({
       customerName: leadCompany.pocName,
       companyName: leadCompany.companyName,
       planLabel: PLAN_LABELS.professional,
-      startDate: now,
+      trialEndAt,
+      planAmountUsd: professionalPlanPriceUsd,
+      hostedInvoiceUrl,
     }),
+    attachments: invoicePdfUrl
+      ? [{ filename: "invoice-Professional-Plan.pdf", path: invoicePdfUrl, contentType: "application/pdf" }]
+      : undefined,
   });
 };
 
@@ -1038,12 +1050,6 @@ const handleSubscriptionInvoicePaid = async (invoice) => {
   });
 };
 
-// customer.subscription.deleted — the host (or staff, via the billing
-// portal) canceled. Deliberately does nothing to the workspace itself:
-// planExpiryDate is already set to the end of whatever period was last
-// paid for, so the existing planExpiryDowngrade.js cron picks it up and
-// downgrades once that date passes — no separate immediate-downgrade path
-// to maintain here.
 // customer.subscription.deleted — Stripe's authoritative "this is truly
 // over" signal (after the host canceled, or after Stripe exhausted its own
 // retries on a failed payment). Downgrades immediately rather than waiting
@@ -1086,6 +1092,55 @@ const handleSubscriptionCanceled = async (subscription) => {
       accessUntil: null,
     }),
   });
+};
+
+// customer.subscription.updated — fires for many reasons (card updates,
+// proration, etc.), but the one that matters here is cancel_at_period_end
+// changing: that's set the instant the host clicks "Cancel subscription"
+// in the billing portal, well before the subscription actually ends
+// (customer.subscription.deleted, handled above) — same timing as
+// ChatGPT's own "Your plan will not renew" email. previousAttributes
+// (from the raw Stripe event, not the subscription object itself) is how
+// we know this specific field just changed, rather than something else on
+// the subscription.
+const handleSubscriptionUpdated = async (subscription, previousAttributes = {}) => {
+  if (!Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at_period_end")) return;
+
+  const leadCompany = await HostLeadCompany.findOne({ stripeSubscriptionId: subscription.id });
+  if (!leadCompany) return;
+
+  if (subscription.cancel_at_period_end) {
+    await HostLeadCompany.updateOne({ _id: leadCompany._id }, { $set: { subscriptionStatus: "canceling" } });
+    const workspace = await resolveWorkspaceForCompany({
+      companyId: leadCompany.companyId,
+      companyName: leadCompany.companyName,
+    });
+    await sendMail({
+      to: leadCompany.pocEmail,
+      ...buildSubscriptionWillNotRenewEmail({
+        customerName: leadCompany.pocName,
+        companyName: leadCompany.companyName,
+        planLabel: PLAN_LABELS.professional,
+        accessUntil: workspace?.planExpiryDate || new Date(subscription.current_period_end * 1000),
+      }),
+    });
+  } else {
+    // Changed their mind — back to whatever Stripe's own status says
+    // (trialing/active), not hardcoded, since this can happen during
+    // either period.
+    await HostLeadCompany.updateOne(
+      { _id: leadCompany._id },
+      { $set: { subscriptionStatus: subscription.status || "active" } },
+    );
+    await sendMail({
+      to: leadCompany.pocEmail,
+      ...buildSubscriptionResumedEmail({
+        customerName: leadCompany.pocName,
+        companyName: leadCompany.companyName,
+        planLabel: PLAN_LABELS.professional,
+      }),
+    });
+  }
 };
 
 // invoice.payment_failed — the auto-charge (trial end, or any later
@@ -1176,6 +1231,7 @@ module.exports = {
   handleTrialSubscriptionCheckoutCompleted,
   handleSubscriptionInvoicePaid,
   handleSubscriptionCanceled,
+  handleSubscriptionUpdated,
   handleSubscriptionPaymentFailed,
   createBillingPortalSession,
 };

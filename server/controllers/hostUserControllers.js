@@ -17,6 +17,7 @@ const {
   handleTrialSubscriptionCheckoutCompleted,
   handleSubscriptionInvoicePaid,
   handleSubscriptionCanceled,
+  handleSubscriptionUpdated,
   handleSubscriptionPaymentFailed,
 } = require("./planPaymentControllers");
 const { getBasicPlanPriceUsd } = require("../services/modulePricingService");
@@ -4187,6 +4188,12 @@ const handleStripeWebhook = async (req, res) => {
       await handleSubscriptionPaymentFailed(event.data.object);
     } catch (error) {
       console.error("Failed to process invoice.payment_failed:", error);
+    }
+  } else if (event.type === "customer.subscription.updated") {
+    try {
+      await handleSubscriptionUpdated(event.data.object, event.data.previous_attributes || {});
+    } catch (error) {
+      console.error("Failed to process customer.subscription.updated:", error);
     }
   }
 
