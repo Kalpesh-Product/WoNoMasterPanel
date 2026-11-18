@@ -945,8 +945,20 @@ const handleTrialSubscriptionCheckoutCompleted = async (session) => {
 
   // Same ChatGPT-style shape as their own "Your new plan" email — a real
   // invoice breakdown (not just "it started") with the $0 invoice PDF
-  // attached, since it's already fetched right above.
+  // attached, since it's already fetched right above, plus a working
+  // "Manage Subscription" link (generated fresh here — a billing portal
+  // session isn't something that can be precomputed and reused).
   const professionalPlanPriceUsd = await getProfessionalPlanPriceUsd();
+  let billingPortalUrl = null;
+  try {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: session.customer,
+      return_url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing`,
+    });
+    billingPortalUrl = portalSession.url;
+  } catch (error) {
+    console.error("Failed to create billing portal session for trial-started email:", error.message);
+  }
   await sendMail({
     to: leadCompany.pocEmail,
     ...buildTrialStartedEmail({
@@ -956,6 +968,7 @@ const handleTrialSubscriptionCheckoutCompleted = async (session) => {
       trialEndAt,
       planAmountUsd: professionalPlanPriceUsd,
       hostedInvoiceUrl,
+      billingPortalUrl,
     }),
     attachments: invoicePdfUrl
       ? [{ filename: "invoice-Professional-Plan.pdf", path: invoicePdfUrl, contentType: "application/pdf" }]
@@ -1104,24 +1117,40 @@ const handleSubscriptionCanceled = async (subscription) => {
 // we know this specific field just changed, rather than something else on
 // the subscription.
 const handleSubscriptionUpdated = async (subscription, previousAttributes = {}) => {
-  if (!Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at_period_end")) return;
+  // Stripe's Billing Portal schedules a cancellation one of two ways
+  // depending on account/portal configuration: the classic
+  // cancel_at_period_end boolean, OR (confirmed against a real portal
+  // cancellation on this account) by setting cancel_at to a specific
+  // future timestamp instead, leaving cancel_at_period_end false the
+  // whole time. Watch for either field actually changing, and use
+  // whichever one is actually set to decide "is a cancellation now
+  // scheduled" rather than assuming cancel_at_period_end is the only signal.
+  const cancelFieldsChanged =
+    Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at_period_end") ||
+    Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at");
+  if (!cancelFieldsChanged) return;
 
   const leadCompany = await HostLeadCompany.findOne({ stripeSubscriptionId: subscription.id });
   if (!leadCompany) return;
 
-  if (subscription.cancel_at_period_end) {
+  const isNowScheduledToCancel = Boolean(subscription.cancel_at_period_end || subscription.cancel_at);
+
+  if (isNowScheduledToCancel) {
     await HostLeadCompany.updateOne({ _id: leadCompany._id }, { $set: { subscriptionStatus: "canceling" } });
     const workspace = await resolveWorkspaceForCompany({
       companyId: leadCompany.companyId,
       companyName: leadCompany.companyName,
     });
+    const accessUntil = subscription.cancel_at
+      ? new Date(subscription.cancel_at * 1000)
+      : workspace?.planExpiryDate || new Date(subscription.current_period_end * 1000);
     await sendMail({
       to: leadCompany.pocEmail,
       ...buildSubscriptionWillNotRenewEmail({
         customerName: leadCompany.pocName,
         companyName: leadCompany.companyName,
         planLabel: PLAN_LABELS.professional,
-        accessUntil: workspace?.planExpiryDate || new Date(subscription.current_period_end * 1000),
+        accessUntil,
       }),
     });
   } else {

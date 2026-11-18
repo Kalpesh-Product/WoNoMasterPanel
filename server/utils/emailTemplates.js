@@ -802,7 +802,7 @@ const buildTrialStartedEmail = ({
     heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName} is now on the ${planLabel}</span>`,
     greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">You've successfully started your free trial of the <b class="email-heading">${planLabel}</b> for <b class="email-heading">${companyName}</b>. Enjoy your first month free — after your trial ends on <b class="email-heading">${formatLongDate(trialEndAt)}</b>, your subscription will automatically renew and the card on file will be charged. You can cancel anytime before then.</p>
+        <p class="email-text" style="margin:0;">You've successfully started your free trial of the <b class="email-heading">${planLabel}</b> for <b class="email-heading">${companyName}</b>. Enjoy your first month free — after your trial ends on <b class="email-heading">${formatLongDate(trialEndAt)}</b>, your subscription will automatically renew and your payment method will be charged. You can cancel anytime before then.</p>
       `,
     detailsTitle: "Plan Amount",
     detailRows: [
@@ -822,12 +822,19 @@ const buildTrialStartedEmail = ({
     ],
     noteTitle: "Billing",
     noteHtml:
-      '<p class="email-text" style="margin:0;">By subscribing, you authorize us to automatically charge the subscription cost to the card on file until canceled.</p>',
-    ctaButton: hostedInvoiceUrl
-      ? { href: hostedInvoiceUrl, label: "View Invoice" }
-      : billingPortalUrl
-        ? { href: billingPortalUrl, label: "Manage Subscription" }
-        : undefined,
+      '<p class="email-text" style="margin:0;">By subscribing, you authorize us to automatically charge the subscription cost from your payment method until canceled.</p>',
+    // renderNotificationEmail's own ctaButton only supports one button —
+    // show both via the same buildTwoCtaBodyHtml two-button row the
+    // verification-confirmation email already uses, "Manage Subscription"
+    // first since that's the one actually worth acting on (matches
+    // ChatGPT's own trial email, which leads with exactly that).
+    bodyHtml: (() => {
+      const buttons = [
+        billingPortalUrl ? { href: billingPortalUrl, label: "Manage Subscription" } : null,
+        hostedInvoiceUrl ? { href: hostedInvoiceUrl, label: "View Invoice" } : null,
+      ].filter(Boolean);
+      return buttons.length ? buildTwoCtaBodyHtml(buttons) : undefined;
+    })(),
   }),
 });
 
@@ -922,7 +929,7 @@ const buildSubscriptionPaymentFailedEmail = ({
     heroSubtitle: `<span style="font-weight:700;color:#123a75;">We couldn't charge your card for ${companyName}'s ${planLabel}</span>`,
     greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">We tried to charge the card on file for <b class="email-heading">${companyName}</b>'s ${planLabel} but the payment didn't go through.${nextRetryDate ? ` We'll try again automatically on <b class="email-heading">${formatLongDate(nextRetryDate)}</b>.` : ""} Please update your card to keep your plan active${nextRetryDate ? "" : " and avoid losing access"}.</p>
+        <p class="email-text" style="margin:0;">We tried to charge your payment method for <b class="email-heading">${companyName}</b>'s ${planLabel} but the payment didn't go through.${nextRetryDate ? ` We'll try again automatically on <b class="email-heading">${formatLongDate(nextRetryDate)}</b>.` : ""} Please update your card to keep your plan active${nextRetryDate ? "" : " and avoid losing access"}.</p>
       `,
     detailsTitle: "Payment Summary",
     detailRows: [
@@ -971,7 +978,7 @@ const buildAutopayUpcomingChargeEmail = ({
     heroSubtitle: `<span style="font-weight:700;color:#123a75;">Your card will be charged on ${formatLongDate(chargeDate)}</span>`,
     greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">Your free trial of the ${planLabel} for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${formatLongDate(chargeDate)}</b>. We'll automatically charge the card on file then to continue your plan — no action needed. If you'd rather not continue, you can cancel anytime before that date.</p>
+        <p class="email-text" style="margin:0;">Your free trial of the ${planLabel} for <b class="email-heading">${companyName}</b> ends on <b class="email-heading">${formatLongDate(chargeDate)}</b>. We'll automatically charge your payment method then to continue your plan — no action needed. If you'd rather not continue, you can cancel anytime before that date.</p>
       `,
     detailsTitle: "What Happens Next",
     detailRows: [
@@ -999,7 +1006,7 @@ const buildSubscriptionWillNotRenewEmail = ({ customerName, companyName, planLab
     heroSubtitle: `<span style="font-weight:700;color:#123a75;">${companyName}'s ${planLabel} is set to cancel</span>`,
     greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
-        <p class="email-text" style="margin:0;">Your ${planLabel} subscription for <b class="email-heading">${companyName}</b> will not renew and will be canceled, but is still available until the end of your billing period on <b class="email-heading">${formatLongDate(accessUntil)}</b>. If you change your mind, you can resume your subscription anytime from Plan &amp; Billing.</p>
+        <p class="email-text" style="margin:0;">Your ${planLabel} subscription for <b class="email-heading">${companyName}</b> will not renew and will be canceled, but is still available until the end of your billing period on <b class="email-heading">${formatLongDate(accessUntil)}</b>. If you change your mind, you can resume your subscription anytime from Manage Subscription in Plan &amp; Billing in Profile.</p>
       `,
   }),
 });
