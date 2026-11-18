@@ -20,6 +20,8 @@ export const THEME_DEFAULTS = {
     savor: { bg: "#fff7ed", text: "#2a1a12", accent: "#e4572e", surfaceUp: true },
     tastyc: { bg: "#f4efe7", text: "#1a1715", accent: "#cf7736", surfaceUp: true },
     grandbar: { bg: "#0b1b22", text: "#f2eee7", accent: "#aa8867", surfaceUp: true },
+    cabin: { bg: "#ffffff", text: "#181916", accent: "#181916", surfaceUp: false },
+
     tinyhome: { bg: "#ffffff", text: "#272724", accent: "#353932", surfaceUp: true },
     italiano: { bg: "#131211", text: "#f5f0e9", accent: "#d4ae74", surfaceUp: true },
     restobar: { bg: "#101519", text: "#f5f0e9", accent: "#c29a77", surfaceUp: true },
