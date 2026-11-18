@@ -26,6 +26,7 @@ const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
 const ItalianoTemplate = lazy(() => import("./italiano/ItalianoTemplate"));
 const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
+const CabinTemplate = lazy(() => import("./cabin/CabinTemplate"));
 const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
@@ -105,6 +106,16 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["menu"],
         supportsBooking: true,
     },
+    cabin: {
+        id: "cabin",
+        name: "Cabin",
+        description: "Nature-led co-living with an oversized serif hero, a tilted photo collage, rounded home cards and stay enquiries.",
+        component: CabinTemplate,
+        swatch: { bg: "#ffffff", fg: "#181916", accent: "#181916", font: "'Instrument Serif', serif" },
+        recommendedFor: ["coLiving"],
+        supportsBooking: true,
+    },
+
     tinyhome: {
         id: "tinyhome",
         name: "Tiny Home",
