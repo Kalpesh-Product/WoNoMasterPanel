@@ -197,6 +197,7 @@ import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
+import ContentRemovalTable from "../pages/Dashboard/Leads/ContentRemovalTable";
 import {
   VisaSupportTable,
   OverallActivationSupportTable,
@@ -340,6 +341,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "job-applications",
                         element: <JobApplicationsTable />,
+                      },
+                      {
+                        path: "content-removal",
+                        element: <ContentRemovalTable />,
                       },
                     ],
                   },

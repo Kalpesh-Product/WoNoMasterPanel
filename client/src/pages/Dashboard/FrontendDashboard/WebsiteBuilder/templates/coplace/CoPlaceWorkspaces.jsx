@@ -8,7 +8,7 @@ export function WorkspacesPage() {
     return (<>
       <CoPlacePageHero title={draft.productPageHeading || navLabel("products", "Our workspaces")} image={t.heroImages[0]}/>
       <section className="coplace-section coplace-shell">
-        {services.length ? (<div className="coplace-cards">
+        {services.length ? (<div className="coplace-cards coplace-product-cards">
             {services.map((service) => (<article key={service.key}>
                 <CoPlaceImage src={service.cardImage || service.heroImage}/>
                 <div>
@@ -26,7 +26,7 @@ export function WorkspaceServicePage({ service }) {
     return (<>
       <CoPlacePageHero title={service.heroHeading} body={service.heroSubHeading} image={service.heroImage || service.cardImage || t.heroImages[0]}/>
       <section className="coplace-section coplace-shell">
-        {service.items.length ? (<div className="coplace-cards">
+        {service.items.length ? (<div className="coplace-cards coplace-product-cards">
             {service.items.map((item) => {
                 const price = priceWithUnit(item.price, item.priceUnit);
                 return (<article key={item.key}>
@@ -79,7 +79,7 @@ export function WorkspaceDetailPage({ service, item }) {
       </div>
       {related.length ? <div className="coplace-related">
         <h2>More ways to work</h2>
-        <div className="coplace-cards">
+        <div className="coplace-cards coplace-product-cards">
           {related.map((entry) => <article key={entry.key}>
             <CoPlaceImage src={entry.image}/>
             <div><h3>{entry.title}</h3>

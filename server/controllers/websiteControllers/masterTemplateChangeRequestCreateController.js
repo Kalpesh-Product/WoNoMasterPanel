@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS = {
     { templateId: "qerja", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "camelia", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tulum", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "cabin", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+
     { templateId: "tinyhome", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "coplace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grindelwald", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },

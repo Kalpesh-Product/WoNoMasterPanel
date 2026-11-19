@@ -7,7 +7,7 @@ const WebsiteTemplateSettings = require("../../models/website/WebsiteTemplateSet
 const Workspace = require("../../models/hostCompany/Workspace");
 
 const PLAN_KEYS = ["basic", "professional", "custom"];
-const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "tinyhome", "commons", "huddle", "lodge", "grindelwald"];
+const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "cabin", "tinyhome", "commons", "huddle", "lodge", "grindelwald"];
 const DEFAULT_SETTINGS = {
   key: "global",
   limitPeriod: "monthly",
@@ -35,6 +35,8 @@ const DEFAULT_SETTINGS = {
     { templateId: "qerja", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "camelia", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tulum", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "cabin", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+
     { templateId: "tinyhome", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "coplace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grindelwald", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
