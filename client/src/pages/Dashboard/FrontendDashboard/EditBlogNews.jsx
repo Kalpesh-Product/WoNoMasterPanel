@@ -247,6 +247,12 @@ const EditBlogNews = () => {
         { omitStatus: !isEdit },
       );
 
+      if (isRestaurant) {
+        // The detail response includes review records and their count for display.
+        delete cleanData.reviews;
+        delete cleanData.totalReviews;
+      }
+
       const resourceType =
         type === "blog"
           ? "blogs"

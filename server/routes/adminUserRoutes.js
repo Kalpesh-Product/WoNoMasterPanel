@@ -6,6 +6,8 @@ const {
   bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
+  getRestaurantImageReuploadTargets,
+  reuploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   uploadRestaurantLogo,
@@ -57,6 +59,14 @@ router.post(
   upload.array("images"),
   setLogModule("Data Upload"),
   bulkUploadRestaurantImages,
+);
+router.get("/restaurant-images-reupload", getRestaurantImageReuploadTargets);
+router.get("/upload-restaurant-logo", getRestaurantImageReuploadTargets);
+router.post(
+  "/restaurant-images-reupload",
+  upload.array("images", 10),
+  setLogModule("Data Upload"),
+  reuploadRestaurantImages,
 );
 router.patch(
   "/bulk-reupload-images",

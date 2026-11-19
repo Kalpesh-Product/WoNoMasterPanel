@@ -454,6 +454,10 @@ export const routes = createBrowserRouter([
                         element: <BulkRestaurantImagesUpload />,
                       },
                       {
+                        path: "restaurant-images-reupload",
+                        element: <BulkRestaurantImagesUpload key="restaurant-reupload" reupload />,
+                      },
+                      {
                         path: "restaurant-logo-upload",
                         element: <RestaurantLogoUpload />,
                       },
