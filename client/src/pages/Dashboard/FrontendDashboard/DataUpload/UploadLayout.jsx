@@ -1,17 +1,16 @@
-import { useSelector } from "react-redux";
 import TabLayout from "../../../../components/Tabs/TabLayout";
 import useAuth from "../../../../hooks/useAuth";
+
+// Tab keys are the same `path` strings below — must stay in sync with
+// server/config/masterPanelModules.js's dashboard.data-upload.tabs.
+const DATA_UPLOAD_KEY = "dashboard.data-upload";
 
 const UploadLayout = () => {
   const { auth } = useAuth();
 
-  const userEmail = auth?.user?.email;
-
-  const restrictedEmails = [
-    "shawnsilveira.wono@gmail.com",
-    "mehak.wono@gmail.com",
-    "gourish.wono@gmail.com",
-  ];
+  const allowedModules = auth?.user?.allowedModules || [];
+  const isSuperAdmin = Boolean(auth?.user?.isSuperAdmin);
+  const hasBareKey = allowedModules.includes(DATA_UPLOAD_KEY);
 
   const tabs = [
     { label: "Company Upload", path: "company-upload", heading: "Company Upload", description: "Upload and manage company data." },
@@ -32,24 +31,33 @@ const UploadLayout = () => {
     { label: "Listings Data Update", path: "listings-data-update", heading: "Listings Data Update", description: "Refresh ratings, review counts and inactive status for live nomad listings." },
   ];
 
-  const filteredTabs = restrictedEmails.includes(userEmail)
-    ? tabs.filter(
-      (tab) =>
-        tab.label === "Bulk Upload Images" ||
-        tab.label === "Bulk Reupload Images" ||
-        tab.label === "Upload Single Image",
-    )
-    : tabs;
+  // The bare key is just the on/off gate — which tabs show comes from the
+  // explicit per-tab keys. A grant with the bare key but none of those
+  // (either fresh, or from before tabs existed) defaults to every tab.
+  const hasAnyExplicitTab = tabs.some((tab) =>
+    allowedModules.includes(`${DATA_UPLOAD_KEY}.${tab.path}`),
+  );
+  const filteredTabs =
+    isSuperAdmin || (hasBareKey && !hasAnyExplicitTab)
+      ? tabs
+      : tabs.filter((tab) =>
+          allowedModules.includes(`${DATA_UPLOAD_KEY}.${tab.path}`),
+        );
+
+  if (filteredTabs.length === 0) {
+    return (
+      <div className="p-4 text-center text-sm text-slate-500">
+        You don't have access to any Data Upload tabs. Ask a superadmin to
+        grant them via User Access.
+      </div>
+    );
+  }
 
   return (
     <TabLayout
       basePath={"/dashboard/data-upload"}
       tabs={filteredTabs}
-      defaultTabPath={
-        restrictedEmails.includes(userEmail)
-          ? "bulk-upload-images"
-          : "company-upload"
-      }
+      defaultTabPath={filteredTabs[0].path}
     />
   );
 };

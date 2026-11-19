@@ -52,8 +52,8 @@ const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
 const SUMMARY_TABS = [
-  { key: "content", label: "Content Data", path: "content-data" },
   { key: "listings", label: "Nomad Listings", path: "nomad-listings" },
+  { key: "content", label: "Content Data", path: "content-data" },
 ];
 
 const SUMMARY_TAB_BY_PATH = SUMMARY_TABS.reduce(
@@ -387,18 +387,9 @@ const DestinationsData = () => {
       setCurrentView("summary");
       setSelectedLocation("All");
       setDetailType("blog");
-      // Only clear search/filters when actually switching tabs (content <->
-      // listings) — landing back on the *same* tab (e.g. after going into a
-      // detail/edit page and coming back) should keep whatever was set.
-      setActiveSummaryTab((previousTab) => {
-        if (previousTab !== routeTab) {
-          setContinentFilter("");
-          setCountryFilter("");
-          setStateFilter("");
-          setSearchQuery("");
-        }
-        return routeTab;
-      });
+      // Search/filters are shared across both tabs on purpose — switching
+      // tabs keeps whatever was set, so the same filter applies to both.
+      setActiveSummaryTab(routeTab);
     } else if (locationType) {
       const dashIndex = locationType.lastIndexOf("-");
       if (dashIndex !== -1) {
@@ -473,10 +464,6 @@ const DestinationsData = () => {
 
   const handleSummaryTabChange = (tabKey) => {
     setActiveSummaryTab(tabKey);
-    setContinentFilter("");
-    setCountryFilter("");
-    setStateFilter("");
-    setSearchQuery("");
   };
 
   const {

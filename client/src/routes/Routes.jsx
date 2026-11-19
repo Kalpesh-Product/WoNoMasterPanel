@@ -619,7 +619,7 @@ export const routes = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        element: <Navigate to="content-data" replace />,
+                        element: <Navigate to="nomad-listings" replace />,
                       },
                       {
                         path: "content-data",

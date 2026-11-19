@@ -88,7 +88,7 @@ const BreadCrumbComponent = () => {
         key="destinations-data"
         underline="hover"
         color="inherit"
-        onClick={() => navigate("/dashboard/destinations-data/content-data")}
+        onClick={() => navigate("/dashboard/destinations-data/nomad-listings")}
         style={{ cursor: "pointer" }}
       >
         Destinations Data

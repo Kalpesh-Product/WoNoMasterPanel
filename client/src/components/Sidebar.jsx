@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSidebar } from "../context/SideBarContext";
-import { MASTER_PANEL_MODULES } from "../constants/masterPanelModules";
+import { MASTER_PANEL_MODULES, hasModuleAccess } from "../constants/masterPanelModules";
 import { LuLayoutDashboard } from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
 
@@ -84,7 +84,7 @@ const Sidebar = ({ onCloseDrawer }) => {
             ...category,
             submenus: category.submenus
               .filter((submenu) => !submenu.superAdminOnly)
-              .filter((submenu) => allowedModules.includes(submenu.key)),
+              .filter((submenu) => hasModuleAccess(allowedModules, submenu.key)),
           }))
           .filter((category) => category.submenus.length > 0),
       }))
