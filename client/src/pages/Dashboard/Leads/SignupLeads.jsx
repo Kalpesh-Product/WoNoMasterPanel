@@ -19,6 +19,9 @@ import {
   Building2,
   CalendarDays,
   CalendarRange,
+  ArrowLeft,
+  ChevronRight,
+  Globe,
 } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -145,6 +148,7 @@ const SignupLeads = () => {
   const [customPaymentLead, setCustomPaymentLead] = useState(null);
   const [inviteLead, setInviteLead] = useState(null);
   const [showInterest, setShowInterest] = useState(false);
+  const [selectedInterest, setSelectedInterest] = useState(null);
   const [planFilter, setPlanFilter] = useState("All");
   const [inviteFilter, setInviteFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
@@ -567,7 +571,10 @@ const SignupLeads = () => {
       </div>
       <button
         type="button"
-        onClick={() => setShowInterest(true)}
+        onClick={() => {
+          setSelectedInterest(null);
+          setShowInterest(true);
+        }}
         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-pmedium text-slate-700 shadow-sm hover:bg-slate-50"
       >
         <Building2 size={13} /> wono.co Interest
@@ -1518,24 +1525,34 @@ const SignupLeads = () => {
         </div>
       )}
 
-      {/* wono.co Interest Modal — "Verify Business" clicks per listing company */}
+      {/* wono.co Interest Modal — overview + per-listing click details */}
       {showInterest && (
         <div
           className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
           onClick={() => setShowInterest(false)}
         >
           <div
-            className="bg-white rounded-[2rem] max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
+            className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
+                {selectedInterest && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInterest(null)}
+                    className="mb-2 inline-flex items-center gap-1 text-[11px] font-pmedium text-blue-600 hover:underline"
+                  >
+                    <ArrowLeft size={13} /> All listings
+                  </button>
+                )}
                 <h2 className="text-base font-pmedium tracking-tight text-slate-800">
-                  wono.co Interest
+                  {selectedInterest ? selectedInterest.companyName : "wono.co Interest"}
                 </h2>
                 <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">
-                  Businesses whose listing visitors clicked &quot;Verify Business&quot; on.
-                  Ones with no signup yet are worth following up.
+                  {selectedInterest
+                    ? "Every \"Verify Business\" click on this listing — IP address and logged-in Nomad who clicked."
+                    : "Businesses whose listing visitors clicked \"Verify Business\" on. Open a row to see who clicked."}
                 </p>
               </div>
               <button
@@ -1546,15 +1563,130 @@ const SignupLeads = () => {
                 <X size={16} />
               </button>
             </div>
-            <div className="overflow-auto">
-              {isLoadingInterest ? (
+            <div className="overflow-auto flex-1">
+              {selectedInterest ? (
+                <div className="p-5 sm:p-6 space-y-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {[
+                      ["Clicks", selectedInterest.clicks],
+                      ["Visitors", selectedInterest.uniqueVisitors],
+                      ["IPs seen", selectedInterest.uniqueIpAddresses],
+                      ["Guest clicks", selectedInterest.guestClicks],
+                      ["Logged-in clicks", selectedInterest.loggedInClicks],
+                      ["Signed ups", selectedInterest.signedUps],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
+                      >
+                        <p className="text-[10px] font-pmedium uppercase tracking-wider text-slate-400">
+                          {label}
+                        </p>
+                        <p className="mt-0.5 text-base font-pmedium text-slate-800">
+                          {value ?? 0}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href={buildListingUrl({
+                        businessId: selectedInterest.businessId,
+                        companyType: selectedInterest.companyType,
+                        companyName: selectedInterest.companyName,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-pmedium text-blue-600 shadow-sm hover:bg-slate-50"
+                    >
+                      View listing <ChevronRight size={13} />
+                    </a>
+                    <p className="text-[11px] font-pmedium text-slate-500">
+                      {[selectedInterest.city, selectedInterest.state, selectedInterest.country]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-[12px] font-pmedium text-slate-800">Click activity</p>
+                      <p className="text-[10px] font-pmedium text-slate-400">
+                        Latest {(selectedInterest.clickDetails || []).length} clicks
+                      </p>
+                    </div>
+                    {(selectedInterest.clickDetails || []).length === 0 ? (
+                      <p className="rounded-2xl border border-slate-100 bg-slate-50/60 p-8 text-center text-[12px] font-pmedium text-slate-400">
+                        No click details recorded yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                        <table className="w-full text-left min-w-[760px]">
+                          <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                            <tr>
+                              <th className="px-4 py-3">#</th>
+                              <th className="px-4 py-3">IP address</th>
+                              <th className="px-4 py-3">Clicked by</th>
+                              <th className="px-4 py-3">Clicked at</th>
+                              <th className="px-4 py-3">Source</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100/60">
+                            {selectedInterest.clickDetails.map((detail, index) => (
+                              <tr key={detail.id || index} className="hover:bg-slate-50/50">
+                                <td className="px-4 py-3 text-[11px] font-pmedium text-slate-400">
+                                  {index + 1}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center gap-1.5 text-[12px] font-pmedium text-slate-800">
+                                    <Globe size={12} className="text-slate-400" />
+                                    {detail.ipAddress || "IP not captured"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-[12px] font-pmedium text-slate-800">
+                                    {detail.user?.name || "Guest user"}
+                                  </p>
+                                  {detail.user?.email && (
+                                    <p className="text-[10px] font-pmedium text-slate-500">
+                                      {detail.user.email}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-[12px] font-pmedium text-slate-700">
+                                  {formatDate(detail.clickedAt)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p
+                                    className="max-w-[220px] truncate text-[11px] font-pmedium text-slate-500"
+                                    title={detail.listingUrl || ""}
+                                  >
+                                    {detail.listingUrl || "--"}
+                                  </p>
+                                  <p
+                                    className="max-w-[220px] truncate text-[10px] font-pmedium text-slate-400"
+                                    title={detail.referrer || ""}
+                                  >
+                                    {detail.referrer || "No referrer"}
+                                  </p>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : isLoadingInterest ? (
                 <p className="p-8 text-center text-[12px] font-pmedium text-slate-400">Loading...</p>
               ) : clickInterest.length === 0 ? (
                 <p className="p-8 text-center text-[12px] font-pmedium text-slate-400">
                   No clicks recorded yet.
                 </p>
               ) : (
-                <table className="w-full text-left min-w-[640px]">
+                <table className="w-full text-left min-w-[720px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-3">Business</th>
@@ -1562,11 +1694,16 @@ const SignupLeads = () => {
                       <th className="px-5 py-3">Visitors</th>
                       <th className="px-5 py-3">Last clicked</th>
                       <th className="px-5 py-3">Signed up</th>
+                      <th className="px-5 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {clickInterest.map((row) => (
-                      <tr key={row.companyId}>
+                      <tr
+                        key={row.companyId}
+                        onClick={() => setSelectedInterest(row)}
+                        className="cursor-pointer transition-colors hover:bg-slate-50/70"
+                      >
                         <td className="px-5 py-3">
                           <a
                             href={buildListingUrl({
@@ -1576,6 +1713,7 @@ const SignupLeads = () => {
                             })}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-[12px] font-pmedium text-blue-600 hover:underline"
                           >
                             {row.companyName}
@@ -1584,7 +1722,9 @@ const SignupLeads = () => {
                             {[row.city, row.country].filter(Boolean).join(", ")}
                           </p>
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">{row.clicks}</td>
+                        <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">
+                          {row.clicks}
+                        </td>
                         <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">
                           {row.uniqueVisitors}
                         </td>
@@ -1597,6 +1737,9 @@ const SignupLeads = () => {
                           >
                             {row.signedUps > 0 ? "Yes" : "Not yet"}
                           </span>
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <ChevronRight size={15} className="inline text-slate-300" />
                         </td>
                       </tr>
                     ))}
