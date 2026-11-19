@@ -105,7 +105,7 @@ const PAGE_TOURS = [
   },
   {
     id: "signup-leads",
-    version: 2,
+    version: 5,
     title: "Signup Leads",
     description:
       "Companies that signed up interest on the WoNo website land here. Review each lead, invite them to the Host Panel and track payments.",
@@ -121,16 +121,16 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
-        selector: '[data-tour="signup-leads-status-filter"]',
-        title: "Filter by status",
-        description:
-          "Narrow the list to Pending, Contacted, Closed or Rejected leads, or pick All to see everything.",
-      },
-      {
         selector: '[data-tour="signup-leads-search"]',
         title: "Find a lead",
         description:
           "Type a name, email or company to narrow the list as you type.",
+      },
+      {
+        selector: '[data-tour="signup-leads-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Use the All status dropdown beside the search bar to narrow the list to Pending, Contacted, Approved or Rejected leads.",
       },
       {
         selector: '[data-tour="signup-leads-table"]',
@@ -143,14 +143,14 @@ const PAGE_TOURS = [
         selector: '[data-tour="signup-leads-plan-column"]',
         title: "Plan",
         description:
-          "The plan the lead chose or requested. Change it here if the company wants a different plan before you invite them.",
+          "The plan the lead chose or requested. Change it here if the company wants a different plan before joining — once joined, it shows as read-only text.",
         side: "bottom",
       },
       {
         selector: '[data-tour="signup-leads-status-column"]',
         title: "Status",
         description:
-          "Move a lead through Pending, Contacted, Closed or Rejected as you work it. A lead must be Closed before it can be invited.",
+          "Move a lead through Pending, Contacted, Closed or Rejected as you work it. A lead must be Closed before it can be invited — once joined, it shows as read-only text.",
         side: "bottom",
       },
       {
@@ -204,11 +204,11 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads",
-    version: 7,
+    version: 8,
     skipIntro: true,
     title: "All Leads",
     description:
-      "Four lead queues in one place — product enquiries, partner contacts, collaboration requests and job applications. All Enquiry carries the full Master workflow, from status tracking through to escalating closed leads to the Host Panel; the other tabs are for review.",
+      "Five lead queues in one place — product enquiries, partner contacts, collaboration requests, job applications and content removal requests. All Enquiry carries the full Master workflow, from status tracking through to escalating closed leads to the Host Panel; the other tabs are for review.",
     replayHint: true,
     recordsDescription:
       "Leads load in a searchable, filterable table. Open a row's actions to review details, update its status or escalate it.",
@@ -219,9 +219,9 @@ const PAGE_TOURS = [
     steps: [
       {
         selector: '[data-tour="tab-layout-heading"]',
-        title: "Four lead sources",
+        title: "Five lead sources",
         description:
-          "All Enquiry collects product enquiries, All POC Contact lists partner contact submissions, Connect With Us holds collaboration requests and Job Applications tracks applicants.",
+          "All Enquiry collects product enquiries, All POC Contact lists partner contact submissions, Connect With Us holds collaboration requests, Job Applications tracks applicants and Content Removal lists takedown requests.",
       },
       {
         selector: '[data-tour="tab-layout-tabs"]',
@@ -315,7 +315,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -359,7 +359,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -403,7 +403,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -427,6 +427,57 @@ const PAGE_TOURS = [
       },
     ],
     matches: startsWith("/dashboard/all-leads/job-applications"),
+  },
+  {
+    id: "all-leads-content-removal",
+    version: 1,
+    skipIntro: true,
+    title: "Content Use & Removal",
+    description:
+      "Content modification and takedown requests submitted from the Nomad and Host sites.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="tab-layout-heading"]',
+        title: "A separate review queue",
+        description:
+          "This tab lists removal requests on their own — no Master workflow or escalation here, that's specific to All Enquiry.",
+      },
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch lead queues",
+        description:
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="content-removal-quick-stats"]',
+        title: "Quick stats",
+        description:
+          "Total requests, the Nomad/Host split and how many currently match your search.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="content-removal-search"]',
+        title: "Find a request",
+        description: "Search by contact name, company, email or requested URL.",
+      },
+      {
+        selector: '[data-tour="content-removal-table"]',
+        title: "The full list",
+        description:
+          "One row per request, with the organization, requester, every URL submitted and the source site.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="content-removal-action-view"]',
+        title: "View details",
+        description:
+          "Opens the full request — all requested URLs plus the contact details needed to follow up.",
+        side: "left",
+      },
+    ],
+    matches: startsWith("/dashboard/all-leads/content-removal"),
   },
   {
     id: "value-adds-leads",
@@ -1309,10 +1360,10 @@ const PAGE_TOURS = [
   },
   {
     id: "value-adds-partners",
-    version: 3,
+    version: 4,
     title: "Value-Adds Partners",
     description:
-      "The partner network that delivers value-added services — visa consultants, activation agents, setup firms and contributors.",
+      "The partner network that delivers value-added services — visa consultants, activation agents and setup firms.",
     replayHint: true,
     recordsDescription:
       "Each tab lists its partner pool in a searchable table with assignment and edit actions.",
@@ -1340,7 +1391,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="value-adds-partners-filters"]',
         title: "Narrow the list",
         description:
-          "Where available, filter partners by Continent, Country or State — Clear filters resets them.",
+          "Where available, filter partners by Continent, Country or State from the controls beside the search bar.",
       },
       {
         selector: '[data-tour="value-adds-partners-table"]',

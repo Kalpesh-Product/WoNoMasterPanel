@@ -19,6 +19,9 @@ import {
   Building2,
   CalendarDays,
   CalendarRange,
+  ArrowLeft,
+  ChevronRight,
+  Globe,
 } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -126,6 +129,11 @@ const inviteLabels = {
   joined: "Joined",
 };
 
+const stickyActionHeaderClass =
+  "sticky right-0 z-20 bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
+const stickyActionCellClass =
+  "sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
+
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
@@ -140,6 +148,7 @@ const SignupLeads = () => {
   const [customPaymentLead, setCustomPaymentLead] = useState(null);
   const [inviteLead, setInviteLead] = useState(null);
   const [showInterest, setShowInterest] = useState(false);
+  const [selectedInterest, setSelectedInterest] = useState(null);
   const [planFilter, setPlanFilter] = useState("All");
   const [inviteFilter, setInviteFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState("All");
@@ -491,7 +500,10 @@ const SignupLeads = () => {
     return true;
   });
   const hasExtraFilters =
-    planFilter !== "All" || inviteFilter !== "All" || dateFilter !== "All";
+    statusFilter !== "All" ||
+    planFilter !== "All" ||
+    inviteFilter !== "All" ||
+    dateFilter !== "All";
 
   const closeInviteModal = () => {
     setInviteLead(null);
@@ -521,13 +533,28 @@ const SignupLeads = () => {
     closeInviteModal();
   };
 
-  const handleStatusChange = (leadId, status) => {
-    updateMutation.mutate({ hostUserId: leadId, status: status.toLowerCase() });
+  const handleStatusChange = (lead, status) => {
+    // A joined user already has an active Host Panel account — never allow
+    // their status to be rewritten from this table.
+    if (getInviteStatus(lead) === "joined") {
+      toast.error("Status cannot be changed once the user has joined.");
+      return;
+    }
+    updateMutation.mutate({
+      hostUserId: lead._id,
+      status: status.toLowerCase(),
+    });
   };
 
-  const handlePlanChange = (leadId, plan) => {
+  const handlePlanChange = (lead, plan) => {
+    // A joined user already has an active Host Panel account and plan — never
+    // allow their plan to be rewritten from this table.
+    if (getInviteStatus(lead) === "joined") {
+      toast.error("Plan cannot be changed once the user has joined.");
+      return;
+    }
     updateMutation.mutate({
-      hostUserId: leadId,
+      hostUserId: lead._id,
       goals: normalizePlanValue(plan),
     });
   };
@@ -553,7 +580,10 @@ const SignupLeads = () => {
       </div>
       <button
         type="button"
-        onClick={() => setShowInterest(true)}
+        onClick={() => {
+          setSelectedInterest(null);
+          setShowInterest(true);
+        }}
         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[11px] font-pmedium text-slate-700 shadow-sm hover:bg-slate-50"
       >
         <Building2 size={13} /> wono.co Interest
@@ -677,21 +707,31 @@ const SignupLeads = () => {
               })}
             </div>
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-              <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-slate-50/50">
-                <div data-tour="signup-leads-status-filter" className="flex min-w-0 flex-wrap gap-1.5 overflow-x-auto">
-                  {["All", ...STATUSES].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStatusFilter(s)}
-                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${statusFilter === s ? "bg-[#2563EB] text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                    >
-                      {statusLabel(s)}
-                    </button>
-                  ))}
+              <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/50">
+                <div data-tour="signup-leads-search" className="relative flex-1 min-w-[180px]">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search name, email, company..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                  />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+                <div data-tour="signup-leads-status-filter" className="flex items-center justify-end gap-2 flex-wrap">
                   {[
+                    {
+                      key: "status",
+                      value: statusFilter,
+                      set: setStatusFilter,
+                      options: [
+                        ["All", "All status"],
+                        ...STATUSES.map((s) => [s, statusLabel(s)]),
+                      ],
+                    },
                     {
                       key: "plan",
                       value: planFilter,
@@ -739,6 +779,7 @@ const SignupLeads = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        setStatusFilter("All");
                         setPlanFilter("All");
                         setInviteFilter("All");
                         setDateFilter("All");
@@ -748,19 +789,6 @@ const SignupLeads = () => {
                       Clear
                     </button>
                   )}
-                </div>
-                <div data-tour="signup-leads-search" className="relative w-full shrink-0 lg:w-72">
-                  <Search
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search name, email, company..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                  />
                 </div>
               </div>
               {visibleLeads.length === 0 ? (
@@ -790,7 +818,7 @@ const SignupLeads = () => {
                         <th className="px-5 py-4 whitespace-nowrap">Invite</th>
                         <th className="px-5 py-4 whitespace-nowrap">Payment Status</th>
                         <th className="px-5 py-4 whitespace-nowrap">Payment Link</th>
-                        <th className="px-5 py-4 whitespace-nowrap text-center">Action</th>
+                        <th className={`px-5 py-4 whitespace-nowrap text-center ${stickyActionHeaderClass}`}>Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/60">
@@ -801,6 +829,7 @@ const SignupLeads = () => {
                         ).toLowerCase();
                         const planVal = normalizePlanValue(lead.goals);
                         const paymentInfo = getPaymentInfo(lead);
+                        const hasJoined = inviteStatus === "joined";
                         const canInvite =
                           statusVal === "closed" &&
                           !["registered", "joined"].includes(inviteStatus) &&
@@ -847,19 +876,28 @@ const SignupLeads = () => {
                               data-tour="signup-leads-plan-column"
                               className="px-5 py-4"
                             >
-                              <select
-                                value={planVal}
-                                onChange={(e) =>
-                                  handlePlanChange(lead._id, e.target.value)
-                                }
-                                className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
-                              >
-                                {PLANS.map((p) => (
-                                  <option key={p} value={p}>
-                                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                                  </option>
-                                ))}
-                              </select>
+                              {hasJoined ? (
+                                <span
+                                  title="Plan is locked once the user has joined"
+                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                                >
+                                  {planVal.charAt(0).toUpperCase() + planVal.slice(1)}
+                                </span>
+                              ) : (
+                                <select
+                                  value={planVal}
+                                  onChange={(e) =>
+                                    handlePlanChange(lead, e.target.value)
+                                  }
+                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#2563EB]/20 cursor-pointer ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                                >
+                                  {PLANS.map((p) => (
+                                    <option key={p} value={p}>
+                                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
                               {planVal === "basic" ? (
@@ -880,19 +918,28 @@ const SignupLeads = () => {
                               data-tour="signup-leads-status-column"
                               className="px-5 py-4"
                             >
-                              <select
-                                value={statusVal}
-                                onChange={(e) =>
-                                  handleStatusChange(lead._id, e.target.value)
-                                }
-                                className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${statusPillClass(statusVal)}`}
-                              >
-                                {STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {statusLabel(s)}
-                                  </option>
-                                ))}
-                              </select>
+                              {hasJoined ? (
+                                <span
+                                  title="Status is locked once the user has joined"
+                                  className={statusPillClass(statusVal)}
+                                >
+                                  {statusLabel(statusVal)}
+                                </span>
+                              ) : (
+                                <select
+                                  value={statusVal}
+                                  onChange={(e) =>
+                                    handleStatusChange(lead, e.target.value)
+                                  }
+                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${statusPillClass(statusVal)}`}
+                                >
+                                  {STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {statusLabel(s)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </td>
                             <td
                               data-tour="signup-leads-invite-status-column"
@@ -986,7 +1033,7 @@ const SignupLeads = () => {
                                 </button>
                               )}
                             </td>
-                            <td className="px-5 py-4 text-center">
+                            <td className={`px-5 py-4 text-center ${stickyActionCellClass}`}>
                               <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
@@ -1496,24 +1543,34 @@ const SignupLeads = () => {
         </div>
       )}
 
-      {/* wono.co Interest Modal — "Verify Business" clicks per listing company */}
+      {/* wono.co Interest Modal — overview + per-listing click details */}
       {showInterest && (
         <div
           className="fixed inset-0 bg-[#0F172A]/40 backdrop-blur-sm flex items-center justify-center z-50 p-3"
           onClick={() => setShowInterest(false)}
         >
           <div
-            className="bg-white rounded-[2rem] max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
+            className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
+                {selectedInterest && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedInterest(null)}
+                    className="mb-2 inline-flex items-center gap-1 text-[11px] font-pmedium text-blue-600 hover:underline"
+                  >
+                    <ArrowLeft size={13} /> All listings
+                  </button>
+                )}
                 <h2 className="text-base font-pmedium tracking-tight text-slate-800">
-                  wono.co Interest
+                  {selectedInterest ? selectedInterest.companyName : "wono.co Interest"}
                 </h2>
                 <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">
-                  Businesses whose listing visitors clicked &quot;Verify Business&quot; on.
-                  Ones with no signup yet are worth following up.
+                  {selectedInterest
+                    ? "Every \"Verify Business\" click on this listing — IP address and logged-in Nomad who clicked."
+                    : "Businesses whose listing visitors clicked \"Verify Business\" on. Open a row to see who clicked."}
                 </p>
               </div>
               <button
@@ -1524,15 +1581,130 @@ const SignupLeads = () => {
                 <X size={16} />
               </button>
             </div>
-            <div className="overflow-auto">
-              {isLoadingInterest ? (
+            <div className="overflow-auto flex-1">
+              {selectedInterest ? (
+                <div className="p-5 sm:p-6 space-y-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {[
+                      ["Clicks", selectedInterest.clicks],
+                      ["Visitors", selectedInterest.uniqueVisitors],
+                      ["IPs seen", selectedInterest.uniqueIpAddresses],
+                      ["Guest clicks", selectedInterest.guestClicks],
+                      ["Logged-in clicks", selectedInterest.loggedInClicks],
+                      ["Signed ups", selectedInterest.signedUps],
+                    ].map(([label, value]) => (
+                      <div
+                        key={label}
+                        className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
+                      >
+                        <p className="text-[10px] font-pmedium uppercase tracking-wider text-slate-400">
+                          {label}
+                        </p>
+                        <p className="mt-0.5 text-base font-pmedium text-slate-800">
+                          {value ?? 0}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href={buildListingUrl({
+                        businessId: selectedInterest.businessId,
+                        companyType: selectedInterest.companyType,
+                        companyName: selectedInterest.companyName,
+                      })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-pmedium text-blue-600 shadow-sm hover:bg-slate-50"
+                    >
+                      View listing <ChevronRight size={13} />
+                    </a>
+                    <p className="text-[11px] font-pmedium text-slate-500">
+                      {[selectedInterest.city, selectedInterest.state, selectedInterest.country]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <p className="text-[12px] font-pmedium text-slate-800">Click activity</p>
+                      <p className="text-[10px] font-pmedium text-slate-400">
+                        Latest {(selectedInterest.clickDetails || []).length} clicks
+                      </p>
+                    </div>
+                    {(selectedInterest.clickDetails || []).length === 0 ? (
+                      <p className="rounded-2xl border border-slate-100 bg-slate-50/60 p-8 text-center text-[12px] font-pmedium text-slate-400">
+                        No click details recorded yet.
+                      </p>
+                    ) : (
+                      <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                        <table className="w-full text-left min-w-[760px]">
+                          <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+                            <tr>
+                              <th className="px-4 py-3">#</th>
+                              <th className="px-4 py-3">IP address</th>
+                              <th className="px-4 py-3">Clicked by</th>
+                              <th className="px-4 py-3">Clicked at</th>
+                              <th className="px-4 py-3">Source</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100/60">
+                            {selectedInterest.clickDetails.map((detail, index) => (
+                              <tr key={detail.id || index} className="hover:bg-slate-50/50">
+                                <td className="px-4 py-3 text-[11px] font-pmedium text-slate-400">
+                                  {index + 1}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className="inline-flex items-center gap-1.5 text-[12px] font-pmedium text-slate-800">
+                                    <Globe size={12} className="text-slate-400" />
+                                    {detail.ipAddress || "IP not captured"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p className="text-[12px] font-pmedium text-slate-800">
+                                    {detail.user?.name || "Guest user"}
+                                  </p>
+                                  {detail.user?.email && (
+                                    <p className="text-[10px] font-pmedium text-slate-500">
+                                      {detail.user.email}
+                                    </p>
+                                  )}
+                                </td>
+                                <td className="px-4 py-3 text-[12px] font-pmedium text-slate-700">
+                                  {formatDate(detail.clickedAt)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <p
+                                    className="max-w-[220px] truncate text-[11px] font-pmedium text-slate-500"
+                                    title={detail.listingUrl || ""}
+                                  >
+                                    {detail.listingUrl || "--"}
+                                  </p>
+                                  <p
+                                    className="max-w-[220px] truncate text-[10px] font-pmedium text-slate-400"
+                                    title={detail.referrer || ""}
+                                  >
+                                    {detail.referrer || "No referrer"}
+                                  </p>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : isLoadingInterest ? (
                 <p className="p-8 text-center text-[12px] font-pmedium text-slate-400">Loading...</p>
               ) : clickInterest.length === 0 ? (
                 <p className="p-8 text-center text-[12px] font-pmedium text-slate-400">
                   No clicks recorded yet.
                 </p>
               ) : (
-                <table className="w-full text-left min-w-[640px]">
+                <table className="w-full text-left min-w-[720px]">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-5 py-3">Business</th>
@@ -1540,11 +1712,16 @@ const SignupLeads = () => {
                       <th className="px-5 py-3">Visitors</th>
                       <th className="px-5 py-3">Last clicked</th>
                       <th className="px-5 py-3">Signed up</th>
+                      <th className="px-5 py-3" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100/60">
                     {clickInterest.map((row) => (
-                      <tr key={row.companyId}>
+                      <tr
+                        key={row.companyId}
+                        onClick={() => setSelectedInterest(row)}
+                        className="cursor-pointer transition-colors hover:bg-slate-50/70"
+                      >
                         <td className="px-5 py-3">
                           <a
                             href={buildListingUrl({
@@ -1554,6 +1731,7 @@ const SignupLeads = () => {
                             })}
                             target="_blank"
                             rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-[12px] font-pmedium text-blue-600 hover:underline"
                           >
                             {row.companyName}
@@ -1562,7 +1740,9 @@ const SignupLeads = () => {
                             {[row.city, row.country].filter(Boolean).join(", ")}
                           </p>
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">{row.clicks}</td>
+                        <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">
+                          {row.clicks}
+                        </td>
                         <td className="px-5 py-3 text-[12px] font-pmedium text-slate-800">
                           {row.uniqueVisitors}
                         </td>
@@ -1575,6 +1755,9 @@ const SignupLeads = () => {
                           >
                             {row.signedUps > 0 ? "Yes" : "Not yet"}
                           </span>
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <ChevronRight size={15} className="inline text-slate-300" />
                         </td>
                       </tr>
                     ))}

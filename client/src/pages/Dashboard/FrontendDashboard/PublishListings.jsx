@@ -621,7 +621,7 @@ const PublishListings = () => {
                     <th className="px-5 py-4 whitespace-nowrap">City</th>
                     <th className="px-5 py-4 whitespace-nowrap">Status</th>
                     <th className="px-5 py-4 whitespace-nowrap">Visibility</th>
-                    <th className="px-5 py-4 text-center whitespace-nowrap">Action</th>
+                    <th className="px-5 py-4 text-center whitespace-nowrap sticky right-0 z-10 bg-slate-50/50 border-l border-slate-100/60">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100/60">
@@ -678,7 +678,7 @@ const PublishListings = () => {
                             {item.isPublic ? "Public" : "Private"}
                           </span>
                         </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
+                        <td className="px-5 py-4 whitespace-nowrap sticky right-0 z-10 bg-white border-l border-slate-100/60">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"

@@ -6,9 +6,9 @@ const axios = require("axios");
 const FormData = require("form-data");
 const ExcelJS = require("exceljs");
 const {
-  handleFileUpload,
-  handleFileDelete,
-} = require("../config/cloudinaryConfig");
+  uploadFileToS3,
+  deleteFileFromS3ByUrl,
+} = require("../config/s3config");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -50,22 +50,25 @@ const updateProfile = async (req, res) => {
       user.lastName = trimmedLastName;
     }
 
-    let previousProfilePictureId = null;
+    let previousProfilePictureUrl = null;
     if (newProfilePicture) {
-      previousProfilePictureId = user.profilePicture?.id || null;
-      const base64Image = `data:${newProfilePicture.mimetype};base64,${newProfilePicture.buffer.toString("base64")}`;
-      const uploadResult = await handleFileUpload(
-        base64Image,
-        `master-panel/admin-users/${userId}/profile-picture`,
-      );
+      previousProfilePictureUrl = user.profilePicture?.url || null;
 
-      if (!uploadResult?.public_id || !uploadResult?.secure_url) {
+      const safeFileName =
+        String(newProfilePicture.originalname || "profile-picture")
+          .replace(/[^A-Za-z0-9._-]+/g, "_")
+          .replace(/^_+|_+$/g, "") || "profile-picture";
+      const profilePictureKey = `master-panel/admin-users/${userId}/profile-picture/${Date.now()}_${safeFileName}`;
+
+      const uploadResult = await uploadFileToS3(profilePictureKey, newProfilePicture);
+
+      if (!uploadResult?.id || !uploadResult?.url) {
         return res.status(500).json({ message: "Unable to upload profile photo" });
       }
 
       user.profilePicture = {
-        id: uploadResult.public_id,
-        url: uploadResult.secure_url,
+        id: uploadResult.id,
+        url: uploadResult.url,
       };
     }
 
@@ -80,10 +83,11 @@ const updateProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     if (
-      previousProfilePictureId &&
-      previousProfilePictureId !== updatedUser.profilePicture?.id
+      previousProfilePictureUrl &&
+      previousProfilePictureUrl.includes(".amazonaws.com/") &&
+      previousProfilePictureUrl !== updatedUser.profilePicture?.url
     ) {
-      handleFileDelete(previousProfilePictureId).catch((deleteError) => {
+      deleteFileFromS3ByUrl(previousProfilePictureUrl).catch((deleteError) => {
         console.error("[updateProfile] old photo cleanup error:", deleteError);
       });
     }
@@ -591,6 +595,81 @@ const bulkUploadRestaurantImages = async (req, res) => {
   }
 };
 
+const getRestaurantImageReuploadTargets = async (req, res) => {
+  try {
+    const { data } = await axios.get(`${NOMADS_BASE}/restaurants`);
+    const forGallery = req.path === "/restaurant-images-reupload";
+    const targets = data
+      .filter(({ images }) => !forGallery || (Array.isArray(images) && images.some((image) => image?.url)))
+      .map(({ _id, restaurantName, businessName, country, destination, state, images }) => ({
+        _id, restaurantName, businessName, country, destination, state,
+        ...(forGallery && { images }),
+      }));
+    return res.json(targets);
+  } catch (error) {
+    console.error("[getRestaurantImageReuploadTargets]", error.message);
+    return res.status(502).json({ message: "Could not load restaurants from Nomads." });
+  }
+};
+
+const reuploadRestaurantImages = async (req, res) => {
+  const { restaurantId } = req.body;
+  if (!restaurantId || !req.files?.length) {
+    return res.status(400).json({ message: "Select a restaurant and at least one photo." });
+  }
+
+  const adminKey = process.env.NOMADS_ADMIN_API_KEY;
+  if (!adminKey) {
+    return res.status(503).json({ message: "Restaurant image reupload is not configured." });
+  }
+
+  const form = new FormData();
+  form.append("restaurantId", restaurantId);
+  for (const file of req.files) {
+    form.append("images", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+  }
+
+  try {
+    const { data, status } = await axios.post(
+      `${NOMADS_BASE}/restaurants/reupload-images`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Accept: "application/json",
+          "x-admin-api-key": adminKey,
+        },
+      },
+    );
+    return res.status(status).json(data);
+  } catch (error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+
+    if (!status) {
+      return res.status(502).json({
+        message: "Could not reach the Nomads backend. Check that it is running, then retry.",
+      });
+    }
+    if (status === 404 && (!message || /^404 not found$/i.test(message))) {
+      return res.status(502).json({
+        message: "The Nomads backend is missing the photo retry route. Reload it with the current code, then retry.",
+      });
+    }
+    if (status === 401 || status === 403) {
+      return res.status(502).json({
+        message: "Nomads rejected the Master Panel credentials for photo reupload.",
+      });
+    }
+    return res.status(status).json({
+      message: message || `Nomads returned HTTP ${status} during the photo reupload. Try again.`,
+    });
+  }
+};
+
 const bulkReuploadImages = async (req, res) => {
   try {
     const files = req.files;
@@ -727,6 +806,7 @@ const uploadRestaurantLogo = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: response.data?.message || "Restaurant logo uploaded successfully",
+      cleanupFailed: response.data?.cleanupFailed,
     });
   } catch (err) {
     console.error(
@@ -1531,6 +1611,8 @@ module.exports = {
   bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
+  getRestaurantImageReuploadTargets,
+  reuploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   uploadRestaurantLogo,

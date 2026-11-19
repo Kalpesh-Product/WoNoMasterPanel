@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronUp, ArrowUpRight, Activity } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
-import { MASTER_PANEL_MODULES } from "../../../constants/masterPanelModules";
+import { MASTER_PANEL_MODULES, hasModuleAccess } from "../../../constants/masterPanelModules";
 import useAuth from "../../../hooks/useAuth";
 import AnalyticsCharts, {
   OverviewContent,
@@ -48,7 +48,7 @@ const useFilteredModules = () => {
           ...category,
           submenus: category.submenus
             .filter((submenu) => !submenu.superAdminOnly)
-            .filter((submenu) => allowedModules.includes(submenu.key)),
+            .filter((submenu) => hasModuleAccess(allowedModules, submenu.key)),
         }))
         .filter((category) => category.submenus.length > 0),
     })).filter((module) => module.categories.length > 0);

@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
-import { BriefcaseBusiness, Eye, Mail, Pencil, Phone, Power, Search, Target, Users, X } from "lucide-react";
+import { BriefcaseBusiness, Eye, Loader2, Mail, Pencil, Phone, Power, Search, Target, Users, X } from "lucide-react";
 import { statusPillClass } from "../../../lib/status-pill";
 import { ValueAddsLeadsTableSkeleton } from "../../../components/ui/Skeleton";
+import useLazyRows from "../../../hooks/useLazyRows";
 
 const formatDateLabel = (value) => {
   if (!value) return "--";
@@ -24,6 +25,11 @@ const initials = (value) =>
     .toUpperCase();
 
 const isActiveStatus = (value) => String(value || "Active").toLowerCase() === "active";
+
+const stickyActionHeaderClass =
+  "sticky right-0 z-20 bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
+const stickyActionCellClass =
+  "sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
 
 const normalizeFilterValue = (value) => {
   if (value === null || value === undefined || value === "--") return "";
@@ -104,10 +110,10 @@ const ValueAddsPartnersTable = ({
     );
   }, [columns, dropdownFilters, filters, rows, search]);
 
+  const { visibleRows, hasMore, loadMoreRef } = useLazyRows(filteredRows);
+
   const activeCount = rows.filter((row) => isActiveStatus(row.status)).length;
   const inactiveCount = rows.filter((row) => !isActiveStatus(row.status)).length;
-  const hasDropdownFilters = dropdownFilters.some((filter) => filters[filter.field]);
-  const clearDropdownFilters = () => setFilters({});
 
   if (isLoading) {
     return <ValueAddsLeadsTableSkeleton />;
@@ -142,7 +148,7 @@ const ValueAddsPartnersTable = ({
       </div>
 
       <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-slate-50/50">
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/50">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
             <input
@@ -154,43 +160,33 @@ const ValueAddsPartnersTable = ({
               className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
             />
           </div>
-        </div>
 
-        {dropdownFilters.length ? (
-          <div data-tour="value-adds-partners-filters" className="px-3 sm:px-4 lg:px-5 py-3 border-b border-slate-100/60 flex items-center gap-3 flex-wrap bg-slate-50/50">
-            {dropdownFilters.map((filter) => (
-              <select
-                key={filter.field}
-                value={filters[filter.field] || ""}
-                onChange={(event) =>
-                  setFilters((currentFilters) => ({
-                    ...currentFilters,
-                    [filter.field]: event.target.value,
-                  }))
-                }
-                aria-label={filter.label}
-                className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
-              >
-                <option value="">{filter.placeholder || `All ${filter.label}`}</option>
-                {(filterOptions[filter.field] || []).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ))}
-            {hasDropdownFilters ? (
-              <button
-                type="button"
-                onClick={clearDropdownFilters}
-                className="flex items-center gap-1 px-3 py-2 rounded-lg text-[11px] font-pmedium text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-all"
-              >
-                <X size={13} />
-                Clear filters
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+          {dropdownFilters.length ? (
+            <div data-tour="value-adds-partners-filters" className="flex items-center justify-end gap-2 flex-wrap">
+              {dropdownFilters.map((filter) => (
+                <select
+                  key={filter.field}
+                  value={filters[filter.field] || ""}
+                  onChange={(event) =>
+                    setFilters((currentFilters) => ({
+                      ...currentFilters,
+                      [filter.field]: event.target.value,
+                    }))
+                  }
+                  aria-label={filter.label}
+                  className="min-w-[140px] px-3 py-2 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all"
+                >
+                  <option value="">{filter.placeholder || `All ${filter.label}`}</option>
+                  {(filterOptions[filter.field] || []).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         {isError ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
@@ -204,14 +200,14 @@ const ValueAddsPartnersTable = ({
           </div>
         ) : (
         <div data-tour="value-adds-partners-table" className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
+          <table className="w-full min-w-max text-left border-collapse">
+            <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest whitespace-nowrap border-b border-slate-100/60">
               {exactTableColumns ? (
                 <tr>
                   {exactTableColumns.map((column) => (
                     <th key={column.field} className="px-5 py-4">{column.headerName}</th>
                   ))}
-                  <th className="px-5 py-4 text-center">Action</th>
+                  <th className={`px-5 py-4 text-center ${stickyActionHeaderClass}`}>Action</th>
                 </tr>
               ) : (
                 <tr>
@@ -235,11 +231,11 @@ const ValueAddsPartnersTable = ({
                   ) : null}
                   <th className="px-5 py-4 text-center">Status</th>
                   <th className="px-5 py-4">Last Updated</th>
-                  <th className="px-5 py-4 text-center">Action</th>
+                  <th className={`px-5 py-4 text-center ${stickyActionHeaderClass}`}>Action</th>
                 </tr>
               )}
             </thead>
-            <tbody className="divide-y divide-slate-100/60">
+            <tbody className="divide-y divide-slate-100/60 whitespace-nowrap">
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={tableColumnCount} className="text-center py-20 text-slate-400 font-pmedium">
@@ -247,7 +243,7 @@ const ValueAddsPartnersTable = ({
                   </td>
                 </tr>
               ) : (
-                filteredRows.map((row) => (
+                visibleRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
                     {exactTableColumns ? (
                       <>
@@ -261,7 +257,7 @@ const ValueAddsPartnersTable = ({
                                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
                                   {initials(row[column.field])}
                                 </div>
-                                <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[190px]">
+                                <span className="text-[12px] font-pmedium text-slate-900">
                                   {row[column.field] || "--"}
                                 </span>
                               </div>
@@ -286,7 +282,7 @@ const ValueAddsPartnersTable = ({
                             )}
                           </td>
                         ))}
-                        <td className="px-5 py-4 text-center">
+                        <td className={`px-5 py-4 text-center ${stickyActionCellClass}`}>
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
@@ -334,7 +330,7 @@ const ValueAddsPartnersTable = ({
                             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
                               {initials(row.partnerName)}
                             </div>
-                            <span className="text-[12px] font-pmedium text-slate-900 truncate max-w-[170px]">
+                            <span className="text-[12px] font-pmedium text-slate-900">
                               {row.partnerName || "--"}
                             </span>
                           </div>
@@ -391,7 +387,7 @@ const ValueAddsPartnersTable = ({
                         <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
                           {formatDateLabel(row.lastUpdated)}
                         </td>
-                        <td className="px-5 py-4 text-center">
+                        <td className={`px-5 py-4 text-center ${stickyActionCellClass}`}>
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
@@ -438,6 +434,22 @@ const ValueAddsPartnersTable = ({
               )}
             </tbody>
           </table>
+
+          {filteredRows.length > 0 ? (
+            <div
+              ref={loadMoreRef}
+              className="flex items-center justify-center gap-2 px-5 py-3 border-t border-slate-100/60 bg-slate-50/40 text-[11px] font-pmedium text-slate-500"
+            >
+              {hasMore ? (
+                <>
+                  <Loader2 size={13} className="animate-spin text-slate-400" />
+                  Loading more partners…
+                </>
+              ) : (
+                `Showing ${visibleRows.length} of ${filteredRows.length} partners`
+              )}
+            </div>
+          ) : null}
         </div>
         )}
       </div>

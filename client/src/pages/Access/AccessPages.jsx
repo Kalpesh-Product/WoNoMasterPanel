@@ -86,19 +86,81 @@ const AccessPages = () => {
     if (checked) setDraftIsActive(true);
   };
 
-  const toggleModuleKey = (key) => {
-    setDraftAllowedModules((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
-    );
+  const submenuTabKeys = (submenu) =>
+    (submenu.tabs || []).map((tab) => `${submenu.key}.${tab.key}`);
+
+  // The submenu's own switch is a pure on/off gate, independent of which
+  // tabs are currently checked below it — turning individual tabs off must
+  // never flip this off by itself. "On" means the bare key, or (from older
+  // data) any leftover tab key, is present.
+  const isSubmenuEnabled = (submenu) => {
+    if (draftAllowedModules.includes(submenu.key)) return true;
+    return submenuTabKeys(submenu).some((k) => draftAllowedModules.includes(k));
+  };
+
+  // A tab reads as checked if explicitly granted, or — for a submenu that's
+  // on but has no explicit tab keys yet (either freshly enabled, or an
+  // older bare-key-only grant from before tabs existed) — implicitly, since
+  // "on" defaults to every tab.
+  const isTabGranted = (submenu, tabKey) => {
+    if (draftAllowedModules.includes(tabKey)) return true;
+    const tabKeys = submenuTabKeys(submenu);
+    const hasAnyExplicitTab = tabKeys.some((k) => draftAllowedModules.includes(k));
+    return draftAllowedModules.includes(submenu.key) && !hasAnyExplicitTab;
+  };
+
+  // The submenu's own switch: turning it on grants every tab (so they start
+  // enabled and can then be individually turned off below); turning it off
+  // clears the submenu and every one of its tabs.
+  const setSubmenuFullAccess = (submenu, checked) => {
+    const tabKeys = submenuTabKeys(submenu);
+    setDraftAllowedModules((prev) => {
+      const withoutThis = prev.filter(
+        (k) => k !== submenu.key && !tabKeys.includes(k),
+      );
+      if (!checked) return withoutThis;
+      return [...withoutThis, ...(tabKeys.length ? tabKeys : [submenu.key])];
+    });
+  };
+
+  // Toggling one tab keeps the submenu's own switch exactly as it is (see
+  // isSubmenuEnabled above) — it only ever touches that one tab's key. If
+  // every tab was only implicitly on (an older bare-key-only grant, nothing
+  // explicit yet), this first expands that into explicit keys for every
+  // *other* tab so the bare key still means "on", not "every tab".
+  // shortcut: a user who manually unticks every tab one by one (instead of
+  // using the switch) ends up back at bare-key-only, which reads as "on,
+  // every tab" again — upgrade by storing an explicit sentinel if that ever
+  // matters in practice.
+  const toggleSubmenuTab = (submenu, tabKey, checked) => {
+    setDraftAllowedModules((prev) => {
+      const tabKeys = submenuTabKeys(submenu);
+      const hasAnyExplicitTab = tabKeys.some((k) => prev.includes(k));
+      const base =
+        prev.includes(submenu.key) && !hasAnyExplicitTab
+          ? [...prev, ...tabKeys]
+          : prev;
+      const next = new Set(base);
+      if (checked) next.add(tabKey);
+      else next.delete(tabKey);
+      return [...next];
+    });
   };
 
   const toggleAllInModule = (module, checked) => {
-    const keys = module.submenus.map((s) => s.key);
-    setDraftAllowedModules((prev) =>
-      checked
-        ? [...new Set([...prev, ...keys])]
-        : prev.filter((k) => !keys.includes(k)),
-    );
+    setDraftAllowedModules((prev) => {
+      let next = prev;
+      module.submenus.forEach((submenu) => {
+        const tabKeys = submenuTabKeys(submenu);
+        const withoutThis = next.filter(
+          (k) => k !== submenu.key && !tabKeys.includes(k),
+        );
+        next = checked
+          ? [...withoutThis, ...(tabKeys.length ? tabKeys : [submenu.key])]
+          : withoutThis;
+      });
+      return [...new Set(next)];
+    });
   };
 
   const mutation = useMutation({
@@ -373,9 +435,8 @@ const AccessPages = () => {
                     <div className="flex flex-col gap-3 mt-3">
                       {!isModulesLoading &&
                         moduleCatalog.map((module) => {
-                          const keys = module.submenus.map((s) => s.key);
-                          const allChecked = keys.every((k) =>
-                            draftAllowedModules.includes(k),
+                          const allChecked = module.submenus.every((s) =>
+                            isSubmenuEnabled(s),
                           );
                           return (
                             <div
@@ -403,24 +464,65 @@ const AccessPages = () => {
                                 </label>
                               </div>
                               <div className="divide-y divide-gray-100">
-                                {module.submenus.map((submenu) => (
-                                  <div
-                                    key={submenu.key}
-                                    className="flex items-center justify-between px-4 py-2.5"
-                                  >
-                                    <span className="text-content font-pregular">
-                                      {submenu.label}
-                                    </span>
-                                    <Switch
-                                      checked={draftAllowedModules.includes(
-                                        submenu.key,
-                                      )}
-                                      onChange={() =>
-                                        toggleModuleKey(submenu.key)
-                                      }
-                                    />
-                                  </div>
-                                ))}
+                                {module.submenus.map((submenu) => {
+                                  const isEnabled = isSubmenuEnabled(submenu);
+                                  const allTabsGranted =
+                                    submenu.tabs?.length > 0 &&
+                                    submenu.tabs.every((tab) =>
+                                      isTabGranted(submenu, `${submenu.key}.${tab.key}`),
+                                    );
+                                  return (
+                                    <div key={submenu.key}>
+                                      <div className="flex items-center justify-between px-4 py-2.5">
+                                        <span className="text-content font-pregular">
+                                          {submenu.label}
+                                          {submenu.tabs?.length && allTabsGranted ? (
+                                            <span className="ml-1.5 text-[10px] font-pregular text-gray-400">
+                                              (all tabs)
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                        <Switch
+                                          checked={isEnabled}
+                                          onChange={(e) =>
+                                            setSubmenuFullAccess(
+                                              submenu,
+                                              e.target.checked,
+                                            )
+                                          }
+                                        />
+                                      </div>
+                                      {submenu.tabs?.length ? (
+                                        <div className="divide-y divide-gray-50 bg-gray-50/60">
+                                          {submenu.tabs.map((tab) => {
+                                            const tabKey = `${submenu.key}.${tab.key}`;
+                                            return (
+                                              <div
+                                                key={tabKey}
+                                                className="flex items-center justify-between pl-8 pr-4 py-2"
+                                              >
+                                                <span className="text-[11px] font-pregular text-gray-600">
+                                                  {tab.label}
+                                                </span>
+                                                <Switch
+                                                  size="small"
+                                                  checked={isTabGranted(submenu, tabKey)}
+                                                  onChange={(e) =>
+                                                    toggleSubmenuTab(
+                                                      submenu,
+                                                      tabKey,
+                                                      e.target.checked,
+                                                    )
+                                                  }
+                                                />
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
