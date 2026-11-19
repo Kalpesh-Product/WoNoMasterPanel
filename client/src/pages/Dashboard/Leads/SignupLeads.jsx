@@ -533,8 +533,17 @@ const SignupLeads = () => {
     closeInviteModal();
   };
 
-  const handleStatusChange = (leadId, status) => {
-    updateMutation.mutate({ hostUserId: leadId, status: status.toLowerCase() });
+  const handleStatusChange = (lead, status) => {
+    // A joined user already has an active Host Panel account — never allow
+    // their status to be rewritten from this table.
+    if (getInviteStatus(lead) === "joined") {
+      toast.error("Status cannot be changed once the user has joined.");
+      return;
+    }
+    updateMutation.mutate({
+      hostUserId: lead._id,
+      status: status.toLowerCase(),
+    });
   };
 
   const handlePlanChange = (lead, plan) => {
@@ -909,19 +918,28 @@ const SignupLeads = () => {
                               data-tour="signup-leads-status-column"
                               className="px-5 py-4"
                             >
-                              <select
-                                value={statusVal}
-                                onChange={(e) =>
-                                  handleStatusChange(lead._id, e.target.value)
-                                }
-                                className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${statusPillClass(statusVal)}`}
-                              >
-                                {STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {statusLabel(s)}
-                                  </option>
-                                ))}
-                              </select>
+                              {hasJoined ? (
+                                <span
+                                  title="Status is locked once the user has joined"
+                                  className={statusPillClass(statusVal)}
+                                >
+                                  {statusLabel(statusVal)}
+                                </span>
+                              ) : (
+                                <select
+                                  value={statusVal}
+                                  onChange={(e) =>
+                                    handleStatusChange(lead, e.target.value)
+                                  }
+                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${statusPillClass(statusVal)}`}
+                                >
+                                  {STATUSES.map((s) => (
+                                    <option key={s} value={s}>
+                                      {statusLabel(s)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </td>
                             <td
                               data-tour="signup-leads-invite-status-column"

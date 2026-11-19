@@ -105,7 +105,7 @@ const PAGE_TOURS = [
   },
   {
     id: "signup-leads",
-    version: 4,
+    version: 5,
     title: "Signup Leads",
     description:
       "Companies that signed up interest on the WoNo website land here. Review each lead, invite them to the Host Panel and track payments.",
@@ -150,7 +150,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="signup-leads-status-column"]',
         title: "Status",
         description:
-          "Move a lead through Pending, Contacted, Closed or Rejected as you work it. A lead must be Closed before it can be invited.",
+          "Move a lead through Pending, Contacted, Closed or Rejected as you work it. A lead must be Closed before it can be invited — once joined, it shows as read-only text.",
         side: "bottom",
       },
       {
