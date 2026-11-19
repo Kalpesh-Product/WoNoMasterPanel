@@ -218,7 +218,6 @@ import {
   CompanySetupPartnersTable,
   ConsultationPartnersTable,
   WorkationPartnersTable,
-  BecomeAContributorPartnersTable,
 } from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import Contributions from "../pages/Dashboard/Contributions/Contributions";
@@ -227,7 +226,7 @@ import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashbo
 import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
 import WonoDestinationExecutiveDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationExecutiveDashboard";
 import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationCategoryDashboard";
-import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
+import DestinationsDataEditRouter from "../pages/Dashboard/FrontendDashboard/DestinationsDataEditRouter";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import WorldRankingWeightsV2 from "../pages/Dashboard/FrontendDashboard/WorldRankingWeightsV2";
@@ -604,10 +603,6 @@ export const routes = createBrowserRouter([
                         path: "workation/edit/:partnerId",
                         element: <EditWorkationPartner />,
                       },
-                      {
-                        path: "become-a-contributor",
-                        element: <BecomeAContributorPartnersTable />,
-                      },
                     ],
                   },
                   {
@@ -638,11 +633,11 @@ export const routes = createBrowserRouter([
                           },
                           {
                             path: "add",
-                            element: <EditBlogNews />,
+                            element: <DestinationsDataEditRouter />,
                           },
                           {
                             path: "edit",
-                            element: <EditBlogNews />,
+                            element: <DestinationsDataEditRouter />,
                           },
                         ],
                       },

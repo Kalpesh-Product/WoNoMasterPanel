@@ -105,7 +105,7 @@ const PAGE_TOURS = [
   },
   {
     id: "signup-leads",
-    version: 2,
+    version: 4,
     title: "Signup Leads",
     description:
       "Companies that signed up interest on the WoNo website land here. Review each lead, invite them to the Host Panel and track payments.",
@@ -121,16 +121,16 @@ const PAGE_TOURS = [
         side: "bottom",
       },
       {
-        selector: '[data-tour="signup-leads-status-filter"]',
-        title: "Filter by status",
-        description:
-          "Narrow the list to Pending, Contacted, Closed or Rejected leads, or pick All to see everything.",
-      },
-      {
         selector: '[data-tour="signup-leads-search"]',
         title: "Find a lead",
         description:
           "Type a name, email or company to narrow the list as you type.",
+      },
+      {
+        selector: '[data-tour="signup-leads-status-filter"]',
+        title: "Filter by status",
+        description:
+          "Use the All status dropdown beside the search bar to narrow the list to Pending, Contacted, Approved or Rejected leads.",
       },
       {
         selector: '[data-tour="signup-leads-table"]',
@@ -143,7 +143,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="signup-leads-plan-column"]',
         title: "Plan",
         description:
-          "The plan the lead chose or requested. Change it here if the company wants a different plan before you invite them.",
+          "The plan the lead chose or requested. Change it here if the company wants a different plan before joining — once joined, it shows as read-only text.",
         side: "bottom",
       },
       {
@@ -1309,10 +1309,10 @@ const PAGE_TOURS = [
   },
   {
     id: "value-adds-partners",
-    version: 3,
+    version: 4,
     title: "Value-Adds Partners",
     description:
-      "The partner network that delivers value-added services — visa consultants, activation agents, setup firms and contributors.",
+      "The partner network that delivers value-added services — visa consultants, activation agents and setup firms.",
     replayHint: true,
     recordsDescription:
       "Each tab lists its partner pool in a searchable table with assignment and edit actions.",
@@ -1340,7 +1340,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="value-adds-partners-filters"]',
         title: "Narrow the list",
         description:
-          "Where available, filter partners by Continent, Country or State — Clear filters resets them.",
+          "Where available, filter partners by Continent, Country or State from the controls beside the search bar.",
       },
       {
         selector: '[data-tour="value-adds-partners-table"]',

@@ -6,9 +6,9 @@ const axios = require("axios");
 const FormData = require("form-data");
 const ExcelJS = require("exceljs");
 const {
-  handleFileUpload,
-  handleFileDelete,
-} = require("../config/cloudinaryConfig");
+  uploadFileToS3,
+  deleteFileFromS3ByUrl,
+} = require("../config/s3config");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -50,22 +50,25 @@ const updateProfile = async (req, res) => {
       user.lastName = trimmedLastName;
     }
 
-    let previousProfilePictureId = null;
+    let previousProfilePictureUrl = null;
     if (newProfilePicture) {
-      previousProfilePictureId = user.profilePicture?.id || null;
-      const base64Image = `data:${newProfilePicture.mimetype};base64,${newProfilePicture.buffer.toString("base64")}`;
-      const uploadResult = await handleFileUpload(
-        base64Image,
-        `master-panel/admin-users/${userId}/profile-picture`,
-      );
+      previousProfilePictureUrl = user.profilePicture?.url || null;
 
-      if (!uploadResult?.public_id || !uploadResult?.secure_url) {
+      const safeFileName =
+        String(newProfilePicture.originalname || "profile-picture")
+          .replace(/[^A-Za-z0-9._-]+/g, "_")
+          .replace(/^_+|_+$/g, "") || "profile-picture";
+      const profilePictureKey = `master-panel/admin-users/${userId}/profile-picture/${Date.now()}_${safeFileName}`;
+
+      const uploadResult = await uploadFileToS3(profilePictureKey, newProfilePicture);
+
+      if (!uploadResult?.id || !uploadResult?.url) {
         return res.status(500).json({ message: "Unable to upload profile photo" });
       }
 
       user.profilePicture = {
-        id: uploadResult.public_id,
-        url: uploadResult.secure_url,
+        id: uploadResult.id,
+        url: uploadResult.url,
       };
     }
 
@@ -80,10 +83,11 @@ const updateProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     if (
-      previousProfilePictureId &&
-      previousProfilePictureId !== updatedUser.profilePicture?.id
+      previousProfilePictureUrl &&
+      previousProfilePictureUrl.includes(".amazonaws.com/") &&
+      previousProfilePictureUrl !== updatedUser.profilePicture?.url
     ) {
-      handleFileDelete(previousProfilePictureId).catch((deleteError) => {
+      deleteFileFromS3ByUrl(previousProfilePictureUrl).catch((deleteError) => {
         console.error("[updateProfile] old photo cleanup error:", deleteError);
       });
     }

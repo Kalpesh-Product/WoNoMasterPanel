@@ -13,10 +13,23 @@ const Sidebar = ({ onCloseDrawer }) => {
   const [expandedModules, setExpandedModules] = useState(new Set([0]));
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const [moduleSearch, setModuleSearch] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { auth } = useAuth();
 
   const isSuperAdmin = auth?.user?.isSuperAdmin;
   const allowedModules = auth?.user?.allowedModules || [];
+
+  // Browsers (including Chrome's password manager) autofill any usable text
+  // input when credentials are filled elsewhere on the page. Keeping this box
+  // read-only unless the user is actually typing in it makes it ineligible for
+  // autofill altogether; the focus check also rejects injected values.
+  const handleModuleSearchChange = (event) => {
+    if (!isSearchFocused || document.activeElement !== event.currentTarget) {
+      event.target.value = moduleSearch;
+      return;
+    }
+    setModuleSearch(event.target.value);
+  };
 
   const navigateFromSidebar = (route) => {
     navigate(route, { flushSync: true });
@@ -116,13 +129,16 @@ const Sidebar = ({ onCloseDrawer }) => {
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
             />
             <input
-              type="text"
+              type="search"
               value={moduleSearch}
-              onChange={(e) => setModuleSearch(e.target.value)}
+              onChange={handleModuleSearchChange}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              readOnly={!isSearchFocused}
               placeholder="Search modules"
               aria-label="Search modules"
               autoComplete="off"
-              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-pmedium text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-pmedium text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
             />
             {moduleSearch ? (
               <button

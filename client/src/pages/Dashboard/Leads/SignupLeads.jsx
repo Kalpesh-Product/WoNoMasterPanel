@@ -126,6 +126,11 @@ const inviteLabels = {
   joined: "Joined",
 };
 
+const stickyActionHeaderClass =
+  "sticky right-0 z-20 bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
+const stickyActionCellClass =
+  "sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.25)]";
+
 const SignupLeads = () => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
@@ -491,7 +496,10 @@ const SignupLeads = () => {
     return true;
   });
   const hasExtraFilters =
-    planFilter !== "All" || inviteFilter !== "All" || dateFilter !== "All";
+    statusFilter !== "All" ||
+    planFilter !== "All" ||
+    inviteFilter !== "All" ||
+    dateFilter !== "All";
 
   const closeInviteModal = () => {
     setInviteLead(null);
@@ -525,9 +533,15 @@ const SignupLeads = () => {
     updateMutation.mutate({ hostUserId: leadId, status: status.toLowerCase() });
   };
 
-  const handlePlanChange = (leadId, plan) => {
+  const handlePlanChange = (lead, plan) => {
+    // A joined user already has an active Host Panel account and plan — never
+    // allow their plan to be rewritten from this table.
+    if (getInviteStatus(lead) === "joined") {
+      toast.error("Plan cannot be changed once the user has joined.");
+      return;
+    }
     updateMutation.mutate({
-      hostUserId: leadId,
+      hostUserId: lead._id,
       goals: normalizePlanValue(plan),
     });
   };
@@ -677,21 +691,31 @@ const SignupLeads = () => {
               })}
             </div>
             <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-              <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between bg-slate-50/50">
-                <div data-tour="signup-leads-status-filter" className="flex min-w-0 flex-wrap gap-1.5 overflow-x-auto">
-                  {["All", ...STATUSES].map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setStatusFilter(s)}
-                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${statusFilter === s ? "bg-[#2563EB] text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}
-                    >
-                      {statusLabel(s)}
-                    </button>
-                  ))}
+              <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/50">
+                <div data-tour="signup-leads-search" className="relative flex-1 min-w-[180px]">
+                  <Search
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={15}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search name, email, company..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                  />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+                <div data-tour="signup-leads-status-filter" className="flex items-center justify-end gap-2 flex-wrap">
                   {[
+                    {
+                      key: "status",
+                      value: statusFilter,
+                      set: setStatusFilter,
+                      options: [
+                        ["All", "All status"],
+                        ...STATUSES.map((s) => [s, statusLabel(s)]),
+                      ],
+                    },
                     {
                       key: "plan",
                       value: planFilter,
@@ -739,6 +763,7 @@ const SignupLeads = () => {
                     <button
                       type="button"
                       onClick={() => {
+                        setStatusFilter("All");
                         setPlanFilter("All");
                         setInviteFilter("All");
                         setDateFilter("All");
@@ -748,19 +773,6 @@ const SignupLeads = () => {
                       Clear
                     </button>
                   )}
-                </div>
-                <div data-tour="signup-leads-search" className="relative w-full shrink-0 lg:w-72">
-                  <Search
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search name, email, company..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                  />
                 </div>
               </div>
               {visibleLeads.length === 0 ? (
@@ -790,7 +802,7 @@ const SignupLeads = () => {
                         <th className="px-5 py-4 whitespace-nowrap">Invite</th>
                         <th className="px-5 py-4 whitespace-nowrap">Payment Status</th>
                         <th className="px-5 py-4 whitespace-nowrap">Payment Link</th>
-                        <th className="px-5 py-4 whitespace-nowrap text-center">Action</th>
+                        <th className={`px-5 py-4 whitespace-nowrap text-center ${stickyActionHeaderClass}`}>Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100/60">
@@ -801,6 +813,7 @@ const SignupLeads = () => {
                         ).toLowerCase();
                         const planVal = normalizePlanValue(lead.goals);
                         const paymentInfo = getPaymentInfo(lead);
+                        const hasJoined = inviteStatus === "joined";
                         const canInvite =
                           statusVal === "closed" &&
                           !["registered", "joined"].includes(inviteStatus) &&
@@ -847,19 +860,28 @@ const SignupLeads = () => {
                               data-tour="signup-leads-plan-column"
                               className="px-5 py-4"
                             >
-                              <select
-                                value={planVal}
-                                onChange={(e) =>
-                                  handlePlanChange(lead._id, e.target.value)
-                                }
-                                className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider cursor-pointer outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
-                              >
-                                {PLANS.map((p) => (
-                                  <option key={p} value={p}>
-                                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                                  </option>
-                                ))}
-                              </select>
+                              {hasJoined ? (
+                                <span
+                                  title="Plan is locked once the user has joined"
+                                  className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                                >
+                                  {planVal.charAt(0).toUpperCase() + planVal.slice(1)}
+                                </span>
+                              ) : (
+                                <select
+                                  value={planVal}
+                                  onChange={(e) =>
+                                    handlePlanChange(lead, e.target.value)
+                                  }
+                                  className={`rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none focus:ring-2 focus:ring-[#2563EB]/20 cursor-pointer ${planTones[planVal] || "bg-slate-50 text-slate-600 border-slate-200"}`}
+                                >
+                                  {PLANS.map((p) => (
+                                    <option key={p} value={p}>
+                                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                             </td>
                             <td className="px-5 py-4 whitespace-nowrap">
                               {planVal === "basic" ? (
@@ -986,7 +1008,7 @@ const SignupLeads = () => {
                                 </button>
                               )}
                             </td>
-                            <td className="px-5 py-4 text-center">
+                            <td className={`px-5 py-4 text-center ${stickyActionCellClass}`}>
                               <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"

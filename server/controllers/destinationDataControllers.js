@@ -30,7 +30,6 @@ const destinationRefreshPromises = {
 };
 const nomadsCompanyListingsCache = { items: null, fetchedAt: 0 };
 let nomadsCompanyListingsRefreshPromise = null;
-
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -185,6 +184,14 @@ const fetchNomadsRows = async (path) => {
   }
 };
 
+// `/company/companies` answers in one fast call — that's what keeps this
+// tab loading quickly, same spirit as the pre-aggregated blogs/news
+// endpoints below. It does drop inactive listings and "privatestay" at the
+// DB level, which is why its counts run a bit under Publish Listings'
+// (intentional — see the Public Listings card, which only ever tracked
+// these 5 active listing types). `fetchAllNomadListings` — the full
+// per-company crawl, 30-50s cold — is only a fallback for when that
+// endpoint comes back empty, never the primary path.
 const refreshNomadsCompanyListingsCache = () => {
   if (!nomadsCompanyListingsRefreshPromise) {
     nomadsCompanyListingsRefreshPromise = (async () => {
@@ -490,9 +497,20 @@ const getDestinationListingDetails = async (req, res) => {
     return String(left.companyTitle || "").localeCompare(String(right.companyTitle || ""));
   });
 
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const start = (page - 1) * limit;
+  const total = filtered.length;
+
   return res.status(200).json({
-    items: filtered.map((item, index) => ({ ...item, srNo: index + 1 })),
-    total: filtered.length,
+    items: filtered.slice(start, start + limit).map((item, index) => ({
+      ...item,
+      srNo: start + index + 1,
+    })),
+    page,
+    limit,
+    total,
+    hasMore: page * limit < total,
   });
 };
 
@@ -510,14 +528,17 @@ const getDestinationsData = async (req, res, next) => {
     const scopedItems = activeTab === "listings"
       ? allItems.filter(hasListingData)
       : contentItems;
+    const continent = normalizeSearchValue(req.query.continent);
     const country = normalizeSearchValue(req.query.country);
     const state = normalizeSearchValue(req.query.state);
-    const city = normalizeSearchValue(req.query.city);
     const search = normalizeSearchValue(req.query.search);
 
-    const countryScoped = country
-      ? scopedItems.filter((item) => normalizeSearchValue(item.country) === country)
+    const continentScoped = continent
+      ? scopedItems.filter((item) => normalizeSearchValue(item.continent) === continent)
       : scopedItems;
+    const countryScoped = country
+      ? continentScoped.filter((item) => normalizeSearchValue(item.country) === country)
+      : continentScoped;
     const stateScoped = state
       ? countryScoped.filter((item) =>
           item.states.some((value) => normalizeSearchValue(value) === state),
@@ -525,11 +546,6 @@ const getDestinationsData = async (req, res, next) => {
       : countryScoped;
 
     let filtered = stateScoped;
-    if (city) {
-      filtered = filtered.filter((item) =>
-        item.cities.some((value) => normalizeSearchValue(value) === city),
-      );
-    }
     if (search) {
       filtered = filtered.filter((item) =>
         [
@@ -547,14 +563,14 @@ const getDestinationsData = async (req, res, next) => {
     const start = (page - 1) * limit;
     const total = filtered.length;
 
+    const continents = Array.from(
+      new Set(scopedItems.map((item) => item.continent).filter((value) => value && value !== "-")),
+    ).sort((a, b) => a.localeCompare(b));
     const countries = Array.from(
-      new Set(scopedItems.map((item) => item.country).filter(Boolean)),
+      new Set(continentScoped.map((item) => item.country).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
     const states = Array.from(
       new Set(countryScoped.flatMap((item) => item.states).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b));
-    const cities = Array.from(
-      new Set(stateScoped.flatMap((item) => item.cities).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
 
     return res.status(200).json({
@@ -570,7 +586,7 @@ const getDestinationsData = async (req, res, next) => {
         destinations: contentItems.length,
         ...summarize(scopedItems),
       },
-      filterOptions: { countries, states, cities },
+      filterOptions: { continents, countries, states },
     });
   } catch (error) {
     next(error);
