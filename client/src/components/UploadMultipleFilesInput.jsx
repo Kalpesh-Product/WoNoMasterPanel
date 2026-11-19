@@ -22,6 +22,7 @@ const UploadMultipleFilesInput = ({
   // row. "spacious" is a bigger, full-width, icon-led dropzone — opt in
   // per call site so this shared component's other 10+ usages are untouched.
   variant = "compact",
+  lockPickerAtLimit = false,
 }) => {
   const fileInputRef = useRef(null);
   const [openModal, setOpenModal] = useState(false);
@@ -216,7 +217,7 @@ const UploadMultipleFilesInput = ({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          htmlFor={id ?? "multiple-file-upload"}
+          htmlFor={lockPickerAtLimit && reachedLimit ? undefined : (id ?? "multiple-file-upload")}
           className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-7 text-center transition ${
             disabled || reachedLimit
               ? "cursor-not-allowed border-slate-200 bg-slate-100/60 opacity-60"

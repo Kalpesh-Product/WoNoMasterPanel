@@ -591,6 +591,81 @@ const bulkUploadRestaurantImages = async (req, res) => {
   }
 };
 
+const getRestaurantImageReuploadTargets = async (req, res) => {
+  try {
+    const { data } = await axios.get(`${NOMADS_BASE}/restaurants`);
+    const forGallery = req.path === "/restaurant-images-reupload";
+    const targets = data
+      .filter(({ images }) => !forGallery || (Array.isArray(images) && images.some((image) => image?.url)))
+      .map(({ _id, restaurantName, businessName, country, destination, state, images }) => ({
+        _id, restaurantName, businessName, country, destination, state,
+        ...(forGallery && { images }),
+      }));
+    return res.json(targets);
+  } catch (error) {
+    console.error("[getRestaurantImageReuploadTargets]", error.message);
+    return res.status(502).json({ message: "Could not load restaurants from Nomads." });
+  }
+};
+
+const reuploadRestaurantImages = async (req, res) => {
+  const { restaurantId } = req.body;
+  if (!restaurantId || !req.files?.length) {
+    return res.status(400).json({ message: "Select a restaurant and at least one photo." });
+  }
+
+  const adminKey = process.env.NOMADS_ADMIN_API_KEY;
+  if (!adminKey) {
+    return res.status(503).json({ message: "Restaurant image reupload is not configured." });
+  }
+
+  const form = new FormData();
+  form.append("restaurantId", restaurantId);
+  for (const file of req.files) {
+    form.append("images", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+  }
+
+  try {
+    const { data, status } = await axios.post(
+      `${NOMADS_BASE}/restaurants/reupload-images`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Accept: "application/json",
+          "x-admin-api-key": adminKey,
+        },
+      },
+    );
+    return res.status(status).json(data);
+  } catch (error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+
+    if (!status) {
+      return res.status(502).json({
+        message: "Could not reach the Nomads backend. Check that it is running, then retry.",
+      });
+    }
+    if (status === 404 && (!message || /^404 not found$/i.test(message))) {
+      return res.status(502).json({
+        message: "The Nomads backend is missing the photo retry route. Reload it with the current code, then retry.",
+      });
+    }
+    if (status === 401 || status === 403) {
+      return res.status(502).json({
+        message: "Nomads rejected the Master Panel credentials for photo reupload.",
+      });
+    }
+    return res.status(status).json({
+      message: message || `Nomads returned HTTP ${status} during the photo reupload. Try again.`,
+    });
+  }
+};
+
 const bulkReuploadImages = async (req, res) => {
   try {
     const files = req.files;
@@ -727,6 +802,7 @@ const uploadRestaurantLogo = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: response.data?.message || "Restaurant logo uploaded successfully",
+      cleanupFailed: response.data?.cleanupFailed,
     });
   } catch (err) {
     console.error(
@@ -1531,6 +1607,8 @@ module.exports = {
   bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
+  getRestaurantImageReuploadTargets,
+  reuploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   uploadRestaurantLogo,
