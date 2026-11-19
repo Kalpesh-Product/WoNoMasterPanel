@@ -204,11 +204,11 @@ const PAGE_TOURS = [
   },
   {
     id: "all-leads",
-    version: 7,
+    version: 8,
     skipIntro: true,
     title: "All Leads",
     description:
-      "Four lead queues in one place — product enquiries, partner contacts, collaboration requests and job applications. All Enquiry carries the full Master workflow, from status tracking through to escalating closed leads to the Host Panel; the other tabs are for review.",
+      "Five lead queues in one place — product enquiries, partner contacts, collaboration requests, job applications and content removal requests. All Enquiry carries the full Master workflow, from status tracking through to escalating closed leads to the Host Panel; the other tabs are for review.",
     replayHint: true,
     recordsDescription:
       "Leads load in a searchable, filterable table. Open a row's actions to review details, update its status or escalate it.",
@@ -219,9 +219,9 @@ const PAGE_TOURS = [
     steps: [
       {
         selector: '[data-tour="tab-layout-heading"]',
-        title: "Four lead sources",
+        title: "Five lead sources",
         description:
-          "All Enquiry collects product enquiries, All POC Contact lists partner contact submissions, Connect With Us holds collaboration requests and Job Applications tracks applicants.",
+          "All Enquiry collects product enquiries, All POC Contact lists partner contact submissions, Connect With Us holds collaboration requests, Job Applications tracks applicants and Content Removal lists takedown requests.",
       },
       {
         selector: '[data-tour="tab-layout-tabs"]',
@@ -315,7 +315,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -359,7 +359,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -403,7 +403,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="tab-layout-tabs"]',
         title: "Switch lead queues",
         description:
-          "Move between All Enquiry, POC Contact, Connect With Us and Job Applications from here.",
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
         side: "bottom",
       },
       {
@@ -427,6 +427,57 @@ const PAGE_TOURS = [
       },
     ],
     matches: startsWith("/dashboard/all-leads/job-applications"),
+  },
+  {
+    id: "all-leads-content-removal",
+    version: 1,
+    skipIntro: true,
+    title: "Content Use & Removal",
+    description:
+      "Content modification and takedown requests submitted from the Nomad and Host sites.",
+    replayHint: true,
+    steps: [
+      {
+        selector: '[data-tour="tab-layout-heading"]',
+        title: "A separate review queue",
+        description:
+          "This tab lists removal requests on their own — no Master workflow or escalation here, that's specific to All Enquiry.",
+      },
+      {
+        selector: '[data-tour="tab-layout-tabs"]',
+        title: "Switch lead queues",
+        description:
+          "Move between All Enquiry, POC Contact, Connect With Us, Job Applications and Content Removal from here.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="content-removal-quick-stats"]',
+        title: "Quick stats",
+        description:
+          "Total requests, the Nomad/Host split and how many currently match your search.",
+        side: "bottom",
+      },
+      {
+        selector: '[data-tour="content-removal-search"]',
+        title: "Find a request",
+        description: "Search by contact name, company, email or requested URL.",
+      },
+      {
+        selector: '[data-tour="content-removal-table"]',
+        title: "The full list",
+        description:
+          "One row per request, with the organization, requester, every URL submitted and the source site.",
+        side: "top",
+      },
+      {
+        selector: '[data-tour="content-removal-action-view"]',
+        title: "View details",
+        description:
+          "Opens the full request — all requested URLs plus the contact details needed to follow up.",
+        side: "left",
+      },
+    ],
+    matches: startsWith("/dashboard/all-leads/content-removal"),
   },
   {
     id: "value-adds-leads",
