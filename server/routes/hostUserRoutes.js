@@ -18,6 +18,7 @@ const {
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
   updateWorkspaceEnabledModules,
+  updateWorkspaceVerticals,
   syncWorkspaceDepartmentModules,
 } = require("../controllers/hostUserControllers");
 
@@ -39,6 +40,7 @@ router.patch("/workspace/:workspaceId/bulk-account-status", verifyJwt, updateWor
 router.patch("/:memberId/account-status", verifyJwt, updateHostUserAccountStatus);
 router.patch("/:memberId/workspace-access", verifyJwt, updateMemberWorkspaceAccess);
 router.patch("/workspace/:workspaceId/enabled-modules", verifyJwt, updateWorkspaceEnabledModules);
+router.patch("/workspace/:workspaceId/verticals", verifyJwt, updateWorkspaceVerticals);
 router.post("/workspace/sync-department-modules", verifyJwt, syncWorkspaceDepartmentModules);
 
 module.exports = router;
