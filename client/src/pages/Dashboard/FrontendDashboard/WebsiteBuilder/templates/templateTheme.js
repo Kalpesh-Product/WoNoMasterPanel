@@ -36,6 +36,7 @@ export const THEME_DEFAULTS = {
     wayfarer: { bg: "#f3fbfa", text: "#0c2a2e", accent: "#f26b3a", surfaceUp: true },
     travigo: { bg: "#f5f3ed", text: "#111111", accent: "#111111", surfaceUp: true },
     lodge: { bg: "#ffffff", text: "#1c1f21", accent: "#7fa388", surfaceUp: true },
+    orchard: { bg: "#fafaf9", text: "#6e6b68", accent: "#353b41", surfaceUp: true },
     "cali-hostel": { bg: "#f2eadb", text: "#171711", accent: "#e86d43", surfaceUp: true },
     haven: { bg: "#f4f1ea", text: "#26312b", accent: "#5b7f6a", surfaceUp: true },
     camelia: { bg: "#f6f3ec", text: "#2b2a26", accent: "#8a9a86", surfaceUp: true },
