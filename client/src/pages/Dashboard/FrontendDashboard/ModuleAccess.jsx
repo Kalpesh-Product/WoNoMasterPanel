@@ -1,43 +1,30 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
   Checkbox,
-  Chip,
   FormControlLabel,
   IconButton,
-  MenuItem,
   Modal,
-  Paper,
-  Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
+  Popover,
   Tooltip,
 } from "@mui/material";
 import { useLocation, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import BusinessIcon from "@mui/icons-material/Business";
 import CloseIcon from "@mui/icons-material/Close";
-import GroupsIcon from "@mui/icons-material/Groups";
 import SaveIcon from "@mui/icons-material/Save";
 import SearchIcon from "@mui/icons-material/Search";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import SecurityIcon from "@mui/icons-material/Security";
 import CircularProgress from "@mui/material/CircularProgress";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import CheckIcon from "@mui/icons-material/Check";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LockIcon from "@mui/icons-material/Lock";
-import LockOpenIcon from "@mui/icons-material/LockOpen";
-import FolderIcon from "@mui/icons-material/Folder";
-import DescriptionIcon from "@mui/icons-material/Description";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import AgTable from "../../../components/AgTable";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
+import { STATUS_PILL_BASE, statusPillClass } from "../../../lib/status-pill";
+import PageFrame from "../../../components/Pages/PageFrame";
 
 // This screen no longer keeps its own hand-built module tree. The rendered
 // tree (`activeModuleSections`, below) comes straight from each workspace's
@@ -167,6 +154,41 @@ const getWorkspaceVerticalKeys = (businessTypes = []) => {
     if (value === "hostel" || value === "hostels") keys.add("hostel");
   });
   return keys;
+};
+
+// Employee records only carry a free-text `designation`, so the role filters
+// and pills are derived from it. This is presentation-only — it never changes
+// the stored grant or the founder check used by the access editor.
+const ROLE_PILL_CLASSES = {
+  Founder: "border-violet-200 bg-violet-50 text-violet-700",
+  Staff: "border-slate-200 bg-slate-100 text-slate-600",
+  Finance: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Reception: "border-sky-200 bg-sky-50 text-sky-700",
+  Sales: "border-amber-200 bg-amber-50 text-amber-700",
+  IT: "border-indigo-200 bg-indigo-50 text-indigo-700",
+};
+
+const getMemberRoleCategory = (designation = "") => {
+  const value = String(designation || "").trim().toLowerCase();
+  if (value.includes("founder")) return "Founder";
+  if (/(finance|account|billing|bookkeeper)/.test(value)) return "Finance";
+  if (/(reception|front desk|front office)/.test(value)) return "Reception";
+  if (/(sales|business development|marketing)/.test(value)) return "Sales";
+  if (/\bit\b|tech|developer|engineer|support/.test(value)) return "IT";
+  return "Staff";
+};
+
+const getMemberStatus = (member) => {
+  if (member?.isDeleted) return "Deleted";
+  return member?.isActive ? "Active" : "Inactive";
+};
+
+const getMemberAccessCount = (member, workspaceId, allowFallback) => {
+  const access = getWorkspaceAccessForMember(member, workspaceId, { allowFallback });
+  const granted = Array.isArray(access?.grantedModules) ? access.grantedModules : [];
+  if (granted.length) return granted.length;
+  const moduleAccess = access?.moduleAccess || {};
+  return Object.values(moduleAccess).filter(Boolean).length;
 };
 
 const getPlanModuleIds = (tier, businessTypes = []) => {
@@ -651,8 +673,54 @@ const countSubtreeAccess = (node, pathParts, isPathEnabled, treeState) => {
   );
 };
 
+// A "category" in the modal is a top-level section from the workspace's own
+// module tree. Summarising its leaves lets the category card show a real
+// enabled count and drive its master switch without flattening away nested
+// sub-permissions.
+const getGroupAccessSummary = (group, treeNodes, isPathEnabled, treeState) => {
+  const children = Array.isArray(group?.children) ? group.children : [];
+  return children.reduce(
+    (acc, module) => {
+      const pathParts = [String(module?.sectionName || group?.name || "").trim(), module.name];
+      const node = findNodeByPath(treeNodes, pathParts);
+      if (!node) return acc;
+      const summary = countSubtreeAccess(node, pathParts, isPathEnabled, treeState);
+      return {
+        total: acc.total + summary.total,
+        enabled: acc.enabled + summary.enabled,
+      };
+    },
+    { total: 0, enabled: 0 },
+  );
+};
+
+// Same switch language as the HostPanel access dialog: 44x24 track, white knob.
+const ToggleSwitch = ({ checked, disabled = false, onChange, label = "Toggle" }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    disabled={disabled}
+    onClick={(event) => {
+      event.stopPropagation();
+      onChange?.(!checked);
+    }}
+    className={`relative h-6 w-11 flex-shrink-0 rounded-full transition-colors ${
+      checked ? "bg-[#2563EB]" : "bg-slate-300"
+    } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+  >
+    <span
+      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${
+        checked ? "left-[22px]" : "left-0.5"
+      }`}
+    />
+  </button>
+);
+
 const TreeNodeCard = ({
   node,
+  parentLabel,
   pathParts,
   level,
   treeState,
@@ -687,6 +755,8 @@ const TreeNodeCard = ({
         ? "Founders always get everything the workspace has enabled — adjust access at the workspace level instead."
         : undefined;
 
+  const subtitle = node.sectionName || parentLabel || "";
+
   return (
     <div>
       <Tooltip
@@ -696,75 +766,81 @@ const TreeNodeCard = ({
         disableHoverListener={(!isLocked && !isFounderReadOnly) || isWorkspaceMode}
       >
         <div
-          className={`flex items-center justify-between gap-3 rounded-lg pr-2 ${rowPadClass} transition-colors ${
-            isLocked ? "opacity-50" : "hover:bg-slate-50"
-          } ${level === 0 ? "bg-slate-50/60" : ""}`}
-          style={{ marginLeft: level * 20, paddingLeft: 8 }}
+          className={`border border-slate-100 bg-white transition-colors ${
+            level === 0 ? "rounded-lg px-2.5 py-2" : "rounded-md px-2 py-1.5"
+          } ${isLocked ? "opacity-60" : "hover:bg-slate-50/60"}`}
         >
-          <button
-            type="button"
-            onClick={() => hasChildren && setIsOpen((prev) => !prev)}
-            className={`flex min-w-0 flex-1 items-center gap-1.5 text-left ${hasChildren ? "cursor-pointer" : "cursor-default"}`}
-          >
-            {hasChildren ? (
-              isOpen ? (
-                <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8", flexShrink: 0 }} />
-              ) : (
-                <ChevronRightIcon sx={{ fontSize: 18, color: "#94a3b8", flexShrink: 0 }} />
-              )
-            ) : (
-              <span className="ml-[3px] mr-[3px] inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-slate-300" />
-            )}
-            {hasChildren ? (
-              <FolderIcon sx={{ fontSize: 15, color: isLocked ? "#cbd5e1" : "#64748b", flexShrink: 0 }} />
-            ) : (
-              <DescriptionIcon sx={{ fontSize: 14, color: isLocked ? "#cbd5e1" : "#94a3b8", flexShrink: 0 }} />
-            )}
-            <span className={`truncate ${nameSizeClass} ${isLocked ? "text-slate-400" : "text-slate-800"}`}>
-              {node.name}
-            </span>
-            {summary && (
-              <span
-                className={`ml-1 flex-shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
-                  summary.enabled === 0
-                    ? "bg-slate-100 text-slate-400"
-                    : summary.enabled === summary.total
-                      ? "bg-emerald-50 text-emerald-600"
-                      : "bg-amber-50 text-amber-600"
-                }`}
-              >
-                {summary.enabled}/{summary.total}
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => hasChildren && setIsOpen((prev) => !prev)}
+              className={`flex min-w-0 flex-1 items-start gap-1.5 text-left ${
+                hasChildren ? "cursor-pointer" : "cursor-default"
+              }`}
+            >
+              {hasChildren ? (
+                <ExpandMoreIcon
+                  sx={{
+                    fontSize: 16,
+                    color: "#94a3b8",
+                    flexShrink: 0,
+                    mt: "1px",
+                    transform: isOpen ? "none" : "rotate(-90deg)",
+                    transition: "transform 150ms ease",
+                  }}
+                />
+              ) : null}
+              <span className="min-w-0">
+                <span
+                  className={`flex items-center gap-1 truncate font-pmedium ${
+                    level === 0 ? "text-[12.5px]" : "text-[11.5px]"
+                  } ${isLocked ? "text-slate-400" : "text-slate-700"}`}
+                >
+                  {node.name}
+                  {isLocked ? (
+                    <LockIcon sx={{ fontSize: 12, color: "#cbd5e1", flexShrink: 0 }} />
+                  ) : null}
+                </span>
+                {subtitle ? (
+                  <span className="block truncate text-[10px] font-pmedium text-slate-500">
+                    {subtitle}
+                  </span>
+                ) : null}
               </span>
-            )}
-            {isLocked ? (
-              <LockIcon sx={{ fontSize: 13, color: "#cbd5e1", flexShrink: 0 }} />
-            ) : !hasChildren ? (
-              <LockOpenIcon sx={{ fontSize: 12, color: "#d1fae5", flexShrink: 0 }} />
-            ) : null}
-          </button>
+            </button>
 
-          <FormControlLabel
-            sx={{ m: 0 }}
-            onClick={(event) => event.stopPropagation()}
-            control={
-              <Switch
-                size="small"
+            <div className="flex flex-shrink-0 items-center gap-1.5">
+              {summary && (
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    summary.enabled === 0
+                      ? "bg-slate-100 text-slate-400"
+                      : summary.enabled === summary.total
+                        ? "bg-emerald-50 text-emerald-600"
+                        : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  {summary.enabled}/{summary.total}
+                </span>
+              )}
+              <ToggleSwitch
                 checked={isEnabled}
                 disabled={!isWorkspaceMode && (isLocked || isFounderReadOnly)}
-                onChange={(event) => onToggle(pathParts, event.target.checked)}
+                onChange={(next) => onToggle(pathParts, next)}
+                label={`Toggle ${node.name}`}
               />
-            }
-            label=""
-          />
+            </div>
+          </div>
         </div>
       </Tooltip>
 
       {hasChildren && isOpen && (
-        <div className="ml-2 flex flex-col border-l border-dashed border-slate-200 pl-1.5">
+        <div className="mt-2 space-y-2 border-t border-slate-100 pt-2 pl-4">
           {node.children.map((child) => (
             <TreeNodeCard
               key={child.name}
               node={child}
+              parentLabel={node.name}
               pathParts={[...pathParts, child.name]}
               level={level + 1}
               treeState={treeState}
@@ -781,6 +857,7 @@ const TreeNodeCard = ({
   );
 };
 
+
 const AccessEditorModal = ({
   open,
   employee,
@@ -791,6 +868,7 @@ const AccessEditorModal = ({
   treeSearch,
   setTreeSearch,
   onToggle,
+  onToggleGroup,
   onClose,
   onSave,
   isSaving,
@@ -800,7 +878,6 @@ const AccessEditorModal = ({
   isFounderReadOnly,
   activePlanTier,
   onPlanButtonClick,
-  pendingRequestedPlan,
   verticalLabels,
   selectedVerticals,
   isEditingVerticals,
@@ -837,88 +914,114 @@ const AccessEditorModal = ({
     });
   }, [mainDropdownGroups]);
 
+  const modalInitials =
+    (isWorkspaceMode ? workspace.workspaceName : employee?.name || "W")
+      .charAt(0)
+      .toUpperCase() || "W";
+  const grantSummary = mainDropdownGroups.reduce(
+    (totals, group) => {
+      const summary = getGroupAccessSummary(
+        group,
+        moduleSections,
+        isPathEnabled,
+        treeState,
+      );
+      return {
+        enabled: totals.enabled + summary.enabled,
+        total: totals.total + summary.total,
+        categories: totals.categories + (summary.total > 0 && summary.enabled === summary.total ? 1 : 0),
+      };
+    },
+    { enabled: 0, total: 0, categories: 0 },
+  );
+
   if (!workspace) return null;
 
   return (
-    <Modal open={open} onClose={onClose}>
+    <Modal
+      open={open}
+      onClose={onClose}
+      slotProps={{
+        backdrop: {
+          sx: {
+            backgroundColor: "rgba(2, 6, 23, 0.45)",
+            backdropFilter: "blur(4px)",
+          },
+        },
+      }}
+    >
       <Box
         data-tour="module-access-editor-modal"
-        className="max-h-[84vh] w-[min(980px,94vw)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_52px_rgba(15,23,42,0.18)]"
+        className={`flex max-h-[90vh] w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white font-sans text-[12px] text-[#0F172A] shadow-2xl ${
+          isWorkspaceMode ? "max-w-4xl" : "max-w-2xl"
+        }`}
         sx={{
           position: "absolute",
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
+          outline: "none",
         }}
       >
-        <div className="flex max-h-[84vh] flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.26em] text-slate-400">
-                {isWorkspaceMode ? "Workspace Modules" : "Employee Access"}
-              </p>
-              <h2 className="mt-1.5 text-xl font-pmedium text-slate-900">
-                {isWorkspaceMode ? workspace.workspaceName : employee?.name || "Unnamed Employee"}
-              </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Workspace: <span className="font-semibold text-slate-700">{workspace.workspaceName}</span>
-              </p>
-            </div>
-            <IconButton onClick={onClose} size="small">
-              <CloseIcon fontSize="small" sx={{ color: "#64748b" }} />
-            </IconButton>
-          </div>
-
-          <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[300px_1fr]">
-            <div className="overflow-y-auto border-b border-slate-100 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
-              <div className="rounded-xl border border-slate-200 bg-white p-3.5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
-                    {(isWorkspaceMode ? workspace.workspaceName : employee?.name || "W")
-                      .charAt(0)
-                      .toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">
-                      {isWorkspaceMode ? "Workspace Control" : employee?.name || "Employee"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {isWorkspaceMode ? "Master Panel" : employee?.designation || "Role not set"}
-                    </p>
-                  </div>
+        <div className="flex min-h-0 flex-col">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 bg-blue-50/40 px-5 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-[12px] font-pmedium text-white">
+                {modalInitials}
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="truncate text-[15px] font-pmedium text-slate-900">
+                    {isWorkspaceMode ? workspace.workspaceName : employee?.name || "Unnamed Employee"}
+                  </h2>
+                  <span className="rounded-full border border-slate-200 bg-white px-2 py-[2px] text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    {isWorkspaceMode ? "Workspace Modules" : "Employee Access"}
+                  </span>
+                  {!isWorkspaceMode && employee?.designation && (
+                    <span className={`rounded-full border px-2 py-[2px] text-[10px] font-pmedium ${ROLE_PILL_CLASSES[getMemberRoleCategory(employee.designation)] || ROLE_PILL_CLASSES.Staff}`}>
+                      {employee.designation}
+                    </span>
+                  )}
                 </div>
-                <div className="mt-3 flex flex-col gap-1.5 text-sm text-slate-600">
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Email</span>
-                    <span className="font-medium text-slate-900">
-                      {isWorkspaceMode ? "Workspace Scope" : employee?.email || "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Status</span>
-                    <span className="font-medium text-slate-900">
-                      {isWorkspaceMode ? "Active" : employee?.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Workspace</span>
-                    <span className="font-medium text-slate-900">{workspace.workspaceName}</span>
-                  </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
+                  {isWorkspaceMode ? (
+                    <>
+                      <span>Workspace baseline</span>
+                      <span className="text-slate-300">&middot;</span>
+                      <span>{workspace.workspaceName}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="truncate">{employee?.email || "-"}</span>
+                      <span className="text-slate-300">&middot;</span>
+                      <span className={employee?.isActive ? "text-emerald-600" : "text-slate-500"}>
+                        {employee?.isActive ? "Active" : "Inactive"}
+                      </span>
+                      <span className="text-slate-300">&middot;</span>
+                      <span>{workspace.workspaceName}</span>
+                    </>
+                  )}
                 </div>
               </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-xl border border-slate-200 bg-white p-1.5 text-slate-400 transition hover:text-slate-700"
+            >
+              <CloseIcon sx={{ fontSize: 15 }} />
+            </button>
+          </div>
 
-              {isWorkspaceMode && pendingRequestedPlan && (
-                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-xs font-semibold text-amber-800">
-                    Host requested {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan}
-                  </p>
-                  <p className="mt-1 text-[11px] leading-4 text-amber-700">
-                    Not yet applied here. Click {PLAN_LABELS[pendingRequestedPlan] || pendingRequestedPlan} below to give this workspace those modules.
-                  </p>
-                </div>
-              )}
-
-              {isWorkspaceMode && (
+          <div
+            className={`grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-hidden ${
+              isWorkspaceMode ? "lg:grid-cols-[272px_1fr]" : ""
+            }`}
+          >
+            {isWorkspaceMode && (
+              <div className="overflow-y-auto border-b border-slate-100 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
+              {/*{isWorkspaceMode && (
                 <div data-tour="module-access-plan-tier" className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
                     Plan Module Set
@@ -950,7 +1053,7 @@ const AccessEditorModal = ({
                     actual assigned plan — only which modules are enabled.
                   </p>
                 </div>
-              )}
+              )} */}
 
               {isWorkspaceMode && (
                 <div data-tour="module-access-verticals-editor" className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
@@ -1032,88 +1135,120 @@ const AccessEditorModal = ({
                 </div>
               )}
 
-              <TextField
-                value={treeSearch}
-                onChange={(event) => setTreeSearch(event.target.value)}
-                fullWidth
-                size="small"
-                placeholder="Search access nodes"
-                data-tour="module-access-tree-search"
-                className="!mt-3"
-              />
+              </div>
+            )}
 
-              <p className="mt-3 text-xs leading-5 text-slate-500">
-                {isFounderReadOnly
-                  ? "Founders always get everything this workspace has enabled — access can't be individually restricted here. Adjust it under Configure Workspace Modules instead."
-                  : "Toggle modules, submodules, and nested tabs from this workspace-specific view."}
-              </p>
-
-            </div>
-
-            <div className="flex max-h-[84vh] flex-col overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Chip label={workspace.workspaceName} size="small" />
-                  <Chip
-                    label={`${mainDropdownGroups.length} Main Groups`}
-                    size="small"
-                    sx={{ backgroundColor: "rgba(15, 23, 42, 0.06)", fontWeight: 700 }}
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="flex shrink-0 flex-col gap-2 border-b border-slate-100 bg-white px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                    {mainDropdownGroups.length} Categories
+                  </p>
+                  <span className="text-[10px] font-pmedium uppercase tracking-wider text-slate-400">
+                    {isWorkspaceMode ? "Workspace baseline" : "Individual grant"}
+                  </span>
+                </div>
+                <div className="relative">
+                  <SearchIcon
+                    sx={{ fontSize: 16 }}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  />
+                  <input
+                    value={treeSearch}
+                    onChange={(event) => setTreeSearch(event.target.value)}
+                    placeholder="Search modules, submodules, or tabs"
+                    data-tour="module-access-tree-search"
+                    className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-9 pr-3 text-[12px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                   />
                 </div>
-                <Button
-                  onClick={onSave}
-                  variant="contained"
-                  data-tour="module-access-save"
-                  startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon fontSize="small" />}
-                  disabled={isSaving || isFounderReadOnly}
-                  sx={{
-                    borderRadius: "14px",
-                    textTransform: "none",
-                    fontWeight: 700,
-                    backgroundColor: "#0F172A",
-                    "&:hover": { backgroundColor: "#111827" },
-                  }}
-                >
-                  {isSaving ? "Saving..." : isWorkspaceMode ? "Save Enabled Modules" : "Save Access"}
-                </Button>
               </div>
 
-              <div data-tour="module-access-tree" className="flex-1 overflow-y-auto px-5 py-4">
-                {mainDropdownGroups.map((group) => (
-                  <div
-                    key={group.name}
-                    className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white"
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenGroups((prev) => ({
-                          ...prev,
-                          [group.name]: !prev[group.name],
-                        }))
-                      }
-                      className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left"
+              <div data-tour="module-access-tree" className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-3">
+                {mainDropdownGroups.map((group, index) => {
+                  const summary = getGroupAccessSummary(
+                    group,
+                    moduleSections,
+                    isPathEnabled,
+                    treeState,
+                  );
+                  const allEnabled = summary.total > 0 && summary.enabled === summary.total;
+                  const groupDisabled = !isWorkspaceMode || isFounderReadOnly;
+                  return (
+                    <div
+                      key={group.name}
+                      className="rounded-xl border border-slate-200 bg-white p-3"
                     >
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-                          Workspace Control
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{group.name}</p>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenGroups((prev) => ({
+                                ...prev,
+                                [group.name]: !prev[group.name],
+                              }))
+                            }
+                            className="min-w-0 text-left"
+                          >
+                            <p className="truncate text-[11px] font-pmedium uppercase tracking-wider text-slate-600">
+                              {group.name}
+                            </p>
+                          </button>
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-3">
+                          <span className="text-[10px] font-pmedium text-slate-400">
+                            {summary.enabled}/{summary.total}
+                          </span>
+                          <Tooltip
+                            title={
+                              groupDisabled
+                                ? "Available in workspace mode only."
+                                : allEnabled
+                                  ? "Turn this category off for every item"
+                                  : "Turn this category on for every item"
+                            }
+                          >
+                            <span>
+                              <button
+                                type="button"
+                                disabled={groupDisabled}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  onToggleGroup?.(group, !allEnabled);
+                                }}
+                                className="text-[10px] font-pmedium uppercase tracking-wider text-[#2563eb] transition-colors hover:text-blue-800 disabled:cursor-not-allowed disabled:text-slate-300"
+                              >
+                                {allEnabled ? "Deselect All" : "Select All"}
+                              </button>
+                            </span>
+                          </Tooltip>
+                          <IconButton
+                            size="small"
+                            onClick={() =>
+                              setOpenGroups((prev) => ({
+                                ...prev,
+                                [group.name]: !prev[group.name],
+                              }))
+                            }
+                          >
+                            {openGroups[group.name] ? (
+                              <ExpandMoreIcon fontSize="small" sx={{ color: "#94a3b8" }} />
+                            ) : (
+                              <ChevronRightIcon fontSize="small" sx={{ color: "#94a3b8" }} />
+                            )}
+                          </IconButton>
+                        </div>
                       </div>
-                      <div className="text-xs font-semibold text-slate-500">
-                        {Array.isArray(group.children) ? `${group.children.length} modules` : "0 modules"}
-                      </div>
-                    </button>
 
-                    {openGroups[group.name] && (
-                      <div className="space-y-3 px-4 py-3">
-                        {(
-                          // Department Accesses' items already arrive as
-                          // department group nodes (HR Department, etc.) with
-                          // their own nested children from the backend's
-                          // canonical merge — no client-side re-bucketing
-                          // needed, same rendering as any other section.
-                          Array.isArray(group.children) ? group.children : []
+                      {openGroups[group.name] && (
+                        <div className="space-y-2">
+                          {(
+                            // Department Accesses' items already arrive as
+                            // department group nodes (HR Department, etc.) with
+                            // their own nested children from the backend's
+                            // canonical merge — no client-side re-bucketing
+                            // needed, same rendering as any other section.
+                            Array.isArray(group.children) ? group.children : []
                           ).map((module) => (
                             <TreeNodeCard
                               key={`${group.name}::${module.name}`}
@@ -1131,10 +1266,11 @@ const AccessEditorModal = ({
                               isFounderReadOnly={isFounderReadOnly}
                             />
                           ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {!mainDropdownGroups.length && (
                   <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-slate-500">
@@ -1144,9 +1280,159 @@ const AccessEditorModal = ({
               </div>
             </div>
           </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 px-5 py-3">
+            <p className="hidden text-[11px] leading-4 text-slate-500 sm:block">
+              {isFounderReadOnly
+                ? "Founders always get everything the workspace has enabled — adjust it under Configure Workspace Modules instead."
+                : `${grantSummary.enabled} of ${grantSummary.total} modules enabled · ${grantSummary.categories} of ${mainDropdownGroups.length} categories fully on. Category switches apply to every item beneath them.`}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outlined"
+                onClick={onClose}
+                size="small"
+                sx={{
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  fontSize: "11px",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                  px: 2,
+                  borderColor: "#e2e8f0",
+                  color: "#475569",
+                  "&:hover": { borderColor: "#cbd5e1", backgroundColor: "#f8fafc" },
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={onSave}
+                variant="contained"
+                data-tour="module-access-save"
+                startIcon={isSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon fontSize="small" />}
+                disabled={isSaving || isFounderReadOnly}
+                size="small"
+                sx={{
+                  borderRadius: "10px",
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: "11px",
+                  whiteSpace: "nowrap",
+                  minWidth: 0,
+                  px: 2,
+                  backgroundColor: "#2563eb",
+                  "&:hover": { backgroundColor: "#1d4ed8" },
+                }}
+              >
+                {isSaving ? "Saving..." : isWorkspaceMode ? "Save Enabled Modules" : "Save Access"}
+              </Button>
+            </div>
+          </div>
         </div>
       </Box>
     </Modal>
+  );
+};
+
+// Custom workspace picker — the MUI select didn't match the rest of this
+// screen, and the main workspace needs a visible "- Main" marker so staff
+// don't pick a unit by mistake.
+const WorkspaceSelect = ({ workspaces = [], value, mainWorkspaceId, onChange }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const selected =
+    workspaces.find((workspace) => workspace.workspaceId === value) || workspaces[0] || null;
+  const isMainWorkspace = (workspace) =>
+    Boolean(workspace) && workspace.workspaceId === mainWorkspaceId;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+      >
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[11px] font-pbold text-white">
+            {(selected?.workspaceName || "W").charAt(0).toUpperCase()}
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[9px] font-pmedium uppercase tracking-widest text-slate-400">
+              Workspace
+            </span>
+            <span className="block truncate text-[13px] font-pmedium text-slate-900">
+              {selected
+                ? `${selected.workspaceName}${isMainWorkspace(selected) ? " - Main" : ""}`
+                : "Select workspace"}
+            </span>
+          </span>
+        </span>
+        <ExpandMoreIcon
+          fontSize="small"
+          sx={{
+            flexShrink: 0,
+            color: "#94a3b8",
+            transition: "transform 150ms ease",
+            transform: anchorEl ? "rotate(180deg)" : "none",
+          }}
+        />
+      </button>
+
+      <Popover
+        open={Boolean(anchorEl)}
+        anchorEl={anchorEl}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            width: anchorEl?.clientWidth ? Math.max(anchorEl.clientWidth, 280) : 280,
+            borderRadius: "16px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 18px 36px rgba(15, 23, 42, 0.14)",
+            overflow: "hidden",
+            backgroundColor: "#fff",
+          },
+        }}
+      >
+        <div className="border-b border-slate-100 px-3 py-2 text-[9px] font-pmedium uppercase tracking-widest text-slate-400">
+          Switch workspace
+        </div>
+        <div className="max-h-72 overflow-y-auto py-1">
+          {workspaces.map((workspace) => {
+            const active = workspace.workspaceId === value;
+            return (
+              <button
+                key={workspace.workspaceId}
+                type="button"
+                onClick={() => {
+                  onChange?.(workspace.workspaceId);
+                  setAnchorEl(null);
+                }}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[12px] transition-colors ${
+                  active ? "bg-slate-50" : "hover:bg-slate-50"
+                }`}
+              >
+                <span className="min-w-0 truncate">
+                  <span className={`font-pmedium ${active ? "text-slate-900" : "text-slate-600"}`}>
+                    {workspace.workspaceName}
+                  </span>
+                  {isMainWorkspace(workspace) && (
+                    <span className="text-slate-400"> - Main</span>
+                  )}
+                </span>
+                {active && <CheckIcon sx={{ fontSize: 16, color: "#2563eb", flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+          {!workspaces.length && (
+            <div className="px-3 py-3 text-[12px] text-slate-500">No workspaces</div>
+          )}
+        </div>
+      </Popover>
+    </>
   );
 };
 
@@ -1176,19 +1462,14 @@ const ModuleAccess = () => {
   }, [companyName, companySlug, location.state]);
 
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
-  const [employeeSearch, setEmployeeSearch] = useState("");
   const [treeSearch, setTreeSearch] = useState("");
+  const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
   const [treeState, setTreeState] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedVerticals, setSelectedVerticals] = useState([]);
   const [isEditingVerticals, setIsEditingVerticals] = useState(false);
-
-  const pageTitle = useMemo(() => {
-    if (companyName) return companyName;
-    return String(companySlug || "Host Company").replace(/-/g, " ");
-  }, [companyName, companySlug]);
 
   const { data: companyMemberPayload, isLoading } = useQuery({
     queryKey: ["host-company-members", resolvedCompanyId],
@@ -1255,7 +1536,7 @@ const ModuleAccess = () => {
       : [];
 
     if (apiWorkspaces.length) {
-      return apiWorkspaces.map((workspace) => ({
+      const mapped = apiWorkspaces.map((workspace) => ({
         workspaceId: normalizeWorkspaceId(workspace.workspaceId),
         workspaceName: normalizeWorkspaceName(workspace.workspaceName),
         modules: workspace?.modules || [],
@@ -1267,6 +1548,22 @@ const ModuleAccess = () => {
           : [],
         selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
       }));
+
+      // The company's main workspace is the unsuffixed one (workspaceId ===
+      // companyId) — same prefix convention the server uses to tell a parent
+      // workspace from its units. It gets listed first so it's also the
+      // default selection; fall back to the "Main Workspace" name.
+      const companyKey = String(resolvedCompanyId || "").trim().toLowerCase();
+      const rankWorkspace = (workspace) => {
+        const id = String(workspace.workspaceId || "").trim().toLowerCase();
+        if (companyKey && id === companyKey) return 0;
+        if (String(workspace.workspaceName || "").trim().toLowerCase() === "main workspace") {
+          return 1;
+        }
+        return 2;
+      };
+
+      return mapped.sort((a, b) => rankWorkspace(a) - rankWorkspace(b));
     }
 
     return [
@@ -1279,7 +1576,23 @@ const ModuleAccess = () => {
         selectedPlan: "basic",
       },
     ];
-  }, [companyMemberPayload?.workspaces]);
+  }, [companyMemberPayload?.workspaces, resolvedCompanyId]);
+
+  // Which workspace is the company's main one. Drives the "- Main" marker in
+  // the workspace picker (see WorkspaceSelect).
+  const mainWorkspaceId = useMemo(() => {
+    if (!workspaces.length) return "";
+    const companyKey = String(resolvedCompanyId || "").trim().toLowerCase();
+    const byId = workspaces.find(
+      (workspace) =>
+        companyKey && String(workspace.workspaceId || "").trim().toLowerCase() === companyKey,
+    );
+    if (byId) return byId.workspaceId;
+    const byName = workspaces.find(
+      (workspace) => String(workspace.workspaceName || "").trim().toLowerCase() === "main workspace",
+    );
+    return (byName || workspaces[0]).workspaceId;
+  }, [workspaces, resolvedCompanyId]);
 
   useEffect(() => {
     if (!selectedWorkspaceId && workspaces.length) {
@@ -1337,6 +1650,11 @@ const ModuleAccess = () => {
   const workspaceDraftEnabledIdSet = useMemo(
     () => collectEnabledModuleIds(activeModuleSections, treeState),
     [activeModuleSections, treeState],
+  );
+
+  const activeModulesCount = useMemo(
+    () => collectEnabledModuleIds(activeModuleSections, workspaceEnabledPlanState).size,
+    [activeModuleSections, workspaceEnabledPlanState],
   );
 
   const activePlanTier = useMemo(
@@ -1412,7 +1730,6 @@ const ModuleAccess = () => {
   }, [workspaces]);
 
   const filteredMembers = useMemo(() => {
-    const query = employeeSearch.trim().toLowerCase();
     const workspaceId = normalizeWorkspaceId(selectedWorkspace?.workspaceId);
 
     return members.filter((member) => {
@@ -1422,17 +1739,33 @@ const ModuleAccess = () => {
       const inWorkspace = memberWorkspaces.some(
         (workspace) => normalizeWorkspaceId(workspace.workspaceId) === workspaceId,
       );
-      const matchesQuery =
-        !query ||
-        String(member.name || "").toLowerCase().includes(query) ||
-        String(member.email || "").toLowerCase().includes(query) ||
-        String(member.designation || "").toLowerCase().includes(query);
-
-      return inWorkspace && matchesQuery;
+      return inWorkspace;
     });
-  }, [employeeSearch, hasRealWorkspaces, members, selectedWorkspace]);
+  }, [hasRealWorkspaces, members, selectedWorkspace]);
 
-  const openEmployeeAccess = (member) => {
+  const tableRows = useMemo(() => {
+    const query = employeeSearch.trim().toLowerCase();
+
+    return filteredMembers
+      .map((member) => ({
+        ...member,
+        searchText: [
+          member?.name,
+          member?.email,
+          member?.designation,
+          getMemberRoleCategory(member?.designation),
+          getMemberStatus(member),
+          ...getMemberWorkspaces(member, { allowFallback: !hasRealWorkspaces }).map(
+            (workspace) => workspace.workspaceName,
+          ),
+        ]
+          .filter(Boolean)
+          .join(" "),
+      }))
+      .filter((member) => !query || member.searchText.toLowerCase().includes(query));
+  }, [employeeSearch, filteredMembers, hasRealWorkspaces]);
+
+  const openEmployeeAccess = useCallback((member) => {
     setIsWorkspaceMode(false);
     const workspaceAccess = getWorkspaceAccessForMember(
       member,
@@ -1470,7 +1803,7 @@ const ModuleAccess = () => {
     setTreeState(initialState);
     setTreeSearch("");
     setIsModalOpen(true);
-  };
+  }, [activeModuleSections, hasRealWorkspaces, selectedWorkspace, workspaceEnabledPlanState]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -1623,6 +1956,17 @@ const ModuleAccess = () => {
     setTreeState((prev) => toggleTreeNode(activeModuleSections, prev, pathParts, checked));
   };
 
+  const handleToggleGroup = (group, checked) => {
+    setTreeState((prev) => {
+      let next = prev;
+      (Array.isArray(group?.children) ? group.children : []).forEach((module) => {
+        const pathParts = [String(module?.sectionName || group?.name || "").trim(), module.name];
+        next = toggleTreeNode(activeModuleSections, next, pathParts, checked);
+      });
+      return next;
+    });
+  };
+
   const isPathEnabled = (pathParts) => {
     const key = buildPathKey(pathParts);
     if (!isWorkspaceMode) return Boolean(treeState[key]);
@@ -1652,385 +1996,318 @@ const ModuleAccess = () => {
     () => filterTreeByState(activeModuleSections, workspaceEnabledPlanState),
     [activeModuleSections, workspaceEnabledPlanState],
   );
-  const Columns = useMemo(
-    () => [
-      {
-        headerName: "Employee",
-        field: "name",
-        flex: 1.5,
-        cellRenderer: (params) => {
-          const member = params.data;
-          if (!member) return null;
-          return (
-            <div>
-              {member.name || "-"}
-            </div>
-          );
-        }
-      },
-      {
-        headerName: "Employee Email",
-        field: "email",
-        flex: 1.5,
-        cellRenderer: (params) => {
-          const member = params.data;
-          if (!member) return null;
-          return (
-            <div>
-              {member.email || "-"}
-            </div >
-          );
-        }
-      },
-
-      {
-        headerName: "Role",
-        field: "designation",
-        flex: 1,
-        valueFormatter: (params) => params.value || "-",
-      },
-      {
-        headerName: "Workspace",
-        field: "workspaces",
-        flex: 2,
-        cellRenderer: (params) => {
-          const member = params.data;
-          if (!member) return null;
-          const memberWorkspaces = getMemberWorkspaces(member, {
-            allowFallback: !hasRealWorkspaces,
-          });
-          return (
-            <div>
-              {memberWorkspaces.map((workspace) => (
-                <Chip
-                  key={`${member._id}-${workspace.workspaceId}`}
-                  label={workspace.workspaceName}
-                  size="small"
-                  sx={{ fontSize: "10px", height: "20px" }}
-                />
-              ))}
-            </div>
-          );
-        }
-      },
-      {
-        headerName: "Status",
-        field: "isActive",
-        flex: 1,
-        cellRenderer: (params) => {
-          const member = params.data;
-          if (!member) return null;
-          const label = member.isDeleted ? "Deleted" : member.isActive ? "Active" : "Inactive";
-          const color = member.isDeleted ? "error" : member.isActive ? "success" : "default";
-          return (
-            <Chip
-              label={label}
-              size="small"
-              color={color}
-              variant="outlined"
-              sx={{ height: "20px", fontSize: "10px" }}
-            />
-          );
-        }
-      },
-      {
-        headerName: "Action",
-        field: "action",
-        pinned: "right",
-        lockPinned: true,
-        width: 120,
-        cellRenderer: (params) => {
-          const member = params.data;
-          if (!member) return null;
-          return (
-            <div className="flex items-center gap-1">
-              <IconButton
-                data-tour="module-access-open-employee"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  openEmployeeAccess(member);
-                }}
-                size="small"
-              >
-                <VisibilityIcon fontSize="small" />
-              </IconButton>
-              <span data-tour="module-access-row-menu" className="inline-flex">
-              <ThreeDotMenu
-                rowId={member._id}
-                menuItems={[
-                  member.isDeleted
-                    ? {
-                        label: "Reactivate",
-                        onClick: () =>
-                          toggleAccountStatusMutation.mutate({
-                            memberId: member._id,
-                            isDeleted: false,
-                          }),
-                      }
-                    : {
-                        label: "Delete Account",
-                        onClick: () =>
-                          toggleAccountStatusMutation.mutate({
-                            memberId: member._id,
-                            isDeleted: true,
-                          }),
-                      },
-                ]}
-              />
-              </span>
-            </div>
-          );
-        }
-      },
-    ],
-    [hasRealWorkspaces, toggleAccountStatusMutation]
-  );
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white p-6">
-      <div className="flex flex-col gap-6">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-xs font-pmedium uppercase tracking-[0.24em] text-gray-500">
-                Host Company Access
-              </p>
-              <h1 className="mt-2 text-4xl font-pmedium uppercase tracking-tight text-primary">
-                Module Access
-              </h1>
-              <p className="mt-3 max-w-3xl text-content text-gray-600">
-                Select a workspace, pick an employee, and edit page access from the same screen.
-              </p>
-            </div>
-            <div data-tour="module-access-stats" className="flex flex-wrap items-center gap-3">
-              <Chip
-                label={normalizedPlan}
-                size="small"
-                sx={{
-                  backgroundColor: "rgba(37, 99, 235, 0.1)",
-                  color: "#2563EB",
-                  fontWeight: 700,
-                }}
-              />
-              <Chip
-                label={`${workspaces.length} Workspaces`}
-                size="small"
-                sx={{
-                  backgroundColor: "rgba(15, 23, 42, 0.08)",
-                  color: "#0F172A",
-                  fontWeight: 700,
-                }}
-              />
-              <Chip
-                icon={<GroupsIcon fontSize="small" />}
-                label={`${filteredMembers.length} Employees`}
-                size="small"
-                sx={{
-                  backgroundColor: "rgba(16, 185, 129, 0.12)",
-                  color: "#047857",
-                  fontWeight: 700,
-                }}
-              />
-            </div>
+    <div className="min-h-full p-2 font-sans text-[12px] text-[#0F172A] lg:p-2.5">
+      <PageFrame>
+        <div className="flex flex-col gap-4">
+          <div>
+            <h1 className="text-title font-pmedium uppercase text-primary">Module Access</h1>
+            <p className="mt-1 text-xs font-pmedium text-slate-500">
+              Select a workspace, manage verticals, and configure platform module access from the
+              same panel.
+            </p>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div data-tour="module-access-workspace-select">
-              <TextField
-                select
-                label="Workspace"
-                value={selectedWorkspace?.workspaceId || ""}
-                onChange={(event) => {
-                  setSelectedWorkspaceId(event.target.value);
-                  setSelectedEmployee(null);
-                  setIsModalOpen(false);
-                  setTreeState(workspaceEnabledPlanState);
-                }}
-                fullWidth
-                size="small"
-              >
-                {workspaces.map((workspace) => (
-                  <MenuItem key={workspace.workspaceId} value={workspace.workspaceId}>
-                    {workspace.workspaceName}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </div>
-            <Button
-              variant="outlined"
-              data-tour="module-access-configure-modules"
-              onClick={() => {
-                setIsWorkspaceMode(true);
-                setSelectedEmployee(null);
-                setSelectedVerticals(activeVerticalLabels);
-                setTreeState(workspaceEnabledPlanState);
-                setIsModalOpen(true);
-              }}
-              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
-            >
-              Configure Workspace Modules
-            </Button>
-            <Button
-              variant="outlined"
-              color="success"
-              data-tour="module-access-reactivate-all"
-              onClick={() => handleBulkAccountStatus(false)}
-              disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
-              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
-            >
-              Reactivate All Employees
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              data-tour="module-access-delete-all"
-              onClick={() => handleBulkAccountStatus(true)}
-              disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
-              sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
-            >
-              Delete All Employees
-            </Button>
-
-            {/* <TextField
-                value={employeeSearch}
-                onChange={(event) => setEmployeeSearch(event.target.value)}
-                fullWidth
-                placeholder="Search employee, role, or email"
-                variant="outlined"
-                size="small"
-                InputProps={{
-                  startAdornment: <SearchIcon fontSize="small" className="mr-2 text-slate-400" />,
-                }}
-              /> */}
-
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-1">
-              <BusinessIcon fontSize="small" sx={{ color: "#64748b" }} />
+          <div
+            data-tour="module-access-stats"
+            className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          >
+            <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 bg-white p-5 shadow-sm transition-all hover:shadow-md">
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-900">{pageTitle}</p>
-                <p className="text-xs text-slate-500">
-                  {selectedWorkspace?.workspaceName ||
-                    company?.companyCity ||
-                    company?.companyState ||
-                    "Company access source"}
+                <p className="mb-1 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                  Current Plan
+                </p>
+                <p className="truncate text-[15px] font-pbold capitalize text-slate-900">
+                  {normalizedPlan}
                 </p>
               </div>
             </div>
-          </div>
-        </div>
-
-        {/* <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
-          <div className="border-b border-slate-100 px-6 py-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-pmedium text-slate-900">Employee List</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Click an employee to open the access editor for the selected workspace.
+            <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 border-l-blue-500 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-pmedium uppercase tracking-widest text-blue-600">
+                  Workspaces
                 </p>
+                <p className="text-[15px] font-pbold text-slate-900">{workspaces.length}</p>
               </div>
-              <div className="flex items-center gap-2 text-sm text-slate-500">
-                <SearchIcon fontSize="small" />
-                <span>Filtered by workspace and search</span>
+            </div>
+            <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 border-l-emerald-500 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-pmedium uppercase tracking-widest text-emerald-600">
+                  Total Employees
+                </p>
+                <p className="text-[15px] font-pbold text-slate-900">{filteredMembers.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 border-l-indigo-500 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+              <div className="min-w-0">
+                <p className="mb-1 text-[10px] font-pmedium uppercase tracking-widest text-indigo-600">
+                  Active Modules
+                </p>
+                <p className="text-[15px] font-pbold text-slate-900">{activeModulesCount}</p>
               </div>
             </div>
           </div>
 
-          <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 0 }}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Employee</TableCell>
-                  <TableCell>Role</TableCell>
-                  <TableCell>Workspace</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={5}>
-                      <div className="flex items-center justify-center gap-3 py-10 text-slate-500">
-                        <CircularProgress size={16} color="inherit" />
-                        Loading employees...
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : filteredMembers.length ? (
-                  filteredMembers.map((member) => {
-                    const memberWorkspaces = getMemberWorkspaces(member, {
-                      allowFallback: !hasRealWorkspaces,
-                    });
-                    return (
-                      <TableRow
-                        key={member._id}
-                        hover
-                        sx={{ cursor: "pointer" }}
-                        onClick={() => openEmployeeAccess(member)}
-                      >
-                        <TableCell>
-                          <div>
-                            <p className="font-semibold text-slate-900">{member.name || "-"}</p>
-                            <p className="text-xs text-slate-500">{member.email || "-"}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>{member.designation || "-"}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-2">
-                            {memberWorkspaces.map((workspace) => (
-                              <Chip
-                                key={`${member._id}-${workspace.workspaceId}`}
-                                label={workspace.workspaceName}
-                                size="small"
-                              />
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={member.isActive ? "Active" : "Inactive"}
-                            size="small"
-                            color={member.isActive ? "success" : "default"}
-                            variant="outlined"
-                          />
-                        </TableCell>
-                        <TableCell align="right">
-                          <IconButton
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openEmployeeAccess(member);
-                            }}
+          <div className="rounded-[2rem] border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+              <div data-tour="module-access-workspace-select" className="w-full lg:w-[300px] lg:shrink-0">
+                <WorkspaceSelect
+                  workspaces={workspaces}
+                  value={selectedWorkspace?.workspaceId || ""}
+                  mainWorkspaceId={mainWorkspaceId}
+                  onChange={(workspaceId) => {
+                    setSelectedWorkspaceId(workspaceId);
+                    setSelectedEmployee(null);
+                    setIsModalOpen(false);
+                    setTreeState(workspaceEnabledPlanState);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto">
+                <Button
+                  variant="contained"
+                  data-tour="module-access-configure-modules"
+                  onClick={() => {
+                    setIsWorkspaceMode(true);
+                    setSelectedEmployee(null);
+                    setSelectedVerticals(activeVerticalLabels);
+                    setTreeState(workspaceEnabledPlanState);
+                    setIsModalOpen(true);
+                  }}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    whiteSpace: "nowrap",
+                    minWidth: 0,
+                    px: 2,
+                    backgroundColor: "#2563eb",
+                    "&:hover": { backgroundColor: "#1d4ed8" },
+                  }}
+                >
+                  Configure Workspace Modules
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="success"
+                  data-tour="module-access-reactivate-all"
+                  onClick={() => handleBulkAccountStatus(false)}
+                  disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    whiteSpace: "nowrap",
+                    minWidth: 0,
+                    px: 2,
+                  }}
+                >
+                  Reactivate All Employees
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  data-tour="module-access-delete-all"
+                  onClick={() => handleBulkAccountStatus(true)}
+                  disabled={bulkAccountStatusMutation.isPending || !hasRealWorkspaces}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "10px",
+                    fontWeight: 700,
+                    fontSize: "11px",
+                    whiteSpace: "nowrap",
+                    minWidth: 0,
+                    px: 2,
+                  }}
+                >
+                  Delete All Employees
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            data-tour="module-access-employee-table"
+            className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm"
+          >
+            <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
+              {/* <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                Employee List
+              </p> */}
+              <div className="relative w-full xl:w-[320px]">
+                <SearchIcon
+                  sx={{ fontSize: 16 }}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  value={employeeSearch}
+                  onChange={(event) => setEmployeeSearch(event.target.value)}
+                  placeholder="Search name, role, email..."
+                  className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-[12px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex flex-1 items-center justify-center py-20">
+                <CircularProgress size={22} sx={{ color: "#2563eb" }} />
+              </div>
+            ) : tableRows.length === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center py-20 text-slate-400">
+                <SearchIcon sx={{ fontSize: 28 }} />
+                <p className="mt-3 font-pmedium">
+                  {employeeSearch.trim()
+                    ? "No matching employees found."
+                    : "No employees in this workspace yet."}
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-x-auto">
+                <table className="w-full table-fixed text-left">
+                  <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-500">
+                    <tr>
+                      <th className="w-[30%] px-3 py-4 text-left">Employee</th>
+                      <th className="w-[16%] px-3 py-4 text-left">Role</th>
+                      <th className="w-[20%] px-3 py-4 text-left">Access Level</th>
+                      <th className="w-[16%] px-3 py-4 text-left">Status</th>
+                      <th className="w-[18%] px-3 py-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {tableRows.map((member) => {
+                      const isFounder =
+                        getMemberRoleCategory(member.designation) === "Founder";
+                      const initials =
+                        (member.name || member.email || "?")
+                          .split(/[\s@._-]+/)
+                          .filter(Boolean)
+                          .map((part) => part.charAt(0))
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase() || "?";
+                      const accessCount = getMemberAccessCount(
+                        member,
+                        selectedWorkspace?.workspaceId,
+                        !hasRealWorkspaces,
+                      );
+                      const status = getMemberStatus(member);
+                      return (
+                        <tr key={member._id} className="transition hover:bg-slate-50/60">
+                          <td className="px-3 py-4">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p
+                                  className="truncate whitespace-nowrap font-pmedium text-slate-900"
+                                  title={member.name || "-"}
+                                >
+                                  {member.name || "-"}
+                                </p>
+                                <p
+                                  className="truncate text-[10px] text-slate-400"
+                                  title={member.email || "-"}
+                                >
+                                  {member.email || "-"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td
+                            className="truncate px-3 py-4 font-pmedium text-slate-700"
+                            title={member.designation || "-"}
                           >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5}>
-                      <div className="py-10 text-center text-slate-500">
-                        No employees found for this workspace.
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </div> */}
-
-        <div data-tour="module-access-employee-table">
-          <AgTable
-            data={filteredMembers}
-            columns={Columns}
-            search
-            tableTitle="Employee List"
-            tableHeight={500}
-            loading={isLoading}
-          />
+                            {String(member.designation || "").trim() || "-"}
+                          </td>
+                          <td className="px-3 py-4">
+                            {isFounder ? (
+                              <span className={`${STATUS_PILL_BASE} gap-1 bg-emerald-50 text-emerald-700`}>
+                                <SecurityIcon sx={{ fontSize: 12 }} />
+                                Full Access
+                              </span>
+                            ) : (
+                              <span
+                                className={`text-[11px] font-semibold ${
+                                  accessCount ? "text-slate-700" : "text-slate-400"
+                                }`}
+                              >
+                                {accessCount} Modules Enabled
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-4">
+                            <span className={statusPillClass(status)}>{status}</span>
+                          </td>
+                          <td className="px-3 py-4">
+                            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                              <Tooltip
+                                title={
+                                  isFounder
+                                    ? "Founder has full access to all workspace features"
+                                    : "Configure module access"
+                                }
+                              >
+                                <span
+                                  data-tour="module-access-open-employee"
+                                  className="inline-flex"
+                                >
+                                  <button
+                                    type="button"
+                                    disabled={isFounder}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openEmployeeAccess(member);
+                                    }}
+                                    aria-label={`Configure module access for ${member.name || "employee"}`}
+                                    title="Configure module access"
+                                    className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-slate-100 disabled:hover:text-slate-600"
+                                  >
+                                    <SecurityIcon sx={{ fontSize: 14 }} />
+                                  </button>
+                                </span>
+                              </Tooltip>
+                              <span
+                                data-tour="module-access-row-menu"
+                                className="inline-flex"
+                              >
+                                <ThreeDotMenu
+                                  rowId={member._id}
+                                  menuItems={[
+                                    member.isDeleted
+                                      ? {
+                                          label: "Reactivate",
+                                          onClick: () =>
+                                            toggleAccountStatusMutation.mutate({
+                                              memberId: member._id,
+                                              isDeleted: false,
+                                            }),
+                                        }
+                                      : {
+                                          label: "Delete Account",
+                                          onClick: () =>
+                                            toggleAccountStatusMutation.mutate({
+                                              memberId: member._id,
+                                              isDeleted: true,
+                                            }),
+                                        },
+                                  ]}
+                                />
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </PageFrame>
 
       <AccessEditorModal
         open={isModalOpen}
@@ -2046,6 +2323,7 @@ const ModuleAccess = () => {
         treeSearch={treeSearch}
         setTreeSearch={setTreeSearch}
         onToggle={handleToggle}
+        onToggleGroup={handleToggleGroup}
         onClose={() => {
           setIsModalOpen(false);
           setSelectedEmployee(null);
@@ -2060,7 +2338,6 @@ const ModuleAccess = () => {
         isFounderReadOnly={isFounderReadOnly}
         activePlanTier={activePlanTier}
         onPlanButtonClick={handlePlanButtonClick}
-        pendingRequestedPlan={pendingRequestedPlan}
         verticalLabels={activeVerticalLabels}
         selectedVerticals={selectedVerticals}
         isEditingVerticals={isEditingVerticals}
