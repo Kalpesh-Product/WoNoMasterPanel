@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { X, Gift } from "lucide-react";
+import { X, Gift, Tag } from "lucide-react";
 import useAxiosPrivate from "../hooks/useAxiosPrivate";
 
 const formatDate = (value) => {
@@ -40,6 +40,16 @@ const TrialCompaniesModal = ({ open, onClose }) => {
     },
     onError: (error) =>
       toast.error(error?.response?.data?.message || "Failed to update the bonus trial offer"),
+  });
+
+  const promoRetryMutation = useMutation({
+    mutationFn: async ({ companyId, active }) =>
+      (await axios.patch(`/api/hosts/trial-companies/${companyId}/promo-retry`, { active })).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trial-companies"] });
+      toast.success("Updated");
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to update"),
   });
 
   if (!open) return null;
@@ -81,6 +91,10 @@ const TrialCompaniesModal = ({ open, onClose }) => {
                   bonusOfferMutation.mutate({ companyId: company.companyId, ...payload })
                 }
                 isSaving={bonusOfferMutation.isPending}
+                onTogglePromoRetry={(active) =>
+                  promoRetryMutation.mutate({ companyId: company.companyId, active })
+                }
+                isTogglingPromoRetry={promoRetryMutation.isPending}
               />
             ))
           ) : (
@@ -94,7 +108,13 @@ const TrialCompaniesModal = ({ open, onClose }) => {
   );
 };
 
-const TrialCompanyRow = ({ company, onSaveBonusOffer, isSaving }) => {
+const TrialCompanyRow = ({
+  company,
+  onSaveBonusOffer,
+  isSaving,
+  onTogglePromoRetry,
+  isTogglingPromoRetry,
+}) => {
   const offer = company.bonusTrialOffer || {};
   const [active, setActive] = useState(Boolean(offer.active));
   const [durationDays, setDurationDays] = useState(String(offer.durationDays || 30));
@@ -180,6 +200,27 @@ const TrialCompanyRow = ({ company, onSaveBonusOffer, isSaving }) => {
           Last bonus offer claimed on {formatDate(offer.claimedAt)}.
         </p>
       )}
+
+      {company.redeemedPromotionCodeId ? (
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+          <Tag size={13} className="text-amber-500 shrink-0" />
+          <span className="text-[11px] font-pmedium text-slate-600">
+            Already redeemed a trial promo code
+          </span>
+          <label className="ml-auto flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={Boolean(company.promoCodeRetryAllowed)}
+              disabled={isTogglingPromoRetry}
+              onChange={(e) => onTogglePromoRetry(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-[11px] font-pmedium text-slate-700">
+              Allow once more
+            </span>
+          </label>
+        </div>
+      ) : null}
     </div>
   );
 };

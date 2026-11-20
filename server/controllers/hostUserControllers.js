@@ -12,7 +12,15 @@ const PlanPaymentLink = require("../models/PlanPaymentLink");
 const {
   handleVerificationPaymentWebhookEvent,
 } = require("./companyVerificationPaymentsControllers");
-const { handlePlanPaymentWebhookEvent } = require("./planPaymentControllers");
+const {
+  handlePlanPaymentWebhookEvent,
+  handleTrialSubscriptionCheckoutCompleted,
+  handleSubscriptionInvoicePaid,
+  handleSubscriptionCanceled,
+  handleSubscriptionUpdated,
+  handleSubscriptionPaymentFailed,
+} = require("./planPaymentControllers");
+const { getBasicPlanPriceUsd } = require("../services/modulePricingService");
 const Workspace = require("../models/hostCompany/Workspace");
 const WorkspaceMember = require("../models/hostCompany/WorkspaceMember");
 const { sendMail } = require("../config/nodemailerConfig");
@@ -2569,9 +2577,10 @@ const sendInviteEmail = async (req, res, next) => {
       });
     }
 
-    // Payment gate: Basic is free and skips this entirely (approval alone is
-    // enough). Professional/Custom require a confirmed plan payment first —
-    // inviteUnlockedAt is set by the plan-payment webhook the moment
+    // Payment gate: Basic skips this entirely while it's free (price $0 —
+    // approval alone is enough). The moment staff set a real Basic price on
+    // Plan Pricing settings, Basic is gated exactly like Professional/Custom
+    // — inviteUnlockedAt is set by the plan-payment webhook the moment
     // handlePlanPaymentWebhookEvent applies a paid PlanPaymentLink (see
     // planPaymentControllers.js), never by the client.
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -2587,7 +2596,10 @@ const sendInviteEmail = async (req, res, next) => {
         ? "professional"
         : "basic";
 
-    if (normalizedPlan !== "basic" && !lead?.inviteUnlockedAt) {
+    const requiresPlanPayment =
+      normalizedPlan === "basic" ? (await getBasicPlanPriceUsd()) > 0 : true;
+
+    if (requiresPlanPayment && !lead?.inviteUnlockedAt) {
       return res.status(400).json({
         message: "Invite can only be sent after the plan payment has been confirmed",
       });
@@ -4034,7 +4046,16 @@ const handleStripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    if (session.payment_link) {
+    // Subscription-mode sessions (startTrialCheckout) have no payment_link
+    // at all — that's the Payment-Link-only branch below — so they're
+    // routed by mode instead.
+    if (session.mode === "subscription") {
+      try {
+        await handleTrialSubscriptionCheckoutCompleted(session);
+      } catch (error) {
+        console.error("Failed to finalize trial subscription checkout:", error);
+      }
+    } else if (session.payment_link) {
       try {
         // The { status: { $ne: "paid" } } filter makes this an atomic
         // "transition once" — if Stripe redelivers this same event (it
@@ -4149,6 +4170,30 @@ const handleStripeWebhook = async (req, res) => {
           error,
         );
       }
+    }
+  } else if (event.type === "invoice.paid") {
+    try {
+      await handleSubscriptionInvoicePaid(event.data.object);
+    } catch (error) {
+      console.error("Failed to process subscription invoice.paid:", error);
+    }
+  } else if (event.type === "customer.subscription.deleted") {
+    try {
+      await handleSubscriptionCanceled(event.data.object);
+    } catch (error) {
+      console.error("Failed to process customer.subscription.deleted:", error);
+    }
+  } else if (event.type === "invoice.payment_failed") {
+    try {
+      await handleSubscriptionPaymentFailed(event.data.object);
+    } catch (error) {
+      console.error("Failed to process invoice.payment_failed:", error);
+    }
+  } else if (event.type === "customer.subscription.updated") {
+    try {
+      await handleSubscriptionUpdated(event.data.object, event.data.previous_attributes || {});
+    } catch (error) {
+      console.error("Failed to process customer.subscription.updated:", error);
     }
   }
 
