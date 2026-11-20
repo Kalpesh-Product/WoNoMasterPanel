@@ -20,6 +20,7 @@ const TEMPLATE_KIND = {
     travigo: "hostel",
     lodge: "hostel",
     orchard: "hostel",
+    destinflow: "hostel",
     "cali-hostel": "hostel",
     haven: "coLiving",
     camelia: "coLiving",
@@ -40,6 +41,12 @@ const photo = (id, width = 1200) => `https://images.unsplash.com/${id}?auto=form
 const photoValue = (id, width = 1000) => ({ url: photo(id, width) });
 // Portrait crops centred on the face, for team photos (4:5, matching the team cards).
 const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=700&h=875&q=78`;
+// DestinFlow previews with the reference site's own mark and hero photograph so the
+// transparent navigation and centered banner read the way they were designed.
+const DESTINFLOW_ASSETS = {
+    logo: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/64c8f0e8ad1c8a6f73e9a4fe_destinflow-logo.svg",
+    hero: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/646dad4d11883642cfe0ec1f_home-banner-image.jpg",
+};
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
 // local exploration so the two hostel templates remain visually distinct in previews.
@@ -115,6 +122,16 @@ const TRAVIGO_DEMO_BUSINESS = {
             images: (roomPhotos[index] || TRAVIGO_PHOTOS.dorm).map((id) => photoValue(id)),
         })),
     },
+};
+const DESTINFLOW_DEMO_BUSINESS = {
+    ...hostelDemo,
+    companyName: "DestinFlow",
+    companyLogo: DESTINFLOW_ASSETS.logo,
+    title: "Explore With Experts",
+    subTitle: "Perfect travel partner with experience.",
+    cta: "Book Now",
+    heroImages: [DESTINFLOW_ASSETS.hero],
+    aboutTitle: "Stay well, travel further",
 };
 // Tulum has its own co-living photo set, so its preview never shares images with Haven or Camelia.
 const TULUM_PHOTOS = {
@@ -1324,6 +1341,8 @@ const demoBusinessFor = (kind, themeVariant) => {
         return TRAVIGO_DEMO_BUSINESS;
     if (themeVariant === "lodge" && kind === "hostel")
         return LODGE_DEMO_BUSINESS;
+    if (themeVariant === "destinflow" && kind === "hostel")
+        return DESTINFLOW_DEMO_BUSINESS;
     if (themeVariant === "cali-hostel" && kind === "hostel")
         return CALI_HOSTEL_DEMO_BUSINESS;
     if (themeVariant === "orchard" && kind === "hostel")
@@ -1392,6 +1411,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         sectionOverrides: {},
         vertical: primary.vertical,
         companyName: primary.companyName,
+        companyLogo: primary.companyLogo || "",
         registeredCompanyName: `${primary.companyName} Pvt Ltd`,
         copyrightText: `© ${primary.companyName}`,
         title: primary.title,

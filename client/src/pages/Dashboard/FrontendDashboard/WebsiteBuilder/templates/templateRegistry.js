@@ -21,6 +21,7 @@ const TulumTemplate = lazy(() => import("./tulum/TulumTemplate"));
 const GrindelwaldTemplate = lazy(() => import("./grindelwald/GrindelwaldTemplate"));
 const LodgeTemplate = lazy(() => import("./lodge/LodgeTemplate"));
 const OrchardTemplate = lazy(() => import("./orchard/OrchardTemplate"));
+const DestinflowTemplate = lazy(() => import("./destinflow/DestinflowTemplate"));
 const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"));
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
@@ -258,6 +259,21 @@ export const TEMPLATE_REGISTRY = {
             fg: "#353b41",
             accent: "#9aa88f",
             font: "'Outfit', ui-sans-serif, sans-serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    destinflow: {
+        id: "destinflow",
+        name: "DestinFlow",
+        description:
+            "Editorial hostel style — a centered photographic hero, square dark buttons, pale-blue facilities and a dark gallery strip. Inspired by DestinFlow, works for any service.",
+        component: DestinflowTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#666b73",
+            accent: "#3ba7da",
+            font: "'Cormorant Garamond', Georgia, serif",
         },
         recommendedFor: ["hostel"],
         supportsBooking: true,
