@@ -325,6 +325,14 @@ const templateSchema = new mongoose.Schema(
       slotIntervalMinutes: { type: Number, default: 30 },
       seatingOptions: { type: [String], default: [] },
       confirmationNote: { type: String, default: "" },
+      // Mirrored from HostPanel CafeSettings.reservationPolicy.
+      reservationPolicy: {
+        allowOnlineReservations: { type: Boolean, default: true },
+        type: { type: String, enum: ["free", "cover_charge"], default: "free" },
+        chargeBasis: { type: String, enum: ["per_table", "per_person"], default: "per_table" },
+        coverChargeAmount: { type: Number, min: 0, default: 0 },
+        minimumSpend: { type: Boolean, default: true },
+      },
     },
     // Hostel / co-living stay policy.
     stayPolicy: {
