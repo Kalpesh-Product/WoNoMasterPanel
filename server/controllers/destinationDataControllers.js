@@ -1,6 +1,9 @@
 const axios = require("axios");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const { fetchAllNomadListings } = require("./hostListingControllers");
+const WonoDestinationRanking = require("../models/WonoDestinationRanking");
+
+const priorityLabels = { P1: "Immediate Priority", P2: "High Priority", P3: "Medium Priority", P4: "Low Priority" };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 // Some Nomads collections are abnormally slow to query right now — `blogs`
@@ -27,7 +30,6 @@ const destinationRefreshPromises = {
 };
 const nomadsCompanyListingsCache = { items: null, fetchedAt: 0 };
 let nomadsCompanyListingsRefreshPromise = null;
-
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -182,6 +184,14 @@ const fetchNomadsRows = async (path) => {
   }
 };
 
+// `/company/companies` answers in one fast call — that's what keeps this
+// tab loading quickly, same spirit as the pre-aggregated blogs/news
+// endpoints below. It does drop inactive listings and "privatestay" at the
+// DB level, which is why its counts run a bit under Publish Listings'
+// (intentional — see the Public Listings card, which only ever tracked
+// these 5 active listing types). `fetchAllNomadListings` — the full
+// per-company crawl, 30-50s cold — is only a fallback for when that
+// endpoint comes back empty, never the primary path.
 const refreshNomadsCompanyListingsCache = () => {
   if (!nomadsCompanyListingsRefreshPromise) {
     nomadsCompanyListingsRefreshPromise = (async () => {
@@ -298,6 +308,7 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
         eventCount: 0,
         placeCount: 0,
         restaurantCount: 0,
+        publicListingCount: 0,
         coworkingCount: 0,
         colivingCount: 0,
         hostelCount: 0,
@@ -336,7 +347,9 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
     const countField = listingTypeCountField(listing?.companyType);
     if (!countField) return;
     const entry = ensureDestination(listing);
-    if (entry) entry[countField] += 1;
+    if (!entry) return;
+    entry[countField] += 1;
+    if (listing.isPublic === true) entry.publicListingCount += 1;
   });
 
   return destinationEntries
@@ -405,12 +418,12 @@ const getCachedDestinationStats = async ({ includeListings = false } = {}) => {
 const summarize = (items) =>
   items.reduce(
     (counts, item) => ({
-      destinations: counts.destinations + 1,
       blogs: counts.blogs + item.blogCount,
       news: counts.news + item.newsCount,
       events: counts.events + item.eventCount,
       places: counts.places + item.placeCount,
       restaurants: counts.restaurants + item.restaurantCount,
+      publicListings: counts.publicListings + item.publicListingCount,
       coworking: counts.coworking + item.coworkingCount,
       coliving: counts.coliving + item.colivingCount,
       hostels: counts.hostels + item.hostelCount,
@@ -418,12 +431,12 @@ const summarize = (items) =>
       cafes: counts.cafes + item.cafeCount,
     }),
     {
-      destinations: 0,
       blogs: 0,
       news: 0,
       events: 0,
       places: 0,
       restaurants: 0,
+      publicListings: 0,
       coworking: 0,
       coliving: 0,
       hostels: 0,
@@ -484,9 +497,20 @@ const getDestinationListingDetails = async (req, res) => {
     return String(left.companyTitle || "").localeCompare(String(right.companyTitle || ""));
   });
 
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const start = (page - 1) * limit;
+  const total = filtered.length;
+
   return res.status(200).json({
-    items: filtered.map((item, index) => ({ ...item, srNo: index + 1 })),
-    total: filtered.length,
+    items: filtered.slice(start, start + limit).map((item, index) => ({
+      ...item,
+      srNo: start + index + 1,
+    })),
+    page,
+    limit,
+    total,
+    hasMore: page * limit < total,
   });
 };
 
@@ -500,17 +524,21 @@ const getDestinationsData = async (req, res, next) => {
     const allItems = await getCachedDestinationStats({
       includeListings: activeTab === "listings",
     });
-    const scopedItems = allItems.filter((item) =>
-      activeTab === "listings" ? hasListingData(item) : hasContentData(item),
-    );
+    const contentItems = allItems.filter(hasContentData);
+    const scopedItems = activeTab === "listings"
+      ? allItems.filter(hasListingData)
+      : contentItems;
+    const continent = normalizeSearchValue(req.query.continent);
     const country = normalizeSearchValue(req.query.country);
     const state = normalizeSearchValue(req.query.state);
-    const city = normalizeSearchValue(req.query.city);
     const search = normalizeSearchValue(req.query.search);
 
-    const countryScoped = country
-      ? scopedItems.filter((item) => normalizeSearchValue(item.country) === country)
+    const continentScoped = continent
+      ? scopedItems.filter((item) => normalizeSearchValue(item.continent) === continent)
       : scopedItems;
+    const countryScoped = country
+      ? continentScoped.filter((item) => normalizeSearchValue(item.country) === country)
+      : continentScoped;
     const stateScoped = state
       ? countryScoped.filter((item) =>
           item.states.some((value) => normalizeSearchValue(value) === state),
@@ -518,11 +546,6 @@ const getDestinationsData = async (req, res, next) => {
       : countryScoped;
 
     let filtered = stateScoped;
-    if (city) {
-      filtered = filtered.filter((item) =>
-        item.cities.some((value) => normalizeSearchValue(value) === city),
-      );
-    }
     if (search) {
       filtered = filtered.filter((item) =>
         [
@@ -540,14 +563,14 @@ const getDestinationsData = async (req, res, next) => {
     const start = (page - 1) * limit;
     const total = filtered.length;
 
+    const continents = Array.from(
+      new Set(scopedItems.map((item) => item.continent).filter((value) => value && value !== "-")),
+    ).sort((a, b) => a.localeCompare(b));
     const countries = Array.from(
-      new Set(scopedItems.map((item) => item.country).filter(Boolean)),
+      new Set(continentScoped.map((item) => item.country).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
     const states = Array.from(
       new Set(countryScoped.flatMap((item) => item.states).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b));
-    const cities = Array.from(
-      new Set(stateScoped.flatMap((item) => item.cities).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
 
     return res.status(200).json({
@@ -559,12 +582,219 @@ const getDestinationsData = async (req, res, next) => {
       limit,
       total,
       hasMore: page * limit < total,
-      counts: summarize(scopedItems),
-      filterOptions: { countries, states, cities },
+      counts: {
+        destinations: contentItems.length,
+        ...summarize(scopedItems),
+      },
+      filterOptions: { continents, countries, states },
     });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { getDestinationsData };
+const computeClientOpportunity = (factors) => {
+  if (!factors) return null;
+  const { targetBusinessSupply, tourismAccommodationBase, marketScale } = factors;
+  if ([targetBusinessSupply, tourismAccommodationBase, marketScale].some((value) => typeof value !== "number")) return null;
+  return Number((targetBusinessSupply * 0.6 + tourismAccommodationBase * 0.25 + marketScale * 0.15).toFixed(2));
+};
+
+const computeFinalScore = (factors) => {
+  const clientOpportunity = computeClientOpportunity(factors);
+  if (clientOpportunity === null) return null;
+  const { nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare } = factors;
+  const weighted = [nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare];
+  if (weighted.some((value) => typeof value !== "number")) return null;
+  return Number((
+    clientOpportunity * 0.35
+    + nomadDemandCommunity * 0.20
+    + remoteWorkInfrastructure * 0.15
+    + businessJobsEcosystem * 0.10
+    + flightConnectivity * 0.07
+    + affordability * 0.05
+    + visaEntryAccessibility * 0.05
+    + safetyHealthcare * 0.03
+  ).toFixed(2));
+};
+
+const getMissingFactorKeys = (factors = {}) => WonoDestinationRanking.FACTOR_KEYS
+  .filter((key) => typeof factors[key] !== "number" || factors[key] < 0 || factors[key] > 100);
+
+const recomputeActiveRanking = async () => {
+  const activeRows = await WonoDestinationRanking.find({ isActive: true });
+  const scored = activeRows
+    .map((row) => ({ row, score: computeFinalScore(row.factors) }))
+    .sort((left, right) => right.score - left.score);
+
+  const total = scored.length;
+  const p1Count = Math.round(total * 0.2);
+  const p4Count = Math.round(total * 0.2);
+  const remaining = total - p1Count - p4Count;
+  const p2Count = Math.round(remaining / 2);
+
+  const operations = scored.map(({ row, score }, index) => {
+    const rank = index + 1;
+    let priority = "P3";
+    if (index < p1Count) priority = "P1";
+    else if (index < p1Count + p2Count) priority = "P2";
+    else if (index >= total - p4Count) priority = "P4";
+    return { updateOne: { filter: { _id: row._id }, update: { $set: { rank, priority, score } } } };
+  });
+
+  if (operations.length) await WonoDestinationRanking.bulkWrite(operations);
+};
+
+const getWonoDestinationAnalytics = async (req, res, next) => {
+  try {
+    const priority = String(req.query.priority || "").trim().toUpperCase();
+    const continent = normalizeSearchValue(req.query.continent);
+    const search = normalizeSearchValue(req.query.search);
+    const includeInactive = String(req.query.includeInactive || "").trim() === "true";
+
+    const dbRows = await WonoDestinationRanking.find(includeInactive ? {} : { isActive: true })
+      .sort({ rank: 1 })
+      .lean();
+    const rankingRows = dbRows.map((row) => ({
+      ...row,
+      priorityLabel: row.priority ? priorityLabels[row.priority] : null,
+      clientOpportunity: computeClientOpportunity(row.factors),
+      missingFactors: getMissingFactorKeys(row.factors),
+    }));
+    const activeRows = rankingRows.filter((row) => row.isActive);
+
+    const filtered = rankingRows.filter((row) => {
+      if (priority && row.priority !== priority) return false;
+      if (continent && normalizeSearchValue(row.continent) !== continent) return false;
+      if (!search) return true;
+      return [row.destination, row.country, row.continent, row.priority, row.priorityLabel]
+        .some((value) => normalizeSearchValue(value).includes(search));
+    });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(250, Math.max(1, parseInt(req.query.limit, 10) || 25));
+    const start = (page - 1) * limit;
+    const prioritySummary = Object.keys(priorityLabels).map((key) => {
+      const rows = activeRows.filter((row) => row.priority === key);
+      return {
+        priority: key,
+        label: priorityLabels[key],
+        count: rows.length,
+        rankRange: rows.length ? `${rows[0].rank}–${rows[rows.length - 1].rank}` : "—",
+        averageScore: rows.length ? Number((rows.reduce((sum, row) => sum + row.score, 0) / rows.length).toFixed(2)) : 0,
+      };
+    });
+    const continentSummary = Array.from(new Set(activeRows.map((row) => row.continent)))
+      .sort((left, right) => left.localeCompare(right))
+      .map((name) => {
+        const rows = activeRows.filter((row) => row.continent === name);
+        return {
+          continent: name,
+          count: rows.length,
+          averageScore: Number((rows.reduce((sum, row) => sum + row.score, 0) / rows.length).toFixed(2)),
+        };
+      });
+    return res.status(200).json({
+      items: filtered.slice(start, start + limit),
+      page,
+      limit,
+      total: filtered.length,
+      hasMore: page * limit < filtered.length,
+      summary: {
+        destinations: activeRows.length,
+        countries: new Set(activeRows.map((row) => row.country)).size,
+        continents: continentSummary.length,
+        averageScore: activeRows.length ? Number((activeRows.reduce((sum, row) => sum + row.score, 0) / activeRows.length).toFixed(2)) : 0,
+        pending: rankingRows.length - activeRows.length,
+        prioritySummary,
+        continentSummary,
+        sourceSnapshot: "2026-10-14",
+      },
+      filterOptions: {
+        continents: continentSummary.map((row) => row.continent),
+        priorities: Object.keys(priorityLabels).map((key) => ({ key, label: priorityLabels[key] })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const createWonoDestination = async (req, res, next) => {
+  try {
+    const { destination, country, continent, factors = {}, isActive } = req.body;
+    if (!destination?.trim() || !country?.trim() || !continent?.trim()) {
+      return res.status(400).json({ message: "Destination, country and continent are required." });
+    }
+
+    const missingFactors = getMissingFactorKeys(factors);
+    if (isActive && missingFactors.length) {
+      return res.status(400).json({ message: `Cannot activate: missing factors — ${missingFactors.join(", ")}` });
+    }
+
+    const doc = await WonoDestinationRanking.create({
+      destination: destination.trim(),
+      country: country.trim(),
+      continent: continent.trim(),
+      factors,
+      isActive: Boolean(isActive) && !missingFactors.length,
+    });
+
+    await recomputeActiveRanking();
+    const saved = await WonoDestinationRanking.findById(doc._id).lean();
+    return res.status(201).json({
+      ...saved,
+      priorityLabel: saved.priority ? priorityLabels[saved.priority] : null,
+      clientOpportunity: computeClientOpportunity(saved.factors),
+      missingFactors: getMissingFactorKeys(saved.factors),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateWonoDestination = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const existing = await WonoDestinationRanking.findById(id);
+    if (!existing) return res.status(404).json({ message: "Destination not found." });
+
+    const { destination, country, continent, factors, isActive } = req.body;
+    if (destination?.trim()) existing.destination = destination.trim();
+    if (country?.trim()) existing.country = country.trim();
+    if (continent?.trim()) existing.continent = continent.trim();
+    if (factors && typeof factors === "object") {
+      existing.factors = { ...(existing.factors?.toObject?.() || existing.factors || {}), ...factors };
+    }
+
+    const nextActive = isActive === undefined ? existing.isActive : Boolean(isActive);
+    const missingFactors = getMissingFactorKeys(existing.factors);
+    if (nextActive && missingFactors.length) {
+      return res.status(400).json({ message: `Cannot activate: missing factors — ${missingFactors.join(", ")}` });
+    }
+    existing.isActive = nextActive;
+    if (!nextActive) {
+      existing.rank = null;
+      existing.priority = null;
+      existing.score = null;
+    }
+
+    await existing.save();
+    await recomputeActiveRanking();
+    const saved = await WonoDestinationRanking.findById(id).lean();
+    return res.status(200).json({
+      ...saved,
+      priorityLabel: saved.priority ? priorityLabels[saved.priority] : null,
+      clientOpportunity: computeClientOpportunity(saved.factors),
+      missingFactors: getMissingFactorKeys(saved.factors),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getDestinationsData,
+  getWonoDestinationAnalytics,
+  createWonoDestination,
+  updateWonoDestination,
+};

@@ -96,6 +96,7 @@ const buildSteps = (tour) => {
           description: tourStep.description,
           side: tourStep.side || "bottom",
           align: tourStep.align || "start",
+          popoverClass: tourStep.popoverClass,
         },
       });
     });
@@ -233,6 +234,24 @@ export default function usePageTour() {
       scrollContainer?.addEventListener("scroll", refreshPosition, { passive: true });
       window.addEventListener("resize", refreshPosition);
 
+      // The destination dashboard's priority/continent cards are
+      // position:sticky, so they stay pinned on screen (overlapping the next
+      // panel's own title, still looking "lit" next to it) even while a
+      // later step (their Top 5 chart / ranked table) is the actual target.
+      // Rather than fight that with scroll-margin math, drop the sticky
+      // positioning entirely for the duration of those steps — the cards
+      // then scroll away like normal content, so there's nothing left to
+      // overlap or dim. Restored the moment a different step takes over.
+      let unstuckCardsElement = null;
+      const restoreStickyCards = () => {
+        if (unstuckCardsElement) {
+          unstuckCardsElement.style.position = "";
+          unstuckCardsElement.style.opacity = "";
+          unstuckCardsElement.style.transition = "";
+          unstuckCardsElement = null;
+        }
+      };
+
       const instance = driver({
         steps,
         showProgress: true,
@@ -257,6 +276,26 @@ export default function usePageTour() {
         // every step instead of trusting Driver's visibility check.
         onHighlightStarted: (element) => {
           if (!element) return;
+          restoreStickyCards();
+          const priorityPanel = element.matches?.(
+            '[data-tour="destination-dashboard-chart-top5-priority"], [data-tour="destination-dashboard-priority-table"]',
+          );
+          const continentPanel = element.matches?.(
+            '[data-tour="destination-dashboard-chart-top5-continent"], [data-tour="destination-dashboard-continent-table"]',
+          );
+          if (priorityPanel || continentPanel) {
+            const cardsEl = document.querySelector(
+              priorityPanel
+                ? '[data-tour="destination-dashboard-priority-bands"]'
+                : '[data-tour="destination-dashboard-continent-cards"]',
+            );
+            if (cardsEl) {
+              cardsEl.style.transition = "opacity 0.2s ease";
+              cardsEl.style.opacity = "0.25";
+              cardsEl.style.position = "static";
+              unstuckCardsElement = cardsEl;
+            }
+          }
           // "center" on an element wider/taller than the viewport (e.g. a
           // full data table) scrolls past its start edge, cropping it —
           // fall back to "nearest"/"start" so the element's own edge, not
@@ -264,6 +303,12 @@ export default function usePageTour() {
           const block = element.offsetHeight > window.innerHeight ? "start" : "center";
           const inline = element.offsetWidth > window.innerWidth ? "nearest" : "center";
           element.scrollIntoView({ behavior: "auto", block, inline });
+          // A sticky target (e.g. the priority/continent cards, on their own
+          // step) hasn't finished settling into its stuck position in this
+          // same tick, so Driver can compute the popover's placement a frame
+          // too early and render it overlapping the card instead of beside
+          // it. Nudge Driver to recompute once that's caught up.
+          requestAnimationFrame(() => driverRef.current?.refresh());
         },
         onNextClick: (_element, _step, { driver: activeDriver }) => {
           if (activeDriver.hasNextStep()) {
@@ -278,6 +323,7 @@ export default function usePageTour() {
           activeDriver.destroy();
         },
         onDestroyed: () => {
+          restoreStickyCards();
           driverRef.current = null;
           scrollContainer?.removeEventListener("scroll", refreshPosition);
           window.removeEventListener("resize", refreshPosition);

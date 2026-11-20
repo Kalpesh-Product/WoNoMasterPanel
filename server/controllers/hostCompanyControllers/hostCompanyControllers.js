@@ -20,7 +20,15 @@ const {
   fetchAllNomadListings,
 } = require("../hostListingControllers");
 const { getDefaultEnabledModuleIdsForWorkspace } = require("../../config/hostWorkspaceModuleCatalog");
-const { getFreeTrialConfig } = require("../../services/modulePricingService");
+const {
+  getFreeTrialConfig,
+  getProfessionalPlanPriceUsd,
+  getActiveTrialPromotionCodeId,
+  getOrCreateSystemFreeTrialCoupon,
+} = require("../../services/modulePricingService");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { resolveHostPanelFrontendUrl } = require("../planPaymentControllers");
+const PlanPaymentLink = require("../../models/PlanPaymentLink");
 
 const serviceOptions = [
   {
@@ -1134,6 +1142,11 @@ const startTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Mirrors Workspace.selectedPlan below — without this, HostLeadCompany.plan
+    // stays "basic" through the whole trial, so a payment-link sent while
+    // trialing computes previousPlan as "basic" (computeChangeType treats it
+    // as changeType "initial", i.e. a first-ever upgrade) instead of "renewal".
+    leadCompany.plan = "professional";
     await leadCompany.save();
 
     // Computed per workspace, not once for the whole company — a company can
@@ -1170,6 +1183,172 @@ const startTrial = async (req, res, next) => {
   }
 };
 
+// PATCH /api/hosts/start-trial-checkout  { companyId, companyName, email, name }
+// Card-backed version of startTrial above: instead of flipping the DB
+// straight to an active trial, this creates a Stripe Checkout Session in
+// subscription mode — the host enters a card on Stripe's hosted page. The
+// subscription activates immediately (no Stripe trial_period_days) with a
+// 100%-off-once discount on its first invoice, so that invoice is a real
+// $199 charge discounted to $0 — full "plan price, discount, $0 total"
+// breakdown visible, like a normal receipt — instead of Stripe's own trial
+// mechanic, which skips billing entirely and shows a blank placeholder.
+// Stripe auto-charges the real rate from the second invoice onward — no
+// autopay logic to write ourselves, Stripe does the charging. The actual
+// DB flip (same shape as startTrial's) happens once Stripe confirms the
+// session, via handleTrialSubscriptionCheckoutCompleted
+// (planPaymentControllers.js) on the checkout.session.completed webhook —
+// never here, since the host hasn't necessarily finished entering their
+// card yet when this returns.
+const startTrialCheckout = async (req, res, next) => {
+  try {
+    const { companyId, companyName, email, name } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    if (!email) {
+      return res.status(400).json({ message: "email is required" });
+    }
+    const normalizedCompanyId = String(companyId).trim();
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const { freeTrialEnabled, freeTrialDurationDays } = await getFreeTrialConfig();
+    if (!freeTrialEnabled) {
+      return res.status(403).json({ message: "The free trial offer is not currently active." });
+    }
+
+    const leadCompany = await HostLeadCompany.findOneAndUpdate(
+      { companyId: normalizedCompanyId },
+      {
+        $setOnInsert: {
+          companyId: normalizedCompanyId,
+          companyName: companyName || normalizedCompanyId,
+          pocEmail: normalizedEmail,
+          pocName: name || "",
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    if (leadCompany.hasUsedTrial) {
+      return res.status(409).json({ message: "This company has already used its free trial." });
+    }
+
+    let stripeCustomerId = leadCompany.stripeCustomerId;
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: normalizedEmail,
+        name: name || companyName || normalizedCompanyId,
+        metadata: { companyId: normalizedCompanyId },
+      });
+      stripeCustomerId = customer.id;
+      await HostLeadCompany.updateOne(
+        { _id: leadCompany._id },
+        { $set: { stripeCustomerId } },
+      );
+    }
+
+    const professionalPlanPriceUsd = await getProfessionalPlanPriceUsd();
+    const frontendBaseUrl = resolveHostPanelFrontendUrl();
+
+    const sessionParams = {
+      mode: "subscription",
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(professionalPlanPriceUsd * 100),
+            recurring: { interval: "month" },
+            product_data: {
+              name: `Professional Plan (${companyName || normalizedCompanyId})`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      // No trial_period_days — the free trial IS the 100%-off-once
+      // discount below applied to a real, immediately-active
+      // subscription. That makes the first invoice a genuine $199
+      // charge discounted to $0 (full breakdown visible on the invoice
+      // itself), instead of Stripe's own trial mechanic, which skips
+      // billing entirely and shows a blank "free trial" placeholder with
+      // no price to discount.
+      client_reference_id: normalizedCompanyId,
+      success_url: `${frontendBaseUrl}/trial-success?session_id={CHECKOUT_SESSION_ID}`,
+      // Backing out of Stripe's page just returns to the dashboard —
+      // nothing was charged or changed, so no dedicated page is needed.
+      cancel_url: `${frontendBaseUrl}/dashboard`,
+    };
+
+    // Exactly ONE discount, never both: a staff-named marketing code
+    // (Plan Pricing settings) if one is active and this company hasn't
+    // already redeemed it — tracked by OUR OWN redeemedPromotionCodeId,
+    // independent of whatever duration that code's coupon has, so even a
+    // "forever" coupon is only ever handed to a company once here; staff
+    // can allow exactly one further redemption via promoCodeRetryAllowed
+    // (Trial Companies modal). Otherwise, the system's own always-on
+    // free-trial coupon — this is what guarantees every first-time
+    // company gets its one free month even if no marketing code is set.
+    const activeTrialPromotionCodeId = await getActiveTrialPromotionCodeId();
+    const canApplyNamedPromo =
+      Boolean(activeTrialPromotionCodeId) &&
+      (!leadCompany.redeemedPromotionCodeId || leadCompany.promoCodeRetryAllowed);
+
+    let session;
+    if (canApplyNamedPromo) {
+      try {
+        session = await stripe.checkout.sessions.create({
+          ...sessionParams,
+          discounts: [{ promotion_code: activeTrialPromotionCodeId }],
+          metadata: {
+            companyId: normalizedCompanyId,
+            appliedPromotionCodeId: activeTrialPromotionCodeId,
+            trialDays: String(freeTrialDurationDays),
+          },
+        });
+      } catch (error) {
+        console.error(
+          "Active trial promo code failed, falling back to the system free-trial coupon:",
+          error.message,
+        );
+      }
+    }
+    if (!session) {
+      const systemFreeTrialCouponId = await getOrCreateSystemFreeTrialCoupon();
+      session = await stripe.checkout.sessions.create({
+        ...sessionParams,
+        discounts: [{ coupon: systemFreeTrialCouponId }],
+        metadata: { companyId: normalizedCompanyId, trialDays: String(freeTrialDurationDays) },
+      });
+    }
+
+    // Pre-created as "pending" so /trial-success's polling page has a row
+    // to see immediately after Stripe redirects back — without this, the
+    // window before the webhook lands would look identical to "no such
+    // payment" instead of "still confirming". The webhook
+    // (handleTrialSubscriptionCheckoutCompleted) upserts this same row by
+    // stripeCheckoutSessionId rather than creating a second one.
+    await PlanPaymentLink.create({
+      companyId: normalizedCompanyId,
+      leadId: leadCompany._id,
+      leadName: name || leadCompany.pocName,
+      leadEmail: normalizedEmail,
+      companyName: companyName || leadCompany.companyName,
+      plan: "professional",
+      changeType: "initial",
+      billingCycle: "monthly",
+      amount: 0,
+      currency: "usd",
+      stripeCustomerId,
+      stripeCheckoutSessionId: session.id,
+      status: "pending",
+    });
+
+    return res.status(200).json({ checkoutUrl: session.url });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // GET /api/hosts/trial-companies — every company that has ever started the
 // free trial (trialStartAt set), for the Plan Pricing page's "who's on
 // trial" view. Not the full company list — only ones with trial history.
@@ -1177,7 +1356,7 @@ const getTrialCompanies = async (req, res, next) => {
   try {
     const companies = await HostLeadCompany.find({ trialStartAt: { $ne: null } })
       .select(
-        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer",
+        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer redeemedPromotionCodeId promoCodeRetryAllowed",
       )
       .sort({ isTrialActive: -1, trialEndAt: -1 })
       .lean();
@@ -1222,6 +1401,32 @@ const setBonusTrialOffer = async (req, res, next) => {
     if (!company) return res.status(404).json({ message: "Host lead company not found" });
 
     return res.status(200).json({ message: "Bonus trial offer updated", company });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/trial-companies/:companyId/promo-retry  { active }
+// Staff override for a SPECIFIC company that has already redeemed the
+// auto-apply trial promo code once (redeemedPromotionCodeId is set) — lets
+// them redeem it (or whatever code is currently active) one more time.
+// Consumed automatically the moment their next checkout actually uses it
+// (see handleTrialSubscriptionCheckoutCompleted), so this only ever grants
+// one extra redemption per flip, never a standing exemption.
+const setPromoCodeRetryAllowed = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { active } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      { $set: { promoCodeRetryAllowed: Boolean(active) } },
+      { new: true },
+    );
+    if (!company) return res.status(404).json({ message: "Host lead company not found" });
+
+    return res.status(200).json({ message: "Promo code retry updated", company });
   } catch (error) {
     next(error);
   }
@@ -1278,6 +1483,9 @@ const claimBonusTrial = async (req, res, next) => {
     leadCompany.isTrialActive = true;
     leadCompany.hasUsedTrial = true;
     leadCompany.subscriptionStatus = "trialing";
+    // Same reasoning as startTrial above — keeps a payment-link sent during
+    // this bonus trial from being mis-computed as changeType "initial".
+    leadCompany.plan = "professional";
     leadCompany.bonusTrialOffer.active = false;
     leadCompany.bonusTrialOffer.claimedAt = now;
     await leadCompany.save();
@@ -2803,8 +3011,10 @@ module.exports = {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  startTrialCheckout,
   getTrialCompanies,
   setBonusTrialOffer,
+  setPromoCodeRetryAllowed,
   claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,

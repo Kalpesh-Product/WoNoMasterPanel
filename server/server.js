@@ -78,7 +78,7 @@ const {
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
-const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
+const { getPublicPlanPaymentStatus, getPublicTrialCheckoutStatus } = require("./controllers/planPaymentControllers");
 const { getPublicWebsiteThemes } = require("./controllers/websiteControllers/websiteThemeCatalogController");
 
 require("./listeners/logEventListener");
@@ -134,6 +134,8 @@ app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
 app.get("/api/public/plan-pricing", getPublicPlanPricing);
 // Public: payment-confirmation polling for HostPanel's /payment-success page.
 app.get("/api/public/plan-payment-status", getPublicPlanPaymentStatus);
+// Public: trial-checkout polling for HostPanel's /trial-success page.
+app.get("/api/public/trial-checkout-status", getPublicTrialCheckoutStatus);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs

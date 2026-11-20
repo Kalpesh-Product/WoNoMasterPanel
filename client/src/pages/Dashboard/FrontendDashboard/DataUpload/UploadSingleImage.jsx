@@ -2,12 +2,13 @@
 import React, { useRef, useState, useEffect, useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
-import PrimaryButton from "../../../../components/PrimaryButton";
-import SecondaryButton from "../../../../components/SecondaryButton";
 import { toast } from "sonner";
 import axios from "axios";
 import { useLocation } from "react-router-dom";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
+import { UploadCloud } from "lucide-react";
+import UploadResultSummary from "./UploadResultSummary";
+import { UploadCard, UploadPanel, UploadActions, muiFieldSx } from "./UploadUI";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const API_BASE = NOMADS_API_BASE_URL;
@@ -145,7 +146,7 @@ const UploadSingleImage = () => {
   //   },
   // });
 
-  const { mutate, isPending } = useMutation({
+  const { mutate, isPending, data: uploadResult, error: uploadError } = useMutation({
     mutationFn: async ({ companyId, file, type }) => {
       const form = new FormData();
       form.append("companyId", companyId);
@@ -254,20 +255,24 @@ const UploadSingleImage = () => {
   }, [location.search, companies, isLoading]);
 
   return (
-    <div className="p-0">
-        <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+    <UploadCard
+      title="Upload Single Image"
+      description="Pick a company, then upload one image or logo for it."
+    >
+      <UploadPanel>
           {isLoading ? (
-            <p>Loading companies...</p>
+            <p className="text-xs font-pmedium text-slate-500">Loading companies...</p>
           ) : (
             <>
               {/* Country / Company Type / Company */}
-              <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
+              <div data-tour="data-upload-target-picker" className="grid gap-3 font-pmedium sm:grid-cols-4">
               <TextField
                 select
                 size="small"
                 fullWidth
                 label="Country"
                 value={country}
+                sx={muiFieldSx}
                 onChange={(e) => {
                   setCountry(e.target.value);
                   setCompanyType("");
@@ -288,6 +293,7 @@ const UploadSingleImage = () => {
                 fullWidth
                 label="Company Type"
                 value={companyType}
+                sx={muiFieldSx}
                 onChange={(e) => {
                   setCompanyType(e.target.value);
                   setCompanyId("");
@@ -302,27 +308,13 @@ const UploadSingleImage = () => {
               </TextField>
 
               {/* Company */}
-              {/* <TextField
-                select
-                size="small"
-                fullWidth
-                label="Company"
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                disabled={!companyType}
-              >
-                {filteredCompanies.map((c) => (
-                  <MenuItem key={c._id} value={c._id}>
-                    {c.companyName}
-                  </MenuItem>
-                ))}
-              </TextField> */}
               <TextField
                 select
                 size="small"
                 fullWidth
                 label="Company"
                 value={companyId}
+                sx={muiFieldSx}
                 onChange={(e) => setCompanyId(e.target.value)}
                 disabled={!companyType}
                 SelectProps={{
@@ -365,7 +357,6 @@ const UploadSingleImage = () => {
                     </MenuItem>
                   ))}
               </TextField>
-              </div>
 
               {/* Image Type */}
               <div data-tour="data-upload-image-type">
@@ -375,6 +366,7 @@ const UploadSingleImage = () => {
                   fullWidth
                   label="Image Type"
                   value={imageType}
+                  sx={muiFieldSx}
                   onChange={(e) => setImageType(e.target.value)}
                   disabled={!companyId}
                 >
@@ -385,6 +377,7 @@ const UploadSingleImage = () => {
                     </MenuItem>
                   ))}
                 </TextField>
+              </div>
               </div>
 
               {/* File input */}
@@ -398,24 +391,31 @@ const UploadSingleImage = () => {
               />
               <div
                 data-tour="data-upload-dropzone"
-                className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400 ${
-                  isDragging ? "border-[#2563EB] bg-[#2563EB]/5" : ""
+                className={`mt-4 flex w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed px-4 py-7 text-center cursor-pointer transition ${
+                  isDragging
+                    ? "border-[#2563EB] bg-blue-50/60"
+                    : "border-slate-200 bg-white hover:border-[#2563EB]/40 hover:bg-blue-50/30"
                 }`}
                 onClick={() => inputRef.current?.click()}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
               >
-                <p className="font-medium">
+                <UploadCloud size={22} className={isDragging ? "text-[#2563EB]" : "text-slate-400"} />
+                <p className="text-xs font-pmedium text-slate-600">
                   {isDragging
                     ? "Drop image here"
                     : file
                     ? "Change image"
-                    : "Upload image here (click to browse or drag & drop)"}
+                    : "Drag & drop an image here, or click to browse"}
                 </p>
-                {file && (
-                  <p className="text-sm text-gray-600">
-                    Selected: {file.name} • {humanSize(file.size)}
+                {file ? (
+                  <p className="text-[10px] font-pmedium text-slate-400">
+                    {file.name} · {humanSize(file.size)}
+                  </p>
+                ) : (
+                  <p className="text-[10px] font-pmedium text-slate-400">
+                    .jpg, .png · Max {humanSize(MAX_BYTES)}
                   </p>
                 )}
               </div>
@@ -426,38 +426,29 @@ const UploadSingleImage = () => {
                   <img
                     src={preview}
                     alt="preview"
-                    className="w-48 h-48 object-cover border rounded-lg mx-auto"
+                    className="mx-auto h-48 w-48 rounded-xl border border-slate-200 object-cover"
                   />
                 </div>
               )}
 
-              <p className="text-xs text-gray-500">
-                Accepted type: <code>.jpg, .png</code>. Max size:{" "}
-                {humanSize(MAX_BYTES)}.
-              </p>
-
-              {error && <div className="text-sm text-red-600">{error}</div>}
+              {error && <div className="mt-2 text-xs text-rose-600">{error}</div>}
 
               {/* Actions */}
-              <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
-                <PrimaryButton
-                  type="button"
-                  title={isPending ? "Uploading…" : "Upload"}
-                  handleSubmit={handleUpload}
-                  isLoading={isPending}
-                  disabled={!file || !companyId || !imageType || isPending}
-                />
-                <SecondaryButton
-                  type="button"
-                  title="Reset"
-                  handleSubmit={handleReset}
-                  disabled={isPending && !file}
+              <div className="mt-4" data-tour="data-upload-actions">
+                <UploadActions
+                  onUpload={handleUpload}
+                  onReset={handleReset}
+                  pending={isPending}
+                  uploadDisabled={!file || !companyId || !imageType || isPending}
+                  resetDisabled={isPending && !file}
                 />
               </div>
+
+              <UploadResultSummary data={uploadResult} error={uploadError} />
             </>
           )}
-        </div>
-    </div>
+      </UploadPanel>
+    </UploadCard>
   );
 };
 

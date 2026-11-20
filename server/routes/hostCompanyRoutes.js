@@ -26,8 +26,10 @@ const {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  startTrialCheckout,
   getTrialCompanies,
   setBonusTrialOffer,
+  setPromoCodeRetryAllowed,
   claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
@@ -52,7 +54,18 @@ const {
 } = require("../controllers/hostListingControllers");
 const {
   getDestinationsData,
+  getWonoDestinationAnalytics,
+  createWonoDestination,
+  updateWonoDestination,
 } = require("../controllers/destinationDataControllers");
+const {
+  getDestinationListingSummary,
+  getDestinationListings,
+  updateDestinationListingInfo,
+  bulkImportDestinationListings,
+  getUploadedDestinations,
+} = require("../controllers/destinationListingControllers");
+const { uploadSpreadsheets } = require("../config/multerConfig");
 const {
   getCompanyUnits,
   getCompanyRecoveryQueue,
@@ -66,6 +79,7 @@ const {
   getLeadCustomSelections,
   getPlanPaymentStatuses,
   getHostCompanyPlanHistory,
+  createBillingPortalSession,
 } = require("../controllers/planPaymentControllers");
 const {
   getPlanPricing,
@@ -74,6 +88,10 @@ const {
   upsertPricingItem,
   removePricingItem,
   setCustomPlanModules,
+  listPromotionCodes,
+  createPromotionCode,
+  setPromotionCodeActive,
+  deletePromotionCode,
 } = require("../controllers/planPricingControllers");
 const { getHostInvoices, markHostInvoiceAsPaid } = require("../controllers/hostInvoiceControllers");
 const verifyJwt = require("../middlewares/verifyJwt");
@@ -98,8 +116,11 @@ router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/start-trial", startTrial);
+router.patch("/start-trial-checkout", startTrialCheckout);
+router.post("/billing-portal", createBillingPortalSession);
 router.get("/trial-companies", getTrialCompanies);
 router.patch("/trial-companies/:companyId/bonus-offer", setBonusTrialOffer);
+router.patch("/trial-companies/:companyId/promo-retry", setPromoCodeRetryAllowed);
 router.patch("/claim-bonus-trial", claimBonusTrial);
 router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPlanModules);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
@@ -111,6 +132,10 @@ router.get("/plan-payments", getPlanPaymentStatuses);
 router.get("/plan-pricing", getPlanPricing);
 router.get("/plan-pricing/catalog", getPricingCatalog);
 router.patch("/plan-pricing/settings", updateBasePricing);
+router.get("/promo-codes", listPromotionCodes);
+router.post("/promo-codes", createPromotionCode);
+router.patch("/promo-codes/:id/active", setPromotionCodeActive);
+router.delete("/promo-codes/:id", deletePromotionCode);
 router.put("/plan-pricing/:itemId", upsertPricingItem);
 router.delete("/plan-pricing/:itemId", removePricingItem);
 router.post("/custom-plan-modules", setCustomPlanModules);
@@ -118,6 +143,14 @@ router.get("/companies", getCompanies);
 router.get("/companies/overview", getCompanyOverview);
 router.get("/companies/locations", getCompanyLocations);
 router.get("/destinations-data", getDestinationsData);
+router.get("/destination-analytics", getWonoDestinationAnalytics);
+router.post("/destination-analytics", createWonoDestination);
+router.patch("/destination-analytics/:id", updateWonoDestination);
+router.get("/destination-listings/summary", getDestinationListingSummary);
+router.get("/destination-listings/uploaded", getUploadedDestinations);
+router.get("/destination-listings", getDestinationListings);
+router.patch("/destination-listings/:id", updateDestinationListingInfo);
+router.post("/destination-listings/bulk-import", uploadSpreadsheets.array("files", 30), bulkImportDestinationListings);
 router.get("/host-companies", getHostLeadCompanies);
 router.get("/host-companies/:companyId/invoices", getHostInvoices);
 router.patch("/host-companies/:companyId/invoices/:invoiceId/mark-paid", verifyJwt, markHostInvoiceAsPaid);

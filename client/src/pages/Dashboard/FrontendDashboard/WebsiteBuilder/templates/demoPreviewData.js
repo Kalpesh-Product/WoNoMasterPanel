@@ -5,14 +5,22 @@ const TEMPLATE_KIND = {
     tastyc: "menu",
     grandbar: "menu",
     aromatica: "menu",
+    italiano: "menu",
+    restobar: "menu",
+    tinyhome: "coLiving",
+    cabin: "coLiving",
     flowspace: "meeting",
     workscape: "meeting",
     brixspace: "meeting",
     worpace: "workspace",
+    coplace: "workspace",
+    cobox: "workspace",
     qerja: "workspace",
     wayfarer: "hostel",
     travigo: "hostel",
     lodge: "hostel",
+    orchard: "hostel",
+    destinflow: "hostel",
     "cali-hostel": "hostel",
     haven: "coLiving",
     camelia: "coLiving",
@@ -33,6 +41,12 @@ const photo = (id, width = 1200) => `https://images.unsplash.com/${id}?auto=form
 const photoValue = (id, width = 1000) => ({ url: photo(id, width) });
 // Portrait crops centred on the face, for team photos (4:5, matching the team cards).
 const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=700&h=875&q=78`;
+// DestinFlow previews with the reference site's own mark and hero photograph so the
+// transparent navigation and centered banner read the way they were designed.
+const DESTINFLOW_ASSETS = {
+    logo: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/64c8f0e8ad1c8a6f73e9a4fe_destinflow-logo.svg",
+    hero: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/646dad4d11883642cfe0ec1f_home-banner-image.jpg",
+};
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
 // local exploration so the two hostel templates remain visually distinct in previews.
@@ -108,6 +122,16 @@ const TRAVIGO_DEMO_BUSINESS = {
             images: (roomPhotos[index] || TRAVIGO_PHOTOS.dorm).map((id) => photoValue(id)),
         })),
     },
+};
+const DESTINFLOW_DEMO_BUSINESS = {
+    ...hostelDemo,
+    companyName: "DestinFlow",
+    companyLogo: DESTINFLOW_ASSETS.logo,
+    title: "Explore With Experts",
+    subTitle: "Perfect travel partner with experience.",
+    cta: "Book Now",
+    heroImages: [DESTINFLOW_ASSETS.hero],
+    aboutTitle: "Stay well, travel further",
 };
 // Tulum has its own co-living photo set, so its preview never shares images with Haven or Camelia.
 const TULUM_PHOTOS = {
@@ -846,7 +870,454 @@ const AROMATICA_DEMO_BUSINESS = (() => {
         extra: { ...base.extra, menuItems: items.map(toMenuItem) },
     };
 })();
+// Cobox uses bright, architectural co-working photography with a warm, soft cut.
+const coboxPhoto = (id, width = 1600) => `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=${width}`;
+const coboxValue = (id, width = 1200) => ({ url: coboxPhoto(id, width) });
+const COBOX_PHOTOS = {
+    hero: ["3182759", "3183190", "3182827"],
+    spaces: ["3182812", "3184416", "3182811", "3182765", "3182826", "3182833", "3184287", "3205570", "3768904", "3861958", "4348404", "7654118"],
+};
+const COBOX_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.workspace;
+    const items = base.pageItems || [];
+    return {
+        ...base,
+        companyName: "Cobox",
+        title: "Flexible co-working spaces tailored to your needs",
+        subTitle: "Discover modern, inspiring and fully equipped workspaces designed to fuel creativity, collaboration and growth.",
+        cta: "Book a trial visit",
+        heroImages: COBOX_PHOTOS.hero.map((id) => coboxPhoto(id, 1900)),
+        gallery: [...COBOX_PHOTOS.hero, ...COBOX_PHOTOS.spaces].map((id) => coboxPhoto(id, 1450)),
+        aboutImages: [COBOX_PHOTOS.spaces[0], COBOX_PHOTOS.spaces[3], COBOX_PHOTOS.spaces[6]].map((id) => coboxPhoto(id, 1200)),
+        aboutTitle: "A workspace shaped around the way you work",
+        aboutPageStory: "Cobox brings flexible desks, private cabins and meeting rooms together in one calm, well-run building.",
+        founders: [
+            { name: "Mira Shah", role: "Founder & Workplace Director", bio: "Mira shapes calm, useful spaces where independent people and growing teams can do their best work.", image: coboxValue("3769021", 900) },
+            { name: "Arjun Mehta", role: "Community Lead", bio: "Arjun connects members, hosts thoughtful events and makes every new arrival feel at home.", image: coboxValue("2379004", 900) },
+        ],
+        address: "18 Residency Road, Ashok Nagar, Bengaluru 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Choose a workspace that fits",
+            heroSubHeading: "Desks, cabins and suites designed for focused work and easy collaboration.",
+            heroImage: coboxPhoto(COBOX_PHOTOS.hero[0], 1900),
+            cardImage: coboxPhoto(COBOX_PHOTOS.hero[1], 1100),
+        },
+        pageItems: items.map((item, index) => ({
+            ...item,
+            images: COBOX_PHOTOS.spaces.slice(index * 2, index * 2 + 3).map((id) => coboxValue(id)),
+        })),
+    };
+})();
+
+"use strict";
+const RESTOBAR_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.menu;
+    const hero = [
+        "photo-1517248135467-4c7edcad34c4",
+        "photo-1528605248644-14dd04022da1",
+        "photo-1504674900247-0877df9cc836",
+        "photo-1551024506-0bccd828d307",
+    ];
+    const room = [
+        "photo-1552566626-52f8b828add9",
+        "photo-1514933651103-005eec06c04b",
+        "photo-1515003197210-e0cd71810b5f",
+        "photo-1527761939622-911909463c76",
+    ];
+    const menu = [
+        ["Starters", "Burrata & tomatoes", "$13", "Ripe tomatoes, basil oil and a slice of toasted sourdough.", "photo-1547592180-85f173990554"],
+        ["Starters", "Roasted squash salad", "$11", "Roasted squash, greens and toasted seeds with lemon dressing.", "photo-1512621776951-a57141f2eefd"],
+        ["Starters", "Soup of the day", "$9", "Ask the kitchen what is simmering today. Served with bread.", "photo-1547592166-23ac45744acd"],
+        ["Mains", "Wild mushroom pasta", "$19", "Fresh pasta tossed with mushrooms, thyme and parmesan.", "photo-1473093295043-cdd812d0e601"],
+        ["Mains", "Grilled market fish", "$24", "Market fish with seasonal greens and herb butter.", "photo-1519708227418-c8fd9a32b7a2"],
+        ["Mains", "Roast vegetable bowl", "$16", "Roasted vegetables with grains, herbs and a bright tahini dressing.", "photo-1504674900247-0877df9cc836"],
+        ["Desserts", "Chocolate tart", "$9", "Dark chocolate, crisp pastry and a spoonful of cream.", "photo-1551024506-0bccd828d307"],
+        ["Desserts", "Vanilla panna cotta", "$8", "Vanilla cream set softly, topped with seasonal fruit.", "photo-1488477181946-6428a0291777"],
+        ["Drinks", "Citrus spritz", "$8", "Orange, lemon and soda served over ice.", "photo-1544145945-f90425340c7e"],
+        ["Drinks", "Flat white", "$5", "A double espresso with silky steamed milk.", "photo-1509042239860-f550ce710b93"],
+    ];
+    return {
+        ...base,
+        companyName: "Restobar",
+        title: "Seasonal cooking, shared around the table.",
+        subTitle: "An all-day café and bistro for plates worth passing around, a good drink, and time with friends.",
+        cta: "See our menu",
+        heroImages: hero.map((id) => photo(id, 1920)),
+        gallery: [...room, ...hero].map((id) => photo(id, 1300)),
+        aboutImages: [room[0], room[2]].map((id) => photo(id, 1200)),
+        aboutTitle: "A neighborhood table",
+        aboutPageStory: "Restobar began with a simple idea: a neighborhood café should make it easy to slow down and share a good meal.",
+        aboutPageMission: "We build our menus around the season and keep a table ready for everyday celebrations.",
+        about: [
+            "Our café serves breakfast, lunch and dinner with a menu that changes with the seasons.",
+            "Come in for a quick bite, settle into a booth for dinner, or order something sweet to share.",
+        ],
+        address: "12 Museum Road, Bengaluru 560001",
+        page: {
+            ...base.page,
+            homeCardHeading: "Restobar menu",
+            homeCardSubText: "Seasonal plates, house desserts and drinks.",
+            heroHeading: "From the Restobar kitchen",
+            heroSubHeading: "Something to start, a plate to share, and a good reason to stay for dessert.",
+            heroImage: photo(hero[2], 1800),
+            cardImage: photo(room[2], 1100),
+        },
+        extra: {
+            ...base.extra,
+            menuItems: menu.map(([category, name, price, description, image]) => ({
+                category, name, price, description, image: photoValue(image), enabled: true,
+            })),
+        },
+    };
+})();
+
+"use strict";
+const tinyHomeDemo = (() => {
+    const base = DEMO_BUSINESSES.coLiving;
+    const interior = photo("photo-1628394029749-ea3dcce4caa6", 1800);
+    const nook = photo("photo-1543806053-7f9ac02e6631", 1050);
+    const cabin = photo("photo-1510798831971-661eb04b3739", 1500);
+    const kitchen = photo("photo-1586753701871-07e025659129", 1350);
+    const patio = photo("photo-1600607687939-ce8a6c25118c", 1100);
+    const woodland = photo("photo-1503278501277-e50457741130", 1100);
+    const cafe = photo("photo-1501339847302-ac426a4a7cbb", 1100);
+    const outdoors = photo("photo-1440492248262-6895f9da82fc", 1100);
+    return {
+        ...base,
+        companyName: "Tiny Home",
+        title: "A little closer to nature",
+        subTitle: "Leave the city behind for a furnished cabin, slow mornings, and trails just beyond the door.",
+        cta: "Book a stay",
+        heroImages: [interior, cabin, kitchen],
+        gallery: [patio, nook, kitchen, cabin, woodland, cafe, outdoors],
+        aboutImages: [nook, cabin, interior],
+        aboutTitle: "A small home with room to slow down.",
+        aboutPageStory: "We set up these small cabins for people who want more time outdoors and a comfortable place to come back to.",
+        aboutPageMission: "Give guests an easy place to settle in, cook for themselves, and explore the area at their own pace.",
+        aboutPageValues: "Simple spaces, quiet evenings, and a warm welcome.",
+        about: [
+            "Make coffee in your own kitchen, read on the porch, or take a walk before breakfast. Each cabin has what you need for a few nights or a longer stay.",
+            "The cabins share an outdoor gathering area, with room for both company and quiet.",
+        ],
+        testimonials: [
+            { name: "Maya Chen", jobPosition: "Weekend guest", rating: 5, image: "", testimony: "We spent most mornings on the porch and had everything we needed to cook dinner after a day outside." },
+            { name: "Leo Martin", jobPosition: "Long-stay guest", rating: 5, image: "", testimony: "A quiet cabin with a comfortable bed and a good spot to work when I needed it." },
+        ],
+        address: "Main Street, Catskill, NY 12414",
+        inclusions: ["fast-internet", "housekeeping"],
+        partnerHeading: "Partner with Tiny Home",
+        partnerContent: "Tell us about your retreat, relocation, or extended-stay plans.",
+        page: {
+            ...base.page,
+            homeCardHeading: "Cabin stays",
+            homeCardSubText: "Furnished cabins with private kitchens and outdoor space.",
+            heroHeading: "Explore our tiny homes",
+            heroSubHeading: "Choose a cabin that suits the way you want to stay.",
+            heroImage: cabin,
+            cardImage: interior,
+            inclusions: ["fast-internet", "housekeeping"],
+        },
+        extra: {
+            ...base.extra,
+            coLivingRooms: [
+                { title: "Woodland Cabin", price: "$125", priceUnit: "per night", description: "A furnished hideaway for two with a private kitchenette, a reading nook, and a covered porch.", images: [interior, nook, patio].map((url) => ({ url })), occupancy: "double", bathroom: "ensuite", furnished: true, featured: true, enabled: true, features: ["Private kitchenette", "Covered porch", "Reading nook", "Wi-Fi"] },
+                { title: "Meadow Cabin", price: "$145", priceUnit: "per night", description: "A cabin with a full kitchen and an outdoor table for long lunches.", images: [cabin, kitchen].map((url) => ({ url })), occupancy: "double", bathroom: "ensuite", furnished: true, enabled: true, features: ["Full kitchen", "Outdoor dining", "Wi-Fi"] },
+            ],
+        },
+        settings: {
+            ...base.settings,
+            stayPolicy: { checkInTime: "15:00", checkOutTime: "11:00", houseRules: ["Quiet hours after 10 PM", "No smoking indoors"] },
+            tourBooking: { enabled: false },
+        },
+    };
+})();
+
+"use strict";
+const cabinDemo = (() => {
+    const base = DEMO_BUSINESSES.coLiving;
+    const cdn = "https://cdn.prod.website-files.com/66fef51bb2a32743f5bfff90/";
+    const exterior = cdn + "66fef51bb2a32743f5bfffe9_clay-banks-UEhjiKh63Ek-unsplash.jpg";
+    const living = photo("photo-1543806053-7f9ac02e6631", 1200);
+    const kitchen = photo("photo-1586753701871-07e025659129", 1200);
+    const bedroom = photo("photo-1628394029749-ea3dcce4caa6", 1200);
+    const porch = photo("photo-1510798831971-661eb04b3739", 1200);
+    const rooms = [
+        { title: "Woodland Studio", price: "$1,250", priceUnit: "per month", description: "A furnished studio for independent living, with a private kitchenette and a quiet view of the trees.", images: [bedroom, kitchen, exterior].map((url) => ({ url })), occupancy: "single", bathroom: "ensuite", furnished: true, featured: true, enabled: true, features: ["Private kitchenette", "Wi-Fi", "Ensuite bathroom", "Garden access"] },
+        { title: "Garden Room", price: "$950", priceUnit: "per month", description: "Your own peaceful room, with a shared kitchen, welcoming common spaces, and a garden to enjoy.", images: [living, bedroom].map((url) => ({ url })), occupancy: "single", bathroom: "shared", furnished: true, enabled: true, features: ["Furnished room", "Shared kitchen", "Housekeeping", "Wi-Fi"] },
+        { title: "Forest Cabin", price: "$1,650", priceUnit: "per month", description: "A home for two with a private kitchen, a covered porch, and access to our community spaces.", images: [porch, bedroom, kitchen].map((url) => ({ url })), occupancy: "double", bathroom: "ensuite", furnished: true, enabled: true, features: ["Private kitchen", "Covered porch", "Wi-Fi", "Community spaces"] },
+    ];
+    return {
+        ...base,
+        companyName: "Cabin",
+        title: "Escape",
+        subTitle: "Find your place among the trees. Furnished homes, shared moments, and space to breathe.",
+        cta: "Book a stay",
+        heroImages: [exterior, porch, bedroom],
+        gallery: [living, kitchen, bedroom, porch, exterior, photo("photo-1543806053-7f9ac02e6631", 1200)],
+        aboutImages: [living, porch, bedroom],
+        aboutTitle: "A place to slow down, settle in, and feel a little closer to nature.",
+        about: ["Make room for slow mornings, new friendships, and a home that feels like yours from the first day.", "Our furnished homes bring private space and shared living together, with nature on your doorstep."],
+        aboutPageStory: "Cabin grew from a simple idea. Create comfortable homes where people can live independently, find community, and enjoy more time outside.",
+        aboutPageMission: "Make settling into a new home feel simple, thoughtful, and welcoming.",
+        aboutPageValues: "Respect for shared spaces, care for our surroundings, and a warm welcome for every resident.",
+        partnerHeading: "Grow with Cabin",
+        partnerContent: "Tell us about your property or community idea. We welcome thoughtful partnerships that bring people and places together.",
+        address: "Main Street, Catskill, NY 12414",
+        testimonials: [
+            { name: "Maya Chen", jobPosition: "Resident", rating: 5, image: "", testimony: "Having my own space and a friendly community nearby made moving here feel easy. The quiet mornings are my favourite part." },
+            { name: "Leo Martin", jobPosition: "Resident", rating: 5, image: "", testimony: "A comfortable home, a proper place to work, and a garden to switch off in. I settled in much faster than I expected." },
+        ],
+        faqs: [
+            { question: "What is included in my stay?", answer: "Each home is furnished. The room listing shows its amenities and shared facilities. Ask our team about utilities and services before confirming your stay." },
+            { question: "Can I arrange a viewing?", answer: "Yes. Send us your preferred dates through the stay enquiry form and our team will help arrange a visit." },
+            { question: "How long can I stay?", answer: "Tell us your planned move-in date and length of stay. We will share the available homes and current terms." },
+            { question: "Where are you located?", answer: "Our homes are in Catskill, New York, close to woodland walks and local cafés. Contact us for directions." },
+        ],
+        page: { ...base.page, homeCardHeading: "Cabin homes", homeCardSubText: "Thoughtfully furnished homes, close to nature.", heroHeading: "Find your home", heroSubHeading: "Private rooms, studios, and cabins with a community to come home to.", heroImage: exterior, cardImage: porch },
+        extra: { ...base.extra, coLivingRooms: rooms },
+        settings: { ...base.settings, tourBooking: { enabled: false }, stayPolicy: { checkInTime: "15:00", checkOutTime: "11:00", houseRules: ["Quiet hours after 10 PM", "No smoking indoors", "Leave shared spaces ready for the next resident"] } },
+    };
+})();
+
+const coPlaceDemo = (() => {
+    const base = DEMO_BUSINESSES.workspace;
+    const shared = "photo-1524758631624-e2822e304c36";
+    const office = "photo-1497366754035-f200968a6e72";
+    const meeting = "photo-1497366811353-6870744d04b2";
+    const lounge = "photo-1521737711867-e3b97375f902";
+    const team = "photo-1522071820081-009f0129c71c";
+    const workspaces = [
+        { name: "Private Offices", cost: "$450", priceUnit: "per month", description: "A furnished office with a door you can close and space to make your own.", seats: 4, features: ["Fast Wi-Fi", "Ergonomic seating", "Lockable office"], images: [office, shared].map((id) => photoValue(id)) },
+        { name: "Meeting Rooms", cost: "$35", priceUnit: "per hour", description: "A ready-to-use room for workshops, calls, and team meetings.", seats: 8, features: ["Display screen", "Whiteboard", "Video calls"], images: [meeting, office].map((id) => photoValue(id)) },
+        { name: "Shared Desks", cost: "$24", priceUnit: "per day", description: "A flexible desk in a bright shared space with a quiet corner nearby.", seats: 1, features: ["Fast Wi-Fi", "Shared lounge", "Kitchen access"], images: [shared, lounge].map((id) => photoValue(id)) },
+    ];
+    return {
+        ...base,
+        companyName: "CoPlace",
+        title: "Work better in spaces designed to inspire",
+        subTitle: "Flexible coworking for focused days and team sessions. Find a desk, private office, or meeting room that fits.",
+        cta: "Book a tour",
+        heroImages: [lounge, shared, office].map((id) => photo(id, 1600)),
+        gallery: [shared, meeting, office, team].map((id) => photo(id, 1250)),
+        aboutImages: [team, shared, office].map((id) => photo(id, 1200)),
+        aboutTitle: "Designed for collaboration, built for focus",
+        aboutPageStory: "CoPlace started with a shared table and the idea that good work needs room for both conversation and quiet.",
+        aboutPageMission: "Make a productive workday easier with spaces people can use when they need them.",
+        aboutPageTeamHeading: "The people behind your best workdays",
+        about: ["Work alongside other people, with room to concentrate when you need it. We offer flexible desks, private offices, and meeting rooms under one roof."],
+        founders: [
+            { name: "Mira Rao", role: "Community lead", bio: "Mira helps members settle in and find the right workspace.", highlights: "", image: faceCrop("photo-1573497019236-17f8177b81e8") },
+            { name: "Arjun Shah", role: "Workspace operations", bio: "Arjun looks after the rooms, desks, and day-to-day setup.", highlights: "", image: faceCrop("photo-1500648767791-00dcc994a43e") },
+            { name: "Leena Patel", role: "Member experience", bio: "Leena helps teams plan visits and find a membership that fits.", highlights: "", image: faceCrop("photo-1580489944761-15a19d654956") },
+        ],
+        address: "100 Residency Road, Bengaluru 560025",
+        partnerHeading: "Partner with CoPlace",
+        partnerContent: "Tell us how we can support your team, community, or event.",
+        page: {
+            ...base.page,
+            heroHeading: "Explore CoPlace workspaces",
+            heroSubHeading: "Find a desk, private office, or meeting room that fits your workday.",
+            homeCardHeading: "Coworking spaces",
+            homeCardSubText: "Flexible desks, equipped meeting rooms, and furnished offices.",
+            heroImage: photo(shared, 1700),
+            cardImage: photo(office, 1000),
+        },
+        pageItems: workspaces.map((item) => ({ ...item, enabled: true })),
+    };
+})();
+
+const italianoDemo = (() => {
+    const base = DEMO_BUSINESSES.menu;
+    const room = "photo-1517248135467-4c7edcad34c4";
+    const pasta = "photo-1473093295043-cdd812d0e601";
+    const table = "photo-1528605248644-14dd04022da1";
+    const pizza = "photo-1574071318508-1cdbab80d002";
+    const coffee = "photo-1509042239860-f550ce710b93";
+    const dessert = "photo-1488477181946-6428a0291777";
+    const menu = [
+        ["From the kitchen", "Tagliatelle ai funghi", "$18", "Ribbon pasta, roasted mushrooms, thyme and parmesan.", pasta],
+        ["From the kitchen", "Margherita", "$15", "Tomato, mozzarella and basil on a blistered crust.", pizza],
+        ["From the kitchen", "Tomato & burrata", "$12", "Creamy burrata, ripe tomatoes, and grilled bread.", "photo-1547592180-85f173990554"],
+        ["Dolci", "Vanilla panna cotta", "$8", "Soft vanilla cream with seasonal fruit.", dessert],
+        ["Coffee", "Cappuccino", "$5", "Espresso topped with steamed milk and foam.", coffee],
+    ];
+    return {
+        ...base,
+        companyName: "Italiano",
+        title: "Italiano Ristorante",
+        subTitle: "Fresh pasta, good coffee, and a warm welcome at our Italian table.",
+        cta: "Learn more",
+        heroImages: [room, pasta, table].map((id) => photo(id, 1920)),
+        gallery: [pasta, pizza, room, table, coffee, dessert].map((id) => photo(id, 1200)),
+        aboutImages: [table, pasta, room].map((id) => photo(id, 1300)),
+        aboutTitle: "Our story",
+        aboutPageStory: "Italiano began with a family table and recipes passed from one kitchen to the next.",
+        aboutPageMission: "We roll our pasta by hand and build our menu around what is in season.",
+        aboutPageValues: "Come for a quick espresso or make an evening of it. There is always room at our table.",
+        about: ["A neighborhood café and dining room serving the Italian dishes we grew up with."],
+        founders: [
+            { name: "Elena Rossi", role: "Head chef", bio: "Elena brings the pasta and sauces she learned to make at home to the Italiano kitchen.", highlights: "", image: faceCrop("photo-1573497019236-17f8177b81e8") },
+        ],
+        testimonials: [
+            { name: "Sofia M.", jobPosition: "Guest", rating: 5, image: "", testimony: "We shared the mushroom pasta and stayed for another coffee. It felt like an evening at a friend's table." },
+            { name: "Daniel P.", jobPosition: "Guest", rating: 5, image: "", testimony: "The pizza came out crisp and hot, and the team made room for us on a busy evening." },
+        ],
+        address: "12 Museum Road, Bengaluru 560001",
+        page: {
+            ...base.page,
+            homeCardHeading: "Italiano menu",
+            homeCardSubText: "Fresh pasta, pizza, coffee and dolci.",
+            heroHeading: "Our menu",
+            heroSubHeading: "Explore the dishes and drinks served at Italiano.",
+            heroImage: photo(pasta, 1800),
+            cardImage: photo(pizza, 1100),
+        },
+        extra: {
+            ...base.extra,
+            menuItems: menu.map(([category, name, price, description, image]) => ({
+                category, name, price, description, image: photoValue(image), enabled: true,
+            })),
+        },
+    };
+})();
+
+// Orchard takes its visual cues from a calm residential editorial: generous interiors, warm
+// neutrals and real shared spaces rather than party-hostel imagery.
+const ORCHARD_PHOTOS = {
+    hero: [
+        "photo-1774186184495-dc059ef40c75",
+        "photo-1657040899606-b22f17a6afd5",
+        "photo-1632119289059-793dd347950f",
+    ],
+    rooms: [
+        "photo-1727706572437-4fcda0cbd66f",
+        "photo-1611892440504-42a792e24d32",
+        "photo-1635247049915-dff57098ea0f",
+        "photo-1630827807282-6be2a754361d",
+        "photo-1632119289059-793dd347950f",
+        "photo-1679939153964-2b9bd027f6e3",
+    ],
+    spaces: [
+        "photo-1651407825801-eec2dcbd86bd",
+        "photo-1615876234886-fd9a39fda97f",
+        "photo-1579609702289-ecbad32c2cf6",
+        "photo-1721614664523-5e0d3fc786d0",
+        "photo-1516197067152-381321bc78e1",
+        "photo-1764006195843-e6f9a5781500",
+    ],
+    neighbourhood: [
+        "photo-1521335751419-603f61523713",
+        "photo-1464198016405-33fd4527b89d",
+        "photo-1539635278303-d4002c07eae3",
+    ],
+};
+
+const ORCHARD_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.hostel;
+    const rooms = (base.extra?.dorms || []);
+    const roomNames = [
+        "The Orchard Studio",
+        "The Garden Room",
+        "The Courtyard Twin",
+        "The Resident Suite",
+    ];
+    const roomCopy = [
+        "A light-filled studio with a calm palette, a proper desk and everything you need for a longer stay.",
+        "A generous room overlooking the garden, with soft linens and a quiet corner for slow mornings.",
+        "Two comfortable beds, thoughtful storage and an easy, social feel in the heart of the house.",
+        "Our most spacious option, with a separate sitting area and the best light in the building.",
+    ];
+    return {
+        ...base,
+        companyName: "Orchard House",
+        title: "Designed for distinction. Built for belonging.",
+        subTitle:
+            "Considered rooms, generous shared spaces and a neighbourhood that feels like yours from day one.",
+        cta: "Schedule a Tour",
+        heroImages: ORCHARD_PHOTOS.hero.map((id) => photo(id, 2000)),
+        gallery: [
+            ...ORCHARD_PHOTOS.spaces,
+            ...ORCHARD_PHOTOS.rooms,
+            ...ORCHARD_PHOTOS.neighbourhood,
+        ].map((id) => photo(id, 1500)),
+        aboutImages: [
+            ORCHARD_PHOTOS.spaces[0],
+            ORCHARD_PHOTOS.spaces[2],
+            ORCHARD_PHOTOS.rooms[1],
+        ].map((id) => photo(id, 1300)),
+        address: "18 Orchard Lane, Indiranagar, Bengaluru 560038",
+        aboutTitle: "A considered home in the middle of it all",
+        aboutPageStory:
+            "Orchard House began with a simple idea: a place to stay should feel as thoughtful as a place to live. We took a quiet lane-side building, gave it warm materials and honest finishes, and filled it with the spaces that make everyday life easier.",
+        about: [
+            "The rooms are calm, comfortable and full of practical details—good light, proper storage and beds made for real rest.",
+            "Downstairs, the lounge, garden kitchen and rooftop give you room to work, cook, meet people or simply take an afternoon for yourself.",
+        ],
+        founders: [
+            {
+                name: "Ananya Rao",
+                role: "Founder & Host",
+                bio: "Ananya designed Orchard around the things she always looked for in a long stay: quiet, light and a good kitchen.",
+                highlights: "Local design · Slow mornings",
+                image: faceCrop("photo-1573497019236-17f8177b81e8"),
+            },
+            {
+                name: "Dev Menon",
+                role: "House Manager",
+                bio: "Dev knows every coffee stop, grocery run and shortcut in the neighbourhood, and is happy to share them.",
+                highlights: "Neighbourhood guide · Always helpful",
+                image: faceCrop("photo-1576558656222-ba66febe3dec"),
+            },
+        ],
+        page: {
+            ...base.page,
+            heroHeading: "Rooms designed for real life",
+            heroSubHeading:
+                "Studios, twins and suites with warm interiors, practical storage and the same attention to detail throughout.",
+            heroImage: photo(ORCHARD_PHOTOS.rooms[0], 1900),
+            cardImage: photo(ORCHARD_PHOTOS.spaces[0], 1200),
+        },
+        extra: {
+            ...base.extra,
+            dorms: rooms.slice(0, 4).map((room, index) => ({
+                ...room,
+                title: roomNames[index],
+                description: roomCopy[index],
+                price: ["3,200", "3,800", "2,650", "5,400"][index],
+                priceUnit: "night",
+                badge: index === 3 ? "Most spacious" : index === 0 ? "Popular" : "",
+                images: [0, 1, 2, 3].map((offset) =>
+                    photoValue(
+                        ORCHARD_PHOTOS.rooms[
+                            (index * 2 + offset) % ORCHARD_PHOTOS.rooms.length
+                        ],
+                        1200,
+                    ),
+                ),
+                features: [
+                    "Quality linen",
+                    "Fast Wi-Fi",
+                    "Personal storage",
+                    "Reading light",
+                    "Weekly housekeeping",
+                    index === 3 ? "Separate sitting area" : "Shared kitchen access",
+                ],
+                roomKind: index >= 2 ? "private" : "dorm",
+                genderPolicy: "mixed",
+                capacity: [1, 1, 2, 2][index],
+                bedType: index === 2 ? "twin" : "queen",
+                bathroom: index === 3 ? "ensuite" : "shared",
+            })),
+        },
+    };
+})();
+
 const demoBusinessFor = (kind, themeVariant) => {
+    if (themeVariant === "cabin" && kind === "coLiving") return cabinDemo;
+    if (themeVariant === "tinyhome" && kind === "coLiving") return tinyHomeDemo;
+    if (themeVariant === "italiano" && kind === "menu") return italianoDemo;
+    if (themeVariant === "restobar" && kind === "menu") return RESTOBAR_DEMO_BUSINESS;
     if (themeVariant === "tastyc" && kind === "menu")
         return TASTYC_DEMO_BUSINESS;
     if (themeVariant === "grandbar" && kind === "menu")
@@ -861,14 +1332,21 @@ const demoBusinessFor = (kind, themeVariant) => {
         return BRIXSPACE_DEMO_BUSINESS;
     if (themeVariant === "worpace" && kind === "workspace")
         return WORPACE_DEMO_BUSINESS;
+    if (themeVariant === "coplace" && kind === "workspace") return coPlaceDemo;
+    if (themeVariant === "cobox" && kind === "workspace")
+        return COBOX_DEMO_BUSINESS;
     if (themeVariant === "qerja" && kind === "workspace")
         return QERJA_DEMO_BUSINESS;
     if (themeVariant === "travigo" && kind === "hostel")
         return TRAVIGO_DEMO_BUSINESS;
     if (themeVariant === "lodge" && kind === "hostel")
         return LODGE_DEMO_BUSINESS;
+    if (themeVariant === "destinflow" && kind === "hostel")
+        return DESTINFLOW_DEMO_BUSINESS;
     if (themeVariant === "cali-hostel" && kind === "hostel")
         return CALI_HOSTEL_DEMO_BUSINESS;
+    if (themeVariant === "orchard" && kind === "hostel")
+        return ORCHARD_DEMO_BUSINESS;
     if (themeVariant === "tulum" && kind === "coLiving")
         return tulumDemo;
     if (themeVariant === "grindelwald" && kind === "coLiving")
@@ -933,6 +1411,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         sectionOverrides: {},
         vertical: primary.vertical,
         companyName: primary.companyName,
+        companyLogo: primary.companyLogo || "",
         registeredCompanyName: `${primary.companyName} Pvt Ltd`,
         copyrightText: `© ${primary.companyName}`,
         title: primary.title,

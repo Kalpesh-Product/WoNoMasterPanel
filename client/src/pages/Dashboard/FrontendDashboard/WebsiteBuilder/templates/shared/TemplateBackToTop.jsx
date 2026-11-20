@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 const BACK_TO_TOP_SPECS = {
+  cabin: { bg: "#181916", fg: "#ffffff", border: "#ffffff", radius: "50%", shadow: "none", font: "'DM Sans', sans-serif" },
   default: { bg: "#ffffff", fg: "#1f2937", border: "#dbe3ef", radius: "14px", shadow: "0 14px 34px rgba(30,64,175,.16)", font: "'Poppins', sans-serif" },
   "minimal-swiss": { bg: "#050505", fg: "#ffffff", border: "#050505", radius: "0", shadow: "6px 6px 0 #d7263d", font: "'Inter', sans-serif" },
   "fresh-studio": { bg: "#0e0e0e", fg: "#ffffff", border: "#d94b4b", radius: "5px", shadow: "0 14px 32px rgba(14,14,14,.24)", font: "'Inter', sans-serif" },
@@ -21,6 +22,8 @@ const BACK_TO_TOP_SPECS = {
   "warm-organic": { bg: "#2b211a", fg: "#f1e6d3", border: "#b85c38", radius: "62% 38% 58% 42%", shadow: "0 16px 34px rgba(43,33,26,.25)", font: "Georgia, serif" },
   "emerald-studio": { bg: "rgba(54,87,127,.9)", fg: "#ffffff", border: "rgba(255,255,255,.45)", radius: "16px", shadow: "0 18px 38px rgba(24,44,70,.3)", font: "'Fraunces', Georgia, serif" },
   "figma-make": { bg: "rgba(54,87,127,.9)", fg: "#ffffff", border: "rgba(255,255,255,.45)", radius: "16px", shadow: "0 18px 38px rgba(24,44,70,.3)", font: "'Fraunces', Georgia, serif" },
+  orchard: { bg: "#fafaf9", fg: "#353b41", border: "#9aa88f", radius: "50%", shadow: "0 16px 34px rgba(53,59,65,.16)", font: "'Outfit', sans-serif" },
+  destinflow: { bg: "#151819", fg: "#ffffff", border: "#3ba7da", radius: "0", shadow: "0 16px 34px rgba(21,24,25,.28)", font: "'Alegreya Sans', sans-serif" },
 };
 
 const TEMPLATES_WITH_OWN_BUTTON = new Set([

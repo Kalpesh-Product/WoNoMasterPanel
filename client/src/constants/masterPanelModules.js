@@ -4,6 +4,13 @@
 //
 // NOTE: submenu `key`s must stay in sync with server/config/masterPanelModules.js.
 
+// A submenu with tabs (e.g. Data Upload) can be granted as the bare key
+// (every tab) or as specific "key.tabKey" entries (just some tabs) — either
+// way, the module itself must still show up in the sidebar/dashboard.
+export const hasModuleAccess = (allowedModules, key) =>
+  allowedModules.includes(key) ||
+  allowedModules.some((m) => m.startsWith(`${key}.`));
+
 import {
   LuLayoutDashboard,
   LuBuilding2,
@@ -16,6 +23,7 @@ import {
   LuMessageSquareText,
   LuNewspaper,
   LuChartLine,
+  LuMapPin,
   LuPlane,
   LuShieldCheck,
   LuTicket,
@@ -146,11 +154,25 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/destinations-data",
           },
           {
+            id: 38,
+            key: "dashboard.destination-data-analytics",
+            title: "Destination Data Analytics",
+            icon: LuMapPin,
+            route: "/dashboard/destination-data-analytics",
+          },
+          {
             id: 16,
             key: "dashboard.world-ranking-weights",
             title: "World Ranking Weights",
             icon: LuChartLine,
             route: "/dashboard/world-ranking-weights",
+          },
+          {
+            id: 39,
+            key: "dashboard.world-ranking-weights-v2",
+            title: "World Ranking (Algo 2.0)",
+            icon: LuChartLine,
+            route: "/dashboard/world-ranking-weights-v2",
           },
           {
             id: 17,

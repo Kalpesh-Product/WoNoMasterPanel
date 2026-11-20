@@ -3,8 +3,11 @@ const {
   verifyPassword,
   changePassword,
   bulkUploadData,
+  bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
+  getRestaurantImageReuploadTargets,
+  reuploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   uploadRestaurantLogo,
@@ -17,6 +20,7 @@ const {
 } = require("../controllers/adminUserControllers");
 const { getTourProgress, saveTourProgress } = require("../controllers/tourControllers");
 const upload = require("../config/multerConfig");
+const { uploadSpreadsheets } = require("../config/multerConfig");
 const { setLogModule } = require("../middlewares/logContext");
 
 const router = require("express").Router();
@@ -39,6 +43,12 @@ router.post(
   bulkUploadData,
 );
 router.post(
+  "/bulk-update-listing-stats",
+  uploadSpreadsheets.single("file"),
+  setLogModule("Data Upload"),
+  bulkUpdateListingStats,
+);
+router.post(
   "/bulk-upload-images",
   upload.array("images"),
   setLogModule("Data Upload"),
@@ -49,6 +59,14 @@ router.post(
   upload.array("images"),
   setLogModule("Data Upload"),
   bulkUploadRestaurantImages,
+);
+router.get("/restaurant-images-reupload", getRestaurantImageReuploadTargets);
+router.get("/upload-restaurant-logo", getRestaurantImageReuploadTargets);
+router.post(
+  "/restaurant-images-reupload",
+  upload.array("images", 10),
+  setLogModule("Data Upload"),
+  reuploadRestaurantImages,
 );
 router.patch(
   "/bulk-reupload-images",

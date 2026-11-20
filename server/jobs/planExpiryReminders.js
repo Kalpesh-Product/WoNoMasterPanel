@@ -1,9 +1,16 @@
 const schedule = require("node-schedule");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const Workspace = require("../models/hostCompany/Workspace");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const { sendMail } = require("../config/nodemailerConfig");
-const { buildPlanExpiryReminderEmail, buildTrialExpiryReminderEmail } = require("../utils/emailTemplates");
+const {
+  buildPlanExpiryReminderEmail,
+  buildTrialExpiryReminderEmail,
+  buildAutopayUpcomingChargeEmail,
+} = require("../utils/emailTemplates");
 const { getDefaultEnabledModuleIdsForPlan, buildCatalogIndex } = require("../config/hostWorkspaceModuleCatalog");
+const { getProfessionalPlanPriceUsd } = require("../services/modulePricingService");
+const { resolveHostPanelFrontendUrl } = require("../controllers/planPaymentControllers");
 
 const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
 
@@ -38,14 +45,43 @@ schedule.scheduleJob({ rule: "0 6 * * *", tz: "UTC" }, async () => {
       planExpiryWarningSentAt: null,
     });
 
+    // Card-backed companies (started their trial through startTrialCheckout)
+    // auto-charge on their own — "renew now" is the wrong message for them.
+    // Keyed by companyId so each workspace below can check it cheaply.
+    const cardBackedCompanyIds = new Set(
+      (await HostLeadCompany.find({ stripeCustomerId: { $ne: "" } }).select("companyId").lean()).map(
+        (c) => c.companyId,
+      ),
+    );
+
     for (const workspace of workspaces) {
       try {
         const lead = await HostLeadCompany.findOne({ companyId: workspace.companyId }).lean();
         const modulesAtRisk = resolveModulesAtRisk(workspace.selectedPlan);
+        const isCardBacked = cardBackedCompanyIds.has(workspace.companyId);
 
-        await sendMail({
-          to: lead?.pocEmail,
-          ...(workspace.isTrialing
+        let emailPayload;
+        if (isCardBacked) {
+          let billingPortalUrl = null;
+          try {
+            const portalSession = await stripe.billingPortal.sessions.create({
+              customer: lead.stripeCustomerId,
+              return_url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing`,
+            });
+            billingPortalUrl = portalSession.url;
+          } catch (portalError) {
+            console.error("Failed to create billing portal session for reminder email:", portalError.message);
+          }
+          emailPayload = buildAutopayUpcomingChargeEmail({
+            customerName: lead?.pocName || workspace.businessName,
+            companyName: workspace.businessName,
+            planLabel: PLAN_LABELS[workspace.selectedPlan] || workspace.selectedPlan,
+            chargeDate: workspace.planExpiryDate,
+            amount: await getProfessionalPlanPriceUsd(),
+            billingPortalUrl,
+          });
+        } else {
+          emailPayload = workspace.isTrialing
             ? buildTrialExpiryReminderEmail({
                 customerName: lead?.pocName || workspace.businessName,
                 companyName: workspace.businessName,
@@ -58,8 +94,10 @@ schedule.scheduleJob({ rule: "0 6 * * *", tz: "UTC" }, async () => {
                 planLabel: PLAN_LABELS[workspace.selectedPlan] || workspace.selectedPlan,
                 expiryDate: workspace.planExpiryDate,
                 modulesAtRisk,
-              })),
-        });
+              });
+        }
+
+        await sendMail({ to: lead?.pocEmail, ...emailPayload });
 
         await Workspace.updateOne(
           { _id: workspace._id },

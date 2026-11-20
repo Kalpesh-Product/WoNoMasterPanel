@@ -89,6 +89,20 @@
   outline-offset: 2px;
 }
 
+@media (min-width: 1280px) {
+  .driver-popover.destination-dashboard-table-tour,
+  .driver-popover.destination-dashboard-centered-tour {
+    position: fixed !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    width: 330px;
+    max-width: min(330px, calc(100vw - 32px));
+    transform: translate(-50%, -50%) !important;
+  }
+}
+
 @media (max-width: 640px) {
   .driver-popover.master-panel-page-tour {
     padding: 18px;

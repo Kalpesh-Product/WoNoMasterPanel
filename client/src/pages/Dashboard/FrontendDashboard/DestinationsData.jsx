@@ -1,5 +1,11 @@
 import React, { useMemo, useEffect, useRef } from "react";
-import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  NavLink,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useInfiniteQuery, useQuery, useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -46,8 +52,8 @@ const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
 const SUMMARY_TABS = [
-  { key: "content", label: "Content Data", path: "content-data" },
   { key: "listings", label: "Nomad Listings", path: "nomad-listings" },
+  { key: "content", label: "Content Data", path: "content-data" },
 ];
 
 const SUMMARY_TAB_BY_PATH = SUMMARY_TABS.reduce(
@@ -66,13 +72,19 @@ const CONTENT_STATS = [
 ];
 
 const LISTING_STATS = [
-  { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
+  CONTENT_STATS[0],
+  { label: "Public Listings", valueKey: "publicListings", textColor: "text-emerald-600", borderColor: "border-l-emerald-500" },
   { label: "Coworking", valueKey: "coworking", textColor: "text-sky-600", borderColor: "border-l-sky-500" },
   { label: "Coliving", valueKey: "coliving", textColor: "text-teal-600", borderColor: "border-l-teal-500" },
   { label: "Hostels", valueKey: "hostels", textColor: "text-indigo-600", borderColor: "border-l-indigo-500" },
   { label: "Meeting Rooms", valueKey: "meetingRooms", textColor: "text-fuchsia-600", borderColor: "border-l-fuchsia-500" },
   { label: "Cafes", valueKey: "cafes", textColor: "text-orange-600", borderColor: "border-l-orange-500" },
 ];
+
+const SUMMARY_STATS_GRID = {
+  content: "grid grid-cols-2 md:grid-cols-6 gap-3",
+  listings: "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3",
+};
 
 const CONTENT_COLUMNS = [
   { label: "Blogs", countKey: "blogCount", type: "blog" },
@@ -97,6 +109,7 @@ const EMPTY_COUNTS = {
   events: 0,
   places: 0,
   restaurants: 0,
+  publicListings: 0,
   coworking: 0,
   coliving: 0,
   hostels: 0,
@@ -138,14 +151,6 @@ const pickFirst = (obj, keys, fallback = "-") => {
 
 const normalizeKey = (value) =>
   `${value}`.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-const slugify = (str = "") =>
-  str
-    .toString()
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "listing";
 
 const LISTING_DETAIL_TYPES = new Set([
   "coworking",
@@ -278,7 +283,7 @@ const fetchFirstSuccessfulArray = async (axios, endpoints) => {
   return [];
 };
 
-const DestinationsDataSkeleton = () => (
+const DestinationsDataSkeleton = ({ stats, gridClassName }) => (
   <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
     <PageFrame>
       <div className="flex flex-col gap-4 animate-pulse">
@@ -287,13 +292,13 @@ const DestinationsDataSkeleton = () => (
           <div className="h-3 w-full max-w-lg rounded-full bg-slate-100" />
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-3 shrink-0">
-          {Array.from({ length: 6 }).map((_, index) => (
+        <div className={`${gridClassName} mb-3 shrink-0`}>
+          {stats.map((stat) => (
             <div
-              key={index}
+              key={stat.valueKey}
               className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"
             >
-              <div className="h-2.5 w-24 rounded-full bg-slate-200 mb-3" />
+              <div className="h-2.5 w-24 max-w-full rounded-full bg-slate-200 mb-3" />
               <div className="h-4 w-12 rounded-full bg-slate-200" />
             </div>
           ))}
@@ -339,15 +344,34 @@ const DestinationsData = () => {
   const navigate = useNavigate();
   const axios = useAxiosPrivate();
 
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentView, setCurrentView] = React.useState("summary");
   const [detailType, setDetailType] = React.useState("blog");
   const [selectedLocation, setSelectedLocation] = React.useState(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [debouncedSearch, setDebouncedSearch] = React.useState("");
-  const [countryFilter, setCountryFilter] = React.useState("");
-  const [stateFilter, setStateFilter] = React.useState("");
-  const [cityFilter, setCityFilter] = React.useState("");
-  const [activeSummaryTab, setActiveSummaryTab] = React.useState("content");
+  // The summary (destination) search/filters are seeded from the URL and
+  // kept in sync with it (see the effect below) — "edit"/"add" are separate
+  // routes that unmount this component, so plain state alone doesn't survive
+  // navigating there and back.
+  const [searchQuery, setSearchQuery] = React.useState(() => searchParams.get("q") || "");
+  const [debouncedSearch, setDebouncedSearch] = React.useState(() => searchParams.get("q") || "");
+  const [continentFilter, setContinentFilter] = React.useState(() => searchParams.get("continent") || "");
+  const [countryFilter, setCountryFilter] = React.useState(() => searchParams.get("country") || "");
+  const [stateFilter, setStateFilter] = React.useState(() => searchParams.get("state") || "");
+  // Seeded from the URL, not hardcoded to "content" — otherwise remounting
+  // straight onto the "nomad-listings" tab (e.g. coming back from a detail
+  // view) starts from a stale "content" default, which the mount effect
+  // below then reads as a real tab *change* and wipes the filters that
+  // were only just restored.
+  const [activeSummaryTab, setActiveSummaryTab] = React.useState(() => {
+    const tabPath = location.pathname
+      .replace(`${DESTINATIONS_DATA_BASE_PATH}/`, "")
+      .split("/")[0];
+    return SUMMARY_TAB_BY_PATH[tabPath]?.key || "content";
+  });
+  // Separate from `searchQuery` — the same search box doubles as the
+  // detail-view's item search, which must not clobber (or be clobbered by)
+  // the summary's destination search.
+  const [detailSearchQuery, setDetailSearchQuery] = React.useState("");
   const loadMoreRef = useRef(null);
 
   const routeTab = React.useMemo(() => {
@@ -363,11 +387,9 @@ const DestinationsData = () => {
       setCurrentView("summary");
       setSelectedLocation("All");
       setDetailType("blog");
+      // Search/filters are shared across both tabs on purpose — switching
+      // tabs keeps whatever was set, so the same filter applies to both.
       setActiveSummaryTab(routeTab);
-      setCountryFilter("");
-      setStateFilter("");
-      setCityFilter("");
-      setSearchQuery("");
     } else if (locationType) {
       const dashIndex = locationType.lastIndexOf("-");
       if (dashIndex !== -1) {
@@ -377,12 +399,26 @@ const DestinationsData = () => {
         setDetailType(t);
         setActiveSummaryTab(LISTING_DETAIL_TYPES.has(t) ? "listings" : "content");
         setCurrentView("detail");
+        // This is a different route from the summary tabs (it unmounts/
+        // remounts this component), so the summary filters would otherwise
+        // be lost the moment you drill into a destination. handleViewDetail
+        // carries them here as query params — restore them into state so
+        // handleBackToSummary can carry them back when you return.
+        setSearchQuery(searchParams.get("q") || "");
+        setContinentFilter(searchParams.get("continent") || "");
+        setCountryFilter(searchParams.get("country") || "");
+        setStateFilter(searchParams.get("state") || "");
       }
     } else {
       setCurrentView("summary");
       setSelectedLocation("All");
       setDetailType("blog");
     }
+    // Intentionally reacting only to the path, not `searchParams` — reading
+    // its current value here (once per navigation) is enough, and adding it
+    // as a dependency would re-run this every time the sync effect below
+    // writes the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locationType, routeTab]);
   useEffect(() => {
     const timeout = setTimeout(
@@ -392,23 +428,42 @@ const DestinationsData = () => {
     return () => clearTimeout(timeout);
   }, [searchQuery]);
 
+  // Mirrors the summary search/filters into the URL so they're still there
+  // after navigating to a detail/edit page (a different route, which
+  // unmounts this component) and coming back.
+  useEffect(() => {
+    if (currentView !== "summary") return;
+    const next = new URLSearchParams();
+    if (debouncedSearch) next.set("q", debouncedSearch);
+    if (continentFilter) next.set("continent", continentFilter);
+    if (countryFilter) next.set("country", countryFilter);
+    if (stateFilter) next.set("state", stateFilter);
+    setSearchParams(next, { replace: true });
+  }, [
+    currentView,
+    debouncedSearch,
+    continentFilter,
+    countryFilter,
+    stateFilter,
+    setSearchParams,
+  ]);
+
+  // Filters are independent — picking one narrows the others' option lists
+  // (via filterOptions from the backend) but never blocks picking a filter
+  // "out of order" (e.g. a state with no continent/country chosen yet).
+  const handleContinentFilterChange = (value) => {
+    setContinentFilter(value);
+    setCountryFilter("");
+    setStateFilter("");
+  };
+
   const handleCountryFilterChange = (value) => {
     setCountryFilter(value);
     setStateFilter("");
-    setCityFilter("");
-  };
-
-  const handleStateFilterChange = (value) => {
-    setStateFilter(value);
-    setCityFilter("");
   };
 
   const handleSummaryTabChange = (tabKey) => {
     setActiveSummaryTab(tabKey);
-    setCountryFilter("");
-    setStateFilter("");
-    setCityFilter("");
-    setSearchQuery("");
   };
 
   const {
@@ -483,9 +538,9 @@ const DestinationsData = () => {
       "destinations-data-summary",
       effectiveSummaryTab,
       debouncedSearch,
+      continentFilter,
       countryFilter,
       stateFilter,
-      cityFilter,
     ],
     initialPageParam: 1,
     enabled: currentView === "summary",
@@ -497,9 +552,9 @@ const DestinationsData = () => {
           limit: PAGE_SIZE,
           tab: effectiveSummaryTab,
           search: debouncedSearch,
+          continent: continentFilter,
           country: countryFilter,
           state: stateFilter,
-          city: cityFilter,
         },
       });
       return response.data;
@@ -518,9 +573,9 @@ const DestinationsData = () => {
   const summaryColumns = effectiveSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
   const summaryTotal = summaryFirstPage?.total ?? 0;
   const filterOptions = summaryFirstPage?.filterOptions ?? {
+    continents: [],
     countries: [],
     states: [],
-    cities: [],
   };
   const isListingDetail = LISTING_DETAIL_TYPES.has(detailType);
 
@@ -600,27 +655,61 @@ const DestinationsData = () => {
   });
 
   const {
-    data: destinationListings = [],
+    data: destinationListingsData,
     isPending: isDestinationListingsPending,
     isError: isDestinationListingsError,
-  } = useQuery({
-    queryKey: ["destination-listings", selectedLocation, detailType, searchQuery],
-    queryFn: async () => {
+    fetchNextPage: fetchNextListingsPage,
+    hasNextPage: hasNextListingsPage,
+    isFetchingNextPage: isFetchingNextListingsPage,
+  } = useInfiniteQuery({
+    queryKey: ["destination-listings", selectedLocation, detailType, detailSearchQuery],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
       const response = await axios.get("/api/hosts/destinations-data", {
         params: {
           tab: "listings",
           detailType,
           destination: selectedLocation,
-          search: searchQuery.trim(),
+          search: detailSearchQuery.trim(),
+          page: pageParam,
+          limit: PAGE_SIZE,
         },
       });
-      return Array.isArray(response.data?.items) ? response.data.items : toArray(response.data);
+      return response.data;
     },
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.page + 1 : undefined),
     enabled:
       currentView === "detail" &&
       isListingDetail &&
       Boolean(selectedLocation),
   });
+
+  const destinationListings = useMemo(
+    () => destinationListingsData?.pages.flatMap((page) => page.items ?? []) ?? [],
+    [destinationListingsData],
+  );
+
+  const detailLoadMoreRef = useRef(null);
+  useEffect(() => {
+    const node = detailLoadMoreRef.current;
+    if (!node || !hasNextListingsPage || currentView !== "detail") return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isFetchingNextListingsPage) {
+          fetchNextListingsPage();
+        }
+      },
+      { rootMargin: "250px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [
+    currentView,
+    hasNextListingsPage,
+    isFetchingNextListingsPage,
+    fetchNextListingsPage,
+    destinationListings.length,
+  ]);
 
   const stats = useMemo(() => {
     const allBlogs = Array.isArray(data?.allBlogs) ? data.allBlogs : [];
@@ -886,17 +975,31 @@ const DestinationsData = () => {
     },
   });
 
+  // The detail/edit pages are different routes (they unmount this
+  // component), so the summary filters have to be carried as query params
+  // rather than relying on component state surviving the trip.
+  const buildSummaryFilterQuery = () => {
+    const params = new URLSearchParams();
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (continentFilter) params.set("continent", continentFilter);
+    if (countryFilter) params.set("country", countryFilter);
+    if (stateFilter) params.set("state", stateFilter);
+    const qs = params.toString();
+    return qs ? `?${qs}` : "";
+  };
+
   const handleViewDetail = React.useCallback(
     (location, viewType) => {
       setSelectedLocation(location);
       setDetailType(viewType);
       setCurrentView("detail");
-      setSearchQuery("");
+      setDetailSearchQuery("");
       navigate(
-        `/dashboard/destinations-data/${encodeURIComponent(location)}-${viewType}`,
+        `/dashboard/destinations-data/${encodeURIComponent(location)}-${viewType}${buildSummaryFilterQuery()}`,
       );
     },
-    [navigate],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigate, searchQuery, continentFilter, countryFilter, stateFilter],
   );
 
   const handleBackToSummary = () => {
@@ -905,10 +1008,10 @@ const DestinationsData = () => {
     setSelectedLocation("All");
     setDetailType("blog");
     setActiveSummaryTab(previousTab);
-    setSearchQuery("");
+    setDetailSearchQuery("");
     const previousTabPath =
       SUMMARY_TABS.find((tab) => tab.key === previousTab)?.path || "content-data";
-    navigate(`${DESTINATIONS_DATA_BASE_PATH}/${previousTabPath}`);
+    navigate(`${DESTINATIONS_DATA_BASE_PATH}/${previousTabPath}${buildSummaryFilterQuery()}`);
   };
 
   const filteredDetailData = useMemo(() => {
@@ -933,8 +1036,8 @@ const DestinationsData = () => {
       filtered = source;
     }
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.trim().toLowerCase();
+    if (detailSearchQuery.trim()) {
+      const q = detailSearchQuery.trim().toLowerCase();
       filtered = filtered.filter((item) => {
         const name =
           item.placeName ||
@@ -960,7 +1063,7 @@ const DestinationsData = () => {
     destinationRestaurants,
     destinationListings,
     isListingDetail,
-    searchQuery,
+    detailSearchQuery,
   ]);
 
   const detailLabel =
@@ -1079,8 +1182,10 @@ const DestinationsData = () => {
     sessionStorage.setItem("companyName", companyName);
     sessionStorage.setItem("businessId", businessId);
     sessionStorage.setItem("companyType", companyType);
+    // Edited in place here (a copy of the Companies > Nomad Listings editor,
+    // same backend endpoint) instead of redirecting out to that section.
     navigate(
-      `/dashboard/companies/${slugify(companyName)}/nomad-listings/${slugify(companyName)}`,
+      `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit${buildSummaryFilterQuery()}`,
       {
         state: {
           website: item,
@@ -1092,7 +1197,12 @@ const DestinationsData = () => {
   };
 
   if (currentView === "summary" && isSummaryLoading && !summaryData) {
-    return <DestinationsDataSkeleton />;
+    return (
+      <DestinationsDataSkeleton
+        stats={summaryStats}
+        gridClassName={SUMMARY_STATS_GRID[effectiveSummaryTab]}
+      />
+    );
   }
 
   return (
@@ -1128,7 +1238,7 @@ const DestinationsData = () => {
                 type="button"
                 onClick={() =>
                   navigate(
-                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/add`,
+                    `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/add${buildSummaryFilterQuery()}`,
                     {
                       state: {
                         item: null,
@@ -1167,14 +1277,14 @@ const DestinationsData = () => {
                   </NavLink>
                 ))}
               </div>
-              <div data-tour="destinations-data-stats" className="grid grid-cols-2 md:grid-cols-6 gap-3">
+              <div data-tour="destinations-data-stats" className={SUMMARY_STATS_GRID[effectiveSummaryTab]}>
                 {summaryStats.map((stat) => (
                   <div
                     key={stat.valueKey}
-                    className={`bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 ${stat.borderColor}`}
+                    className={`bg-white p-3.5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 ${stat.borderColor}`}
                   >
                     <div className="min-w-0">
-                      <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${stat.textColor}`}>{stat.label}</p>
+                      <p className={`text-[9px] font-pmedium uppercase tracking-wide mb-1 whitespace-nowrap ${stat.textColor}`}>{stat.label}</p>
                       <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts[stat.valueKey] || 0}</p>
                     </div>
                   </div>
@@ -1186,8 +1296,32 @@ const DestinationsData = () => {
           <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
             <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
               <div className="flex flex-col lg:flex-row items-stretch gap-2.5">
+                <div className="relative min-w-[220px] flex-[2]" data-tour="destinations-data-search">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                  <input
+                    type="text"
+                    placeholder={currentView === "summary" ? "Search destinations..." : `Search ${detailLabel.toLowerCase()}...`}
+                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
+                    value={currentView === "summary" ? searchQuery : detailSearchQuery}
+                    onChange={(event) =>
+                      currentView === "summary"
+                        ? setSearchQuery(event.target.value)
+                        : setDetailSearchQuery(event.target.value)
+                    }
+                  />
+                </div>
                 {currentView === "summary" ? (
                   <div data-tour="destinations-data-filters" className="grid grid-cols-1 sm:grid-cols-3 lg:flex lg:flex-1 gap-2.5">
+                    <select
+                      value={continentFilter}
+                      onChange={(event) => handleContinentFilterChange(event.target.value)}
+                      className={selectClassName}
+                    >
+                      <option value="">All Continents</option>
+                      {filterOptions.continents.map((continent) => (
+                        <option key={continent} value={continent}>{continent}</option>
+                      ))}
+                    </select>
                     <select
                       value={countryFilter}
                       onChange={(event) => handleCountryFilterChange(event.target.value)}
@@ -1200,8 +1334,7 @@ const DestinationsData = () => {
                     </select>
                     <select
                       value={stateFilter}
-                      disabled={!countryFilter}
-                      onChange={(event) => handleStateFilterChange(event.target.value)}
+                      onChange={(event) => setStateFilter(event.target.value)}
                       className={selectClassName}
                     >
                       <option value="">All States</option>
@@ -1209,35 +1342,14 @@ const DestinationsData = () => {
                         <option key={state} value={state}>{state}</option>
                       ))}
                     </select>
-                    <select
-                      value={cityFilter}
-                      disabled={!stateFilter}
-                      onChange={(event) => setCityFilter(event.target.value)}
-                      className={selectClassName}
-                    >
-                      <option value="">All Cities</option>
-                      {filterOptions.cities.map((city) => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
                   </div>
                 ) : null}
-                <div className="relative min-w-[220px] flex-[2]" data-tour="destinations-data-search">
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                  <input
-                    type="text"
-                    placeholder={currentView === "summary" ? "Search destinations..." : `Search ${detailLabel.toLowerCase()}...`}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                  />
-                </div>
               </div>
-              {currentView === "summary" && summaryData ? (
+              {/* {currentView === "summary" && summaryData ? (
                 <p className="mt-2 text-[10px] font-pmedium text-slate-400 uppercase tracking-widest">
                   Showing {summaryItems.length} of {summaryTotal} destinations
                 </p>
-              ) : null}
+              ) : null} */}
             </div>
             <div className="overflow-x-auto flex-1">
               {currentView === "detail" && isLoading ? (
@@ -1360,7 +1472,7 @@ const DestinationsData = () => {
                                   isListingDetail
                                     ? editListing(item)
                                     : navigate(
-                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit`,
+                                        `/dashboard/destinations-data/${encodeURIComponent(selectedLocation)}-${detailType}/edit${buildSummaryFilterQuery()}`,
                                         {
                                           state: {
                                             item,
@@ -1407,6 +1519,17 @@ const DestinationsData = () => {
                         </tr>
                       ))
                     )}
+                    {isListingDetail && hasNextListingsPage ? (
+                      <tr ref={detailLoadMoreRef}>
+                        <td colSpan={detailFourthField ? 7 : 6} className="py-4 text-center">
+                          {isFetchingNextListingsPage ? (
+                            <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
+                              Loading more listings...
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ) : null}
                   </tbody>
                 </table>
               )}

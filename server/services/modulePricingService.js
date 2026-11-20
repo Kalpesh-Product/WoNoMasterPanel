@@ -1,5 +1,6 @@
 const ModulePricing = require("../models/hostCompany/ModulePricing");
 const PlanPricingSettings = require("../models/hostCompany/PlanPricingSettings");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const getOrCreatePlanPricingSettings = async () => {
   let settings = await PlanPricingSettings.findOne({ singletonKey: "default" });
@@ -41,11 +42,12 @@ const deleteModulePricing = (itemId) => ModulePricing.deleteOne({ itemId });
 const updatePlanPricingSettings = async ({
   professionalPlanPriceUsd,
   professionalAnnualPlanPriceUsd,
+  basicPlanPriceUsd,
+  basicPlanAnnualPriceUsd,
+  basicFreeDurationMonths,
   freeTrialEnabled,
   freeTrialDurationDays,
-  basicLeadsLimit,
-  professionalLeadsLimit,
-  customLeadsLimit,
+  activeTrialPromotionCodeId,
   updatedByEmail,
 }) => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -53,30 +55,46 @@ const updatePlanPricingSettings = async ({
   if (professionalAnnualPlanPriceUsd != null) {
     settings.professionalAnnualPlanPriceUsd = professionalAnnualPlanPriceUsd;
   }
+  if (basicPlanPriceUsd != null) settings.basicPlanPriceUsd = basicPlanPriceUsd;
+  if (basicPlanAnnualPriceUsd != null) settings.basicPlanAnnualPriceUsd = basicPlanAnnualPriceUsd;
+  if (basicFreeDurationMonths != null) settings.basicFreeDurationMonths = Number(basicFreeDurationMonths);
   if (freeTrialEnabled != null) settings.freeTrialEnabled = Boolean(freeTrialEnabled);
   if (freeTrialDurationDays != null) settings.freeTrialDurationDays = Number(freeTrialDurationDays);
-  if (basicLeadsLimit != null) settings.basicLeadsLimit = Number(basicLeadsLimit);
-  if (professionalLeadsLimit != null) settings.professionalLeadsLimit = Number(professionalLeadsLimit);
-  // customLeadsLimit may be explicitly cleared to null (unlimited), so this
-  // checks for the key's presence rather than non-null — pass undefined to
-  // leave it untouched.
-  if (customLeadsLimit !== undefined) {
-    settings.customLeadsLimit = customLeadsLimit == null ? null : Number(customLeadsLimit);
+  // "" (the "None" option) is a valid, meaningful value here — turns
+  // auto-apply off — so this checks undefined specifically, not != null.
+  if (activeTrialPromotionCodeId !== undefined) {
+    settings.activeTrialPromotionCodeId = String(activeTrialPromotionCodeId || "").trim();
   }
   if (updatedByEmail) settings.updatedByEmail = updatedByEmail;
   await settings.save();
   return settings;
 };
 
-// Website-lead visibility cap per plan, for HostPanel's lead cap + the
-// public pricing endpoint. null = unlimited.
-const getLeadLimitsConfig = async () => {
+const getActiveTrialPromotionCodeId = async () => {
   const settings = await getOrCreatePlanPricingSettings();
-  return {
-    basic: settings.basicLeadsLimit,
-    professional: settings.professionalLeadsLimit,
-    custom: settings.customLeadsLimit ?? null,
-  };
+  return settings.activeTrialPromotionCodeId || "";
+};
+
+// Makes the free trial's first charge actually $0 — a real $199 invoice
+// discounted to $0 (full line-item breakdown visible), not Stripe's own
+// trial_period_days (which skips billing entirely and shows a blank
+// "free trial" placeholder with no price to discount). Created once and
+// reused forever; "once" means it applies to exactly one invoice ever
+// per subscription, so the second real charge is always full price.
+const getOrCreateSystemFreeTrialCoupon = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  if (settings.systemFreeTrialCouponId) {
+    try {
+      const existing = await stripe.coupons.retrieve(settings.systemFreeTrialCouponId);
+      if (!existing.deleted) return existing.id;
+    } catch (error) {
+      // Deleted/missing on Stripe's side — fall through and recreate.
+    }
+  }
+  const coupon = await stripe.coupons.create({ percent_off: 100, duration: "once" });
+  settings.systemFreeTrialCouponId = coupon.id;
+  await settings.save();
+  return coupon.id;
 };
 
 const getProfessionalPlanPriceUsd = async () => {
@@ -99,6 +117,22 @@ const getProfessionalAnnualPlanPriceUsd = async () => {
       ) / 100;
 };
 
+// Basic plan is free ($0) unless/until staff set a price here — nothing in
+// the app reads these yet (Basic billing is a future toggle), but the
+// numbers can already be set from Master Panel.
+const getBasicPlanPriceUsd = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  return settings.basicPlanPriceUsd;
+};
+
+const getBasicAnnualPlanPriceUsd = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  const annual = Number(settings.basicPlanAnnualPriceUsd);
+  return Number.isFinite(annual) && annual > 0
+    ? annual
+    : Math.round(Number(settings.basicPlanPriceUsd) * MONTHS_PER_BILLING_CYCLE * 100) / 100;
+};
+
 // Both rates in one call for public endpoints that serve the pricing cards.
 const getProfessionalPlanPricing = async () => {
   const settings = await getOrCreatePlanPricingSettings();
@@ -111,6 +145,20 @@ const getProfessionalPlanPricing = async () => {
       Number.isFinite(annual) && annual > 0
         ? annual
         : settings.professionalPlanPriceUsd,
+  };
+};
+
+// Basic's equivalent of getProfessionalPlanPricing, for the same public
+// endpoint. 0 is a valid "still free" value here (unlike Professional,
+// which is never meant to be $0) — callers treat 0/null the same way:
+// "nothing to show, keep the static copy".
+const getBasicPlanPricing = async () => {
+  const settings = await getOrCreatePlanPricingSettings();
+  const annual = Number(settings.basicPlanAnnualPriceUsd);
+  return {
+    basicPlanPriceUsd: settings.basicPlanPriceUsd,
+    basicPlanAnnualPriceUsd:
+      Number.isFinite(annual) && annual > 0 ? annual : settings.basicPlanPriceUsd,
   };
 };
 
@@ -279,9 +327,13 @@ module.exports = {
   updatePlanPricingSettings,
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
+  getBasicPlanPriceUsd,
+  getBasicAnnualPlanPriceUsd,
+  getBasicPlanPricing,
+  getActiveTrialPromotionCodeId,
+  getOrCreateSystemFreeTrialCoupon,
   getProfessionalPlanPricing,
   getFreeTrialConfig,
-  getLeadLimitsConfig,
   getCustomPlanPricingBreakdown,
   computeCustomPlanMonthlyPrice,
   computeCustomPlanPrice,

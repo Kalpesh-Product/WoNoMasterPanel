@@ -7,6 +7,11 @@ const {
   buildPlanPaymentEmail,
   buildPlanPaymentConfirmationEmail,
   buildPlanStartedEmail,
+  buildSubscriptionPaymentFailedEmail,
+  buildSubscriptionCanceledEmail,
+  buildTrialStartedEmail,
+  buildSubscriptionWillNotRenewEmail,
+  buildSubscriptionResumedEmail,
 } = require("../utils/emailTemplates");
 const {
   computeCustomPlanPrice,
@@ -14,10 +19,15 @@ const {
   getCustomPlanPricingBreakdown,
   getProfessionalPlanPriceUsd,
   getProfessionalAnnualPlanPriceUsd,
+  getBasicPlanPriceUsd,
+  getBasicAnnualPlanPriceUsd,
 } = require("../services/modulePricingService");
-const { getDefaultEnabledModuleIdsForWorkspace } = require("../config/hostWorkspaceModuleCatalog");
+const {
+  getDefaultEnabledModuleIdsForWorkspace,
+  getDefaultEnabledModuleIdsForPlan,
+} = require("../config/hostWorkspaceModuleCatalog");
 
-const PLAN_LABELS = { professional: "Professional Plan", custom: "Custom Plan" };
+const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
 const PLAN_RANK = { basic: 0, professional: 1, custom: 2 };
 
 const normalizeBillingCycle = (value) =>
@@ -116,8 +126,10 @@ const computeProjectedPeriod = (currentExpiryDate, billingCycle = "monthly") => 
 };
 
 // Shared by the signup-lead "Send Payment Link" action and the
-// already-onboarded-workspace upgrade/renewal flow. Basic never calls this —
-// it's free and skips payment entirely.
+// already-onboarded-workspace upgrade/renewal flow. Basic only calls this
+// while staff have set a real Basic price above $0 — while it's $0, Basic
+// skips payment entirely (see the basicPlanPriceUsd guard in
+// sendPlanPaymentLink below, which never lets a $0 request reach here).
 const createAndSendPlanPaymentLink = async ({
   leadId = null,
   companyId,
@@ -133,8 +145,8 @@ const createAndSendPlanPaymentLink = async ({
 }) => {
   const normalizedPlan = String(plan || "").toLowerCase();
   const cycle = normalizeBillingCycle(billingCycle);
-  if (!["professional", "custom"].includes(normalizedPlan)) {
-    throw new Error("plan must be 'professional' or 'custom'");
+  if (!["basic", "professional", "custom"].includes(normalizedPlan)) {
+    throw new Error("plan must be 'basic', 'professional' or 'custom'");
   }
   if (!leadEmail) throw new Error("leadEmail is required");
 
@@ -153,7 +165,11 @@ const createAndSendPlanPaymentLink = async ({
       ? cycle === "annual"
         ? await getProfessionalAnnualPlanPriceUsd()
         : await getProfessionalPlanPriceUsd()
-      : await computeCustomPlanPrice(customModuleIds, cycle, customPriceOverrides, customOverallDiscountUsd);
+      : normalizedPlan === "basic"
+        ? cycle === "annual"
+          ? await getBasicAnnualPlanPriceUsd()
+          : await getBasicPlanPriceUsd()
+        : await computeCustomPlanPrice(customModuleIds, cycle, customPriceOverrides, customOverallDiscountUsd);
 
   const { start: projectedStart, end: projectedEnd } = computeProjectedPeriod(
     workspace?.planExpiryDate,
@@ -254,8 +270,15 @@ const sendPlanPaymentLink = async (req, res, next) => {
       billingCycle,
     } = req.body || {};
     if (!companyId) return res.status(400).json({ message: "companyId is required" });
-    if (!["professional", "custom"].includes(String(plan || "").toLowerCase())) {
-      return res.status(400).json({ message: "plan must be 'professional' or 'custom'" });
+    const normalizedRequestedPlan = String(plan || "").toLowerCase();
+    if (!["basic", "professional", "custom"].includes(normalizedRequestedPlan)) {
+      return res.status(400).json({ message: "plan must be 'basic', 'professional' or 'custom'" });
+    }
+    // Basic only takes a payment link once staff have actually set a real
+    // price — while it's $0, there's nothing to charge, so refuse instead
+    // of minting a pointless Stripe link for $0.
+    if (normalizedRequestedPlan === "basic" && !((await getBasicPlanPriceUsd()) > 0)) {
+      return res.status(400).json({ message: "Basic plan is currently free — no payment link needed." });
     }
 
     const resolvedCompanyId = String(companyId).trim();
@@ -571,6 +594,10 @@ const applyPaidPlanToWorkspace = async (link) => {
             planExpiryDate: link.periodEnd,
             planLastPaidAt: link.paidAt || new Date(),
             planExpiryWarningSentAt: null,
+            // A real payment converts a trial into a paid subscription — never
+            // leave isTrialing true after this, or the dashboard keeps showing
+            // the trial-renewal banner even though the host already paid.
+            isTrialing: false,
             enabledModuleIds: restoredModuleIds,
             preDowngradeEnabledModuleIds: [],
             ...(link.plan === "custom" && link.customModuleIds?.length
@@ -597,6 +624,9 @@ const applyPaidPlanToWorkspace = async (link) => {
         paymentStatus: true,
         paymentConfirmedAt: link.paidAt || new Date(),
         upgradeStatus: "active",
+        // A real payment ends any trial — otherwise a converted paying
+        // customer still shows "trialing" on the staff analytics dashboard.
+        subscriptionStatus: "active",
       },
       // Only set inviteUnlockedAt if not already set — a company that pays,
       // gets invited, then later renews should not have its original
@@ -608,6 +638,38 @@ const applyPaidPlanToWorkspace = async (link) => {
     { companyId: link.companyId, inviteUnlockedAt: null },
     { $set: { inviteUnlockedAt: link.paidAt || new Date() } },
   );
+};
+
+// GET /api/public/trial-checkout-status?session_id=cs_...
+// Public, same convention as getPublicPlanPaymentStatus below: the Checkout
+// Session id from startTrialCheckout's success_url redirect is the only
+// credential. Powers HostPanel's /trial-success page, which polls until
+// handleTrialSubscriptionCheckoutCompleted (the webhook) confirms the
+// trial. Returns "pending" (never a 404) before that — startTrialCheckout
+// pre-creates the PlanPaymentLink row as "pending" at session-creation
+// time precisely so this never looks like "payment not found" during the
+// brief window before the webhook lands.
+const getPublicTrialCheckoutStatus = async (req, res, next) => {
+  try {
+    const sessionId = String(req.query.session_id || "").trim();
+    if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(sessionId)) {
+      return res.status(400).json({ message: "A valid session_id is required" });
+    }
+
+    const link = await PlanPaymentLink.findOne({ stripeCheckoutSessionId: sessionId }).lean();
+    if (!link || link.status !== "paid") {
+      return res.status(200).json({ status: "pending" });
+    }
+
+    return res.status(200).json({
+      status: "confirmed",
+      companyName: link.companyName || "",
+      trialEndAt: link.periodEnd,
+      hostedInvoiceUrl: link.hostedInvoiceUrl || null,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 // Called from hostUserControllers.js's handleStripeWebhook dispatcher once
@@ -771,6 +833,417 @@ const getHostPanelPlanInvoices = async (req, res, next) => {
   }
 };
 
+// Webhook counterpart to startTrialCheckout (hostCompanyControllers.js) —
+// called once Stripe confirms the subscription-mode Checkout Session
+// completed (card captured, trial started). Does the exact same
+// HostLeadCompany/Workspace flip the old no-card startTrial does, plus
+// records the Stripe customer/subscription ids and a $0 PlanPaymentLink
+// row so this trial start shows up in the same Plan History/invoices
+// views a Payment Link purchase would.
+const handleTrialSubscriptionCheckoutCompleted = async (session) => {
+  const companyId = session.metadata?.companyId || session.client_reference_id;
+  if (!companyId) return;
+
+  const leadCompany = await HostLeadCompany.findOne({ companyId });
+  if (!leadCompany) return;
+  // Redelivery safety — this exact subscription already applied.
+  if (leadCompany.stripeSubscriptionId === session.subscription && leadCompany.isTrialActive) return;
+
+  // There's no Stripe-side trial anymore (see startTrialCheckout) — this is
+  // purely OUR OWN "free month" bookkeeping for banners/crons, computed
+  // from the duration that was in effect when this checkout was created.
+  const now = new Date();
+  const trialDays = Number(session.metadata?.trialDays) || 30;
+  const trialEndAt = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
+  leadCompany.stripeCustomerId = session.customer;
+  leadCompany.stripeSubscriptionId = session.subscription;
+  leadCompany.trialStartAt = now;
+  leadCompany.trialEndAt = trialEndAt;
+  leadCompany.isTrialActive = true;
+  leadCompany.hasUsedTrial = true;
+  leadCompany.subscriptionStatus = "trialing";
+  leadCompany.plan = "professional";
+  // Only recorded here, once Stripe confirms the checkout actually
+  // completed — an abandoned checkout must not burn the company's one
+  // redemption (same timing as hasUsedTrial above). Consumes the staff
+  // override the moment it's used, so it's a one-shot grant, not a
+  // standing permission.
+  if (session.metadata?.appliedPromotionCodeId) {
+    leadCompany.redeemedPromotionCodeId = session.metadata.appliedPromotionCodeId;
+    leadCompany.promoCodeRetryAllowed = false;
+  }
+  await leadCompany.save();
+
+  const workspaces = await Workspace.find({ companyId }).select("_id businessTypes");
+  await Promise.all(
+    workspaces.map((workspace) =>
+      Workspace.updateOne(
+        { _id: workspace._id },
+        {
+          $set: {
+            selectedPlan: "professional",
+            planStatus: "active",
+            planStartDate: now,
+            planExpiryDate: trialEndAt,
+            planExpiryWarningSentAt: null,
+            isTrialing: true,
+            enabledModuleIds: getDefaultEnabledModuleIdsForWorkspace("professional", workspace.businessTypes),
+          },
+        },
+      ),
+    ),
+  );
+
+  // A real $0 Stripe invoice (invoice_creation isn't needed here — Checkout
+  // in subscription mode always generates one), not a fake one.
+  let stripeInvoiceId = null;
+  let invoicePdfUrl = null;
+  let hostedInvoiceUrl = null;
+  if (session.invoice) {
+    try {
+      const invoice = await stripe.invoices.retrieve(session.invoice);
+      stripeInvoiceId = invoice.id;
+      invoicePdfUrl = invoice.invoice_pdf || null;
+      hostedInvoiceUrl = invoice.hosted_invoice_url || null;
+    } catch (error) {
+      console.error("Failed to retrieve Stripe invoice for trial checkout:", error.message);
+    }
+  }
+
+  // startTrialCheckout pre-creates this row as "pending" at session-creation
+  // time (same stripeCheckoutSessionId) — update it in place rather than
+  // creating a second row, but upsert as a fallback in case that row is
+  // ever missing (e.g. an older session from before this field existed).
+  await PlanPaymentLink.findOneAndUpdate(
+    { stripeCheckoutSessionId: session.id },
+    {
+      companyId,
+      workspaceId: workspaces[0]?._id || null,
+      leadId: leadCompany._id,
+      leadName: leadCompany.pocName,
+      leadEmail: leadCompany.pocEmail,
+      companyName: leadCompany.companyName,
+      plan: "professional",
+      changeType: "initial",
+      billingCycle: "monthly",
+      amount: 0,
+      currency: "usd",
+      periodStart: now,
+      periodEnd: trialEndAt,
+      stripeSubscriptionId: session.subscription,
+      stripeCustomerId: session.customer,
+      stripeCheckoutSessionId: session.id,
+      status: "paid",
+      paidAt: now,
+      stripeInvoiceId,
+      invoicePdfUrl,
+      hostedInvoiceUrl,
+    },
+    { upsert: true },
+  );
+
+  // Same ChatGPT-style shape as their own "Your new plan" email — a real
+  // invoice breakdown (not just "it started") with the $0 invoice PDF
+  // attached, since it's already fetched right above, plus a working
+  // "Manage Subscription" link (generated fresh here — a billing portal
+  // session isn't something that can be precomputed and reused).
+  const professionalPlanPriceUsd = await getProfessionalPlanPriceUsd();
+  let billingPortalUrl = null;
+  try {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: session.customer,
+      return_url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing`,
+    });
+    billingPortalUrl = portalSession.url;
+  } catch (error) {
+    console.error("Failed to create billing portal session for trial-started email:", error.message);
+  }
+  await sendMail({
+    to: leadCompany.pocEmail,
+    ...buildTrialStartedEmail({
+      customerName: leadCompany.pocName,
+      companyName: leadCompany.companyName,
+      planLabel: PLAN_LABELS.professional,
+      trialEndAt,
+      planAmountUsd: professionalPlanPriceUsd,
+      hostedInvoiceUrl,
+      billingPortalUrl,
+    }),
+    attachments: invoicePdfUrl
+      ? [{ filename: "invoice-Professional-Plan.pdf", path: invoicePdfUrl, contentType: "application/pdf" }]
+      : undefined,
+  });
+};
+
+// invoice.paid — fires for the first real charge after a trial ends and
+// every later monthly renewal on a subscription startTrialCheckout
+// created. Extends planExpiryDate the same way applyPaidPlanToWorkspace
+// does for a renewed Payment Link, and records a matching PlanPaymentLink
+// row so it lands in the same history views.
+const handleSubscriptionInvoicePaid = async (invoice) => {
+  const subscriptionId = invoice.subscription;
+  if (!subscriptionId) return;
+
+  const leadCompany = await HostLeadCompany.findOne({ stripeSubscriptionId: subscriptionId });
+  if (!leadCompany) return;
+
+  // Redelivery safety, and also covers Stripe sending invoice.paid for the
+  // same $0 invoice the trial-start handler above already recorded.
+  const alreadyRecorded = await PlanPaymentLink.exists({ stripeInvoiceId: invoice.id });
+  if (alreadyRecorded) return;
+
+  const workspace = await resolveWorkspaceForCompany({
+    companyId: leadCompany.companyId,
+    companyName: leadCompany.companyName,
+  });
+  const { start: periodStart, end: periodEnd } = computeProjectedPeriod(
+    workspace?.planExpiryDate,
+    "monthly",
+  );
+  const now = new Date();
+
+  if (workspace) {
+    await Workspace.updateOne(
+      { _id: workspace._id },
+      {
+        $set: {
+          selectedPlan: "professional",
+          planStatus: "active",
+          planExpiryDate: periodEnd,
+          planLastPaidAt: now,
+          planExpiryWarningSentAt: null,
+          isTrialing: false,
+        },
+      },
+    );
+  }
+
+  leadCompany.subscriptionStatus = "active";
+  leadCompany.isTrialActive = false;
+  await leadCompany.save();
+
+  const amount = (invoice.amount_paid || 0) / 100;
+  await PlanPaymentLink.create({
+    companyId: leadCompany.companyId,
+    workspaceId: workspace?._id || null,
+    leadId: leadCompany._id,
+    leadName: leadCompany.pocName,
+    leadEmail: leadCompany.pocEmail,
+    companyName: leadCompany.companyName,
+    plan: "professional",
+    previousPlan: "professional",
+    changeType: "renewal",
+    billingCycle: "monthly",
+    amount,
+    currency: invoice.currency || "usd",
+    periodStart,
+    periodEnd,
+    stripeSubscriptionId: subscriptionId,
+    stripeCustomerId: invoice.customer,
+    stripeInvoiceId: invoice.id,
+    invoicePdfUrl: invoice.invoice_pdf || null,
+    hostedInvoiceUrl: invoice.hosted_invoice_url || null,
+    status: "paid",
+    paidAt: now,
+  });
+
+  await sendMail({
+    to: leadCompany.pocEmail,
+    ...buildPlanPaymentConfirmationEmail({
+      customerName: leadCompany.pocName,
+      companyName: leadCompany.companyName,
+      planLabel: PLAN_LABELS.professional,
+      amount,
+      paidAt: now,
+      periodEnd,
+      changeType: "renewal",
+      invoiceUrl: invoice.hosted_invoice_url || invoice.invoice_pdf,
+    }),
+  });
+};
+
+// customer.subscription.deleted — Stripe's authoritative "this is truly
+// over" signal (after the host canceled, or after Stripe exhausted its own
+// retries on a failed payment). Downgrades immediately rather than waiting
+// for the next planExpiryDowngrade.js cron run — that cron only acts as a
+// same-day-or-less safety net for a card-backed company now (see its
+// past_due gate), this webhook is the primary path.
+const handleSubscriptionCanceled = async (subscription) => {
+  const leadCompany = await HostLeadCompany.findOneAndUpdate(
+    { stripeSubscriptionId: subscription.id },
+    { $set: { subscriptionStatus: "canceled", isTrialActive: false } },
+    { new: true },
+  );
+  if (!leadCompany) return;
+
+  const basicDefaultIds = getDefaultEnabledModuleIdsForPlan("basic");
+  const workspaces = await Workspace.find({ companyId: leadCompany.companyId });
+  for (const workspace of workspaces) {
+    await Workspace.updateOne(
+      { _id: workspace._id },
+      {
+        $set: {
+          selectedPlan: "basic",
+          planStatus: "expired_downgraded",
+          enabledModuleIds: basicDefaultIds,
+          preDowngradeEnabledModuleIds: workspace.enabledModuleIds || [],
+          isTrialing: false,
+        },
+      },
+    );
+  }
+
+  await sendMail({
+    to: leadCompany.pocEmail,
+    ...buildSubscriptionCanceledEmail({
+      customerName: leadCompany.pocName,
+      companyName: leadCompany.companyName,
+      planLabel: PLAN_LABELS.professional,
+      // Already downgraded above, so there's no future access date to
+      // promise — omitting this drops that sentence from the email.
+      accessUntil: null,
+    }),
+  });
+};
+
+// customer.subscription.updated — fires for many reasons (card updates,
+// proration, etc.), but the one that matters here is cancel_at_period_end
+// changing: that's set the instant the host clicks "Cancel subscription"
+// in the billing portal, well before the subscription actually ends
+// (customer.subscription.deleted, handled above) — same timing as
+// ChatGPT's own "Your plan will not renew" email. previousAttributes
+// (from the raw Stripe event, not the subscription object itself) is how
+// we know this specific field just changed, rather than something else on
+// the subscription.
+const handleSubscriptionUpdated = async (subscription, previousAttributes = {}) => {
+  // Stripe's Billing Portal schedules a cancellation one of two ways
+  // depending on account/portal configuration: the classic
+  // cancel_at_period_end boolean, OR (confirmed against a real portal
+  // cancellation on this account) by setting cancel_at to a specific
+  // future timestamp instead, leaving cancel_at_period_end false the
+  // whole time. Watch for either field actually changing, and use
+  // whichever one is actually set to decide "is a cancellation now
+  // scheduled" rather than assuming cancel_at_period_end is the only signal.
+  const cancelFieldsChanged =
+    Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at_period_end") ||
+    Object.prototype.hasOwnProperty.call(previousAttributes, "cancel_at");
+  if (!cancelFieldsChanged) return;
+
+  const leadCompany = await HostLeadCompany.findOne({ stripeSubscriptionId: subscription.id });
+  if (!leadCompany) return;
+
+  const isNowScheduledToCancel = Boolean(subscription.cancel_at_period_end || subscription.cancel_at);
+
+  if (isNowScheduledToCancel) {
+    await HostLeadCompany.updateOne({ _id: leadCompany._id }, { $set: { subscriptionStatus: "canceling" } });
+    const workspace = await resolveWorkspaceForCompany({
+      companyId: leadCompany.companyId,
+      companyName: leadCompany.companyName,
+    });
+    const accessUntil = subscription.cancel_at
+      ? new Date(subscription.cancel_at * 1000)
+      : workspace?.planExpiryDate || new Date(subscription.current_period_end * 1000);
+    await sendMail({
+      to: leadCompany.pocEmail,
+      ...buildSubscriptionWillNotRenewEmail({
+        customerName: leadCompany.pocName,
+        companyName: leadCompany.companyName,
+        planLabel: PLAN_LABELS.professional,
+        accessUntil,
+      }),
+    });
+  } else {
+    // Changed their mind — back to whatever Stripe's own status says
+    // (trialing/active), not hardcoded, since this can happen during
+    // either period.
+    await HostLeadCompany.updateOne(
+      { _id: leadCompany._id },
+      { $set: { subscriptionStatus: subscription.status || "active" } },
+    );
+    await sendMail({
+      to: leadCompany.pocEmail,
+      ...buildSubscriptionResumedEmail({
+        customerName: leadCompany.pocName,
+        companyName: leadCompany.companyName,
+        planLabel: PLAN_LABELS.professional,
+      }),
+    });
+  }
+};
+
+// invoice.payment_failed — the auto-charge (trial end, or any later
+// renewal) on a card-backed subscription didn't go through. Marks
+// subscriptionStatus "past_due" for staff visibility and emails the host a
+// direct link to update their card via Stripe's billing portal, same
+// "fix it right from the email" pattern ChatGPT-style billing uses.
+// Deliberately doesn't downgrade anything itself — Stripe keeps retrying
+// on its own schedule (invoice.next_payment_attempt below), and if it
+// keeps failing, the existing planExpiryDowngrade.js cron is still what
+// eventually downgrades them once planExpiryDate passes, same safety net
+// already in place for every other expiry case.
+const handleSubscriptionPaymentFailed = async (invoice) => {
+  const subscriptionId = invoice.subscription;
+  if (!subscriptionId) return;
+
+  const leadCompany = await HostLeadCompany.findOneAndUpdate(
+    { stripeSubscriptionId: subscriptionId },
+    { $set: { subscriptionStatus: "past_due" } },
+    { new: true },
+  );
+  if (!leadCompany) return;
+
+  let billingPortalUrl = null;
+  try {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: invoice.customer,
+      return_url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing`,
+    });
+    billingPortalUrl = portalSession.url;
+  } catch (error) {
+    console.error("Failed to create billing portal session for payment-failed email:", error.message);
+  }
+
+  await sendMail({
+    to: leadCompany.pocEmail,
+    ...buildSubscriptionPaymentFailedEmail({
+      customerName: leadCompany.pocName,
+      companyName: leadCompany.companyName,
+      planLabel: PLAN_LABELS.professional,
+      amount: (invoice.amount_due || 0) / 100,
+      nextRetryDate: invoice.next_payment_attempt ? new Date(invoice.next_payment_attempt * 1000) : null,
+      billingPortalUrl,
+    }),
+  });
+};
+
+// POST /api/hosts/billing-portal  { companyId } -> { url }
+// Stripe's own hosted page for managing a card-backed subscription (update
+// card, cancel) — same idea as ChatGPT's "Manage subscription". Only
+// meaningful for a company that started its trial through
+// startTrialCheckout (has a stripeCustomerId) rather than the old no-card
+// flow.
+const createBillingPortalSession = async (req, res, next) => {
+  try {
+    const { companyId } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+
+    const leadCompany = await HostLeadCompany.findOne({ companyId: String(companyId).trim() });
+    if (!leadCompany?.stripeCustomerId) {
+      return res.status(404).json({ message: "No billing account found for this company." });
+    }
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: leadCompany.stripeCustomerId,
+      return_url: `${resolveHostPanelFrontendUrl()}/profile/plan-billing`,
+    });
+
+    return res.status(200).json({ url: portalSession.url });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createAndSendPlanPaymentLink,
   sendPlanPaymentLink,
@@ -779,7 +1252,15 @@ module.exports = {
   getPlanPaymentStatuses,
   getHostCompanyPlanHistory,
   getPublicPlanPaymentStatus,
+  getPublicTrialCheckoutStatus,
   handlePlanPaymentWebhookEvent,
   resolveWorkspaceForCompany,
   getHostPanelPlanInvoices,
+  resolveHostPanelFrontendUrl,
+  handleTrialSubscriptionCheckoutCompleted,
+  handleSubscriptionInvoicePaid,
+  handleSubscriptionCanceled,
+  handleSubscriptionUpdated,
+  handleSubscriptionPaymentFailed,
+  createBillingPortalSession,
 };

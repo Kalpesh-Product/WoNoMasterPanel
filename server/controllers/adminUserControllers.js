@@ -4,10 +4,11 @@ const { default: mongoose } = require("mongoose");
 // const { default: axios } = require("axios");
 const axios = require("axios");
 const FormData = require("form-data");
+const ExcelJS = require("exceljs");
 const {
-  handleFileUpload,
-  handleFileDelete,
-} = require("../config/cloudinaryConfig");
+  uploadFileToS3,
+  deleteFileFromS3ByUrl,
+} = require("../config/s3config");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 const HostUser = require("../models/hostCompany/hostUser");
@@ -49,22 +50,25 @@ const updateProfile = async (req, res) => {
       user.lastName = trimmedLastName;
     }
 
-    let previousProfilePictureId = null;
+    let previousProfilePictureUrl = null;
     if (newProfilePicture) {
-      previousProfilePictureId = user.profilePicture?.id || null;
-      const base64Image = `data:${newProfilePicture.mimetype};base64,${newProfilePicture.buffer.toString("base64")}`;
-      const uploadResult = await handleFileUpload(
-        base64Image,
-        `master-panel/admin-users/${userId}/profile-picture`,
-      );
+      previousProfilePictureUrl = user.profilePicture?.url || null;
 
-      if (!uploadResult?.public_id || !uploadResult?.secure_url) {
+      const safeFileName =
+        String(newProfilePicture.originalname || "profile-picture")
+          .replace(/[^A-Za-z0-9._-]+/g, "_")
+          .replace(/^_+|_+$/g, "") || "profile-picture";
+      const profilePictureKey = `master-panel/admin-users/${userId}/profile-picture/${Date.now()}_${safeFileName}`;
+
+      const uploadResult = await uploadFileToS3(profilePictureKey, newProfilePicture);
+
+      if (!uploadResult?.id || !uploadResult?.url) {
         return res.status(500).json({ message: "Unable to upload profile photo" });
       }
 
       user.profilePicture = {
-        id: uploadResult.public_id,
-        url: uploadResult.secure_url,
+        id: uploadResult.id,
+        url: uploadResult.url,
       };
     }
 
@@ -79,10 +83,11 @@ const updateProfile = async (req, res) => {
     const updatedUser = await user.save();
 
     if (
-      previousProfilePictureId &&
-      previousProfilePictureId !== updatedUser.profilePicture?.id
+      previousProfilePictureUrl &&
+      previousProfilePictureUrl.includes(".amazonaws.com/") &&
+      previousProfilePictureUrl !== updatedUser.profilePicture?.url
     ) {
-      handleFileDelete(previousProfilePictureId).catch((deleteError) => {
+      deleteFileFromS3ByUrl(previousProfilePictureUrl).catch((deleteError) => {
         console.error("[updateProfile] old photo cleanup error:", deleteError);
       });
     }
@@ -304,6 +309,196 @@ const bulkUploadData = async (req, res) => {
   }
 };
 
+// Listings Data Update: parses the data team's "Business ALL Data" xlsx
+// (11k+ rows) and forwards compact rows to the Nomads backend, which owns
+// the companies collection. Blank Ratings/Total Reviews cells are skipped —
+// they must never overwrite live values with 0. IN-ACTIVE rows only get
+// isPublic:false on the Nomads side; nothing is ever force-published.
+const bulkUpdateListingStats = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file provided" });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(req.file.buffer);
+
+    const norm = (v) =>
+      String(v ?? "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+
+    // Columns found by header text, not fixed position — same defensive
+    // approach as parseDestinationRawData.js, since the team's sheets vary.
+    let sheet = null;
+    let cols = null;
+    for (const ws of workbook.worksheets) {
+      const header = ws.getRow(1);
+      const map = {};
+      for (let c = 1; c <= (ws.actualColumnCount || ws.columnCount); c += 1) {
+        const h = norm(header.getCell(c).value);
+        if (h === "business id") map.businessId = c;
+        else if (h === "ratings" || h === "rating") map.ratings = c;
+        else if (h === "total reviews") map.totalReviews = c;
+        else if (h === "status" || h === "business status") map.status = c;
+      }
+      if (map.businessId) {
+        sheet = ws;
+        cols = map;
+        break;
+      }
+    }
+    if (!sheet) {
+      return res
+        .status(400)
+        .json({ message: 'No sheet with a "Business ID" column found' });
+    }
+
+    const cellStr = (row, c) => {
+      if (!c) return "";
+      let v = row.getCell(c).value;
+      if (v && typeof v === "object" && "result" in v) v = v.result;
+      if (v && typeof v === "object" && "richText" in v)
+        v = v.richText.map((t) => t.text).join("");
+      return v === null || v === undefined ? "" : String(v).trim();
+    };
+
+    const warnings = [];
+    if (!cols.ratings)
+      warnings.push('No "Ratings" column — ratings were not updated.');
+    if (!cols.totalReviews)
+      warnings.push('No "Total Reviews" column — review counts were not updated.');
+    if (!cols.status)
+      warnings.push('No "STATUS" column — no listings were made private.');
+
+    const updates = [];
+    const failures = [];
+    const rowByBusinessId = new Map();
+    let totalRows = 0;
+    let skippedNothingToUpdate = 0;
+    let blankRatings = 0;
+    let blankReviews = 0;
+
+    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      totalRows += 1;
+
+      const businessId = cellStr(row, cols.businessId);
+      if (!businessId) {
+        failures.push({
+          row: rowNumber,
+          column: "Business ID",
+          value: "Blank",
+          reason: 'Missing "Business ID" value — row skipped.',
+        });
+        return;
+      }
+      rowByBusinessId.set(businessId, rowNumber);
+
+      const update = { businessId };
+
+      const ratingsStr = cellStr(row, cols.ratings).replace(/,/g, "");
+      if (ratingsStr === "") blankRatings += 1;
+      else {
+        const ratings = Number(ratingsStr);
+        if (Number.isFinite(ratings) && ratings >= 0 && ratings <= 5) {
+          update.ratings = ratings;
+        } else {
+          failures.push({
+            row: rowNumber,
+            column: "Ratings",
+            value: ratingsStr,
+            reason: "Not a number between 0 and 5 — rating left unchanged.",
+          });
+        }
+      }
+
+      const reviewsStr = cellStr(row, cols.totalReviews).replace(/,/g, "");
+      if (reviewsStr === "") blankReviews += 1;
+      else {
+        const reviews = Number(reviewsStr);
+        if (Number.isFinite(reviews) && reviews >= 0) {
+          update.totalReviews = reviews;
+        } else {
+          failures.push({
+            row: rowNumber,
+            column: "Total Reviews",
+            value: reviewsStr,
+            reason: "Not a valid review count — reviews left unchanged.",
+          });
+        }
+      }
+
+      // "IN-ACTIVE" / "INACTIVE" / "In Active" all count as inactive.
+      const status = norm(cellStr(row, cols.status)).replace(/[^a-z]/g, "");
+      if (status === "inactive") update.makePrivate = true;
+      else if (status && status !== "active") {
+        failures.push({
+          row: rowNumber,
+          column: "STATUS",
+          value: cellStr(row, cols.status),
+          reason: 'Expected "ACTIVE" or "IN-ACTIVE" — visibility left unchanged.',
+        });
+      }
+
+      if (Object.keys(update).length === 1) {
+        skippedNothingToUpdate += 1;
+        return;
+      }
+      updates.push(update);
+    });
+
+    if (!updates.length) {
+      return res.status(400).json({
+        message:
+          "No rows with a Business ID and at least one of Ratings / Total Reviews / inactive Status found",
+        totalRows,
+        failed: failures.length,
+        failures,
+        warnings,
+      });
+    }
+
+    const response = await axios.patch(
+      `${NOMADS_BASE}/company/bulk-update-company-stats`,
+      { updates },
+    );
+
+    (response.data.unmatchedBusinessIds || []).forEach((id) => {
+      failures.push({
+        row: rowByBusinessId.get(id) ?? "—",
+        column: "Business ID",
+        value: id,
+        reason: "No listing with this Business ID in the database — row skipped.",
+      });
+    });
+    return res.status(200).json({
+      success: true,
+      message: "Listings data update completed",
+      totalRows,
+      sent: response.data.processed,
+      matched: response.data.matched,
+      updated: response.data.modified,
+      markedPrivate: response.data.markedPrivate,
+      blankRatings,
+      blankReviews,
+      skippedNothingToUpdate,
+      failed: failures.length,
+      failures,
+      warnings,
+    });
+  } catch (err) {
+    const status = err.response?.status || 500;
+    console.error("[bulkUpdateListingStats] error:", err.response?.data || err.message);
+    return res.status(status).json({
+      success: false,
+      message:
+        err.response?.data?.message || err.message || "Listings update failed",
+    });
+  }
+};
+
 const bulkUploadImages = async (req, res) => {
   try {
     const files = req.files;
@@ -397,6 +592,81 @@ const bulkUploadRestaurantImages = async (req, res) => {
     return res
       .status(err.response?.status || 500)
       .json({ success: false, message });
+  }
+};
+
+const getRestaurantImageReuploadTargets = async (req, res) => {
+  try {
+    const { data } = await axios.get(`${NOMADS_BASE}/restaurants`);
+    const forGallery = req.path === "/restaurant-images-reupload";
+    const targets = data
+      .filter(({ images }) => !forGallery || (Array.isArray(images) && images.some((image) => image?.url)))
+      .map(({ _id, restaurantName, businessName, country, destination, state, images }) => ({
+        _id, restaurantName, businessName, country, destination, state,
+        ...(forGallery && { images }),
+      }));
+    return res.json(targets);
+  } catch (error) {
+    console.error("[getRestaurantImageReuploadTargets]", error.message);
+    return res.status(502).json({ message: "Could not load restaurants from Nomads." });
+  }
+};
+
+const reuploadRestaurantImages = async (req, res) => {
+  const { restaurantId } = req.body;
+  if (!restaurantId || !req.files?.length) {
+    return res.status(400).json({ message: "Select a restaurant and at least one photo." });
+  }
+
+  const adminKey = process.env.NOMADS_ADMIN_API_KEY;
+  if (!adminKey) {
+    return res.status(503).json({ message: "Restaurant image reupload is not configured." });
+  }
+
+  const form = new FormData();
+  form.append("restaurantId", restaurantId);
+  for (const file of req.files) {
+    form.append("images", file.buffer, {
+      filename: file.originalname,
+      contentType: file.mimetype,
+    });
+  }
+
+  try {
+    const { data, status } = await axios.post(
+      `${NOMADS_BASE}/restaurants/reupload-images`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          Accept: "application/json",
+          "x-admin-api-key": adminKey,
+        },
+      },
+    );
+    return res.status(status).json(data);
+  } catch (error) {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+
+    if (!status) {
+      return res.status(502).json({
+        message: "Could not reach the Nomads backend. Check that it is running, then retry.",
+      });
+    }
+    if (status === 404 && (!message || /^404 not found$/i.test(message))) {
+      return res.status(502).json({
+        message: "The Nomads backend is missing the photo retry route. Reload it with the current code, then retry.",
+      });
+    }
+    if (status === 401 || status === 403) {
+      return res.status(502).json({
+        message: "Nomads rejected the Master Panel credentials for photo reupload.",
+      });
+    }
+    return res.status(status).json({
+      message: message || `Nomads returned HTTP ${status} during the photo reupload. Try again.`,
+    });
   }
 };
 
@@ -536,6 +806,7 @@ const uploadRestaurantLogo = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: response.data?.message || "Restaurant logo uploaded successfully",
+      cleanupFailed: response.data?.cleanupFailed,
     });
   } catch (err) {
     console.error(
@@ -1337,8 +1608,11 @@ module.exports = {
   verifyPassword,
   changePassword,
   bulkUploadData,
+  bulkUpdateListingStats,
   bulkUploadImages,
   bulkUploadRestaurantImages,
+  getRestaurantImageReuploadTargets,
+  reuploadRestaurantImages,
   bulkReuploadImages,
   uploadCompanyLogo,
   uploadRestaurantLogo,

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, Users } from "lucide-react";
+import { Plus, Trash2, Save, Users, Tag, Power } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import TrialCompaniesModal from "../../../components/TrialCompaniesModal";
 
@@ -17,15 +17,26 @@ const PlanPricingSettings = () => {
   const queryClient = useQueryClient();
   const [professionalPrice, setProfessionalPrice] = useState("");
   const [annualPrice, setAnnualPrice] = useState("");
+  const [basicPrice, setBasicPrice] = useState("");
+  const [basicAnnualPrice, setBasicAnnualPrice] = useState("");
+  const [basicFreeDurationMonths, setBasicFreeDurationMonths] = useState("6");
   const [freeTrialEnabled, setFreeTrialEnabled] = useState(false);
   const [freeTrialDurationDays, setFreeTrialDurationDays] = useState("30");
-  const [basicLeadsLimit, setBasicLeadsLimit] = useState("5");
-  const [professionalLeadsLimit, setProfessionalLeadsLimit] = useState("25");
-  const [customLeadsLimit, setCustomLeadsLimit] = useState("");
+  const [activeTrialPromotionCodeId, setActiveTrialPromotionCodeId] = useState("");
   const [isTrialCompaniesOpen, setIsTrialCompaniesOpen] = useState(false);
   const [newItemType, setNewItemType] = useState("module");
   const [selectedCatalogId, setSelectedCatalogId] = useState("");
   const [newPriceUsd, setNewPriceUsd] = useState("");
+  const [newPromoCode, setNewPromoCode] = useState("");
+  const [newPromoDiscountType, setNewPromoDiscountType] = useState("percent");
+  const [newPromoDiscountValue, setNewPromoDiscountValue] = useState("");
+  // "once" = applies to the first real charge only, then the host pays
+  // full price from then on — the usual "first month off" meaning, and
+  // what a trial discount should default to. "forever"/"repeating" keep
+  // discounting every future invoice — rarely what's meant for a trial
+  // code, so staff must deliberately choose one of those.
+  const [newPromoDuration, setNewPromoDuration] = useState("once");
+  const [newPromoDurationInMonths, setNewPromoDurationInMonths] = useState("3");
 
   const { data, isLoading } = useQuery({
     queryKey: ["planPricingSettings"],
@@ -49,14 +60,87 @@ const PlanPricingSettings = () => {
         ? String(data.settings.professionalAnnualPlanPriceUsd)
         : "",
     );
+    setBasicPrice(String(data.settings.basicPlanPriceUsd ?? 0));
+    setBasicAnnualPrice(
+      data.settings.basicPlanAnnualPriceUsd != null
+        ? String(data.settings.basicPlanAnnualPriceUsd)
+        : "",
+    );
+    setBasicFreeDurationMonths(String(data.settings.basicFreeDurationMonths ?? 6));
     setFreeTrialEnabled(Boolean(data.settings.freeTrialEnabled));
     setFreeTrialDurationDays(String(data.settings.freeTrialDurationDays ?? 30));
-    setBasicLeadsLimit(String(data.settings.basicLeadsLimit ?? 5));
-    setProfessionalLeadsLimit(String(data.settings.professionalLeadsLimit ?? 25));
-    setCustomLeadsLimit(
-      data.settings.customLeadsLimit == null ? "" : String(data.settings.customLeadsLimit),
-    );
+    setActiveTrialPromotionCodeId(data.settings.activeTrialPromotionCodeId || "");
   }, [data, priceTouched]);
+
+  // Stripe Promotion Codes (coupons attached to a customer-facing code) —
+  // live from Stripe's own account, not stored locally, so this always
+  // matches what's actually usable at checkout.
+  const { data: promoCodesData, isLoading: promoCodesLoading } = useQuery({
+    queryKey: ["trialPromoCodes"],
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/promo-codes");
+      return response?.data || { codes: [] };
+    },
+  });
+  const promoCodes = promoCodesData?.codes || [];
+
+  const createPromoCodeMutation = useMutation({
+    mutationFn: async () => {
+      const res = await axios.post("/api/hosts/promo-codes", {
+        code: newPromoCode,
+        percentOff: newPromoDiscountType === "percent" ? Number(newPromoDiscountValue) : undefined,
+        amountOffUsd: newPromoDiscountType === "amount" ? Number(newPromoDiscountValue) : undefined,
+        duration: newPromoDuration,
+        durationInMonths: newPromoDuration === "repeating" ? Number(newPromoDurationInMonths) : undefined,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      setNewPromoCode("");
+      setNewPromoDiscountValue("");
+      setNewPromoDuration("once");
+      setNewPromoDurationInMonths("3");
+      queryClient.invalidateQueries({ queryKey: ["trialPromoCodes"] });
+      toast.success("Promo code created");
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to create promo code"),
+  });
+
+  const togglePromoCodeActiveMutation = useMutation({
+    mutationFn: async ({ id, active }) => {
+      const res = await axios.patch(`/api/hosts/promo-codes/${id}/active`, { active });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trialPromoCodes"] });
+      queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to update promo code"),
+  });
+
+  const deletePromoCodeMutation = useMutation({
+    mutationFn: async (id) => (await axios.delete(`/api/hosts/promo-codes/${id}`)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trialPromoCodes"] });
+      queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
+      toast.success("Promo code deleted");
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to delete promo code"),
+  });
+
+  const saveActiveTrialPromoMutation = useMutation({
+    mutationFn: async (value) => {
+      const res = await axios.patch("/api/hosts/plan-pricing/settings", {
+        activeTrialPromotionCodeId: value,
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
+      toast.success("Trial auto-apply updated");
+    },
+    onError: (error) => toast.error(error?.response?.data?.message || "Failed to update"),
+  });
 
   // The REAL modules/departments that can be priced, derived server-side
   // from the actual module catalog — staff pick from this instead of typing
@@ -82,18 +166,19 @@ const PlanPricingSettings = () => {
         professionalPlanPriceUsd: Number(professionalPrice),
         professionalAnnualPlanPriceUsd:
           annualPrice === "" || annualPrice == null ? null : Number(annualPrice),
+        basicPlanPriceUsd: Number(basicPrice),
+        basicPlanAnnualPriceUsd:
+          basicAnnualPrice === "" || basicAnnualPrice == null ? null : Number(basicAnnualPrice),
+        basicFreeDurationMonths: Number(basicFreeDurationMonths),
         freeTrialEnabled,
         freeTrialDurationDays: Number(freeTrialDurationDays),
-        basicLeadsLimit: Number(basicLeadsLimit),
-        professionalLeadsLimit: Number(professionalLeadsLimit),
-        customLeadsLimit: customLeadsLimit === "" ? null : Number(customLeadsLimit),
       });
       return res.data;
     },
     onSuccess: () => {
       setPriceTouched(false);
       queryClient.invalidateQueries({ queryKey: ["planPricingSettings"] });
-      toast.success("Professional plan pricing updated");
+      toast.success("Plan pricing updated");
     },
     onError: (error) =>
       toast.error(error?.response?.data?.message || "Failed to update pricing"),
@@ -202,6 +287,72 @@ const PlanPricingSettings = () => {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
+          <h2 className="text-[13px] font-pmedium text-slate-700">Basic Plan Price</h2>
+          <p className="text-[11px] font-pmedium text-slate-500 max-w-2xl">
+            Basic is free today this provision is for later where you can set a price for the Basic plan. The Annual rate is the full yearly price (e.g. $199/yr) charged once, in advance, for a 12-month cycle — the save shown to hosts is the discount vs paying the monthly rate for 12 months. Leave it blank to offer monthly billing only.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="max-w-xs w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Basic Plan (USD / month)
+              </label>
+              <input
+                type="number"
+                value={basicPrice}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicPrice(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <div className="max-w-xs w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Basic Plan Annual (USD / year)
+              </label>
+              <input
+                type="number"
+                value={basicAnnualPrice}
+                placeholder="Blank = no discount"
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicAnnualPrice(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <div className="max-w-[160px] w-full">
+              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Free Period (months)
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={basicFreeDurationMonths}
+                onChange={(e) => {
+                  setPriceTouched(true);
+                  setBasicFreeDurationMonths(e.target.value);
+                }}
+                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => saveBaseMutation.mutate()}
+              disabled={saveBaseMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[11px] font-pmedium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
+            >
+              <Save size={12} />
+              Save Prices
+            </button>
+          </div>
+          <p className="text-[10px] font-pmedium text-slate-400 max-w-2xl">
+            Free Period isn't counted down or enforced anywhere yet — it's
+            groundwork for a future "free for N months, then pay" cutoff.
+          </p>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-[13px] font-pmedium text-slate-700">Professional Free Trial</h2>
             <button
@@ -268,68 +419,163 @@ const PlanPricingSettings = () => {
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4">
-          <h2 className="text-[13px] font-pmedium text-slate-700">Website Leads — Visibility Cap</h2>
+          <h2 className="text-[13px] font-pmedium text-slate-700">Trial Promo Code</h2>
           <p className="text-[11px] font-pmedium text-slate-500 max-w-2xl">
-            How many website leads a host can see on their Website Leads page
-            before HostPanel shows a "Request More Leads" prompt. Leave
-            Custom blank for unlimited.
+            Created here, these are real Stripe coupons — same test/live mode
+            as everything else, no separate setup needed. Pick one as
+            "Auto-apply" and it's applied automatically on every new trial
+            checkout, discount shown upfront, with nothing for the host to
+            type in. Leave it on "None" to let a host type in any code
+            themselves instead.
           </p>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="max-w-[160px] w-full">
-              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
-                Basic
+
+          {promoCodesLoading ? (
+            <p className="text-[12px] font-pmedium text-slate-400">Loading…</p>
+          ) : promoCodes.length ? (
+            <div className="space-y-2">
+              {promoCodes.map((promo) => (
+                <div
+                  key={promo.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-slate-200"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Tag size={13} className="text-slate-400 shrink-0" />
+                    <span className="text-[12px] font-pmedium text-slate-800 truncate">{promo.code}</span>
+                    <span className="text-[11px] font-pmedium text-slate-500">
+                      {promo.percentOff ? `${promo.percentOff}% off` : `$${promo.amountOffUsd} off`}
+                    </span>
+                    <span
+                      className={`text-[10px] font-pmedium uppercase tracking-wider ${promo.duration === "forever" ? "text-amber-600" : "text-slate-400"}`}
+                      title={
+                        promo.duration === "once"
+                          ? "Applies to the first charge only"
+                          : promo.duration === "repeating"
+                            ? `Applies to the first ${promo.durationInMonths || 1} month(s)`
+                            : "Applies to every future charge, forever"
+                      }
+                    >
+                      {promo.duration === "once"
+                        ? "Once"
+                        : promo.duration === "repeating"
+                          ? `${promo.durationInMonths || 1}mo`
+                          : "Forever"}
+                    </span>
+                    {!promo.active ? (
+                      <span className="text-[10px] font-pmedium uppercase tracking-wider text-slate-400">
+                        Inactive
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <label className="flex items-center gap-1.5 text-[11px] font-pmedium text-slate-600 cursor-pointer select-none">
+                      <input
+                        type="radio"
+                        name="activeTrialPromo"
+                        checked={activeTrialPromotionCodeId === promo.id}
+                        disabled={!promo.active}
+                        onChange={() => {
+                          setActiveTrialPromotionCodeId(promo.id);
+                          saveActiveTrialPromoMutation.mutate(promo.id);
+                        }}
+                      />
+                      Auto-apply
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => togglePromoCodeActiveMutation.mutate({ id: promo.id, active: !promo.active })}
+                      className="p-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      title={promo.active ? "Deactivate" : "Activate"}
+                    >
+                      <Power size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Permanently delete "${promo.code}"? This can't be undone.`)) {
+                          deletePromoCodeMutation.mutate(promo.id);
+                        }
+                      }}
+                      disabled={deletePromoCodeMutation.isPending}
+                      className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 disabled:opacity-40"
+                      title="Delete permanently"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <label className="flex items-center gap-1.5 text-[11px] font-pmedium text-slate-500 cursor-pointer select-none pt-1">
+                <input
+                  type="radio"
+                  name="activeTrialPromo"
+                  checked={!activeTrialPromotionCodeId}
+                  onChange={() => {
+                    setActiveTrialPromotionCodeId("");
+                    saveActiveTrialPromoMutation.mutate("");
+                  }}
+                />
+                None — let hosts type in a code themselves
               </label>
+            </div>
+          ) : (
+            <p className="text-[12px] font-pmedium text-slate-400">No promo codes yet — add one below.</p>
+          )}
+
+          <div className="border-t border-slate-100 pt-4 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <input
+                type="text"
+                placeholder="CODE (e.g. LAUNCH50)"
+                value={newPromoCode}
+                onChange={(e) => setNewPromoCode(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-pmedium uppercase"
+              />
+              <select
+                value={newPromoDiscountType}
+                onChange={(e) => setNewPromoDiscountType(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-pmedium"
+              >
+                <option value="percent">% off</option>
+                <option value="amount">$ off</option>
+              </select>
               <input
                 type="number"
-                min={0}
-                value={basicLeadsLimit}
-                onChange={(e) => {
-                  setPriceTouched(true);
-                  setBasicLeadsLimit(e.target.value);
-                }}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                placeholder={newPromoDiscountType === "percent" ? "e.g. 50" : "e.g. 199"}
+                value={newPromoDiscountValue}
+                onChange={(e) => setNewPromoDiscountValue(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-pmedium"
               />
+              <button
+                type="button"
+                disabled={!newPromoCode || !newPromoDiscountValue || createPromoCodeMutation.isPending}
+                onClick={() => createPromoCodeMutation.mutate()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-pmedium bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
+              >
+                <Plus size={12} />
+                Add Code
+              </button>
             </div>
-            <div className="max-w-[160px] w-full">
-              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
-                Professional
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={professionalLeadsLimit}
-                onChange={(e) => {
-                  setPriceTouched(true);
-                  setProfessionalLeadsLimit(e.target.value);
-                }}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <select
+                value={newPromoDuration}
+                onChange={(e) => setNewPromoDuration(e.target.value)}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-pmedium sm:col-span-2"
+              >
+                <option value="once">Once — first charge only, then full price</option>
+                <option value="repeating">Repeating — discount the first N months</option>
+                <option value="forever">Forever — discount every future charge</option>
+              </select>
+              {newPromoDuration === "repeating" ? (
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="Months"
+                  value={newPromoDurationInMonths}
+                  onChange={(e) => setNewPromoDurationInMonths(e.target.value)}
+                  className="px-3 py-2 border border-slate-200 rounded-lg text-[11px] font-pmedium"
+                />
+              ) : null}
             </div>
-            <div className="max-w-[160px] w-full">
-              <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1.5 block">
-                Custom
-              </label>
-              <input
-                type="number"
-                min={0}
-                placeholder="Unlimited"
-                value={customLeadsLimit}
-                onChange={(e) => {
-                  setPriceTouched(true);
-                  setCustomLeadsLimit(e.target.value);
-                }}
-                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-[12px] font-pmedium text-slate-800 outline-none focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => saveBaseMutation.mutate()}
-              disabled={saveBaseMutation.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2.5 text-[11px] font-pmedium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
-            >
-              <Save size={12} />
-              Save Lead Limits
-            </button>
           </div>
         </div>
 
