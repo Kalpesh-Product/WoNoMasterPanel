@@ -41,6 +41,10 @@ const {
 const { uploadFileToS3 } = require("../config/s3config");
 const { generateBookingId } = require("../utils/generateBookingId");
 const { generateRegistrationId } = require("../utils/generateRegistrationId");
+const {
+  getWorkspaceVerticalKeys,
+  getVerticalModuleIds,
+} = require("../config/hostWorkspaceModuleCatalog");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -2772,7 +2776,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId businessTypes modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId owner businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean(),
         companyNameRegex
@@ -2781,7 +2785,7 @@ const getCompanyMembers = async (req, res, next) => {
               isActive: true,
             })
               .select(
-                "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
+                "_id workspaceName companyId owner businessName businessTypes modules enabledModuleIds selectedPlan",
               )
               .lean()
           : Promise.resolve([]),
@@ -2829,7 +2833,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId owner businessName businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean()
       : [];
@@ -2930,6 +2934,25 @@ const getCompanyMembers = async (req, res, next) => {
       ensureMemberRecord(member);
     });
 
+    // Which workspace is this founder's "Main" unit — read HostPanel's own
+    // flag (WorkspaceMember.isMainUnit on the workspace OWNER's membership
+    // row) instead of guessing from companyId/name, so both panels agree.
+    const ownerByWorkspaceId = new Map(
+      workspaceDocsWithDepartmentAccess.map((workspace) => [
+        String(workspace?._id || ""),
+        String(workspace?.owner || ""),
+      ]),
+    );
+    const isMainUnitByWorkspaceId = new Map();
+    memberships.forEach((membership) => {
+      const wsId = String(membership?.workspace || "");
+      const ownerId = ownerByWorkspaceId.get(wsId);
+      const membershipUserId = String(membership?.user?._id || membership?.user || "");
+      if (ownerId && membershipUserId === ownerId) {
+        isMainUnitByWorkspaceId.set(wsId, Boolean(membership?.isMainUnit));
+      }
+    });
+
     workspaceDocsWithDepartmentAccess.forEach((workspace) => {
       const workspaceId = normalizeWorkspaceId(workspace?._id?.toString());
       const sanitizedEnabled = expandLinkedModuleIds(
@@ -2944,6 +2967,8 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
+        companyId: String(workspace?.companyId || "").trim(),
+        isMainUnit: isMainUnitByWorkspaceId.get(workspaceId) || false,
         businessTypes: Array.isArray(workspace?.businessTypes) ? workspace.businessTypes : [],
         modules: workspace?.modules || [],
         enabledModuleIds: sanitizedEnabled,
@@ -2978,6 +3003,8 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName,
+        companyId: String(workspaceDoc?.companyId || "").trim(),
+        isMainUnit: isMainUnitByWorkspaceId.get(workspaceId) || false,
         businessTypes: Array.isArray(workspaceDoc?.businessTypes) ? workspaceDoc.businessTypes : [],
         modules: workspaceDoc?.modules || [],
         enabledModuleIds: sanitizedEnabled,
@@ -3059,6 +3086,7 @@ const getCompanyMembers = async (req, res, next) => {
           workspaceMap.set(workspaceKey, {
             workspaceId: workspaceKey,
             workspaceName: normalizeWorkspaceName(workspace.workspaceName),
+            isMainUnit: isMainUnitByWorkspaceId.get(workspaceKey) || false,
             modules: workspace?.modules || [],
             enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
               ? workspace.enabledModuleIds
@@ -3674,6 +3702,142 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
   }
 };
 
+// PATCH /api/host-user/workspace/:workspaceId/verticals
+//
+// Staff edits a workspace's business verticals from the Module Access page.
+// Modules unlocked by newly-added verticals are MERGED into enabledModuleIds;
+// modules unlocked ONLY by verticals that got unticked are REMOVED. A module
+// still unlocked by a vertical that stays ticked is kept. Plan-default and
+// manually-granted-outside-verticals modules are untouched either way.
+// HostPanel's getEffectiveEnabledModuleIds is intentionally NOT used here:
+// it's a signup/upgrade normalizer that resets professional workspaces to
+// plan defaults (clobbering staff's manual module choices) and withholds new
+// vertical grants on Basic (these edits are an explicit staff grant, so plan
+// gating shouldn't silently drop them).
+const updateWorkspaceVerticals = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    if (!workspaceId) {
+      return res.status(400).json({ message: "workspaceId is required" });
+    }
+
+    const normalizedBusinessTypes = Array.from(
+      new Set(normalizeVerticalType(req.body?.businessTypes)),
+    );
+
+    const currentWorkspaceRaw = await Workspace.findById(workspaceId)
+      .select("_id owner companyId workspaceName businessTypes modules enabledModuleIds")
+      .lean();
+    if (!currentWorkspaceRaw?._id) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(
+      currentWorkspaceRaw?.modules || [],
+    );
+    const currentEnabled = expandLinkedModuleIds(
+      sanitizeEnabledModuleIds(
+        Array.isArray(currentWorkspaceRaw?.enabledModuleIds)
+          ? currentWorkspaceRaw.enabledModuleIds
+          : [],
+        ensuredCanonical.modules,
+      ),
+      ensuredCanonical.modules,
+    );
+
+    const previousVerticalKeys = getWorkspaceVerticalKeys(
+      Array.isArray(currentWorkspaceRaw?.businessTypes)
+        ? currentWorkspaceRaw.businessTypes
+        : [],
+    );
+    const previousVerticalModuleIds = new Set(
+      getVerticalModuleIds(previousVerticalKeys),
+    );
+
+    const verticalKeys = getWorkspaceVerticalKeys(normalizedBusinessTypes);
+    const verticalModuleIds = getVerticalModuleIds(verticalKeys);
+    const verticalModuleIdSet = new Set(verticalModuleIds);
+
+    // Drop a module only if a vertical that's now untouched used to unlock it
+    // AND no still-ticked vertical unlocks it too.
+    const droppedModuleIds = new Set(
+      [...previousVerticalModuleIds].filter((id) => !verticalModuleIdSet.has(id)),
+    );
+
+    const nextEnabled = expandLinkedModuleIds(
+      Array.from(
+        new Set(
+          [...currentEnabled, ...verticalModuleIds].filter(
+            (id) => !droppedModuleIds.has(id),
+          ),
+        ),
+      ),
+      ensuredCanonical.modules,
+    );
+
+    const workspace = await Workspace.findByIdAndUpdate(
+      workspaceId,
+      {
+        $set: {
+          businessTypes: normalizedBusinessTypes,
+          enabledModuleIds: nextEnabled,
+          modules: ensuredCanonical.modules,
+        },
+        $unset: { enabledModules: 1 },
+      },
+      { new: true },
+    ).lean();
+
+    // Founder bypasses per-member grants in HostPanel, so mirroring the full
+    // workspace grant onto their membership is what gives immediate access.
+    // Other members keep their own explicit grants — assigning them the new
+    // vertical modules is a separate staff decision in Employee Access.
+    await upsertFounderWorkspaceMembership({
+      workspaceId: workspace._id,
+      founderUserId: workspace?.owner,
+      enabledModuleIds: nextEnabled,
+    });
+
+    const previousSet = new Set(currentEnabled);
+    const nextSet = new Set(nextEnabled);
+    const enabledModules = nextEnabled.filter((id) => !previousSet.has(id));
+    const disabledModules = currentEnabled.filter((id) => !nextSet.has(id));
+    await createModuleAccessLog({
+      ...getActorFromRequest(req),
+      sourcePanel: resolveSourcePanel(req),
+      action: "host_workspace_verticals_updated",
+      targetType: "workspace",
+      targetId: String(workspace?._id || workspaceId || ""),
+      targetName: String(workspace?.workspaceName || "").trim(),
+      companyId: String(workspace?.companyId || ""),
+      workspaceId: String(workspace?._id || workspaceId || ""),
+      workspaceName: String(workspace?.workspaceName || ""),
+      enabledModules,
+      disabledModules,
+      enabledCount: enabledModules.length,
+      disabledCount: disabledModules.length,
+      changes: {
+        previousBusinessTypes: Array.isArray(currentWorkspaceRaw?.businessTypes)
+          ? currentWorkspaceRaw.businessTypes
+          : [],
+        businessTypes: normalizedBusinessTypes,
+        verticalKeys,
+        previousEnabledModuleIds: currentEnabled,
+        enabledModuleIds: nextEnabled,
+        enabledModules,
+      },
+      ipAddress: req.ip || "",
+    });
+
+    return res.status(200).json({
+      message: "Workspace verticals and modules updated successfully",
+      workspace,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const syncWorkspaceDepartmentModules = async (req, res, next) => {
   try {
     const companyId = String(
@@ -4213,6 +4377,7 @@ module.exports = {
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
   updateWorkspaceEnabledModules,
+  updateWorkspaceVerticals,
   syncWorkspaceDepartmentModules,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,
