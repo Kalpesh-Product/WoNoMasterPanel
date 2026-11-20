@@ -2764,7 +2764,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId businessTypes modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId owner businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean(),
         companyNameRegex
@@ -2773,7 +2773,7 @@ const getCompanyMembers = async (req, res, next) => {
               isActive: true,
             })
               .select(
-                "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
+                "_id workspaceName companyId owner businessName businessTypes modules enabledModuleIds selectedPlan",
               )
               .lean()
           : Promise.resolve([]),
@@ -2821,7 +2821,7 @@ const getCompanyMembers = async (req, res, next) => {
           isActive: true,
         })
           .select(
-            "_id workspaceName companyId businessName businessTypes modules enabledModuleIds selectedPlan",
+            "_id workspaceName companyId owner businessName businessTypes modules enabledModuleIds selectedPlan",
           )
           .lean()
       : [];
@@ -2922,6 +2922,25 @@ const getCompanyMembers = async (req, res, next) => {
       ensureMemberRecord(member);
     });
 
+    // Which workspace is this founder's "Main" unit — read HostPanel's own
+    // flag (WorkspaceMember.isMainUnit on the workspace OWNER's membership
+    // row) instead of guessing from companyId/name, so both panels agree.
+    const ownerByWorkspaceId = new Map(
+      workspaceDocsWithDepartmentAccess.map((workspace) => [
+        String(workspace?._id || ""),
+        String(workspace?.owner || ""),
+      ]),
+    );
+    const isMainUnitByWorkspaceId = new Map();
+    memberships.forEach((membership) => {
+      const wsId = String(membership?.workspace || "");
+      const ownerId = ownerByWorkspaceId.get(wsId);
+      const membershipUserId = String(membership?.user?._id || membership?.user || "");
+      if (ownerId && membershipUserId === ownerId) {
+        isMainUnitByWorkspaceId.set(wsId, Boolean(membership?.isMainUnit));
+      }
+    });
+
     workspaceDocsWithDepartmentAccess.forEach((workspace) => {
       const workspaceId = normalizeWorkspaceId(workspace?._id?.toString());
       const sanitizedEnabled = expandLinkedModuleIds(
@@ -2936,6 +2955,8 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName: normalizeWorkspaceName(workspace?.workspaceName),
+        companyId: String(workspace?.companyId || "").trim(),
+        isMainUnit: isMainUnitByWorkspaceId.get(workspaceId) || false,
         businessTypes: Array.isArray(workspace?.businessTypes) ? workspace.businessTypes : [],
         modules: workspace?.modules || [],
         enabledModuleIds: sanitizedEnabled,
@@ -2970,6 +2991,8 @@ const getCompanyMembers = async (req, res, next) => {
       workspaceMap.set(workspaceId, {
         workspaceId,
         workspaceName,
+        companyId: String(workspaceDoc?.companyId || "").trim(),
+        isMainUnit: isMainUnitByWorkspaceId.get(workspaceId) || false,
         businessTypes: Array.isArray(workspaceDoc?.businessTypes) ? workspaceDoc.businessTypes : [],
         modules: workspaceDoc?.modules || [],
         enabledModuleIds: sanitizedEnabled,
@@ -3051,6 +3074,7 @@ const getCompanyMembers = async (req, res, next) => {
           workspaceMap.set(workspaceKey, {
             workspaceId: workspaceKey,
             workspaceName: normalizeWorkspaceName(workspace.workspaceName),
+            isMainUnit: isMainUnitByWorkspaceId.get(workspaceKey) || false,
             modules: workspace?.modules || [],
             enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
               ? workspace.enabledModuleIds

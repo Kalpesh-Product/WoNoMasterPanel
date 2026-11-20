@@ -1514,22 +1514,6 @@ const ModuleAccess = () => {
     [companyMemberPayload?.members],
   );
 
-  const effectiveRawPlan = useMemo(() => {
-    const fromCompany = String(company?.plan || company?.requestedPlan || "").trim();
-    if (fromCompany) return fromCompany;
-    return String(selectedPlan || "").trim();
-  }, [company?.plan, company?.requestedPlan, selectedPlan]);
-
-  const normalizedPlan = useMemo(() => {
-    const rawPlan = String(effectiveRawPlan || "").trim();
-    if (!rawPlan) return "Not Assigned";
-    return rawPlan
-      .split(/[\s_-]+/)
-      .filter(Boolean)
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  }, [effectiveRawPlan]);
-
   const workspaces = useMemo(() => {
     const apiWorkspaces = Array.isArray(companyMemberPayload?.workspaces)
       ? companyMemberPayload.workspaces
@@ -1539,6 +1523,8 @@ const ModuleAccess = () => {
       const mapped = apiWorkspaces.map((workspace) => ({
         workspaceId: normalizeWorkspaceId(workspace.workspaceId),
         workspaceName: normalizeWorkspaceName(workspace.workspaceName),
+        companyId: String(workspace?.companyId || "").trim(),
+        isMainUnit: Boolean(workspace?.isMainUnit),
         modules: workspace?.modules || [],
         enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
           ? workspace.enabledModuleIds
@@ -1549,19 +1535,10 @@ const ModuleAccess = () => {
         selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
       }));
 
-      // The company's main workspace is the unsuffixed one (workspaceId ===
-      // companyId) — same prefix convention the server uses to tell a parent
-      // workspace from its units. It gets listed first so it's also the
-      // default selection; fall back to the "Main Workspace" name.
-      const companyKey = String(resolvedCompanyId || "").trim().toLowerCase();
-      const rankWorkspace = (workspace) => {
-        const id = String(workspace.workspaceId || "").trim().toLowerCase();
-        if (companyKey && id === companyKey) return 0;
-        if (String(workspace.workspaceName || "").trim().toLowerCase() === "main workspace") {
-          return 1;
-        }
-        return 2;
-      };
+      // The founder's real Main unit (HostPanel's own WorkspaceMember.isMainUnit
+      // flag, passed through by the server) is listed first so it's also the
+      // default selection.
+      const rankWorkspace = (workspace) => (workspace.isMainUnit ? 0 : 1);
 
       return mapped.sort((a, b) => rankWorkspace(a) - rankWorkspace(b));
     }
@@ -1576,23 +1553,16 @@ const ModuleAccess = () => {
         selectedPlan: "basic",
       },
     ];
-  }, [companyMemberPayload?.workspaces, resolvedCompanyId]);
+  }, [companyMemberPayload?.workspaces]);
 
-  // Which workspace is the company's main one. Drives the "- Main" marker in
-  // the workspace picker (see WorkspaceSelect).
+  // Which workspace is the founder's real Main unit — HostPanel's own
+  // WorkspaceMember.isMainUnit flag, passed through by the server. Drives the
+  // "- Main" marker in the workspace picker (see WorkspaceSelect).
   const mainWorkspaceId = useMemo(() => {
     if (!workspaces.length) return "";
-    const companyKey = String(resolvedCompanyId || "").trim().toLowerCase();
-    const byId = workspaces.find(
-      (workspace) =>
-        companyKey && String(workspace.workspaceId || "").trim().toLowerCase() === companyKey,
-    );
-    if (byId) return byId.workspaceId;
-    const byName = workspaces.find(
-      (workspace) => String(workspace.workspaceName || "").trim().toLowerCase() === "main workspace",
-    );
-    return (byName || workspaces[0]).workspaceId;
-  }, [workspaces, resolvedCompanyId]);
+    const flagged = workspaces.find((workspace) => workspace.isMainUnit);
+    return (flagged || workspaces[0]).workspaceId;
+  }, [workspaces]);
 
   useEffect(() => {
     if (!selectedWorkspaceId && workspaces.length) {
@@ -1608,6 +1578,30 @@ const ModuleAccess = () => {
       ) || workspaces[0]
     );
   }, [selectedWorkspaceId, workspaces]);
+
+  // This page is scoped to the selected workspace, so Current Plan has to read
+  // that workspace's own selectedPlan. Preferring the company record made the
+  // card keep showing the company plan (Professional) while the picker switched
+  // to a workspace on a different plan (Custom). Company plan is now only the
+  // fallback for payloads that carry no workspace plan at all.
+  const effectiveRawPlan = useMemo(() => {
+    const fromWorkspace = String(selectedWorkspace?.selectedPlan || "").trim();
+    if (fromWorkspace) return fromWorkspace;
+    const fromCompany = String(company?.plan || company?.requestedPlan || "").trim();
+    if (fromCompany) return fromCompany;
+    return String(selectedPlan || "").trim();
+  }, [selectedWorkspace?.selectedPlan, company?.plan, company?.requestedPlan, selectedPlan]);
+
+  const normalizedPlan = useMemo(() => {
+    const rawPlan = String(effectiveRawPlan || "").trim();
+    if (!rawPlan) return "Not Assigned";
+    return rawPlan
+      .split(/[\s_-]+/)
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  }, [effectiveRawPlan]);
+
 
   const activeVerticalLabels = useMemo(
     () => getWorkspaceVerticalLabels(selectedWorkspace?.businessTypes),
