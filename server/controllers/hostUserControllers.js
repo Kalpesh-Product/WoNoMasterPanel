@@ -33,6 +33,10 @@ const {
 const { uploadFileToS3 } = require("../config/s3config");
 const { generateBookingId } = require("../utils/generateBookingId");
 const { generateRegistrationId } = require("../utils/generateRegistrationId");
+const {
+  getWorkspaceVerticalKeys,
+  getVerticalModuleIds,
+} = require("../config/hostWorkspaceModuleCatalog");
 
 const normalizeBaseUrl = (url) => (url || "").replace(/\/+$/, "");
 
@@ -3662,6 +3666,142 @@ const updateWorkspaceEnabledModules = async (req, res, next) => {
   }
 };
 
+// PATCH /api/host-user/workspace/:workspaceId/verticals
+//
+// Staff edits a workspace's business verticals from the Module Access page.
+// Modules unlocked by newly-added verticals are MERGED into enabledModuleIds;
+// modules unlocked ONLY by verticals that got unticked are REMOVED. A module
+// still unlocked by a vertical that stays ticked is kept. Plan-default and
+// manually-granted-outside-verticals modules are untouched either way.
+// HostPanel's getEffectiveEnabledModuleIds is intentionally NOT used here:
+// it's a signup/upgrade normalizer that resets professional workspaces to
+// plan defaults (clobbering staff's manual module choices) and withholds new
+// vertical grants on Basic (these edits are an explicit staff grant, so plan
+// gating shouldn't silently drop them).
+const updateWorkspaceVerticals = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    if (!workspaceId) {
+      return res.status(400).json({ message: "workspaceId is required" });
+    }
+
+    const normalizedBusinessTypes = Array.from(
+      new Set(normalizeVerticalType(req.body?.businessTypes)),
+    );
+
+    const currentWorkspaceRaw = await Workspace.findById(workspaceId)
+      .select("_id owner companyId workspaceName businessTypes modules enabledModuleIds")
+      .lean();
+    if (!currentWorkspaceRaw?._id) {
+      return res.status(404).json({ message: "Workspace not found" });
+    }
+
+    const ensuredCanonical = mergeCanonicalModulesIntoWorkspace(
+      currentWorkspaceRaw?.modules || [],
+    );
+    const currentEnabled = expandLinkedModuleIds(
+      sanitizeEnabledModuleIds(
+        Array.isArray(currentWorkspaceRaw?.enabledModuleIds)
+          ? currentWorkspaceRaw.enabledModuleIds
+          : [],
+        ensuredCanonical.modules,
+      ),
+      ensuredCanonical.modules,
+    );
+
+    const previousVerticalKeys = getWorkspaceVerticalKeys(
+      Array.isArray(currentWorkspaceRaw?.businessTypes)
+        ? currentWorkspaceRaw.businessTypes
+        : [],
+    );
+    const previousVerticalModuleIds = new Set(
+      getVerticalModuleIds(previousVerticalKeys),
+    );
+
+    const verticalKeys = getWorkspaceVerticalKeys(normalizedBusinessTypes);
+    const verticalModuleIds = getVerticalModuleIds(verticalKeys);
+    const verticalModuleIdSet = new Set(verticalModuleIds);
+
+    // Drop a module only if a vertical that's now untouched used to unlock it
+    // AND no still-ticked vertical unlocks it too.
+    const droppedModuleIds = new Set(
+      [...previousVerticalModuleIds].filter((id) => !verticalModuleIdSet.has(id)),
+    );
+
+    const nextEnabled = expandLinkedModuleIds(
+      Array.from(
+        new Set(
+          [...currentEnabled, ...verticalModuleIds].filter(
+            (id) => !droppedModuleIds.has(id),
+          ),
+        ),
+      ),
+      ensuredCanonical.modules,
+    );
+
+    const workspace = await Workspace.findByIdAndUpdate(
+      workspaceId,
+      {
+        $set: {
+          businessTypes: normalizedBusinessTypes,
+          enabledModuleIds: nextEnabled,
+          modules: ensuredCanonical.modules,
+        },
+        $unset: { enabledModules: 1 },
+      },
+      { new: true },
+    ).lean();
+
+    // Founder bypasses per-member grants in HostPanel, so mirroring the full
+    // workspace grant onto their membership is what gives immediate access.
+    // Other members keep their own explicit grants — assigning them the new
+    // vertical modules is a separate staff decision in Employee Access.
+    await upsertFounderWorkspaceMembership({
+      workspaceId: workspace._id,
+      founderUserId: workspace?.owner,
+      enabledModuleIds: nextEnabled,
+    });
+
+    const previousSet = new Set(currentEnabled);
+    const nextSet = new Set(nextEnabled);
+    const enabledModules = nextEnabled.filter((id) => !previousSet.has(id));
+    const disabledModules = currentEnabled.filter((id) => !nextSet.has(id));
+    await createModuleAccessLog({
+      ...getActorFromRequest(req),
+      sourcePanel: resolveSourcePanel(req),
+      action: "host_workspace_verticals_updated",
+      targetType: "workspace",
+      targetId: String(workspace?._id || workspaceId || ""),
+      targetName: String(workspace?.workspaceName || "").trim(),
+      companyId: String(workspace?.companyId || ""),
+      workspaceId: String(workspace?._id || workspaceId || ""),
+      workspaceName: String(workspace?.workspaceName || ""),
+      enabledModules,
+      disabledModules,
+      enabledCount: enabledModules.length,
+      disabledCount: disabledModules.length,
+      changes: {
+        previousBusinessTypes: Array.isArray(currentWorkspaceRaw?.businessTypes)
+          ? currentWorkspaceRaw.businessTypes
+          : [],
+        businessTypes: normalizedBusinessTypes,
+        verticalKeys,
+        previousEnabledModuleIds: currentEnabled,
+        enabledModuleIds: nextEnabled,
+        enabledModules,
+      },
+      ipAddress: req.ip || "",
+    });
+
+    return res.status(200).json({
+      message: "Workspace verticals and modules updated successfully",
+      workspace,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const syncWorkspaceDepartmentModules = async (req, res, next) => {
   try {
     const companyId = String(
@@ -4168,6 +4308,7 @@ module.exports = {
   updateWorkspaceAccountStatus,
   updateMemberWorkspaceAccess,
   updateWorkspaceEnabledModules,
+  updateWorkspaceVerticals,
   syncWorkspaceDepartmentModules,
   sendUpgradePaymentLinkEmail,
   sendUpgradeSuccessEmail,

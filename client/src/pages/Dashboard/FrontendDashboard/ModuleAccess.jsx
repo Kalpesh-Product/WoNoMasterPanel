@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   FormControlLabel,
   IconButton,
@@ -122,6 +123,40 @@ const PLAN_MODULE_ID_SETS = {
 };
 
 const PLAN_LABELS = { basic: "Basic", professional: "Professional", custom: "Custom" };
+
+// Canonical vertical labels staff can tick on a workspace. Stored verbatim on
+// Workspace.businessTypes; each maps to a key in the server's
+// VERTICAL_KEY_BY_BUSINESS_TYPE (hostWorkspaceModuleCatalog.js).
+const WORKSPACE_VERTICALS = [
+  "Co-Working",
+  "Co-Living",
+  "Hostels",
+  "Workation",
+  "Meeting Rooms",
+  "Cafe",
+];
+
+const normalizeVerticalLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
+
+const toCanonicalVerticalLabel = (value = "") => {
+  const normalized = normalizeVerticalLabel(value);
+  // Older workspaces were written with the singular "hostel".
+  return normalized === "hostel" ? "hostels" : normalized;
+};
+
+// Reads whatever casing/spelling a workspace already has ("cafe", "Cafe",
+// "hostel", "meeting-rooms") and returns only the canonical labels offered in
+// the editor, so the chips and the checkboxes always agree.
+const getWorkspaceVerticalLabels = (businessTypes = []) => {
+  const stored = new Set(
+    (Array.isArray(businessTypes) ? businessTypes : []).map(toCanonicalVerticalLabel),
+  );
+  return WORKSPACE_VERTICALS.filter((label) => stored.has(normalizeVerticalLabel(label)));
+};
 
 const getWorkspaceVerticalKeys = (businessTypes = []) => {
   const keys = new Set();
@@ -766,6 +801,14 @@ const AccessEditorModal = ({
   activePlanTier,
   onPlanButtonClick,
   pendingRequestedPlan,
+  verticalLabels,
+  selectedVerticals,
+  isEditingVerticals,
+  onToggleVertical,
+  onEditVerticals,
+  onCancelVerticals,
+  onSaveVerticals,
+  isSavingVerticals,
 }) => {
   const filteredSections = useMemo(() => {
     const query = treeSearch.trim().toLowerCase();
@@ -827,7 +870,7 @@ const AccessEditorModal = ({
           </div>
 
           <div className="grid flex-1 grid-cols-1 gap-0 overflow-hidden lg:grid-cols-[300px_1fr]">
-            <div className="border-b border-slate-100 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
+            <div className="overflow-y-auto border-b border-slate-100 bg-slate-50/70 p-4 lg:border-b-0 lg:border-r">
               <div className="rounded-xl border border-slate-200 bg-white p-3.5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
@@ -906,6 +949,86 @@ const AccessEditorModal = ({
                     Applies that plan's module set to this workspace. Doesn't change the workspace's
                     actual assigned plan — only which modules are enabled.
                   </p>
+                </div>
+              )}
+
+              {isWorkspaceMode && (
+                <div data-tour="module-access-verticals-editor" className="mt-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Workspace Verticals
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Saved: {verticalLabels?.length ? verticalLabels.join(", ") : "None"}
+                  </p>
+                  <div className="mt-2 flex flex-col gap-0.5">
+                    {WORKSPACE_VERTICALS.map((label) => (
+                      <FormControlLabel
+                        key={label}
+                        disabled={!isEditingVerticals}
+                        control={
+                          <Checkbox
+                            size="small"
+                            disabled={!isEditingVerticals}
+                            checked={(selectedVerticals || []).includes(label)}
+                            onChange={() => onToggleVertical?.(label)}
+                          />
+                        }
+                        label={
+                          <span
+                            className={`text-xs ${isEditingVerticals ? "text-slate-700" : "text-slate-500"}`}
+                          >
+                            {label}
+                          </span>
+                        }
+                      />
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[11px] leading-4 text-slate-500">
+                    {isEditingVerticals
+                      ? "Ticking a vertical enables its modules. Already-granted modules stay enabled when one is unticked."
+                      : "Read-only. Click Edit Verticals to change them."}
+                  </p>
+                  {isEditingVerticals ? (
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        fullWidth
+                        onClick={onCancelVerticals}
+                        disabled={isSavingVerticals}
+                        sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        fullWidth
+                        onClick={onSaveVerticals}
+                        disabled={isSavingVerticals}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: "10px",
+                          fontWeight: 700,
+                          backgroundColor: "#0F172A",
+                          "&:hover": { backgroundColor: "#111827" },
+                        }}
+                      >
+                        {isSavingVerticals ? "Saving..." : "Save Verticals"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      fullWidth
+                      className="!mt-2"
+                      onClick={onEditVerticals}
+                      sx={{ textTransform: "none", borderRadius: "10px", fontWeight: 700 }}
+                    >
+                      Edit Verticals
+                    </Button>
+                  )}
                 </div>
               )}
 
@@ -1059,6 +1182,8 @@ const ModuleAccess = () => {
   const [isWorkspaceMode, setIsWorkspaceMode] = useState(false);
   const [treeState, setTreeState] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedVerticals, setSelectedVerticals] = useState([]);
+  const [isEditingVerticals, setIsEditingVerticals] = useState(false);
 
   const pageTitle = useMemo(() => {
     if (companyName) return companyName;
@@ -1137,6 +1262,9 @@ const ModuleAccess = () => {
         enabledModuleIds: Array.isArray(workspace?.enabledModuleIds)
           ? workspace.enabledModuleIds
           : [],
+        businessTypes: Array.isArray(workspace?.businessTypes)
+          ? workspace.businessTypes
+          : [],
         selectedPlan: String(workspace?.selectedPlan || "basic").trim().toLowerCase(),
       }));
     }
@@ -1147,6 +1275,7 @@ const ModuleAccess = () => {
         workspaceName: DEFAULT_WORKSPACE_NAME,
         modules: [],
         enabledModuleIds: [],
+        businessTypes: [],
         selectedPlan: "basic",
       },
     ];
@@ -1166,6 +1295,11 @@ const ModuleAccess = () => {
       ) || workspaces[0]
     );
   }, [selectedWorkspaceId, workspaces]);
+
+  const activeVerticalLabels = useMemo(
+    () => getWorkspaceVerticalLabels(selectedWorkspace?.businessTypes),
+    [selectedWorkspace?.businessTypes],
+  );
 
   const pendingRequestedPlan = useMemo(() => {
     const requested = String(hostLeadCompany?.requestedPlan || "").trim().toLowerCase();
@@ -1259,6 +1393,15 @@ const ModuleAccess = () => {
       setTreeState(workspaceEnabledPlanState);
     }
   }, [isModalOpen, workspaceEnabledPlanState]);
+
+  // Draft verticals follow the saved ones whenever the editor is closed —
+  // including right after a successful save invalidates the workspaces query.
+  useEffect(() => {
+    if (!isModalOpen) {
+      setSelectedVerticals(activeVerticalLabels);
+      setIsEditingVerticals(false);
+    }
+  }, [isModalOpen, activeVerticalLabels]);
 
   const hasRealWorkspaces = useMemo(() => {
     return workspaces.some(
@@ -1439,6 +1582,42 @@ const ModuleAccess = () => {
       toast.error(error?.response?.data?.message || "Unable to update workspace modules.");
     },
   });
+
+  const verticalsMutation = useMutation({
+    mutationFn: async ({ verticals }) => {
+      const response = await axios.patch(
+        `/api/host-user/workspace/${selectedWorkspace?.workspaceId}/verticals`,
+        { businessTypes: verticals },
+      );
+      return response.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["host-company-members", resolvedCompanyId],
+      });
+      toast.success("Workspace verticals and features updated successfully.");
+      setIsEditingVerticals(false);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Unable to update workspace verticals.");
+    },
+  });
+
+  const toggleVertical = (label) => {
+    setSelectedVerticals((prev) =>
+      prev.includes(label) ? prev.filter((item) => item !== label) : [...prev, label],
+    );
+  };
+
+  const startEditingVerticals = () => {
+    setSelectedVerticals(activeVerticalLabels);
+    setIsEditingVerticals(true);
+  };
+
+  const cancelEditingVerticals = () => {
+    setSelectedVerticals(activeVerticalLabels);
+    setIsEditingVerticals(false);
+  };
 
   const handleToggle = (pathParts, checked) => {
     setTreeState((prev) => toggleTreeNode(activeModuleSections, prev, pathParts, checked));
@@ -1683,6 +1862,7 @@ const ModuleAccess = () => {
               onClick={() => {
                 setIsWorkspaceMode(true);
                 setSelectedEmployee(null);
+                setSelectedVerticals(activeVerticalLabels);
                 setTreeState(workspaceEnabledPlanState);
                 setIsModalOpen(true);
               }}
@@ -1881,6 +2061,14 @@ const ModuleAccess = () => {
         activePlanTier={activePlanTier}
         onPlanButtonClick={handlePlanButtonClick}
         pendingRequestedPlan={pendingRequestedPlan}
+        verticalLabels={activeVerticalLabels}
+        selectedVerticals={selectedVerticals}
+        isEditingVerticals={isEditingVerticals}
+        onToggleVertical={toggleVertical}
+        onEditVerticals={startEditingVerticals}
+        onCancelVerticals={cancelEditingVerticals}
+        onSaveVerticals={() => verticalsMutation.mutate({ verticals: selectedVerticals })}
+        isSavingVerticals={verticalsMutation.isPending}
       />
 
       {pendingPlanTier && (
