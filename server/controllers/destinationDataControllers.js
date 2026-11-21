@@ -6,6 +6,9 @@ const WonoDestinationRanking = require("../models/WonoDestinationRanking");
 const priorityLabels = { P1: "Immediate Priority", P2: "High Priority", P3: "Medium Priority", P4: "Low Priority" };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+// Minimum gap between two attempts when a source is down/empty, so client
+// polling cannot hammer an already struggling Nomads backend.
+const REFRESH_RETRY_MS = 30 * 1000;
 // Some Nomads collections are abnormally slow to query right now — `blogs`
 // alone (only ~11MB / 1062 docs) measured over 2 minutes for a plain sorted
 // find, which points to a real problem on the Nomads DB side (missing
@@ -28,8 +31,10 @@ const destinationRefreshPromises = {
   content: null,
   listings: null,
 };
+const destinationRefreshAttempts = { content: 0, listings: 0 };
 const nomadsCompanyListingsCache = { items: null, fetchedAt: 0 };
 let nomadsCompanyListingsRefreshPromise = null;
+let nomadsListingsRefreshAttemptAt = 0;
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -204,8 +209,10 @@ const refreshNomadsCompanyListingsCache = () => {
         return previousItems;
       }
 
+      // An empty cold crawl is not a successful refresh — leave the cache
+      // stale so the next poll can try again after the retry cooldown.
       nomadsCompanyListingsCache.items = items;
-      nomadsCompanyListingsCache.fetchedAt = Date.now();
+      nomadsCompanyListingsCache.fetchedAt = items.length ? Date.now() : 0;
       return items;
     })().finally(() => {
       nomadsCompanyListingsRefreshPromise = null;
@@ -215,21 +222,49 @@ const refreshNomadsCompanyListingsCache = () => {
   return nomadsCompanyListingsRefreshPromise;
 };
 
-const fetchNomadsCompanyListings = async () => {
+// Non-blocking variant used by request handlers: a cold cache must never hold
+// the HTTP response hostage while the Nomads backend is slow/unavailable.
+// The caller gets an empty page plus a refresh flag and polls until the
+// background crawl lands in the cache.
+const getNomadsCompanyListingsState = () => {
   const isFresh =
     nomadsCompanyListingsCache.items &&
     Date.now() - nomadsCompanyListingsCache.fetchedAt < CACHE_TTL_MS;
 
-  if (isFresh) return nomadsCompanyListingsCache.items;
+  if (isFresh) {
+    return {
+      items: nomadsCompanyListingsCache.items,
+      isRefreshing: false,
+      isInitialLoading: false,
+    };
+  }
 
-  if (nomadsCompanyListingsCache.items) {
+  if (
+    !nomadsCompanyListingsRefreshPromise &&
+    Date.now() - nomadsListingsRefreshAttemptAt >= REFRESH_RETRY_MS
+  ) {
+    nomadsListingsRefreshAttemptAt = Date.now();
     refreshNomadsCompanyListingsCache().catch((error) => {
       console.error("Background Nomads company listings refresh failed:", error.message);
     });
-    return nomadsCompanyListingsCache.items;
   }
 
-  return refreshNomadsCompanyListingsCache();
+  return {
+    items: nomadsCompanyListingsCache.items || [],
+    isRefreshing: true,
+    isInitialLoading: !nomadsCompanyListingsCache.items,
+  };
+};
+
+const fetchNomadsCompanyListings = async () => {
+  const state = getNomadsCompanyListingsState();
+  if (state.isInitialLoading) {
+    // Used by buildDestinationStats, which runs as a background refresh and
+    // needs to wait for the crawl rather than return an empty snapshot.
+    await nomadsCompanyListingsRefreshPromise;
+    return nomadsCompanyListingsCache.items || [];
+  }
+  return state.items;
 };
 
 const buildDestinationStats = async ({ includeListings = false } = {}) => {
@@ -386,11 +421,14 @@ const refreshDestinationCache = (scope, options) => {
     destinationRefreshPromises[scope] = buildDestinationStats(options)
       .then((items) => {
         const previousItems = destinationCaches[scope].items;
-        if (scope === "listings" && items.length === 0 && previousItems?.length) {
+        if (items.length === 0 && previousItems?.length) {
           destinationCaches[scope] = { items: previousItems, fetchedAt: Date.now() };
           return previousItems;
         }
-        destinationCaches[scope] = { items, fetchedAt: Date.now() };
+        destinationCaches[scope] = {
+          items,
+          fetchedAt: items.length ? Date.now() : 0,
+        };
         return items;
       })
       .finally(() => {
@@ -400,19 +438,38 @@ const refreshDestinationCache = (scope, options) => {
   return destinationRefreshPromises[scope];
 };
 
-const getCachedDestinationStats = async ({ includeListings = false } = {}) => {
+// Same non-blocking contract as getNomadsCompanyListingsState: serve whatever
+// is cached immediately, refresh in the background, and tell the client to
+// poll while the first crawl is still running. Previously a cold cache made
+// this endpoint wait on multi-minute Nomads queries, so the page looked stuck.
+const getCachedDestinationStats = ({ includeListings = false } = {}) => {
   const scope = includeListings ? "listings" : "content";
   const destinationCache = destinationCaches[scope];
   const isFresh =
     destinationCache.items && Date.now() - destinationCache.fetchedAt < CACHE_TTL_MS;
-  if (isFresh) return destinationCache.items;
-  if (destinationCache.items) {
+  if (isFresh) {
+    return {
+      items: destinationCache.items,
+      isRefreshing: false,
+      isInitialLoading: false,
+    };
+  }
+
+  if (
+    !destinationRefreshPromises[scope] &&
+    Date.now() - destinationRefreshAttempts[scope] >= REFRESH_RETRY_MS
+  ) {
+    destinationRefreshAttempts[scope] = Date.now();
     refreshDestinationCache(scope, { includeListings }).catch((error) => {
       console.error("Background destination refresh failed:", error.message);
     });
-    return destinationCache.items;
   }
-  return refreshDestinationCache(scope, { includeListings });
+
+  return {
+    items: destinationCache.items || [],
+    isRefreshing: true,
+    isInitialLoading: !destinationCache.items,
+  };
 };
 
 const summarize = (items) =>
@@ -462,7 +519,11 @@ const hasListingData = (item) =>
   0;
 
 const getDestinationListingDetails = async (req, res) => {
-  const listings = await fetchNomadsCompanyListings();
+  const {
+    items: listings,
+    isRefreshing,
+    isInitialLoading,
+  } = getNomadsCompanyListingsState();
   const requestedType = req.query.detailType;
   const destinationKey = normalizeKey(req.query.destination);
   const search = normalizeSearchValue(req.query.search);
@@ -511,6 +572,8 @@ const getDestinationListingDetails = async (req, res) => {
     limit,
     total,
     hasMore: page * limit < total,
+    isRefreshing,
+    isInitialLoading,
   });
 };
 
@@ -521,7 +584,11 @@ const getDestinationsData = async (req, res, next) => {
     }
 
     const activeTab = normalizeSearchValue(req.query.tab) === "listings" ? "listings" : "content";
-    const allItems = await getCachedDestinationStats({
+    const {
+      items: allItems,
+      isRefreshing,
+      isInitialLoading,
+    } = getCachedDestinationStats({
       includeListings: activeTab === "listings",
     });
     const contentItems = allItems.filter(hasContentData);
@@ -582,6 +649,8 @@ const getDestinationsData = async (req, res, next) => {
       limit,
       total,
       hasMore: page * limit < total,
+      isRefreshing,
+      isInitialLoading,
       counts: {
         destinations: contentItems.length,
         ...summarize(scopedItems),

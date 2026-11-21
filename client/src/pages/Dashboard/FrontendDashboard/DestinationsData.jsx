@@ -545,6 +545,11 @@ const DestinationsData = () => {
     initialPageParam: 1,
     enabled: currentView === "summary",
     placeholderData: (previousData) => previousData,
+    // A cold server cache returns an empty page immediately and refreshes in
+    // the background. Poll until that refresh lands instead of leaving the
+    // table empty/stuck. Once cached, this stops automatically.
+    refetchInterval: (query) =>
+      query.state.data?.pages?.[0]?.isRefreshing ? 5000 : false,
     queryFn: async ({ pageParam }) => {
       const response = await axios.get("/api/hosts/destinations-data", {
         params: {
@@ -568,6 +573,8 @@ const DestinationsData = () => {
     [summaryData],
   );
   const summaryFirstPage = summaryData?.pages?.[0];
+  const isSummaryRefreshing = Boolean(summaryFirstPage?.isRefreshing);
+  const isSummaryInitialLoading = Boolean(summaryFirstPage?.isInitialLoading);
   const summaryCounts = summaryFirstPage?.counts ?? EMPTY_COUNTS;
   const summaryStats = effectiveSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
   const summaryColumns = effectiveSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
@@ -664,6 +671,8 @@ const DestinationsData = () => {
   } = useInfiniteQuery({
     queryKey: ["destination-listings", selectedLocation, detailType, detailSearchQuery],
     initialPageParam: 1,
+    refetchInterval: (query) =>
+      query.state.data?.pages?.[0]?.isRefreshing ? 5000 : false,
     queryFn: async ({ pageParam }) => {
       const response = await axios.get("/api/hosts/destinations-data", {
         params: {
@@ -687,6 +696,12 @@ const DestinationsData = () => {
   const destinationListings = useMemo(
     () => destinationListingsData?.pages.flatMap((page) => page.items ?? []) ?? [],
     [destinationListingsData],
+  );
+  const isDetailListingsRefreshing = Boolean(
+    destinationListingsData?.pages?.[0]?.isRefreshing,
+  );
+  const isDetailListingsInitialLoading = Boolean(
+    destinationListingsData?.pages?.[0]?.isInitialLoading,
   );
 
   const detailLoadMoreRef = useRef(null);
@@ -1231,6 +1246,13 @@ const DestinationsData = () => {
                     ? "Overview of Nomad listing categories across all destinations."
                     : "Overview of content across all destinations like blogs, news, places, restaurants, and events."
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
+                {(currentView === "summary"
+                  ? isSummaryRefreshing
+                  : isListingDetail && isDetailListingsRefreshing) && (
+                  <span className="ml-2 text-[10px] uppercase tracking-widest text-blue-500">
+                    Refreshing data…
+                  </span>
+                )}
               </p>
             </div>
             {currentView === "detail" && !isListingDetail && (
@@ -1389,7 +1411,18 @@ const DestinationsData = () => {
                   <tbody>
                     {summaryItems.length === 0 ? (
                       <tr>
-                        <td colSpan={4 + summaryColumns.length} className="text-center py-20 text-slate-400 font-pmedium">{isSummaryError ? "Failed to load destinations." : "No destinations found."}</td>
+                        <td colSpan={4 + summaryColumns.length} className="text-center py-20 text-slate-400 font-pmedium">
+                          {isSummaryInitialLoading ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className="h-5 w-5 rounded-full border-2 border-slate-200 border-t-[#2563EB] animate-spin" />
+                              <span>Preparing destination data… this can take a moment on first load.</span>
+                            </div>
+                          ) : isSummaryError ? (
+                            "Failed to load destinations."
+                          ) : (
+                            "No destinations found."
+                          )}
+                        </td>
                       </tr>
                     ) : (
                       summaryItems.map((row, index) => (
@@ -1447,7 +1480,11 @@ const DestinationsData = () => {
                   <tbody>
                     {filteredDetailData.length === 0 ? (
                       <tr>
-                        <td colSpan={detailFourthField ? 7 : 6} className="text-center py-20 text-slate-400 font-pmedium">No {detailLabel.toLowerCase()} found.</td>
+                        <td colSpan={detailFourthField ? 7 : 6} className="text-center py-20 text-slate-400 font-pmedium">
+                          {isListingDetail && isDetailListingsInitialLoading
+                            ? "Preparing listings… this can take a moment on first load."
+                            : `No ${detailLabel.toLowerCase()} found.`}
+                        </td>
                       </tr>
                     ) : (
                       filteredDetailData.map((item, index) => (
