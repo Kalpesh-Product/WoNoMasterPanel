@@ -35,6 +35,7 @@ const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
 const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
+const WaveXTemplate = lazy(() => import("./wavex/WaveXTemplate"));
 const WorkhubTemplate = lazy(() => import("./workhub/WorkhubTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
 const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
@@ -358,6 +359,20 @@ export const TEMPLATE_REGISTRY = {
             bg: "#ffffff",
             fg: "#20201f",
             accent: "#a99d93",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    wavex: {
+        id: "wavex",
+        name: "WaveX Rooms",
+        description: "Warm editorial meeting-room design — coral accents, natural-light photography, community storytelling and a friendly booking flow.",
+        component: WaveXTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#2b2b2f",
+            accent: "#ed4e36",
             font: "'Inter', sans-serif",
         },
         recommendedFor: ["meeting"],

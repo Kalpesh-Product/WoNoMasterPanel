@@ -12,6 +12,7 @@ const BACK_TO_TOP_SPECS = {
   haven: { bg: "#f4f1ea", fg: "#26312b", border: "#5b7f6a", radius: "28px 28px 8px 8px", shadow: "0 16px 34px rgba(38,49,43,.2)", font: "'Fraunces', Georgia, serif" },
   camelia: { bg: "#f6f3ec", fg: "#2b2a26", border: "#8a9a86", radius: "50%", shadow: "0 16px 34px rgba(43,42,38,.18)", font: "'Poppins', sans-serif" },
   commons: { bg: "#ffc21a", fg: "#0b1f3a", border: "#0b1f3a", radius: "10px", shadow: "5px 5px 0 #0b1f3a", font: "'Plus Jakarta Sans', sans-serif" },
+  wavex: { bg: "#ed4e36", fg: "#ffffff", border: "#ed4e36", radius: "6px", shadow: "0 16px 34px rgba(237,78,54,.3)", font: "'Inter', sans-serif" },
   huddle: { bg: "#3b6cf0", fg: "#ffffff", border: "#3b6cf0", radius: "50%", shadow: "0 16px 34px rgba(59,108,240,.3)", font: "'Sora', sans-serif" },
   flowspace: { bg: "#d9ff4f", fg: "#10110f", border: "#10110f", radius: "999px", shadow: "4px 4px 0 #10110f", font: "'Inter', sans-serif" },
   workscape: { bg: "#ffffff", fg: "#20201f", border: "#a99d93", radius: "50%", shadow: "0 15px 34px rgba(32,32,31,.18)", font: "'Inter', sans-serif" },

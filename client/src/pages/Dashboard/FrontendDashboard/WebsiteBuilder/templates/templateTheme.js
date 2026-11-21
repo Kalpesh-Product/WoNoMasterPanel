@@ -28,6 +28,7 @@ export const THEME_DEFAULTS = {
     aromatica: { bg: "#f4f0e8", text: "#11111b", accent: "#e9a542", surfaceUp: true },
     flowspace: { bg: "#fbfaeb", text: "#11110f", accent: "#11110f", surfaceUp: true },
     workscape: { bg: "#ffffff", text: "#20201f", accent: "#a99d93", surfaceUp: true },
+    wavex: { bg: "#ffffff", text: "#2b2b2f", accent: "#ed4e36", surfaceUp: true },
     workhub: { bg: "#f0f2fb", text: "#242839", accent: "#285fe2", surfaceUp: true },
     brixspace: { bg: "#ffffff", text: "#101211", accent: "#078b52", surfaceUp: true },
     worpace: { bg: "#f7f7e8", text: "#11110f", accent: "#11110f", surfaceUp: true },
