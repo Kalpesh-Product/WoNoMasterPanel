@@ -5,7 +5,6 @@ import {
   Mail,
   MessageSquare,
   Phone,
-  Search,
   Sparkles,
   Users,
   X,
@@ -16,6 +15,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
 import { TablePageSkeleton } from "../../../components/ui/Skeleton";
+import DataTable from "../../../components/Tables/DataTable";
 
 // TODO(next): these status changes are intentionally public for now, matching
 // the other lead endpoints. Before production exposure, route the PATCH through
@@ -207,140 +207,116 @@ const ConnectWithUsTable = () => {
         })}
       </div>
 
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
+      <DataTable
+        rows={filtered}
+        rowKey={(row, index) => row._id || index}
+        minWidth={1000}
+        searchValue={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search name, email, mobile, partnership..."
+        searchWrapperProps={{ "data-tour": "connect-search" }}
+        filters={
           <div
             data-tour="connect-status-filter"
-            className="flex gap-1.5 overflow-x-auto"
+            className="flex items-center justify-end gap-2"
           >
-            {["All", ...STATUSES].map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => setStatusFilter(status)}
-                className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${
-                  statusFilter === status
-                    ? "bg-[#2563EB] text-white shadow-sm"
-                    : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                }`}
-              >
-                {status}
-              </button>
-            ))}
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Filter by status"
+              className={`rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${
+                statusFilter === "All"
+                  ? "border-slate-200/60 text-slate-600"
+                  : "border-[#2563EB]/40 text-[#2563EB]"
+              }`}
+            >
+              <option value="All">All status</option>
+              {STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
           </div>
-          <div data-tour="connect-search" className="relative w-full xl:w-[320px]">
-            <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-              size={15}
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, email, mobile, partnership..."
-              className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-[12px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-            />
-          </div>
-        </div>
-
-        <div data-tour="connect-table">
-          {filtered.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-              <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-                <MessageSquare size={28} />
+        }
+        emptyText="No enquiries yet."
+        emptyIcon={MessageSquare}
+        tableProps={{ "data-tour": "connect-table" }}
+        columns={[
+          {
+            key: "name",
+            header: "Name",
+            render: (row) => (
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
+                  {getInitials(row.name)}
+                </div>
+                <span className="text-[12px] font-pmedium text-slate-900">
+                  {row.name || "--"}
+                </span>
               </div>
-              <p className="text-slate-400 font-semibold font-pmedium">
-                No enquiries yet.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full text-left min-w-[900px]">
-                <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-                  <tr>
-                    {columns.map((col) => (
-                      <th key={col.field} className="px-5 py-4">
-                        {col.headerName}
-                      </th>
-                    ))}
-                    <th className="px-5 py-4">Status</th>
-                    <th className="px-5 py-4 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100/60">
-                  {filtered.map((row, ri) => (
-                    <tr
-                      key={row._id || ri}
-                      className="hover:bg-slate-50/50 transition-colors group"
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
-                            {getInitials(row.name)}
-                          </div>
-                          <span className="text-[12px] font-pmedium text-slate-900">
-                            {row.name || "--"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-[11px] font-pmedium text-slate-600 truncate max-w-[180px]">
-                        {row.email || "--"}
-                      </td>
-                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                        {row.mobile || "--"}
-                      </td>
-                      <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                        {row.typeOfPartnerShip || "--"}
-                      </td>
-                      {/* <td
-                        className="px-5 py-4 text-[11px] font-pmedium text-slate-600 truncate max-w-[200px]"
-                        title={row.message}
-                      >
-                        {row.message || "--"}
-                      </td> */}
-                      <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500 whitespace-nowrap">
-                        {formatDate(row.submittedAt || row.createdAt)}
-                      </td>
-                      <td className="px-5 py-4">
-                        <select
-                          value={getStatus(row.status)}
-                          onChange={(event) => changeStatus(row, event.target.value)}
-                          disabled={statusMutation.isPending}
-                          aria-label={`Change status for ${row.name || "enquiry"}`}
-                          className={`cursor-pointer rounded-full border-0 px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${statusToneClass(getStatus(row.status))}`}
-                        >
-                          {STATUSES.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedLead(row)}
-                            title="View details"
-                            aria-label={`View details for ${row.name || "enquiry"}`}
-                            data-tour={
-                              ri === 0 ? "connect-action-view" : undefined
-                            }
-                            className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                          >
-                            <Eye size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </div>
-
+            ),
+          },
+          {
+            key: "email",
+            header: "Email",
+            render: (row) => (
+              <span
+                className="block max-w-[200px] truncate text-[11px] text-slate-600"
+                title={row.email}
+              >
+                {row.email || "--"}
+              </span>
+            ),
+          },
+          {
+            key: "mobile",
+            header: "Mobile",
+            render: (row) => row.mobile || "--",
+          },
+          {
+            key: "typeOfPartnerShip",
+            header: "Partnership Type",
+            render: (row) => row.typeOfPartnerShip || "--",
+          },
+          {
+            key: "submittedAt",
+            header: "Submitted",
+            render: (row) => formatDate(row.submittedAt || row.createdAt),
+          },
+          {
+            key: "status",
+            header: "Status",
+            render: (row) => (
+              <select
+                value={getStatus(row.status)}
+                onChange={(event) => changeStatus(row, event.target.value)}
+                disabled={statusMutation.isPending}
+                aria-label={`Change status for ${row.name || "enquiry"}`}
+                className={`cursor-pointer rounded-full border-0 px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none focus:ring-2 focus:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${statusToneClass(getStatus(row.status))}`}
+              >
+                {STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            ),
+          },
+        ]}
+        actions={(row, index) => (
+          <button
+            type="button"
+            onClick={() => setSelectedLead(row)}
+            title="View details"
+            aria-label={`View details for ${row.name || "enquiry"}`}
+            data-tour={index === 0 ? "connect-action-view" : undefined}
+            className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+          >
+            <Eye size={13} />
+          </button>
+        )}
+      />
       {selectedLead && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm"

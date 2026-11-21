@@ -6,7 +6,6 @@ import {
   Eye,
   Mail,
   Phone,
-  Search,
   Sparkles,
   Target,
   X,
@@ -17,6 +16,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass, statusToneClass } from "../../../lib/status-pill";
 import { AllEnquiryTableSkeleton } from "../../../components/ui/Skeleton";
+import DataTable from "../../../components/Tables/DataTable";
 
 const COMMON_CURRENCIES = ["USD", "INR", "AED", "SGD", "GBP", "EUR", "AUD", "CAD"];
 
@@ -265,106 +265,231 @@ export default function AllEnquiryTable() {
             ))}
           </div>
 
-          <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm">
-            <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/50 p-4 xl:flex-row xl:items-center xl:justify-between">
-              <div data-tour="lead-status-filter" className="flex gap-1.5 overflow-x-auto">
-                {["All", ...MASTER_STATUSES].map((status) => (
-                  <button key={status} type="button" onClick={() => setStatusFilter(status)}
-                    className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-[11px] font-pmedium transition ${statusFilter === status ? "bg-[#2563EB] text-white shadow-sm" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`}>
-                    {status}
-                  </button>
-                ))}
-              </div>
-              <div data-tour="lead-search" className="relative w-full xl:w-[320px]">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search name, company, email, phone..."
-                  className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-[12px] outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20" />
-              </div>
-            </div>
-
-            {visibleLeads.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center py-20 text-slate-400">
-                <Target size={28} />
-                <p className="mt-3 font-pmedium">No matching enquiries found.</p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-hidden">
-                <table className="w-full table-fixed text-left">
-                  <thead className="border-b border-slate-100 bg-slate-50/50 text-[10px] uppercase tracking-widest text-slate-500">
-                    <tr>
-                      <th className="w-[14%] px-3 py-4">Lead</th>
-                      <th className="w-[12%] px-3 py-4">Company</th>
-                      <th className="w-[7%] px-3 py-4">Source</th>
-                      <th className="w-[10%] px-3 py-4">Product</th>
-                      <th className="w-[11%] px-3 py-4">Master Status</th>
-                      <th className="w-[12%] px-3 py-4">Host Status</th>
-                      <th className="w-[9%] px-3 py-4">Payment Status</th>
-                      <th className="w-[9%] px-3 py-4">Submitted</th>
-                      <th className="w-[16%] px-3 py-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {visibleLeads.map((lead, leadIndex) => {
-                      const masterStatus = getMasterStatus(lead.status);
-                      const hostStatus = lead.isEscalated === true ? (lead.hostPanelStatus || "Pending") : "Not Escalated";
-                      const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
-                      const isEscalating = escalatingLeadId === lead._id;
-                      const isSending = sendingPaymentLeadId === lead._id;
-                      const paymentInfo = getPaymentInfo(lead);
-                      return (
-                        <tr key={lead._id} className="transition hover:bg-slate-50/60">
-                          <td className="px-3 py-4">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white">{getInitials(lead.fullName)}</div>
-                              <p className="truncate whitespace-nowrap font-pmedium text-slate-900" title={lead.fullName}>{lead.fullName || "Unnamed lead"}</p>
-                            </div>
-                          </td>
-                          <td className="truncate px-3 py-4 font-pmedium text-slate-700" title={lead.companyName}>{lead.companyName || "--"}</td>
-                          <td className="px-3 py-4 font-pmedium capitalize text-slate-700">{lead.source || "--"}</td>
-                          <td className="truncate px-3 py-4 font-pmedium text-slate-600" title={lead.productType || lead.verticalType}>{lead.productType || lead.verticalType || "--"}</td>
-                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-master-status-column" : undefined}>
-                            <select value={masterStatus} onChange={(event) => updateLeadMutation.mutate({ leadId: lead._id, status: event.target.value })}
-                              disabled={updateLeadMutation.isPending}
-                              className={`rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(masterStatus)}`}>
-                              {MASTER_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
-                            </select>
-                          </td>
-                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-host-status-column" : undefined}><span className={statusPillClass(hostStatus)}>{hostStatus}</span></td>
-                          <td className="px-3 py-4" data-tour={leadIndex === 0 ? "lead-payment-status-column" : undefined}><span className={statusPillClass(paymentInfo.status)}>{paymentInfo.label}</span></td>
-                          <td className="whitespace-nowrap px-3 py-4 font-pmedium text-slate-700">{formatDate(lead.createdAt || lead.submittedAt)}</td>
-                          <td className="px-3 py-4">
-                            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                              <button type="button" onClick={() => setSelectedLeadId(lead._id)}
-                                title="View lead details" aria-label={`View details for ${lead.fullName || "lead"}`}
-                                data-tour={leadIndex === 0 ? "lead-action-view" : undefined}
-                                className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40">
-                                <Eye size={13} />
-                              </button>
-                              <button type="button" disabled={isSending || !lead.email || paymentInfo.isPaid}
-                                title={paymentInfo.isPaid ? "Already paid" : !lead.email ? "Email is required" : "Send payment link"}
-                                aria-label={`Send payment link to ${lead.fullName || "lead"}`}
-                                onClick={() => { setPaymentLinkLead(lead); setPaymentAmount(""); setPaymentDescription(""); setPaymentCurrency("USD"); }}
-                                className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40">
-                                <CreditCard size={13} />
-                              </button>
-                              <button type="button" disabled={lead.isEscalated === true || !canEscalate || escalateLeadMutation.isPending}
-                                title={lead.isEscalated ? "Already escalated" : canEscalate ? "Escalate to HostPanel" : "Close the Master lead before escalating"}
-                                onClick={() => { setEscalatingLeadId(lead._id); escalateLeadMutation.mutate(lead); }}
-                                className={`rounded-lg px-2.5 py-2 text-[10px] font-pmedium transition ${lead.isEscalated ? "bg-emerald-50 text-emerald-700" : canEscalate ? "bg-blue-600 text-white hover:bg-blue-700" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}>
-                                {lead.isEscalated ? "Escalated" : isEscalating ? "Escalating..." : "Escalate"}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      <DataTable
+        rows={visibleLeads}
+        rowKey={(lead) => lead._id}
+        minWidth={1400}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        searchPlaceholder="Search name, company, email, phone..."
+        searchWrapperProps={{ "data-tour": "lead-search" }}
+        filters={
+          <div
+            data-tour="lead-status-filter"
+            className="flex items-center justify-end gap-2"
+          >
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              aria-label="Filter by master status"
+              className={`rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${
+                statusFilter === "All"
+                  ? "border-slate-200/60 text-slate-600"
+                  : "border-[#2563EB]/40 text-[#2563EB]"
+              }`}
+            >
+              <option value="All">All status</option>
+              {MASTER_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
           </div>
-
+        }
+        emptyText="No matching enquiries found."
+        emptyIcon={Target}
+        columns={[
+          {
+            key: "lead",
+            header: "Lead",
+            render: (lead) => (
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white">
+                  {getInitials(lead.fullName)}
+                </div>
+                <p
+                  className="max-w-[200px] truncate font-pmedium text-slate-900"
+                  title={lead.fullName}
+                >
+                  {lead.fullName || "Unnamed lead"}
+                </p>
+              </div>
+            ),
+          },
+          {
+            key: "companyName",
+            header: "Company",
+            render: (lead) => (
+              <span
+                className="block max-w-[180px] truncate text-slate-700"
+                title={lead.companyName}
+              >
+                {lead.companyName || "--"}
+              </span>
+            ),
+          },
+          {
+            key: "source",
+            header: "Source",
+            render: (lead) => (
+              <span className="font-pmedium capitalize text-slate-700">
+                {lead.source || "--"}
+              </span>
+            ),
+          },
+          {
+            key: "product",
+            header: "Product",
+            render: (lead) => (
+              <span
+                className="block max-w-[170px] truncate text-slate-600"
+                title={lead.productType || lead.verticalType}
+              >
+                {lead.productType || lead.verticalType || "--"}
+              </span>
+            ),
+          },
+          {
+            key: "status",
+            header: "Master Status",
+            render: (lead, index) => (
+              <select
+                value={getMasterStatus(lead.status)}
+                onChange={(event) =>
+                  updateLeadMutation.mutate({
+                    leadId: lead._id,
+                    status: event.target.value,
+                  })
+                }
+                disabled={updateLeadMutation.isPending}
+                data-tour={index === 0 ? "lead-master-status-column" : undefined}
+                className={`cursor-pointer rounded-full border border-transparent px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none ${statusToneClass(getMasterStatus(lead.status))}`}
+              >
+                {MASTER_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            ),
+          },
+          {
+            key: "hostStatus",
+            header: "Host Status",
+            render: (lead, index) => {
+              const hostStatus =
+                lead.isEscalated === true
+                  ? lead.hostPanelStatus || "Pending"
+                  : "Not Escalated";
+              return (
+                <span
+                  data-tour={index === 0 ? "lead-host-status-column" : undefined}
+                  className={statusPillClass(hostStatus)}
+                >
+                  {hostStatus}
+                </span>
+              );
+            },
+          },
+          {
+            key: "paymentStatus",
+            header: "Payment Status",
+            render: (lead, index) => {
+              const paymentInfo = getPaymentInfo(lead);
+              return (
+                <span
+                  data-tour={
+                    index === 0 ? "lead-payment-status-column" : undefined
+                  }
+                  className={statusPillClass(paymentInfo.status)}
+                >
+                  {paymentInfo.label}
+                </span>
+              );
+            },
+          },
+          {
+            key: "submittedAt",
+            header: "Submitted",
+            render: (lead) => formatDate(lead.createdAt || lead.submittedAt),
+          },
+        ]}
+        actions={(lead, index) => {
+          const masterStatus = getMasterStatus(lead.status);
+          const canEscalate = masterStatus === "Closed" && lead.isEscalated !== true;
+          const isEscalating = escalatingLeadId === lead._id;
+          const isSending = sendingPaymentLeadId === lead._id;
+          const paymentInfo = getPaymentInfo(lead);
+          return (
+            <>
+              <button
+                type="button"
+                onClick={() => setSelectedLeadId(lead._id)}
+                title="View lead details"
+                aria-label={`View details for ${lead.fullName || "lead"}`}
+                data-tour={index === 0 ? "lead-action-view" : undefined}
+                className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+              >
+                <Eye size={13} />
+              </button>
+              <button
+                type="button"
+                disabled={isSending || !lead.email || paymentInfo.isPaid}
+                title={
+                  paymentInfo.isPaid
+                    ? "Already paid"
+                    : !lead.email
+                      ? "Email is required"
+                      : "Send payment link"
+                }
+                aria-label={`Send payment link to ${lead.fullName || "lead"}`}
+                onClick={() => {
+                  setPaymentLinkLead(lead);
+                  setPaymentAmount("");
+                  setPaymentDescription("");
+                  setPaymentCurrency("USD");
+                }}
+                className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <CreditCard size={13} />
+              </button>
+              <button
+                type="button"
+                disabled={
+                  lead.isEscalated === true ||
+                  !canEscalate ||
+                  escalateLeadMutation.isPending
+                }
+                title={
+                  lead.isEscalated
+                    ? "Already escalated"
+                    : canEscalate
+                      ? "Escalate to HostPanel"
+                      : "Close the Master lead before escalating"
+                }
+                onClick={() => {
+                  setEscalatingLeadId(lead._id);
+                  escalateLeadMutation.mutate(lead);
+                }}
+                className={`rounded-lg px-2.5 py-2 text-[10px] font-pmedium transition ${
+                  lead.isEscalated
+                    ? "bg-emerald-50 text-emerald-700"
+                    : canEscalate
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "cursor-not-allowed bg-slate-100 text-slate-400"
+                }`}
+              >
+                {lead.isEscalated
+                  ? "Escalated"
+                  : isEscalating
+                    ? "Escalating..."
+                    : "Escalate"}
+              </button>
+            </>
+          );
+        }}
+      />
           {selectedLead && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-3 backdrop-blur-sm" onClick={() => setSelectedLeadId(null)}>
               <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl" onClick={(event) => event.stopPropagation()}>

@@ -245,6 +245,15 @@ app.use(errorHandler);
 mongoose.connection.once("open", () => {
   console.log("process.env.PORT:", process.env.PORT);
 
+  // Warm the cache behind the plan-based website credit limits
+  // (website_credits_settings) so the first credit check/builder read already
+  // uses the staff-configured numbers instead of the code defaults.
+  require("./utils/websiteCredits")
+    .loadCreditsSettings({ force: true })
+    .catch((error) =>
+      console.error("Failed to warm website credit settings:", error?.message),
+    );
+
   app.listen(PORT);
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`Connected to MongoDB: ${mongoose.connection.name}`);

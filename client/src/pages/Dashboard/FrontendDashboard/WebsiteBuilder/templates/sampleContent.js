@@ -9,7 +9,7 @@
 import { DEMO_BUSINESSES } from "./demoContent";
 import { buildDemoPreviewDraft, defaultKindForTemplate } from "./demoPreviewData";
 import { SERVICE_CHOICES, serviceNameToKind } from "./serviceChoices";
-export const SAMPLE_TEMPLATE_IDS = ["savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "lodge", "cali-hostel", "orchard", "destinflow", "tulum", "tinyhome",
+export const SAMPLE_TEMPLATE_IDS = ["savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "wavex", "workhub", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "lodge", "cali-hostel", "orchard", "destinflow", "tulum", "tinyhome",
     "cabin", "grindelwald", "haven", "camelia", "commons", "huddle"];
 export const hasSampleContent = (themeVariant) => SAMPLE_TEMPLATE_IDS.includes(String(themeVariant || "").trim());
 // The builder rejects images over 1 MB, so anything larger is skipped rather than failing a save.

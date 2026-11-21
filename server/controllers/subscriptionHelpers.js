@@ -2,6 +2,8 @@ const WebsiteCredits = require("../models/website/WebsiteCredits");
 const {
   MONTHLY_BASE_CREDITS,
   creditsForPlan,
+  loadCreditsSettings,
+  normalizeCompanyKey,
   resolveWorkspacePlan,
   syncSubscriptionPlan,
 } = require("../utils/websiteCredits");
@@ -27,12 +29,15 @@ const buildCandidateClauses = ({ companyId, workspaceId, routeId }) => {
     clauses.push(clause);
   };
 
-  if (normalizedCompanyId && normalizedWorkspaceId) {
-    pushClause({ companyId: normalizedCompanyId, workspaceId: normalizedWorkspaceId });
+  // The website builder (and therefore its credit pool) is shared by every
+  // unit of a company, so the company key is tried first and is authoritative;
+  // workspaceId / routeId only cover legacy rows created before that.
+  if (normalizedCompanyId) {
+    pushClause({ companyId: normalizeCompanyKey(normalizedCompanyId) });
   }
 
-  if (normalizedCompanyId) {
-    pushClause({ companyId: normalizedCompanyId });
+  if (normalizedCompanyId && normalizedWorkspaceId) {
+    pushClause({ companyId: normalizedCompanyId, workspaceId: normalizedWorkspaceId });
   }
 
   if (normalizedWorkspaceId) {
@@ -40,7 +45,7 @@ const buildCandidateClauses = ({ companyId, workspaceId, routeId }) => {
   }
 
   if (normalizedRouteId) {
-    pushClause({ companyId: normalizedRouteId });
+    pushClause({ companyId: normalizeCompanyKey(normalizedRouteId) });
     pushClause({ workspaceId: normalizedRouteId });
   }
 
@@ -64,7 +69,9 @@ const renewMonthlyCreditsIfNeeded = async (subscription) => {
   if (!subscription) return subscription;
 
   // Plan (and its plan-based creditsLimit) is synced from the workspace's
-  // selectedPlan — professional: 8, custom: 12, basic: 5.
+  // selectedPlan and the staff-editable per-plan limits, so a changed limit
+  // reaches the website builder on the next subscription read.
+  await loadCreditsSettings();
   subscription = await syncSubscriptionPlan(subscription);
 
   const now = new Date();
@@ -84,6 +91,7 @@ const renewMonthlyCreditsIfNeeded = async (subscription) => {
 module.exports = {
   MONTHLY_BASE_CREDITS,
   creditsForPlan,
+  loadCreditsSettings,
   resolveWorkspacePlan,
   getFirstDayOfNextMonthUtc,
   findWorkspaceSubscription,
