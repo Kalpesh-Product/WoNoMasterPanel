@@ -18,8 +18,11 @@ const WebsiteTemplate = require("../models/website/WebsiteTemplate");
 const updateProfile = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { firstName, lastName } = req.body;
+    const { firstName, lastName, removeProfilePicture } = req.body;
     const newProfilePicture = req.file;
+    const shouldRemoveProfilePicture =
+      !newProfilePicture &&
+      (removeProfilePicture === true || removeProfilePicture === "true");
 
     if (!userId) {
       return res.status(400).json({ message: "Missing user ID" });
@@ -51,6 +54,14 @@ const updateProfile = async (req, res) => {
     }
 
     let previousProfilePictureUrl = null;
+    let profilePictureRemoved = false;
+
+    if (shouldRemoveProfilePicture) {
+      previousProfilePictureUrl = user.profilePicture?.url || null;
+      user.profilePicture = undefined;
+      profilePictureRemoved = true;
+    }
+
     if (newProfilePicture) {
       previousProfilePictureUrl = user.profilePicture?.url || null;
 
@@ -75,7 +86,8 @@ const updateProfile = async (req, res) => {
     if (
       firstName === undefined &&
       lastName === undefined &&
-      !newProfilePicture
+      !newProfilePicture &&
+      !profilePictureRemoved
     ) {
       return res.status(400).json({ message: "No profile changes provided" });
     }
@@ -95,7 +107,9 @@ const updateProfile = async (req, res) => {
     return res.status(200).json({
       message: newProfilePicture
         ? "Profile photo updated successfully"
-        : "Profile updated successfully",
+        : profilePictureRemoved
+          ? "Profile photo removed successfully"
+          : "Profile updated successfully",
       user: {
         _id: updatedUser._id,
         firstName: updatedUser.firstName,
