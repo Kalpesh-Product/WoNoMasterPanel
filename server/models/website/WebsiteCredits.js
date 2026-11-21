@@ -6,6 +6,14 @@ const websiteCreditsSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      // The pool is per company (all units share the website builder). Legacy
+      // rows sometimes stored "<companyId>-<timestamp>"; strip that suffix so
+      // every variant of one company maps to the same document.
+      set: (value) => {
+        const normalized = String(value || "").trim();
+        const match = normalized.match(/^(.*)-(\d{10,})$/);
+        return match?.[1] || normalized;
+      },
     },
     companyName: {
       type: String,
@@ -75,23 +83,30 @@ const websiteCreditsSchema = new mongoose.Schema(
   },
 );
 
-websiteCreditsSchema.index({ companyId: 1, workspaceId: 1 }, { unique: true });
+// ONE credit pool per company: every unit of a company (all created with the
+// same companyId) shares one monthly limit, one usage counter and one add-on
+// balance against the single website builder. workspaceId on the document is
+// informational — the last unit that touched the shared pool.
+websiteCreditsSchema.index({ companyId: 1 }, { unique: true });
 
-// Monthly limit is plan-based: professional 8, custom 12, basic (and the
-// legacy "static-free" label) the base 5. creditsLimit is kept in sync by
-// syncSubscriptionPlan and used as a fallback for legacy rows that predate
-// the plan field. Mirrors the host panel's WorkspaceSubscription virtuals so
-// both panels report identical credit math for the shared website_credits
-// collection.
-const MONTHLY_BASE_CREDITS = 5;
-const PROFESSIONAL_MONTHLY_CREDITS = 8;
-const CUSTOM_MONTHLY_CREDITS = 12;
+// Monthly limit is plan-based and staff-editable (Master Panel -> Website
+// Credits -> Plan Credit Limits): the live numbers come from
+// WebsiteCreditsSettings through creditsForPlan(), never from constants in
+// this file. creditsLimit is the snapshot written by syncSubscriptionPlan and
+// is only used as a fallback for legacy rows that predate the plan field.
+// Mirrors the host panel's WorkspaceSubscription virtuals so both panels
+// report identical credit math for the shared website_credits collection.
+const { creditsForPlan } = require("../../utils/websiteCredits");
+
+const KNOWN_PLANS = ["basic", "static-free", "professional", "custom"];
 const getMonthlyLimit = (doc) => {
-  if (doc.plan === "professional") return PROFESSIONAL_MONTHLY_CREDITS;
-  if (doc.plan === "custom") return CUSTOM_MONTHLY_CREDITS;
+  const plan = String(doc.plan || "")
+    .trim()
+    .toLowerCase();
+  if (KNOWN_PLANS.includes(plan)) return creditsForPlan(plan);
   return Number(doc.creditsLimit || 0) > 0
     ? Number(doc.creditsLimit)
-    : MONTHLY_BASE_CREDITS;
+    : creditsForPlan("basic");
 };
 
 websiteCreditsSchema.virtual("monthlyCreditsLimit").get(function () {

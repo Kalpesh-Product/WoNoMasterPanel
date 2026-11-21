@@ -12,8 +12,14 @@ const {
   getWebsiteCreditsSummary,
   addWebsiteCreditsToCompany,
   getWebsiteCreditLedger,
+  getPlanCreditLimits,
+  updatePlanCreditLimits,
 } = require("../controllers/websiteControllers/websiteCreditRequestsController");
 
+// Staff-editable monthly credit allowance per plan (drives the website
+// builder's credit gate).
+router.get("/plan-limits", verifyJwt, getPlanCreditLimits);
+router.patch("/plan-limits", verifyJwt, updatePlanCreditLimits);
 router.get("/summary", verifyJwt, getWebsiteCreditsSummary);
 router.post("/add", verifyJwt, addWebsiteCreditsToCompany);
 router.get("/ledger", verifyJwt, getWebsiteCreditLedger);

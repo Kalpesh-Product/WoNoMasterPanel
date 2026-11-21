@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Search, Plus, Eye } from "lucide-react";
+import { Search, Plus, Eye, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import PageFrame from "../../../components/Pages/PageFrame";
+import WebsiteFormField from "../../../components/WebsiteFormField";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import humanDate from "../../../utils/humanDateForamt";
 import humanTime from "../../../utils/humanTime";
@@ -19,6 +20,12 @@ const WebsiteCreditsOverview = () => {
   const [creditsToAdd, setCreditsToAdd] = useState("");
   const [note, setNote] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPlanLimitsOpen, setIsPlanLimitsOpen] = useState(false);
+  const [planLimitsForm, setPlanLimitsForm] = useState({
+    basicCredits: "",
+    professionalCredits: "",
+    customCredits: "",
+  });
 
   const now = dayjs();
   const [selectedMonth, setSelectedMonth] = useState(now.month());
@@ -38,6 +45,25 @@ const WebsiteCreditsOverview = () => {
       return Array.isArray(response.data) ? response.data : [];
     },
   });
+
+  // The per-plan monthly allowance is staff-editable (Plan Credit Limits
+  // modal below) and is the same setting the website builder reads.
+  const { data: planLimits } = useQuery({
+    queryKey: ["website-credit-plan-limits"],
+    queryFn: async () => {
+      const response = await axiosPrivate.get("/api/website-credits/plan-limits");
+      return response.data || {};
+    },
+  });
+
+  useEffect(() => {
+    if (!planLimits) return;
+    setPlanLimitsForm({
+      basicCredits: String(planLimits.basicCredits ?? ""),
+      professionalCredits: String(planLimits.professionalCredits ?? ""),
+      customCredits: String(planLimits.customCredits ?? ""),
+    });
+  }, [planLimits]);
 
   const { data: ledger = [], isLoading: isLedgerLoading } = useQuery({
     queryKey: ["website-credit-ledger", selectedRow?.companyId, selectedRow?.workspaceId],
@@ -98,6 +124,34 @@ const WebsiteCreditsOverview = () => {
     onError: (error) => toast.error(error?.response?.data?.message || "Failed to add credits"),
   });
 
+  const { mutate: savePlanLimits, isPending: isSavingPlanLimits } = useMutation({
+    mutationFn: async () =>
+      axiosPrivate.patch("/api/website-credits/plan-limits", {
+        basicCredits: Number(planLimitsForm.basicCredits),
+        professionalCredits: Number(planLimitsForm.professionalCredits),
+        customCredits: Number(planLimitsForm.customCredits),
+      }),
+    onSuccess: () => {
+      toast.success("Plan credit limits updated");
+      setIsPlanLimitsOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["website-credit-plan-limits"] });
+      queryClient.invalidateQueries({ queryKey: ["website-credits-summary"] });
+    },
+    onError: (error) =>
+      toast.error(error?.response?.data?.message || "Failed to update plan credit limits"),
+  });
+
+  const handlePlanLimitsSubmit = () => {
+    for (const value of Object.values(planLimitsForm)) {
+      const numeric = Number(value);
+      if (!Number.isInteger(numeric) || numeric < 0) {
+        toast.error("Enter a whole number of credits for every plan");
+        return;
+      }
+    }
+    savePlanLimits();
+  };
+
   const handleAddSubmit = () => {
     const numeric = Number(creditsToAdd);
     if (!Number.isFinite(numeric) || numeric <= 0) { toast.error("Enter a valid number of credits"); return; }
@@ -155,14 +209,26 @@ const WebsiteCreditsOverview = () => {
         date: humanDate(entry.createdAt),
         time: humanTime(entry.createdAt),
         details: entry.description || "-",
+        // The credit pool is shared by the whole company, so the unit is only
+        // meaningful per movement: Host Panel edits record which workspace
+        // spent the credit, Master Panel additions are company-level.
+        workspace:
+          entry.sourcePanel === "host_panel"
+            ? String(entry.workspaceName || "").trim() || "-"
+            : "-",
         remainingAfterDisplay: entry.remainingAfter === undefined || entry.remainingAfter === null ? "-" : entry.remainingAfter,
       })),
     [ledger, isLedgerLoading],
   );
 
+  // Used / Add-ons follow the selected month through `rows`. The limit is a
+  // current-plan number (plans can change), so for a past month it is labelled
+  // as current instead of pretending to be that month's limit, and the company
+  // count becomes the companies active in that month.
   const totalLimit = rows.reduce((sum, r) => sum + (r.totalLimit || 0), 0);
   const totalUsed = rows.reduce((sum, r) => sum + (r.used || 0), 0);
   const totalAddOns = rows.reduce((sum, r) => sum + (r.addOns || 0), 0);
+  const totalCompanies = isCurrentMonth ? rows.length : filteredRows.length;
 
   return (
     <PageFrame>
@@ -172,18 +238,26 @@ const WebsiteCreditsOverview = () => {
             <h2 className="text-title font-pmedium text-primary uppercase">Website Credits</h2>
             <p className="text-xs font-pmedium text-slate-500 mt-1">Track and manage website credits across all companies.</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setIsPlanLimitsOpen(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200/60 bg-white px-4 py-2.5 text-[12px] font-pmedium text-slate-700 hover:bg-slate-50 transition-all"
+          >
+            <Settings2 size={15} />
+            Plan Credit Limits
+          </button>
         </div>
 
         <div data-tour="website-credits-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
             <div className="min-w-0">
-              <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Companies</p>
-              <p className="text-[15px] font-pmedium text-slate-900">{rows.length}</p>
+              <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">{isCurrentMonth ? "Total Companies" : "Active Companies"}</p>
+              <p className="text-[15px] font-pmedium text-slate-900">{totalCompanies}</p>
             </div>
           </div>
           <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
             <div className="min-w-0">
-              <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Total Limit</p>
+              <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">{isCurrentMonth ? "Total Limit" : "Total Limit · Current"}</p>
               <p className="text-[15px] font-pmedium text-slate-900">{totalLimit}</p>
             </div>
           </div>
@@ -240,7 +314,6 @@ const WebsiteCreditsOverview = () => {
               <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                 <tr>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company</th>
-                  <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Workspace</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Plan</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-right">Total Limit</th>
                   <th className="px-5 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-right">Add-ons</th>
@@ -251,14 +324,13 @@ const WebsiteCreditsOverview = () => {
               </thead>
               <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">Loading...</td></tr>
+                  <tr><td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">Loading...</td></tr>
                 ) : filteredRows.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">No credits found.</td></tr>
+                  <tr><td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">No credits found.</td></tr>
                 ) : (
                   filteredRows.map((row) => (
                     <tr key={row.companyId + row.workspaceId} className="hover:bg-slate-50/50 transition-colors">
                       <td className="px-5 py-4 text-xs font-pmedium text-[#0F172A]">{row.companyName}</td>
-                      <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{row.workspaceName}</td>
                       <td className="px-5 py-4 text-xs font-pmedium text-slate-600">{row.plan}</td>
                       <td className="px-5 py-4 text-xs font-pmedium text-slate-600 text-right">{row.totalLimit}</td>
                       <td className="px-5 py-4 text-xs font-pmedium text-slate-600 text-right">{row.addOns}</td>
@@ -300,6 +372,69 @@ const WebsiteCreditsOverview = () => {
           </div>
         </div>
       </div>
+
+      {isPlanLimitsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsPlanLimitsOpen(false)}>
+          <div className="rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] w-[min(520px,92vw)] max-h-[84vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB]/10">
+                  <Settings2 size={18} className="text-[#2563EB]" />
+                </div>
+                <h2 className="text-base font-pmedium text-slate-900">Plan Credit Limits</h2>
+              </div>
+              <button onClick={() => setIsPlanLimitsOpen(false)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M12 4L4 12M4 4l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="flex flex-col gap-4">
+                <p className="text-xs font-pmedium text-slate-500">
+                  Monthly website-edit credits granted to each plan. The website builder reads these limits, so a saved change applies to every company on that plan at its next credit sync.
+                </p>
+                <WebsiteFormField
+                  type="number"
+                  min={0}
+                  step={1}
+                  label="Basic plan credits"
+                  value={planLimitsForm.basicCredits}
+                  onChange={(e) =>
+                    setPlanLimitsForm((prev) => ({ ...prev, basicCredits: e.target.value }))
+                  }
+                  helperText="Also applies to legacy 'static-free' rows"
+                />
+                <WebsiteFormField
+                  type="number"
+                  min={0}
+                  step={1}
+                  label="Professional plan credits"
+                  value={planLimitsForm.professionalCredits}
+                  onChange={(e) =>
+                    setPlanLimitsForm((prev) => ({ ...prev, professionalCredits: e.target.value }))
+                  }
+                />
+                <WebsiteFormField
+                  type="number"
+                  min={0}
+                  step={1}
+                  label="Custom plan credits"
+                  value={planLimitsForm.customCredits}
+                  onChange={(e) =>
+                    setPlanLimitsForm((prev) => ({ ...prev, customCredits: e.target.value }))
+                  }
+                />
+                <button
+                  className="w-full rounded-xl bg-[#2563EB] px-4 py-3 text-sm font-pmedium text-white hover:bg-[#1d4ed8] transition-all disabled:opacity-50"
+                  onClick={handlePlanLimitsSubmit}
+                  disabled={isSavingPlanLimits}
+                >
+                  {isSavingPlanLimits ? "Saving..." : "Save Limits"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}>
@@ -393,7 +528,7 @@ const WebsiteCreditsOverview = () => {
 
       {isUsageModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsUsageModalOpen(false)}>
-          <div className="rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] w-[min(800px,92vw)] max-h-[84vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="rounded-[2rem] border border-slate-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] w-[min(1180px,95vw)] max-h-[84vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB]/10">
@@ -412,36 +547,42 @@ const WebsiteCreditsOverview = () => {
                 <div className="py-6 text-center text-sm text-slate-500">No credit activity recorded yet</div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full min-w-[940px] text-left border-collapse">
                     <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                       <tr>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Date</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Time</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Credits</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">User</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Panel</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Details</th>
-                        <th className="px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Balance After</th>
+                        <th className="whitespace-nowrap px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Date</th>
+                        <th className="whitespace-nowrap px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Time</th>
+                        <th className="whitespace-nowrap px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Credits</th>
+                        <th className="min-w-[150px] px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">User</th>
+                        <th className="whitespace-nowrap px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Panel</th>
+                        <th className="min-w-[150px] px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Workspace</th>
+                        <th className="min-w-[260px] px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Details</th>
+                        <th className="whitespace-nowrap px-4 py-3 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-right">Balance After</th>
                       </tr>
                     </thead>
                     <tbody>
                       {ledgerRows.map((entry, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600">{entry.date}</td>
-                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600">{entry.time}</td>
-                          <td className="px-4 py-3 text-xs font-pmedium">
+                          <td className="whitespace-nowrap px-4 py-3 text-xs font-pmedium text-slate-600">{entry.date}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs font-pmedium text-slate-600">{entry.time}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs font-pmedium">
                             <span className={String(entry.movement).startsWith("+") ? "font-pmedium text-emerald-600" : "font-pmedium text-red-600"}>
                               {entry.movement}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600">{entry.user}</td>
-                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600">
+                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600" title={entry.user}>
+                            <span className="block max-w-[180px] truncate">{entry.user}</span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs font-pmedium text-slate-600">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-pmedium ${entry.panel === "Host Panel" ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-600"}`}>
                               {entry.panel}
                             </span>
                           </td>
+                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600" title={entry.workspace}>
+                            <span className="block max-w-[200px] truncate">{entry.workspace}</span>
+                          </td>
                           <td className="px-4 py-3 text-xs font-pmedium text-slate-600">{entry.details}</td>
-                          <td className="px-4 py-3 text-xs font-pmedium text-slate-600">{entry.remainingAfterDisplay}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right text-xs font-pmedium text-slate-600">{entry.remainingAfterDisplay}</td>
                         </tr>
                       ))}
                     </tbody>
