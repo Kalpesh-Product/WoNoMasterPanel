@@ -10,6 +10,8 @@ import { Search } from "lucide-react";
 //
 // columns: [{ key, header, align: "left"|"center"|"right", nowrap, minWidth,
 //             headerClassName, cellClassName, render(row, index) }]
+// rowProps: (row, index) => object — extra props for the <tr> (e.g. drag handlers).
+// rowClassName: string or (row, index) => string.
 // actions: (row, index) => ReactNode — rendered in the pinned right column.
 // filters: ReactNode — selects (or any controls) rendered right of the search.
 // toolbarActions: ReactNode — blue button(s) rendered after the filters.
@@ -63,6 +65,7 @@ const DataTable = ({
   actionsHeader = "Action",
   onRowClick,
   rowClassName = "",
+  rowProps = null,
   tableProps = {},
 }) => {
   const hasToolbar =
@@ -72,7 +75,7 @@ const DataTable = ({
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
       {hasToolbar && (
-        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/50">
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row sm:flex-nowrap items-stretch sm:items-center gap-3 bg-slate-50/50">
           {onSearchChange ? (
             <div
               {...searchWrapperProps}
@@ -101,7 +104,7 @@ const DataTable = ({
 
           <div
             {...filtersProps}
-            className={`flex items-center justify-end gap-2 flex-wrap ${
+            className={`flex min-w-0 items-center justify-end gap-2 flex-nowrap overflow-x-auto sm:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
               filtersProps.className || ""
             }`}
           >
@@ -165,7 +168,12 @@ const DataTable = ({
                     key={rowKey ? rowKey(row, index) : index}
                     className={`hover:bg-slate-50/50 transition-colors group ${
                       onRowClick ? "cursor-pointer" : ""
-                    } ${rowClassName}`}
+                    } ${
+                      typeof rowClassName === "function"
+                        ? rowClassName(row, index)
+                        : rowClassName
+                    }`}
+                    {...(rowProps ? rowProps(row, index) : {})}
                     onClick={onRowClick ? () => onRowClick(row, index) : undefined}
                   >
                     {columns.map((col) => (

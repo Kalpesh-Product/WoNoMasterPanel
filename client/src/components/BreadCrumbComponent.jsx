@@ -2,6 +2,31 @@ import React from "react";
 import { Breadcrumbs, Typography, Link } from "@mui/material";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
+const breadcrumbSx = {
+  "& .MuiBreadcrumbs-ol": {
+    fontSize: "1rem !important",
+    color: "#1E3D73",
+  },
+  "& .MuiBreadcrumbs-li": {
+    fontSize: "0.9rem !important",
+  },
+  "& .MuiBreadcrumbs-li .MuiTypography-root": {
+    fontSize: "0.9rem !important",
+    color: "#1E3D73 !important",
+  },
+  "& .MuiBreadcrumbs-separator": {
+    margin: "0 1rem",
+  },
+};
+
+const BreadcrumbsShell = ({ children }) => (
+  <div className="rounded-t-md">
+    <Breadcrumbs separator="›" aria-label="breadcrumb" sx={breadcrumbSx}>
+      {children}
+    </Breadcrumbs>
+  </div>
+);
+
 const BreadCrumbComponent = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -137,32 +162,62 @@ const BreadCrumbComponent = () => {
     // route the query string only carries the summary's filter/search
     // state (see DestinationsData.jsx), not anything breadcrumb-worthy.
 
-    return (
-      <div className="rounded-t-md">
-        <Breadcrumbs
-          separator="›"
-          aria-label="breadcrumb"
-          sx={{
-            "& .MuiBreadcrumbs-ol": {
-              fontSize: "1rem !important",
-              color: "#1E3D73",
-            },
-            "& .MuiBreadcrumbs-li": {
-              fontSize: "0.9rem !important",
-            },
-            "& .MuiBreadcrumbs-li .MuiTypography-root": {
-              fontSize: "0.9rem !important",
-              color: "#1E3D73 !important",
-            },
-            "& .MuiBreadcrumbs-separator": {
-              margin: "0 1rem",
-            },
-          }}
+    return <BreadcrumbsShell>{detailBreadcrumbs}</BreadcrumbsShell>;
+  }
+
+  // "/host-companies/edit-company/:companyId" (and the legacy
+  // "/host-companies/edit/:companyId") — the literal route segment is not a
+  // company slug and the id is not a company name, so the generic mapping
+  // below rendered "Host Companies › Acme › Acme". Its middle crumb also
+  // linked to "/host-companies/edit", which the router resolves to the
+  // company hub ("/:companyId"), showing module cards with no company behind
+  // them and sending every module click into the edit form. Build the chain
+  // explicitly instead.
+  const isEditCompanyRoute =
+    ["host-companies", "companies"].includes(pathSegments[0]) &&
+    ["edit", "edit-company"].includes(pathSegments[1]) &&
+    pathSegments.length > 2;
+
+  if (isEditCompanyRoute) {
+    const listSegment = pathSegments[0];
+    const listLabel = listSegment === "host-companies" ? "Host Companies" : "Companies";
+    const companySlug = String(resolvedCompanyName || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const editBreadcrumbs = [
+      <Link
+        key="edit-list"
+        underline="hover"
+        color="inherit"
+        onClick={() => navigate(`/dashboard/${listSegment}`)}
+        style={{ cursor: "pointer" }}
+      >
+        {listLabel}
+      </Link>,
+      companySlug ? (
+        <Link
+          key="edit-company-name"
+          underline="hover"
+          color="inherit"
+          onClick={() => navigate(`/dashboard/${listSegment}/${companySlug}`)}
+          style={{ cursor: "pointer" }}
         >
-          {detailBreadcrumbs}
-        </Breadcrumbs>
-      </div>
-    );
+          {resolvedCompanyName}
+        </Link>
+      ) : (
+        <Typography key="edit-company-name" color="text.primary">
+          {resolvedCompanyName || "Company"}
+        </Typography>
+      ),
+      <Typography key="edit-company-form" color="text.primary">
+        Edit
+      </Typography>,
+    ];
+
+    return <BreadcrumbsShell>{editBreadcrumbs}</BreadcrumbsShell>;
   }
 
   // Generate breadcrumb links
@@ -183,10 +238,14 @@ const BreadCrumbComponent = () => {
       pathSegments[index - 1] === "edit" &&
       ["host-companies", "companies"].includes(pathSegments[index - 2]) &&
       companyNameFromState;
+    // A static route word after the list segment ("edit-company", "add-company",
+    // "list", …) is not a company identifier — only a real id/slug may be
+    // replaced with the company name here.
+    const companyRouteWords = ["edit", "edit-company", "add-company", "list", "requests"];
     const isCompanyDetailsIdSegment =
       index >= 1 &&
       ["host-companies", "companies", "requests"].includes(pathSegments[index - 1]) &&
-      segment !== "requests" &&
+      !companyRouteWords.includes(segment) &&
       resolvedCompanyName;
     const isHostPanelAnalyticsCompanySegment =
       index >= 1 && pathSegments[index - 1] === "host-panel-analytics";
@@ -272,32 +331,7 @@ const BreadCrumbComponent = () => {
     );
   });
 
-  return (
-    <div className="rounded-t-md">
-      <Breadcrumbs
-        separator="›"
-        aria-label="breadcrumb"
-        sx={{
-          "& .MuiBreadcrumbs-ol": {
-            fontSize: "1rem !important",
-            color: "#1E3D73",
-          },
-          "& .MuiBreadcrumbs-li": {
-            fontSize: "0.9rem !important",
-          },
-          "& .MuiBreadcrumbs-li .MuiTypography-root": {
-            fontSize: "0.9rem !important",
-            color: "#1E3D73 !important",
-          },
-          "& .MuiBreadcrumbs-separator": {
-            margin: "0 1rem",
-          },
-        }}
-      >
-        {breadcrumbs}
-      </Breadcrumbs>
-    </div>
-  );
+  return <BreadcrumbsShell>{breadcrumbs}</BreadcrumbsShell>;
 };
 
 export default BreadCrumbComponent;
