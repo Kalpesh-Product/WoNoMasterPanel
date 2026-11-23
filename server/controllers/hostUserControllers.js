@@ -861,7 +861,12 @@ const buildBookingPaymentReceivedEmail = ({
 
   const stayType = serviceType === "hostel" || serviceType === "co-living";
   const bookingLabel = serviceType === "hostel" ? "hostel stay" : serviceType === "co-living" ? "co-living stay" : "meeting-room booking";
-  const finalCode = stayType ? "RS" : "MRB";
+  // Must match the prefix HostPanel actually issues, or the client is told to
+  // quote an ID that will never arrive: MRB- (meeting room), CL- (co-living
+  // room) and HS- (hostel bed) — see createBookingWithUniqueCode /
+  // createRoomStayWithUniqueCode in HostPanel.
+  const finalCode = serviceType === "hostel" ? "HS" : serviceType === "co-living" ? "CL" : "MRB";
+  const bookingIdLabel = `${finalCode}-<number>`;
   const resolvedFeePercent = Number(platformFeePercent) || 7;
   const resolvedBase = Number(baseAmount) || Number(subtotalAmount) || Math.round((Number(amount) / (1 + resolvedFeePercent / 100)) * 100) / 100;
   const resolvedPlatformFee = Number(platformFeeAmount) || Math.max(0, Math.round((Number(amount) - resolvedBase) * 100) / 100);
@@ -905,7 +910,7 @@ const buildBookingPaymentReceivedEmail = ({
       greetingHtml: `
         <p style="margin:0 0 4px;">Hello ${customerName},</p>
         <p class="email-text" style="margin:0;">We received your payment of <b class="email-heading">${formattedAmount}</b> for <b class="email-heading">${productType || "your booking request"}</b> at <b class="email-heading">${companyName || "WONO"}</b>.</p>
-        <p class="email-text" style="margin:8px 0 0;">Your payment is complete, but the reservation will be confirmed after the host creates the booking. You will then receive a separate confirmation email containing your <b>${finalCode} booking ID</b>.</p>
+        <p class="email-text" style="margin:8px 0 0;">Your payment is complete, but the reservation will be confirmed after the host creates the booking. You will then receive a separate confirmation email containing your <b>booking ID (${bookingIdLabel})</b>.</p>
       `,
       detailsTitle: "Request Details",
       detailRows: requestRows,
@@ -915,8 +920,8 @@ const buildBookingPaymentReceivedEmail = ({
       whatNextItems: [
         "Payment received &#10003;",
         `The host creates and confirms the ${bookingLabel}`,
-        `You receive your ${finalCode} booking ID`,
-        `Show the ${finalCode} booking ID at the front desk when you arrive`,
+        `You receive your booking ID (${bookingIdLabel})`,
+        `Show that booking ID at the front desk when you arrive`,
       ],
       whatNextNumbered: true,
       noteTitle: "Your Invoice",
