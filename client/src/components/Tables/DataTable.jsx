@@ -10,6 +10,8 @@ import { Search } from "lucide-react";
 //
 // columns: [{ key, header, align: "left"|"center"|"right", nowrap, minWidth,
 //             headerClassName, cellClassName, render(row, index) }]
+// rowProps: (row, index) => object — extra props for the <tr> (e.g. drag handlers).
+// rowClassName: string or (row, index) => string.
 // actions: (row, index) => ReactNode — rendered in the pinned right column.
 // filters: ReactNode — selects (or any controls) rendered right of the search.
 // toolbarActions: ReactNode — blue button(s) rendered after the filters.
@@ -63,6 +65,7 @@ const DataTable = ({
   actionsHeader = "Action",
   onRowClick,
   rowClassName = "",
+  rowProps = null,
   tableProps = {},
 }) => {
   const hasToolbar =
@@ -165,7 +168,12 @@ const DataTable = ({
                     key={rowKey ? rowKey(row, index) : index}
                     className={`hover:bg-slate-50/50 transition-colors group ${
                       onRowClick ? "cursor-pointer" : ""
-                    } ${rowClassName}`}
+                    } ${
+                      typeof rowClassName === "function"
+                        ? rowClassName(row, index)
+                        : rowClassName
+                    }`}
+                    {...(rowProps ? rowProps(row, index) : {})}
                     onClick={onRowClick ? () => onRowClick(row, index) : undefined}
                   >
                     {columns.map((col) => (

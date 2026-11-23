@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -8,11 +8,13 @@ import {
   EyeOff,
   X,
   ImageOff,
-  Search,
   Plus,
   Trash2,
+  Layers,
+  LayoutGrid,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
+import DataTable, { DataTableButton } from "../../../components/Tables/DataTable";
 import PrimaryButton from "../../../components/PrimaryButton";
 import SecondaryButton from "../../../components/SecondaryButton";
 import WebsiteFormField from "../../../components/WebsiteFormField";
@@ -58,6 +60,11 @@ const ICON_OPTIONS = [
 ];
 const VERTICAL_BADGE_CLASS = "border border-sky-200 bg-sky-50 text-sky-700";
 const NEW_CATEGORY_VALUE = "__new__";
+
+const FILTER_CLASS = (active) =>
+  `shrink-0 rounded-lg border bg-white px-2 py-1.5 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${active
+    ? "border-[#2563EB]/40 text-[#2563EB]"
+    : "border-slate-200/60 text-slate-600"}`;
 
 // Flattens the recursive module tree into rows. `groupKey` identifies the
 // sibling array a row belongs to, so drag ordering remains scoped to one
@@ -119,11 +126,41 @@ const matchesSearch = (module, query) => {
   );
 };
 
+const PLAN_FILTER_OPTIONS = [
+  ["all", "All plans"],
+  ["basic", "Basic"],
+  ["professional", "Professional"],
+  ["custom", "Custom"],
+  ["none", "Inherits plan"],
+];
+
+const matchesPlan = (module, planFilter) => {
+  if (!planFilter || planFilter === "all") return true;
+  if (planFilter === "none") return !module.plan;
+  return module.plan === planFilter;
+};
+
+const StatTile = ({ label, value, helper, icon: Icon, accent, border }) => (
+  <div
+    className={`min-w-0 rounded-[2rem] border border-slate-100 border-l-4 ${border} bg-white px-5 py-4 shadow-sm`}
+  >
+    <div className={`flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest ${accent}`}>
+      <Icon size={13} />
+      <span className="truncate">{label}</span>
+    </div>
+    <p className="mt-2 truncate text-[18px] font-pmedium text-slate-900">{value}</p>
+    <p className="mt-0.5 truncate text-[10px] text-slate-400" title={helper}>
+      {helper}
+    </p>
+  </div>
+);
+
 const HostModulesContent = () => {
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
   const [activeCategoryId, setActiveCategoryId] = useState(null);
   const [search, setSearch] = useState("");
+  const [planFilter, setPlanFilter] = useState("all");
   const [viewingRow, setViewingRow] = useState(null);
   const [editingRow, setEditingRow] = useState(null); // { module, childId }
   const [editForm, setEditForm] = useState(null);
@@ -160,9 +197,11 @@ const HostModulesContent = () => {
 
   const rows = useMemo(() => {
     const allRows = toRows(activeCategory?.modules || []);
-    if (!search.trim()) return allRows;
-    return allRows.filter((row) => matchesSearch(row.module, search));
-  }, [activeCategory, search]);
+    if (!search.trim() && planFilter === "all") return allRows;
+    return allRows.filter(
+      (row) => matchesSearch(row.module, search) && matchesPlan(row.module, planFilter),
+    );
+  }, [activeCategory, search, planFilter]);
 
   const totalModules = useMemo(
     () => categories.reduce((sum, category) => sum + toRows(category.modules).length, 0),
@@ -176,6 +215,29 @@ const HostModulesContent = () => {
       }, 0),
     [categories],
   );
+
+  const moduleStats = useMemo(() => {
+    const allRows = categories.flatMap((category) => toRows(category.modules));
+    const topLevel = allRows.filter((row) => row.depth === 0).length;
+    const withScreenshots = allRows.filter((row) => row.module.image?.url).length;
+    return {
+      total: allRows.length,
+      topLevel,
+      pages: allRows.length - topLevel,
+      hidden: allRows.filter((row) => row.module.enabled === false).length,
+      coverage: allRows.length ? Math.round((withScreenshots / allRows.length) * 100) : 0,
+    };
+  }, [categories]);
+
+  const planCounts = useMemo(() => {
+    const counts = { all: 0, basic: 0, professional: 0, custom: 0, none: 0 };
+    toRows(activeCategory?.modules || []).forEach(({ module }) => {
+      counts.all += 1;
+      if (module.plan && counts[module.plan] != null) counts[module.plan] += 1;
+      else counts.none += 1;
+    });
+    return counts;
+  }, [activeCategory]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["hostModuleCatalog"] });
 
@@ -308,6 +370,21 @@ const HostModulesContent = () => {
     },
   });
 
+  // Saving a screenshot moves focus to the hidden file input / document body
+  // (outside the modal's own DOM subtree), so a keydown handler on the modal
+  // itself would miss the Enter press — listen on document instead.
+  useEffect(() => {
+    if (!editingRow) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Enter" && event.target.tagName !== "TEXTAREA" && !isSaving) {
+        event.preventDefault();
+        saveEdit();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [editingRow, isSaving, saveEdit]);
+
   const closeAddModule = () => {
     setIsAddModuleOpen(false);
     setAddCategoryChoice("");
@@ -434,22 +511,42 @@ const HostModulesContent = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm">
-              <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Categories</p>
-              <p className="text-[15px] font-pmedium text-slate-900">{categories.length}</p>
-            </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-blue-500 shadow-sm">
-              <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">Modules</p>
-              <p className="text-[15px] font-pmedium text-slate-900">{totalModules}</p>
-            </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-rose-500 shadow-sm">
-              <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Missing Screenshots</p>
-              <p className="text-[15px] font-pmedium text-slate-900">{missingScreenshots}</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 shrink-0">
+            <StatTile
+              label="Categories"
+              value={categories.length}
+              helper="Module groups in the catalog"
+              icon={Layers}
+              accent="text-slate-500"
+              border="border-l-slate-400"
+            />
+            <StatTile
+              label="Modules"
+              value={totalModules}
+              helper={`${moduleStats.topLevel} dashboards · ${moduleStats.pages} pages`}
+              icon={LayoutGrid}
+              accent="text-blue-600"
+              border="border-l-blue-500"
+            />
+            <StatTile
+              label="Hidden"
+              value={moduleStats.hidden}
+              helper="Not visible on host.wono.co"
+              icon={EyeOff}
+              accent="text-amber-600"
+              border="border-l-amber-500"
+            />
+            <StatTile
+              label="Missing Screenshots"
+              value={missingScreenshots}
+              helper={`${moduleStats.coverage}% of modules have a screenshot`}
+              icon={ImageOff}
+              accent="text-rose-600"
+              border="border-l-rose-500"
+            />
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex flex-col gap-3 border-b border-slate-100 pb-3">
             <div className="flex min-w-0 flex-1 flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {categories.map((category) => (
                 <button
@@ -470,26 +567,6 @@ const HostModulesContent = () => {
               ))}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                <input
-                  type="text"
-                  placeholder="Search modules..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 pr-3 py-2 w-56 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => openAddModule()}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-[#2563EB] text-white rounded-lg text-[12px] font-pmedium hover:bg-[#1d4ed8] transition-all shrink-0"
-              >
-                <Plus size={14} strokeWidth={2.5} />
-                Advanced Add
-              </button>
-            </div>
           </div>
 
           <div className="flex flex-col gap-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3 sm:flex-row sm:items-center">
@@ -553,148 +630,234 @@ const HostModulesContent = () => {
             </span>
           </div>
 
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-            <div className="overflow-x-auto flex-1">
-              <table className="w-full min-w-[700px] text-left border-collapse table-fixed">
-                <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-                  <tr>
-                    <th className="w-[56px] px-5 py-4 text-left whitespace-nowrap">Sr No</th>
-                    <th className="px-5 py-4 text-left whitespace-nowrap">Module / dashboard & pages</th>
-                    <th className="w-[190px] px-5 py-4 text-center whitespace-nowrap">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.length === 0 ? (
-                    <tr>
-                      <td colSpan={3} className="text-center py-20 text-slate-400 font-pmedium">
-                        No modules in this category.
-                      </td>
-                    </tr>
-                  ) : (
-                    rows.map((row, index) => (
-                      <tr
-                        key={row.key}
-                        draggable
-                        onDragStart={() => setDragKey(row.key)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => handleDrop(row)}
-                        onDragEnd={() => setDragKey(null)}
-                        className={`hover:bg-slate-50/50 transition-colors cursor-grab ${
-                          dragKey === row.key ? "opacity-40" : ""
-                        } ${row.module.enabled === false ? "opacity-50" : ""}`}
+          <DataTable
+            rows={rows}
+            rowKey={(row) => row.key}
+            minWidth={1040}
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search modules by name or summary..."
+            filters={
+              <select
+                value={planFilter}
+                onChange={(event) => setPlanFilter(event.target.value)}
+                aria-label="Filter modules by plan"
+                className={FILTER_CLASS(planFilter !== "all")}
+              >
+                {PLAN_FILTER_OPTIONS.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label} ({planCounts[value] ?? 0})
+                  </option>
+                ))}
+              </select>
+            }
+            toolbarActions={
+              <DataTableButton icon={Plus} onClick={() => openAddModule()}>
+                Advanced Add
+              </DataTableButton>
+            }
+            emptyText={
+              search.trim() || planFilter !== "all"
+                ? "No modules match these filters."
+                : "No modules in this category yet."
+            }
+            emptyIcon={LayoutGrid}
+            rowProps={(row) => ({
+              draggable: true,
+              onDragStart: () => setDragKey(row.key),
+              onDragOver: (event) => event.preventDefault(),
+              onDrop: () => handleDrop(row),
+              onDragEnd: () => setDragKey(null),
+            })}
+            rowClassName={(row) =>
+              `cursor-grab ${
+                dragKey === row.key ? "opacity-40" : ""
+              } ${row.module.enabled === false ? "opacity-50" : ""}`
+            }
+            columns={[
+              {
+                key: "index",
+                header: "Sr No",
+                align: "center",
+                minWidth: 72,
+                cellClassName: "text-slate-400",
+                render: (_row, index) => index + 1,
+              },
+              {
+                key: "module",
+                header: "Module / dashboard & pages",
+                minWidth: 340,
+                render: (row) => (
+                  <div
+                    className="flex items-start gap-2"
+                    style={{ paddingLeft: row.depth * 16 }}
+                  >
+                    <GripVertical
+                      size={14}
+                      className="mt-0.5 shrink-0 cursor-grab text-slate-300"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className="block max-w-[260px] truncate text-[13px] font-pmedium text-slate-800"
+                          title={row.module.label}
+                        >
+                          {row.depth > 0 ? "— " : ""}
+                          {row.module.label}
+                        </span>
+                        {row.module.enabled === false ? (
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                            Hidden
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        {row.module.children?.length > 0 ? (
+                          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-700">
+                            {row.module.children.length}{" "}
+                            {row.module.children.length === 1 ? "page" : "pages"}
+                          </span>
+                        ) : null}
+                        {row.module.children?.length > 0 &&
+                        !row.module.children.some((child) =>
+                          /dashboard/i.test(child.label),
+                        ) ? (
+                          <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                            Dashboard not added
+                          </span>
+                        ) : null}
+                        {row.module.summary ? (
+                          <span
+                            className="block max-w-[300px] truncate text-[10px] text-slate-400"
+                            title={row.module.summary}
+                          >
+                            {row.module.summary}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: "plan",
+                header: "Plan",
+                minWidth: 130,
+                render: (row) => (
+                  <div className="flex flex-col items-start gap-1">
+                    {row.module.plan ? (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                          PLAN_BADGE_CLASS[row.module.plan] || ""
+                        }`}
                       >
-                        <td className="px-5 py-4 align-top text-slate-400 font-pmedium">{index + 1}</td>
-                        <td className="px-5 py-4 align-top">
-                          <div className="flex items-start gap-2" style={{ paddingLeft: row.depth * 16 }}>
-                            <GripVertical size={14} className="text-slate-300 shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <span className="block truncate font-pmedium text-[13px] text-slate-800">
-                                {row.depth > 0 ? "— " : ""}
-                                {row.module.label}
-                              </span>
-                              <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                {row.module.plan ? (
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${PLAN_BADGE_CLASS[row.module.plan] || ""}`}
-                                  >
-                                    {PLAN_LABELS[row.module.plan] || row.module.plan}
-                                  </span>
-                                ) : row.depth > 0 ? (
-                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-                                    Inherits plan
-                                  </span>
-                                ) : null}
-                                {row.module.planAccessMode === "exact" ? (
-                                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-                                    Exact plan only
-                                  </span>
-                                ) : null}
-                                {(row.module.verticals || []).map((vertical) => (
-                                  <span
-                                    key={vertical}
-                                    className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${VERTICAL_BADGE_CLASS}`}
-                                  >
-                                    {vertical}
-                                  </span>
-                                ))}
-                                {row.module.children?.length > 0 ? (
-                                  <span className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-700">
-                                    {row.module.children.length} {row.module.children.length === 1 ? "page" : "pages"}
-                                  </span>
-                                ) : null}
-                                {row.module.children?.length > 0 &&
-                                !row.module.children.some((child) => /dashboard/i.test(child.label)) ? (
-                                  <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
-                                    Dashboard not added
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                            {row.module.enabled === false ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200 shrink-0">
-                                Hidden
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            {!/dashboard/i.test(row.module.label) ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  openAddModule({
-                                    categoryId: activeCategory.id,
-                                    parentModuleId: row.module.id,
-                                  })
-                                }
-                                title="Add dashboard or page"
-                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
-                              >
-                                <Plus size={14} strokeWidth={2.5} />
-                              </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => setViewingRow(row)}
-                              title="View (how it shows on the website)"
-                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all"
-                            >
-                              <Eye size={14} strokeWidth={2.5} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => openEdit(row)}
-                              title="Edit"
-                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700 rounded-lg transition-all"
-                            >
-                              <Pencil size={14} strokeWidth={2.5} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => toggleEnabled(row)}
-                              title={row.module.enabled === false ? "Enable (show on website)" : "Disable (hide from website)"}
-                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700 rounded-lg transition-all"
-                            >
-                              <EyeOff size={14} strokeWidth={2.5} />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => confirmDeleteModule(row)}
-                              title="Delete permanently"
-                              className="p-1.5 bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700 rounded-lg transition-all"
-                            >
-                              <Trash2 size={14} strokeWidth={2.5} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                        {PLAN_LABELS[row.module.plan] || row.module.plan}
+                      </span>
+                    ) : row.depth > 0 ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                        Inherits plan
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                    {row.module.planAccessMode === "exact" ? (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-700">
+                        Exact plan only
+                      </span>
+                    ) : null}
+                  </div>
+                ),
+              },
+              {
+                key: "verticals",
+                header: "Verticals",
+                minWidth: 170,
+                render: (row) =>
+                  row.module.verticals?.length ? (
+                    <div className="flex max-w-[190px] flex-wrap gap-1">
+                      {row.module.verticals.map((vertical) => (
+                        <span
+                          key={vertical}
+                          className={`whitespace-nowrap rounded-md px-1.5 py-0.5 text-[10px] font-pmedium ${VERTICAL_BADGE_CLASS}`}
+                        >
+                          {vertical}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">All verticals</span>
+                  ),
+              },
+            ]}
+            actionsHeader="Actions"
+            actions={(row) => (
+              <>
+                {!/dashboard/i.test(row.module.label) ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openAddModule({
+                        categoryId: activeCategory.id,
+                        parentModuleId: row.module.id,
+                      })
+                    }
+                    title="Add dashboard or page"
+                    aria-label={`Add dashboard or page under ${row.module.label}`}
+                    className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                  >
+                    <Plus size={14} strokeWidth={2.5} />
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setViewingRow(row)}
+                  title="View (how it shows on the website)"
+                  aria-label={`View ${row.module.label}`}
+                  className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                >
+                  <Eye size={14} strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openEdit(row)}
+                  title="Edit"
+                  aria-label={`Edit ${row.module.label}`}
+                  className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-amber-100 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                >
+                  <Pencil size={14} strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleEnabled(row)}
+                  title={
+                    row.module.enabled === false
+                      ? "Enable (show on website)"
+                      : "Disable (hide from website)"
+                  }
+                  aria-label={`${row.module.enabled === false ? "Enable" : "Hide"} ${row.module.label}`}
+                  className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-rose-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
+                >
+                  <EyeOff size={14} strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => confirmDeleteModule(row)}
+                  title="Delete permanently"
+                  aria-label={`Delete ${row.module.label}`}
+                  className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-rose-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
+                >
+                  <Trash2 size={14} strokeWidth={2.5} />
+                </button>
+              </>
+            )}
+          />
+
+          {rows.length > 0 ? (
+            <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+              Showing {rows.length} of {planCounts.all} modules in{" "}
+              {activeCategory?.label || "this category"}
+            </p>
+          ) : null}
         </div>
       </PageFrame>
 
