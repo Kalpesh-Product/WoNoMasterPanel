@@ -1,6 +1,8 @@
 const WebsiteCredits = require("../models/website/WebsiteCredits");
 const {
   creditsForPlan,
+  loadCreditsSettings,
+  normalizeCompanyKey,
   resolveWorkspacePlan,
   syncSubscriptionPlan,
 } = require("../utils/websiteCredits");
@@ -17,6 +19,10 @@ const getFirstDayOfNextMonthUtc = () => {
 // the edit succeeds.
 const checkAndDeductCredit = async (req, res, next) => {
   try {
+    // Pick up any limit staff changed from Master Panel -> Website Credits
+    // (cached for a short TTL, so this is usually free).
+    await loadCreditsSettings();
+
     const companyId = String(req.body?.companyId || req.query?.companyId || "").trim();
     const workspaceId = String(
       req.body?.workspaceId || req.query?.workspaceId || req.headers["x-workspace-id"] || "",
@@ -27,19 +33,23 @@ const checkAndDeductCredit = async (req, res, next) => {
       return res.status(400).json({ error: "companyId or workspaceId is required" });
     }
 
-    const lookupClauses = [];
-    if (companyId) lookupClauses.push({ companyId });
-    if (workspaceId) lookupClauses.push({ workspaceId });
+    // One shared pool per company: every unit of a company draws from the same
+    // document, so the company key wins over the workspace. The workspace-only
+    // match is a fallback for legacy rows created before companyId was the key.
+    const companyKey = normalizeCompanyKey(companyId);
 
-    let subscription = await WebsiteCredits.findOne({
-      $or: lookupClauses.length ? lookupClauses : [{ companyId: identifier }],
-    });
+    let subscription = companyKey
+      ? await WebsiteCredits.findOne({ companyId: companyKey })
+      : null;
+    if (!subscription && workspaceId) {
+      subscription = await WebsiteCredits.findOne({ workspaceId });
+    }
 
     if (!subscription) {
       const plan = await resolveWorkspacePlan({ workspaceId, companyId });
       subscription = await WebsiteCredits.create({
-        companyId: companyId || workspaceId,
-        workspaceId: workspaceId || companyId,
+        companyId: companyKey || workspaceId,
+        workspaceId: workspaceId || companyKey,
         plan,
         creditsLimit: creditsForPlan(plan),
         creditsUsed: 0,

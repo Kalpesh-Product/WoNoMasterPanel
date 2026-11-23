@@ -35,6 +35,8 @@ const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
 const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
+const WaveXTemplate = lazy(() => import("./wavex/WaveXTemplate"));
+const WorkhubTemplate = lazy(() => import("./workhub/WorkhubTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
 const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
 export const DEFAULT_TEMPLATE_ID = "default";
@@ -359,6 +361,29 @@ export const TEMPLATE_REGISTRY = {
             accent: "#a99d93",
             font: "'Inter', sans-serif",
         },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    wavex: {
+        id: "wavex",
+        name: "WaveX Rooms",
+        description: "Warm editorial meeting-room design — coral accents, natural-light photography, community storytelling and a friendly booking flow.",
+        component: WaveXTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#2b2b2f",
+            accent: "#ed4e36",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    workhub: {
+        id: "workhub",
+        name: "WorkHub",
+        description: "Polished corporate meeting-space design — blue accents, modular service cards, location storytelling, member proof and a focused enquiry flow.",
+        component: WorkhubTemplate,
+        swatch: { bg: "#f0f2fb", fg: "#242839", accent: "#285fe2", font: "'Outfit', sans-serif" },
         recommendedFor: ["meeting"],
         supportsBooking: true,
     },
