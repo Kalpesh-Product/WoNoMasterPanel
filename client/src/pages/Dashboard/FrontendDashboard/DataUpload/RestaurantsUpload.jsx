@@ -100,7 +100,7 @@ const RestaurantsUpload = () => {
   return (
     <UploadCard
       title="Restaurants Upload"
-      description="Choose the restaurant upload type and submit the matching CSV."
+      description="Choose the upload type and provide a CSV."
       templateHref={TEMPLATE_BY_KIND[kind]}
     >
       <UploadPanel>

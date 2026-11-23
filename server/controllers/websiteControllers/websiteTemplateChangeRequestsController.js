@@ -7,7 +7,7 @@ const WebsiteTemplateSettings = require("../../models/website/WebsiteTemplateSet
 const Workspace = require("../../models/hostCompany/Workspace");
 
 const PLAN_KEYS = ["basic", "professional", "custom"];
-const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "tinyhome", "commons", "huddle", "lodge", "grindelwald"];
+const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "wavex", "workhub", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "cabin", "tinyhome", "commons", "huddle", "lodge", "destinflow", "grindelwald"];
 const DEFAULT_SETTINGS = {
   key: "global",
   limitPeriod: "monthly",
@@ -22,6 +22,7 @@ const DEFAULT_SETTINGS = {
     { templateId: "wayfarer", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "travigo", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "lodge", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "destinflow", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tastyc", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grandbar", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "aromatica", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
@@ -29,12 +30,16 @@ const DEFAULT_SETTINGS = {
     { templateId: "restobar", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "flowspace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "workscape", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "wavex", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "workhub", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "brixspace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "worpace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "cobox", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "qerja", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "camelia", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tulum", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "cabin", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+
     { templateId: "tinyhome", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "coplace", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grindelwald", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },

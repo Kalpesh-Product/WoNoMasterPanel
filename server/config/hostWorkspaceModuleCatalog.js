@@ -287,6 +287,36 @@ const getDefaultEnabledModuleIdsForWorkspace = (selectedPlan = "basic", business
   return Array.from(new Set([...planIds, ...verticalIds]));
 };
 
+// Hand-synced with HostPanel's getEffectiveEnabledModuleIds
+// (workspaceModuleCatalog.ts). This is a *plan-change normalizer*: it resets a
+// professional workspace to that plan's defaults + its vertical modules, and
+// it deliberately withholds NEW vertical grants on Basic (they're a
+// Professional+ perk). Those are the right semantics for signup / trial-start
+// / plan-upgrade / backfill — but NOT for a standalone "edit verticals" save,
+// where staff would silently lose manual module overrides. That flow uses the
+// additive getVerticalModuleIds merge in hostUserControllers instead. Kept
+// exported here so the two catalogs stay byte-for-byte aligned with HostPanel.
+const getEffectiveEnabledModuleIds = ({
+  selectedPlan = "basic",
+  existingEnabledModuleIds = [],
+  verticalKeys = [],
+} = {}) => {
+  const normalizedPlan = normalizePlan(selectedPlan);
+  const defaultIds = getDefaultEnabledModuleIdsForPlan(normalizedPlan);
+  const existingIds = Array.isArray(existingEnabledModuleIds)
+    ? existingEnabledModuleIds.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+  const verticalIds = getVerticalModuleIds(verticalKeys);
+  const grantedVerticalIds =
+    normalizedPlan === "basic"
+      ? verticalIds.filter((id) => existingIds.includes(id))
+      : verticalIds;
+  if (normalizedPlan === "custom") {
+    return Array.from(new Set([...defaultIds, ...existingIds, ...grantedVerticalIds]));
+  }
+  return Array.from(new Set([...defaultIds, ...grantedVerticalIds]));
+};
+
 const planAvailabilityFor = (moduleId) => {
   if (BASIC_DEFAULT_IDS.has(moduleId)) return "All Plans";
   if (PROFESSIONAL_DEFAULT_IDS.has(moduleId)) return "Professional +";
@@ -412,6 +442,7 @@ module.exports = {
   getWorkspaceVerticalKeys,
   getVerticalModuleIds,
   getDefaultEnabledModuleIdsForWorkspace,
+  getEffectiveEnabledModuleIds,
   planAvailabilityFor,
   buildCatalogIndex,
   getPriceableCatalog,

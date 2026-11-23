@@ -8,6 +8,15 @@ import { toast } from "sonner";
 import useAxiosPrivate from "../../hooks/useAxiosPrivate";
 import { Eye, EyeOff, KeyRound, Lock, ShieldCheck } from "lucide-react";
 
+// Let password managers fill "Current Password" normally (that's harmless),
+// but keep the new-password fields out of saved-credential autofill.
+const currentPasswordSlotProps = {
+  htmlInput: { autoComplete: "current-password" },
+};
+const newPasswordSlotProps = {
+  htmlInput: { autoComplete: "new-password" },
+};
+
 const ChangePassword = () => {
   const [isChanging, setIsChanging] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -175,146 +184,164 @@ const ChangePassword = () => {
   });
 
   return (
-    <div className="rounded-xl border-default border-borderGray bg-white p-4">
+    <div className="relative rounded-xl border-default border-borderGray bg-white p-4">
       <div className="flex items-center justify-between pb-4">
         <span className="text-title font-pmedium uppercase text-primary">
           Change Password
         </span>
       </div>
 
-      <section className="rounded-[2rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6">
-        <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <KeyRound size={20} />
-          </div>
-          <div>
-            <h2 className="text-lg font-pmedium text-slate-900">
-              Update Password
-            </h2>
-            <p className="text-[11px] text-slate-500">
-              Verify your current password before choosing a new one.
-            </p>
-          </div>
-        </div>
+      {/* Chrome pairs saved credentials with an explicit username field in
+          the same form. Without one it grabs the sidebar search box (the first
+          text input on the page) and shows the saved logins dropdown there. */}
+      <form onSubmit={(event) => event.preventDefault()}>
+        <input
+          type="text"
+          name="username"
+          autoComplete="username"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-[9999px] top-0 h-px w-px opacity-0"
+          onChange={() => {}}
+        />
 
-        <div className="mb-5 flex w-full flex-col items-stretch gap-3 md:flex-row md:items-center">
-          <TextField
-            size="small"
-            label="Current Password"
-            type={visiblePasswords.currentPassword ? "text" : "password"}
-            disabled={passwordVerified}
-            sx={{ width: { xs: "100%", md: "49.3%" } }}
-            value={formData.currentPassword}
-            onChange={(event) =>
-              handleChange("currentPassword", event.target.value)
-            }
-            required
-            fullWidth
-            InputProps={{
-              endAdornment: passwordVisibilityAdornment("currentPassword"),
-              sx: inputStyles(passwordVerified),
-            }}
-          />
-          {!passwordVerified ? (
+        <section className="rounded-[2rem] border border-white/80 bg-white/90 p-5 shadow-[0_18px_55px_rgba(15,23,42,0.08)] sm:p-6">
+          <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <KeyRound size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-pmedium text-slate-900">
+                Update Password
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Verify your current password before choosing a new one.
+              </p>
+            </div>
+          </div>
+  
+          <div className="mb-5 flex w-full flex-col items-stretch gap-3 md:flex-row md:items-center">
+            <TextField
+              size="small"
+              label="Current Password"
+              type={visiblePasswords.currentPassword ? "text" : "password"}
+              disabled={passwordVerified}
+              sx={{ width: { xs: "100%", md: "49.3%" } }}
+              value={formData.currentPassword}
+              onChange={(event) =>
+                handleChange("currentPassword", event.target.value)
+              }
+              required
+              fullWidth
+              slotProps={currentPasswordSlotProps}
+              InputProps={{
+                endAdornment: passwordVisibilityAdornment("currentPassword"),
+                sx: inputStyles(passwordVerified),
+              }}
+            />
+            {!passwordVerified ? (
+              <PrimaryButton
+                title={isVerifying ? "Verifying..." : "Verify"}
+                type="button"
+                disabled={!formData.currentPassword || isVerifying}
+                isLoading={isVerifying}
+                handleSubmit={handlePasswordCheck}
+                className="font-pmedium"
+              />
+            ) : (
+              <span className="inline-flex w-fit items-center gap-1.5 rounded-2xl border border-green-200 bg-green-50 px-4 py-2 text-xs font-pmedium text-green-700">
+                <ShieldCheck size={14} />
+                Verified
+              </span>
+            )}
+          </div>
+  
+          <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <TextField
+              size="small"
+              label="New Password"
+              type={visiblePasswords.newPassword ? "text" : "password"}
+              disabled={!passwordVerified}
+              value={formData.newPassword}
+              onChange={(event) =>
+                handleChange("newPassword", event.target.value)
+              }
+              fullWidth
+              required
+              slotProps={newPasswordSlotProps}
+              InputProps={{
+                endAdornment: passwordVisibilityAdornment("newPassword"),
+                sx: inputStyles(),
+              }}
+            />
+            <TextField
+              size="small"
+              label="Confirm Password"
+              type={visiblePasswords.confirmPassword ? "text" : "password"}
+              disabled={!passwordVerified}
+              value={formData.confirmPassword}
+              onChange={(event) =>
+                handleChange("confirmPassword", event.target.value)
+              }
+              fullWidth
+              required
+              slotProps={newPasswordSlotProps}
+              InputProps={{
+                endAdornment: passwordVisibilityAdornment("confirmPassword"),
+                sx: inputStyles(),
+              }}
+            />
+          </div>
+  
+          {errorMessage && (
+            <div
+              role="alert"
+              className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-pmedium text-rose-700"
+            >
+              {errorMessage}
+            </div>
+          )}
+          {successMessage && (
+            <div
+              role="status"
+              className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-pmedium text-emerald-700"
+            >
+              {successMessage}
+            </div>
+          )}
+  
+          <div
+            data-tour="change-password-requirements"
+            className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
+          >
+            <div className="flex items-center gap-2">
+              <Lock size={14} className="text-blue-600" />
+              <span className="text-xs font-pmedium uppercase tracking-wider text-slate-600">
+                Password Requirements
+              </span>
+            </div>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500">
+              <li>Must be at least 8 characters long.</li>
+              <li>Must include uppercase and lowercase letters.</li>
+              <li>Must contain at least one number and one special character.</li>
+            </ul>
+          </div>
+  
+          <div
+            data-tour="change-password-submit"
+            className="flex items-center justify-center"
+          >
             <PrimaryButton
-              title={isVerifying ? "Verifying..." : "Verify"}
+              title={isChanging ? "Updating..." : "Update Password"}
               type="button"
-              disabled={!formData.currentPassword || isVerifying}
-              isLoading={isVerifying}
-              handleSubmit={handlePasswordCheck}
+              handleSubmit={handlePasswordChange}
+              disabled={!passwordVerified || isChanging}
+              isLoading={isChanging}
               className="font-pmedium"
             />
-          ) : (
-            <span className="inline-flex w-fit items-center gap-1.5 rounded-2xl border border-green-200 bg-green-50 px-4 py-2 text-xs font-pmedium text-green-700">
-              <ShieldCheck size={14} />
-              Verified
-            </span>
-          )}
-        </div>
-
-        <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <TextField
-            size="small"
-            label="New Password"
-            type={visiblePasswords.newPassword ? "text" : "password"}
-            disabled={!passwordVerified}
-            value={formData.newPassword}
-            onChange={(event) =>
-              handleChange("newPassword", event.target.value)
-            }
-            fullWidth
-            required
-            InputProps={{
-              endAdornment: passwordVisibilityAdornment("newPassword"),
-              sx: inputStyles(),
-            }}
-          />
-          <TextField
-            size="small"
-            label="Confirm Password"
-            type={visiblePasswords.confirmPassword ? "text" : "password"}
-            disabled={!passwordVerified}
-            value={formData.confirmPassword}
-            onChange={(event) =>
-              handleChange("confirmPassword", event.target.value)
-            }
-            fullWidth
-            required
-            InputProps={{
-              endAdornment: passwordVisibilityAdornment("confirmPassword"),
-              sx: inputStyles(),
-            }}
-          />
-        </div>
-
-        {errorMessage && (
-          <div
-            role="alert"
-            className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-pmedium text-rose-700"
-          >
-            {errorMessage}
           </div>
-        )}
-        {successMessage && (
-          <div
-            role="status"
-            className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-pmedium text-emerald-700"
-          >
-            {successMessage}
-          </div>
-        )}
-
-        <div
-          data-tour="change-password-requirements"
-          className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-100 bg-slate-50/60 p-4"
-        >
-          <div className="flex items-center gap-2">
-            <Lock size={14} className="text-blue-600" />
-            <span className="text-xs font-pmedium uppercase tracking-wider text-slate-600">
-              Password Requirements
-            </span>
-          </div>
-          <ul className="list-disc space-y-1 pl-5 text-xs text-slate-500">
-            <li>Must be at least 8 characters long.</li>
-            <li>Must include uppercase and lowercase letters.</li>
-            <li>Must contain at least one number and one special character.</li>
-          </ul>
-        </div>
-
-        <div
-          data-tour="change-password-submit"
-          className="flex items-center justify-center"
-        >
-          <PrimaryButton
-            title={isChanging ? "Updating..." : "Update Password"}
-            type="button"
-            handleSubmit={handlePasswordChange}
-            disabled={!passwordVerified || isChanging}
-            isLoading={isChanging}
-            className="font-pmedium"
-          />
-        </div>
-      </section>
+        </section>
+      </form>
     </div>
   );
 };

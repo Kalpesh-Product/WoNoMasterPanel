@@ -26,8 +26,10 @@ const {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  startTrialCheckout,
   getTrialCompanies,
   setBonusTrialOffer,
+  setPromoCodeRetryAllowed,
   claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,
@@ -77,6 +79,7 @@ const {
   getLeadCustomSelections,
   getPlanPaymentStatuses,
   getHostCompanyPlanHistory,
+  createBillingPortalSession,
 } = require("../controllers/planPaymentControllers");
 const {
   getPlanPricing,
@@ -85,6 +88,10 @@ const {
   upsertPricingItem,
   removePricingItem,
   setCustomPlanModules,
+  listPromotionCodes,
+  createPromotionCode,
+  setPromotionCodeActive,
+  deletePromotionCode,
 } = require("../controllers/planPricingControllers");
 
 //company
@@ -107,8 +114,11 @@ router.patch("/update-services", updateServices);
 router.patch("/send-upgrade-payment-link", sendUpgradePaymentLink);
 router.patch("/request-upgrade-plan", requestUpgradePlan);
 router.patch("/start-trial", startTrial);
+router.patch("/start-trial-checkout", startTrialCheckout);
+router.post("/billing-portal", createBillingPortalSession);
 router.get("/trial-companies", getTrialCompanies);
 router.patch("/trial-companies/:companyId/bonus-offer", setBonusTrialOffer);
+router.patch("/trial-companies/:companyId/promo-retry", setPromoCodeRetryAllowed);
 router.patch("/claim-bonus-trial", claimBonusTrial);
 router.patch("/host-companies/:companyId/custom-plan-modules", updateRequestedPlanModules);
 router.patch("/update-upgrade-payment-status", updateUpgradePaymentStatus);
@@ -120,6 +130,10 @@ router.get("/plan-payments", getPlanPaymentStatuses);
 router.get("/plan-pricing", getPlanPricing);
 router.get("/plan-pricing/catalog", getPricingCatalog);
 router.patch("/plan-pricing/settings", updateBasePricing);
+router.get("/promo-codes", listPromotionCodes);
+router.post("/promo-codes", createPromotionCode);
+router.patch("/promo-codes/:id/active", setPromotionCodeActive);
+router.delete("/promo-codes/:id", deletePromotionCode);
 router.put("/plan-pricing/:itemId", upsertPricingItem);
 router.delete("/plan-pricing/:itemId", removePricingItem);
 router.post("/custom-plan-modules", setCustomPlanModules);

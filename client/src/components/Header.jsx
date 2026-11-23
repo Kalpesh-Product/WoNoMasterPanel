@@ -4,10 +4,6 @@ import {
   Avatar,
   InputAdornment,
   Popover,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Divider,
   useMediaQuery,
   IconButton,
@@ -27,8 +23,8 @@ import Abrar from "../assets/abrar.jpeg";
 import useAuth from "../hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import useLogout from "../hooks/useLogout";
-import { FaCheck, FaUserTie } from "react-icons/fa6";
-import { FiLogOut } from "react-icons/fi";
+import { FaCheck } from "react-icons/fa6";
+import { LogOut, UserRound } from "lucide-react";
 import useAxiosPrivate from "../hooks/useAxiosPrivate";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { HiOutlineRefresh } from "react-icons/hi";
@@ -218,7 +214,7 @@ const Header = ({
         </div>
       </div>
 
-      {/* Popover Component */}
+      {/* Profile dropdown — matches HostPanel */}
       <Popover
         id={id}
         open={open}
@@ -231,33 +227,35 @@ const Header = ({
         transformOrigin={{
           vertical: "top",
           horizontal: "center",
+        }}
+        slotProps={{
+          paper: {
+            elevation: 0,
+            className:
+              "mt-1.5 !rounded-2xl bg-white !shadow-[0_25px_60px_rgba(15,23,42,0.18),0_0_0_1px_rgba(15,23,42,0.04)] overflow-hidden",
+          },
         }}>
-        <div className="p-2 w-48">
-          <List>
-            {/* Profile Option */}
-            <ListItem
-              button
+        <div className="w-52">
+          <div className="p-1.5">
+            <button
+              type="button"
               onClick={handleProfileClick}
-              className="hover:text-primary transition-all duration-100 text-gray-500 cursor-pointer">
-              <ListItemIcon>
-                <FaUserTie className="text-gray-500" />
-              </ListItemIcon>
-              <ListItemText primary="Profile" />
-            </ListItem>
-
-            <Divider />
-
-            {/* Sign Out Option */}
-            <ListItem
-              button
+              className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]">
+              <span className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center transition-colors group-hover:bg-blue-100">
+                <UserRound size={15} />
+              </span>
+              Profile
+            </button>
+            <button
+              type="button"
               onClick={handleSignOut}
-              className="hover:text-red-600 transition-all duration-100 text-gray-500 cursor-pointer">
-              <ListItemIcon>
-                <FiLogOut className="text-gray-500" />
-              </ListItemIcon>
-              <ListItemText primary="Sign Out" />
-            </ListItem>
-          </List>
+              className="group w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] font-pmedium text-slate-600 transition-colors hover:bg-red-50 hover:text-red-600">
+              <span className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center transition-colors group-hover:bg-red-100">
+                <LogOut size={15} />
+              </span>
+              Sign Out
+            </button>
+          </div>
         </div>
       </Popover>
 

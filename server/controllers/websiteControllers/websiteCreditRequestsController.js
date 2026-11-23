@@ -6,6 +6,15 @@ const HostCompany = require("../../models/hostCompany/hostCompany");
 const Workspace = require("../../models/hostCompany/Workspace");
 const HostUser = require("../../models/hostCompany/hostUser");
 const { sendMail } = require("../../config/nodemailerConfig");
+const {
+  creditsForPlan,
+  resolveWorkspacePlan,
+  loadCreditsSettings,
+  getCreditsSettings,
+  updateCreditsSettings,
+  normalizeCompanyKey,
+  buildCompanyCreditsFilter,
+} = require("../../utils/websiteCredits");
 
 const DEFAULT_TEST_PAYMENT_LINK = "https://example.com/test-payment-link";
 
@@ -231,6 +240,10 @@ const getWebsiteCreditRequests = async (req, res, next) => {
       return res.status(403).json({ message: "Master access required" });
     }
 
+    // Limits are staff-editable, so make sure this process has the current
+    // per-plan numbers before computing base/add-on totals below.
+    await loadCreditsSettings();
+
     const { companyId, workspaceId, status, search, fromDate, toDate } =
       req.query || {};
     const query = {};
@@ -334,7 +347,7 @@ const getWebsiteCreditRequests = async (req, res, next) => {
         : Promise.resolve([]),
       workspaceIds.length
         ? Workspace.find({ _id: { $in: workspaceIds } })
-            .select("_id workspaceName owner")
+            .select("_id workspaceName owner selectedPlan")
             .lean()
         : Promise.resolve([]),
       requestedByUserIds.length
@@ -365,15 +378,12 @@ const getWebsiteCreditRequests = async (req, res, next) => {
 
     const workspaceNameMap = new Map();
     const workspaceOwnerIdMap = new Map();
+    const workspacePlanMap = new Map();
     workspaces.forEach((workspace) => {
-      workspaceNameMap.set(
-        String(workspace?._id || "").trim(),
-        workspace.workspaceName || "",
-      );
-      workspaceOwnerIdMap.set(
-        String(workspace?._id || "").trim(),
-        String(workspace?.owner || "").trim(),
-      );
+      const workspaceKey = String(workspace?._id || "").trim();
+      workspaceNameMap.set(workspaceKey, workspace.workspaceName || "");
+      workspaceOwnerIdMap.set(workspaceKey, String(workspace?.owner || "").trim());
+      workspacePlanMap.set(workspaceKey, workspace?.selectedPlan || "");
     });
 
     const userByIdMap = new Map();
@@ -467,7 +477,11 @@ const getWebsiteCreditRequests = async (req, res, next) => {
     });
 
     const enrichedWithLimits = enrichedRows.map((row) => {
-      const baseLimit = 5;
+      // Base allowance comes from the row's plan limit (staff-editable), not a
+      // constant.
+      const baseLimit = creditsForPlan(
+        workspacePlanMap.get(String(row?.workspaceId || "").trim()),
+      );
       const addOnCreditsPurchased = Number(row?.addOnCreditsPurchased || 0);
       const creditsUsed = Number(row?.creditsUsed || 0);
       const effectiveLimit = baseLimit + addOnCreditsPurchased;
@@ -826,13 +840,26 @@ const addWebsiteCredits = async (req, res, next) => {
         .json({ message: "Website credit request not found" });
     }
 
+    // Take the grant lock. A process that dies mid-grant used to leave
+    // creditsGrantProcessingAt set forever, so the request could never be
+    // granted again (permanent 409 "already in progress"). A lock older than
+    // GRANT_LOCK_STALE_MS is now treated as abandoned and taken over.
+    const GRANT_LOCK_STALE_MS = 5 * 60 * 1000;
+    const lockAcquiredAt = new Date();
+    const staleLockBefore = new Date(
+      lockAcquiredAt.getTime() - GRANT_LOCK_STALE_MS,
+    );
+
     const lockDoc = await WebsiteCreditRequest.findOneAndUpdate(
       {
         _id: requestId,
         creditsAddedAt: null,
-        creditsGrantProcessingAt: null,
+        $or: [
+          { creditsGrantProcessingAt: null },
+          { creditsGrantProcessingAt: { $lt: staleLockBefore } },
+        ],
       },
-      { $set: { creditsGrantProcessingAt: new Date() } },
+      { $set: { creditsGrantProcessingAt: lockAcquiredAt } },
       { new: true },
     ).lean();
 
@@ -853,7 +880,7 @@ const addWebsiteCredits = async (req, res, next) => {
 
       return res.status(409).json({
         message:
-          "Credits grant is already in progress for this request. Please retry in a moment.",
+          "Credits grant is already in progress for this request. Please retry in a few minutes.",
       });
     }
 
@@ -868,6 +895,10 @@ const addWebsiteCredits = async (req, res, next) => {
 
       const workspaceId = String(lockDoc.workspaceId || "").trim();
       const companyId = normalizeCompanyId(lockDoc.companyId);
+      // The workspace's current plan and that plan's (staff-editable) monthly
+      // allowance — never a hardcoded 5.
+      const grantPlan = await resolveWorkspacePlan({ workspaceId, companyId });
+      const grantLimit = creditsForPlan(grantPlan);
       const approvalMeta = {
         userId: String(req.user || ""),
         email: String(req.userData?.email || "")
@@ -902,73 +933,34 @@ const addWebsiteCredits = async (req, res, next) => {
         },
         { new: true },
       ).lean();
+      // One shared pool per company: the grant always lands on the company's
+      // single website_credits document, whichever unit requested it. The old
+      // code matched the exact unit row first, which gave a multi-unit company
+      // a separate pool — and a separate monthly limit — per unit.
+      const creditsFilter = buildCompanyCreditsFilter({ companyId, workspaceId });
+      const creditsSet = {
+        companyName: lockDoc.companyName || undefined,
+        workspaceName: lockDoc.workspaceName || undefined,
+        plan: grantPlan,
+        creditsLimit: grantLimit,
+        updatedAtSource: "master-panel",
+      };
+      if (workspaceId) creditsSet.workspaceId = workspaceId;
+      if (companyId) creditsSet.companyId = normalizeCompanyId(companyId);
+
       let creditsDoc = null;
-
-      // 1) Prefer updating the exact workspace row already used by website builder.
-      if (workspaceId) {
+      if (creditsFilter) {
         creditsDoc = await WebsiteCredits.findOneAndUpdate(
-          { workspaceId },
+          creditsFilter,
           {
-            $set: {
-              companyId: companyId || undefined,
-              companyName: lockDoc.companyName || undefined,
-              workspaceName: lockDoc.workspaceName || undefined,
-              creditsLimit: 5,
-              updatedAtSource: "master-panel",
-            },
-            $inc: {
-              addOnCreditsPurchased: creditsToAdd,
-            },
-          },
-          { new: true },
-        );
-      }
-
-      // 2) Fallback to company-level row (legacy index/data shape).
-      if (!creditsDoc && companyId) {
-        creditsDoc = await WebsiteCredits.findOneAndUpdate(
-          { companyId },
-          {
-            $set: {
-              companyName: lockDoc.companyName || undefined,
-              workspaceId: workspaceId || undefined,
-              workspaceName: lockDoc.workspaceName || undefined,
-              creditsLimit: 5,
-              updatedAtSource: "master-panel",
-            },
-            $inc: {
-              addOnCreditsPurchased: creditsToAdd,
-            },
-          },
-          { new: true },
-        );
-      }
-
-      // 3) If nothing exists, upsert one row in website_credits.
-      if (!creditsDoc) {
-        const upsertFilter = {
-          companyId: companyId || `company-${Date.now()}`,
-          workspaceId: workspaceId || "default-workspace",
-        };
-        creditsDoc = await WebsiteCredits.findOneAndUpdate(
-          upsertFilter,
-          {
-            $set: {
-              companyName: lockDoc.companyName || "",
-              workspaceName: lockDoc.workspaceName || "Main Workspace",
-              creditsLimit: 5,
-              updatedAtSource: "master-panel",
-              creditsResetDate: getNextResetDate(),
-            },
+            $set: creditsSet,
             $setOnInsert: {
               creditsUsed: 0,
-              addOnCreditsPurchased: 0,
+              creditsResetDate: getNextResetDate(),
             },
-            $inc: {
-              addOnCreditsPurchased: creditsToAdd,
-            },
+            $inc: { addOnCreditsPurchased: creditsToAdd },
           },
-          { new: true, upsert: true },
+          { new: true, upsert: true, setDefaultsOnInsert: true },
         );
       }
 
@@ -1026,7 +1018,7 @@ const addWebsiteCredits = async (req, res, next) => {
       ).lean();
 
       const effectiveLimit =
-        Number(creditsDoc?.creditsLimit || 5) +
+        Number(creditsDoc?.creditsLimit || grantLimit) +
         Number(creditsDoc?.addOnCreditsPurchased || 0);
       const creditsUsed = Number(creditsDoc?.creditsUsed || 0);
 
@@ -1036,15 +1028,19 @@ const addWebsiteCredits = async (req, res, next) => {
         websiteCredits: {
           ...creditsDoc?.toObject?.(),
           ...(creditsDoc || {}),
-          creditsLimit: 5,
+          plan: grantPlan,
+          creditsLimit: grantLimit,
           effectiveLimit,
           addOnCreditsRemaining: Math.max(0, effectiveLimit - creditsUsed),
         },
       });
     } finally {
-      await WebsiteCreditRequest.findByIdAndUpdate(requestId, {
-        $set: { creditsGrantProcessingAt: null },
-      });
+      // Release only the lock this call took — never a newer one acquired by a
+      // concurrent retry after our (now stale) lock timed out.
+      await WebsiteCreditRequest.findOneAndUpdate(
+        { _id: requestId, creditsGrantProcessingAt: lockAcquiredAt },
+        { $set: { creditsGrantProcessingAt: null } },
+      );
     }
   } catch (error) {
     next(error);
@@ -1056,6 +1052,8 @@ const resetMonthlyWebsiteCredits = async (req, res, next) => {
     if (!ensureMasterRole(req.roles, req.userData)) {
       return res.status(403).json({ message: "Master access required" });
     }
+
+    await loadCreditsSettings();
 
     const now = new Date();
     const dueDocs = await WebsiteCredits.find({
@@ -1075,7 +1073,8 @@ const resetMonthlyWebsiteCredits = async (req, res, next) => {
         update: {
           $set: {
             creditsUsed: 0,
-            creditsLimit: 5,
+            // Back to the row's current plan allowance (staff-editable).
+            creditsLimit: creditsForPlan(doc.plan),
             addOnCreditsPurchased: 0, // default policy: no carry-forward
             creditsResetDate: getNextResetDate(now),
             updatedAtSource: "master-panel",
@@ -1103,8 +1102,44 @@ const getWebsiteCreditsSummary = async (req, res, next) => {
       return res.status(403).json({ message: "Master access required" });
     }
 
+    // The plan-limit virtuals below read the staff-editable per-plan numbers,
+    // so make sure this process has the current values.
+    await loadCreditsSettings();
+
     const docs = await WebsiteCredits.find().sort({ updatedAt: -1 });
-    const rows = docs.map((doc) => doc.toObject({ virtuals: true }));
+
+    // One row per company: all units of a company share the website builder and
+    // therefore one credit pool. Duplicate legacy rows (one per unit) are
+    // collapsed here with their usage/add-ons summed, so the page never shows a
+    // company's monthly limit twice.
+    const groups = new Map();
+    docs.forEach((doc) => {
+      const key =
+        normalizeCompanyKey(doc.companyId) ||
+        String(doc.workspaceId || "").trim() ||
+        String(doc._id);
+      const group = groups.get(key);
+      if (!group) {
+        groups.set(key, { doc, key, units: 1, extraUsed: 0, extraAddOns: 0 });
+        return;
+      }
+      group.units += 1;
+      group.extraUsed += Number(doc.creditsUsed || 0);
+      group.extraAddOns += Number(doc.addOnCreditsPurchased || 0);
+    });
+
+    const rows = [...groups.values()].map((group) => {
+      // Docs are sorted newest-first, so the first row of a group is canonical;
+      // duplicates are folded into it in memory only (never saved).
+      group.doc.creditsUsed = Number(group.doc.creditsUsed || 0) + group.extraUsed;
+      group.doc.addOnCreditsPurchased =
+        Number(group.doc.addOnCreditsPurchased || 0) + group.extraAddOns;
+      return {
+        ...group.doc.toObject({ virtuals: true }),
+        companyId: group.key,
+        unitCount: group.units,
+      };
+    });
 
     const companyIds = [
       ...new Set(
@@ -1219,15 +1254,11 @@ const addWebsiteCreditsToCompany = async (req, res, next) => {
         .json({ message: "companyId or workspaceId is required" });
     }
 
-    const lookupClauses = [];
-    if (String(workspaceId || "").trim()) {
-      lookupClauses.push({ workspaceId: String(workspaceId).trim() });
-    }
-    if (String(companyId || "").trim()) {
-      lookupClauses.push({ companyId: normalizeCompanyId(companyId) });
-    }
-
-    const existingDoc = await WebsiteCredits.findOne({ $or: lookupClauses });
+    // The grant belongs to the company's single shared pool, not to a unit.
+    const directGrantFilter = buildCompanyCreditsFilter({ companyId, workspaceId });
+    const existingDoc = directGrantFilter
+      ? await WebsiteCredits.findOne(directGrantFilter)
+      : null;
     if (!existingDoc) {
       return res
         .status(404)
@@ -1237,8 +1268,11 @@ const addWebsiteCreditsToCompany = async (req, res, next) => {
     }
 
     // Top-ups are capped by the plan limit: remaining after adding can never
-    // exceed the monthly limit (professional 8, basic 5). E.g. 6 of 8 used
-    // means at most 6 can be added; all used means the full 8.
+    // exceed the monthly limit. The limit comes from the staff-editable
+    // per-plan settings, not a constant. E.g. 6 of 8 used means at most 6 can
+    // be added; all used means the full 8.
+    await loadCreditsSettings();
+
     const existingRow = existingDoc.toObject({ virtuals: true });
     const monthlyLimit = Number(existingRow.monthlyCreditsLimit || 0);
     const remaining = Number(existingRow.creditsRemaining || 0);
@@ -1307,16 +1341,24 @@ const getWebsiteCreditLedger = async (req, res, next) => {
 
     const { companyId, workspaceId, startDate, endDate } = req.query || {};
 
-    const clauses = [];
-    if (String(workspaceId || "").trim()) {
-      clauses.push({ workspaceId: String(workspaceId).trim() });
-    }
-    if (String(companyId || "").trim()) {
-      clauses.push({
-        companyId: {
-          $in: [String(companyId).trim(), normalizeCompanyId(companyId)],
-        },
-      });
+    const trimmedCompanyId = String(companyId || "").trim();
+    const trimmedWorkspaceId = String(workspaceId || "").trim();
+
+    // The credits pool is company-wide, so a companyId query returns the
+    // movements of every unit that drew from that shared pool (each entry still
+    // records which unit acted). workspaceId is only used when the company is
+    // unknown — legacy rows that predate the company key.
+    const baseFilter = {};
+    if (trimmedCompanyId) {
+      baseFilter.companyId = {
+        $in: [
+          trimmedCompanyId,
+          normalizeCompanyId(trimmedCompanyId),
+          normalizeCompanyKey(trimmedCompanyId),
+        ],
+      };
+    } else if (trimmedWorkspaceId) {
+      baseFilter.workspaceId = trimmedWorkspaceId;
     }
 
     const dateFilter = {};
@@ -1338,14 +1380,86 @@ const getWebsiteCreditLedger = async (req, res, next) => {
       return res.status(400).json({ message: "Start date must be before end date" });
     }
 
-    const filter = {};
-    if (clauses.length) filter.$or = clauses;
+    const filter = { ...baseFilter };
     if (Object.keys(dateFilter).length) filter.createdAt = dateFilter;
     const entries = await WebsiteCreditLedger.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
     return res.status(200).json(entries);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/website-credits/plan-limits — the staff-editable monthly credit
+// allowance for each plan. The website builder's credit gate and the
+// subscription endpoint resolve their limit from this same setting.
+const getPlanCreditLimits = async (req, res, next) => {
+  try {
+    if (!ensureMasterRole(req.roles, req.userData)) {
+      return res.status(403).json({ message: "Master access required" });
+    }
+
+    const settings = await getCreditsSettings();
+    return res.status(200).json({
+      basicCredits: Number(settings.basicCredits ?? 5),
+      professionalCredits: Number(settings.professionalCredits ?? 8),
+      customCredits: Number(settings.customCredits ?? 12),
+      updatedByEmail: settings.updatedByEmail || "",
+      updatedAt: settings.updatedAt,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/website-credits/plan-limits
+// { basicCredits, professionalCredits, customCredits } — any subset.
+const updatePlanCreditLimits = async (req, res, next) => {
+  try {
+    if (!ensureMasterRole(req.roles, req.userData)) {
+      return res.status(403).json({ message: "Master access required" });
+    }
+
+    const { basicCredits, professionalCredits, customCredits } = req.body || {};
+    const fields = { basicCredits, professionalCredits, customCredits };
+
+    if (!Object.values(fields).some((value) => value !== undefined)) {
+      return res.status(400).json({
+        message:
+          "Provide at least one of basicCredits, professionalCredits, customCredits",
+      });
+    }
+
+    for (const [key, value] of Object.entries(fields)) {
+      if (value === undefined) continue;
+      const parsed = Number(value);
+      if (!Number.isInteger(parsed) || parsed < 0) {
+        return res
+          .status(400)
+          .json({ message: `${key} must be a non-negative whole number` });
+      }
+    }
+
+    const settings = await updateCreditsSettings({
+      basicCredits: basicCredits !== undefined ? Number(basicCredits) : undefined,
+      professionalCredits:
+        professionalCredits !== undefined ? Number(professionalCredits) : undefined,
+      customCredits: customCredits !== undefined ? Number(customCredits) : undefined,
+      updatedByEmail: String(req.userData?.email || "")
+        .trim()
+        .toLowerCase(),
+    });
+
+    return res.status(200).json({
+      message: "Plan credit limits updated",
+      planLimits: {
+        basicCredits: Number(settings.basicCredits ?? 5),
+        professionalCredits: Number(settings.professionalCredits ?? 8),
+        customCredits: Number(settings.customCredits ?? 12),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -1363,4 +1477,6 @@ module.exports = {
   getWebsiteCreditsSummary,
   addWebsiteCreditsToCompany,
   getWebsiteCreditLedger,
+  getPlanCreditLimits,
+  updatePlanCreditLimits,
 };

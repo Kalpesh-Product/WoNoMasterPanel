@@ -8,8 +8,11 @@ const TEMPLATE_KIND = {
     italiano: "menu",
     restobar: "menu",
     tinyhome: "coLiving",
+    cabin: "coLiving",
     flowspace: "meeting",
     workscape: "meeting",
+    wavex: "meeting",
+    workhub: "meeting",
     brixspace: "meeting",
     worpace: "workspace",
     coplace: "workspace",
@@ -18,6 +21,8 @@ const TEMPLATE_KIND = {
     wayfarer: "hostel",
     travigo: "hostel",
     lodge: "hostel",
+    orchard: "hostel",
+    destinflow: "hostel",
     "cali-hostel": "hostel",
     haven: "coLiving",
     camelia: "coLiving",
@@ -38,6 +43,12 @@ const photo = (id, width = 1200) => `https://images.unsplash.com/${id}?auto=form
 const photoValue = (id, width = 1000) => ({ url: photo(id, width) });
 // Portrait crops centred on the face, for team photos (4:5, matching the team cards).
 const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&crop=faces&w=700&h=875&q=78`;
+// DestinFlow previews with the reference site's own mark and hero photograph so the
+// transparent navigation and centered banner read the way they were designed.
+const DESTINFLOW_ASSETS = {
+    logo: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/64c8f0e8ad1c8a6f73e9a4fe_destinflow-logo.svg",
+    hero: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/646dad4d11883642cfe0ec1f_home-banner-image.jpg",
+};
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
 // local exploration so the two hostel templates remain visually distinct in previews.
@@ -113,6 +124,16 @@ const TRAVIGO_DEMO_BUSINESS = {
             images: (roomPhotos[index] || TRAVIGO_PHOTOS.dorm).map((id) => photoValue(id)),
         })),
     },
+};
+const DESTINFLOW_DEMO_BUSINESS = {
+    ...hostelDemo,
+    companyName: "DestinFlow",
+    companyLogo: DESTINFLOW_ASSETS.logo,
+    title: "Explore With Experts",
+    subTitle: "Perfect travel partner with experience.",
+    cta: "Book Now",
+    heroImages: [DESTINFLOW_ASSETS.hero],
+    aboutTitle: "Stay well, travel further",
 };
 // Tulum has its own co-living photo set, so its preview never shares images with Haven or Camelia.
 const TULUM_PHOTOS = {
@@ -589,6 +610,175 @@ const WORKSCAPE_DEMO_BUSINESS = (() => {
         },
     };
 })();
+// WaveX previews with a warm, editorial daylight photo set and coral-led tone, distinct from
+// Workscape's architectural library. No reference-site CDN is used — every image is replaceable.
+const WAVEX_PHOTOS = {
+  hero: [
+    "photo-1524758631624-e2822e304c36",
+    "photo-1497366754035-f200968a6e72",
+    "photo-1521737711867-e3b97375f902",
+  ],
+  rooms: [
+    "photo-1497215842964-222b430dc094",
+    "photo-1517502884422-41eaead166d4",
+    "photo-1556761175-b413da4baf72",
+    "photo-1497366216548-37526070297c",
+    "photo-1568992687947-868a62a9f521",
+    "photo-1600508774634-4e11d34730e2",
+    "photo-1551836022-d5d88e9218df",
+    "photo-1556761175-4b46a572b786",
+    "photo-1504384308090-c894fdcc538d",
+    "photo-1542744173-8e7e53415bb0",
+    "photo-1552664730-d307ca884978",
+    "photo-1522071820081-009f0129c71c",
+  ],
+};
+const WAVEX_DEMO_BUSINESS = (() => {
+  const base = DEMO_BUSINESSES.meeting;
+  const rooms = (base.extra.meetingRooms || []);
+  return {
+    ...base,
+    companyName: "WaveX Rooms",
+    title: "Your future workspace awaits you",
+    subTitle:
+      "Bright, thoughtfully designed rooms for focused meetings, workshops and everyday work.",
+    cta: "Book a room",
+    heroImages: WAVEX_PHOTOS.hero.map((id) => photo(id, 1900)),
+    gallery: [...WAVEX_PHOTOS.hero, ...WAVEX_PHOTOS.rooms].map((id) =>
+      photo(id, 1450),
+    ),
+    aboutImages: [
+      WAVEX_PHOTOS.hero[1],
+      WAVEX_PHOTOS.rooms[2],
+      WAVEX_PHOTOS.rooms[6],
+    ].map((id) => photo(id, 1200)),
+    aboutTitle: "A homegrown meeting space in Jaipur",
+    aboutPageStory:
+      "WaveX Rooms brings bright, fully furnished meeting spaces and a welcoming professional community together in Jaipur.",
+    about: [
+      "WaveX Rooms started with a simple idea: a meeting room should feel calm, bright and ready before you arrive.",
+      "Our spaces mix natural light, modern decor and quiet corners with practical technology, so focused work and good conversations both have room to happen.",
+    ],
+    founders: [
+      {
+        name: "Riya Malhotra",
+        role: "Founder & Space Director",
+        bio: "Riya designed WaveX Rooms around the way people actually meet, think and work together.",
+        image: photoValue("photo-1494790108377-be9c29b29330", 900),
+      },
+      {
+        name: "Kabir Sharma",
+        role: "Community Lead",
+        bio: "Kabir looks after the rooms, the members and the small details that make every visit easy.",
+        image: photoValue("photo-1500648767791-00dcc994a43e", 900),
+      },
+      {
+        name: "Ananya Mehta",
+        role: "Experience Manager",
+        bio: "Ananya makes sure every guest finds the right room and feels at home from the moment they arrive.",
+        image: photoValue("photo-1544005313-94ddf0286df2", 900),
+      },
+    ],
+    address:
+      "Airport Plaza, Plot No. 15, 1st & 2nd floor, Tonk Rd, next to Cocoon Hospital, Jaipur, Rajasthan 302016",
+    contactPersonName: "WaveX Rooms team",
+    contactPersonRole: "Bookings",
+    page: {
+      ...base.page,
+      heroHeading: "Our Space & memberships",
+      heroSubHeading:
+        "Pick the setup that fits your day, from a single desk to a private room for the whole team.",
+      heroImage: photo(WAVEX_PHOTOS.hero[0], 1900),
+      cardImage: photo(WAVEX_PHOTOS.hero[1], 1100),
+    },
+    extra: {
+      ...base.extra,
+      meetingRooms: rooms.map((room, index) => ({
+        ...room,
+        images: WAVEX_PHOTOS.rooms
+          .slice(index * 3, index * 3 + 3)
+          .map((id) => photoValue(id)),
+      })),
+    },
+  };
+})();
+
+// WorkHub previews with a bright, modern office photo set and blue-led corporate tone,
+// distinct from the architectural Workscape and people-first Brixspace libraries.
+const WORKHUB_PHOTOS = {
+    hero: [
+        "photo-1524758631624-e2822e304c36",
+        "photo-1497366811353-6870744d04b2",
+        "photo-1600508774634-4e11d34730e2",
+    ],
+    rooms: [
+        "photo-1497366216548-37526070297c",
+        "photo-1497366754035-f200968a6e72",
+        "photo-1556761175-b413da4baf72",
+        "photo-1568992687947-868a62a9f521",
+        "photo-1521737711867-e3b97375f902",
+        "photo-1552664730-d307ca884978",
+        "photo-1517502884422-41eaead166d4",
+        "photo-1551836022-d5d88e9218df",
+        "photo-1556761175-4b46a572b786",
+        "photo-1504384308090-c894fdcc538d",
+        "photo-1542744173-8e7e53415bb0",
+        "photo-1522071820081-009f0129c71c",
+    ],
+};
+const WORKHUB_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.meeting;
+    const rooms = base.extra.meetingRooms || [];
+    return {
+        ...base,
+        companyName: "Northline Rooms",
+        title: "Curate your office space with Northline Rooms",
+        subTitle: "Empowering professionals with innovative workspaces",
+        cta: "Book a Room",
+        heroImages: WORKHUB_PHOTOS.hero.map((id) => photo(id, 1900)),
+        gallery: [...WORKHUB_PHOTOS.hero, ...WORKHUB_PHOTOS.rooms].map((id) => photo(id, 1450)),
+        aboutImages: [
+            WORKHUB_PHOTOS.hero[1],
+            WORKHUB_PHOTOS.rooms[2],
+            WORKHUB_PHOTOS.rooms[7],
+        ].map((id) => photo(id, 1200)),
+        aboutTitle: "About Northline Rooms",
+        aboutPageStory: "Northline Rooms brings together flexible layouts, reliable technology and a calm welcome, so every meeting has the best chance of succeeding.",
+        about: [
+            "We believe great work starts with the right setting. Daylight, practical furniture and a team that prepares everything in advance make conversations easier.",
+            "From a quick interview to a full-day workshop, each room can be arranged around the people in it and the outcome they need.",
+        ],
+        founders: [
+            {
+                name: "Maya Menon",
+                role: "Founder & Space Director",
+                bio: "Maya designs rooms that make collaboration feel effortless.",
+                image: photoValue("photo-1494790108377-be9c29b29330", 900),
+            },
+            {
+                name: "Arjun Rao",
+                role: "Guest Experience Lead",
+                bio: "Arjun makes sure every booking starts ready and runs smoothly.",
+                image: photoValue("photo-1500648767791-00dcc994a43e", 900),
+            },
+        ],
+        address: "18 Richmond Road, Bangalore 560025",
+        page: {
+            ...base.page,
+            heroHeading: "Work in Northline Rooms",
+            heroSubHeading: "Meeting rooms for interviews, workshops, presentations and team decisions.",
+            heroImage: photo(WORKHUB_PHOTOS.hero[0], 1900),
+            cardImage: photo(WORKHUB_PHOTOS.hero[1], 1100),
+        },
+        extra: {
+            ...base.extra,
+            meetingRooms: rooms.map((room, index) => ({
+                ...room,
+                images: WORKHUB_PHOTOS.rooms.slice(index * 3, index * 3 + 3).map((id) => photoValue(id)),
+            })),
+        },
+    };
+})();
 // Brixspace uses a people-first, green-accented photo set that is separate from the
 // architectural Workscape and warm Flowspace meeting-room libraries.
 const BRIXSPACE_PHOTOS = {
@@ -1015,6 +1205,52 @@ const tinyHomeDemo = (() => {
 })();
 
 "use strict";
+const cabinDemo = (() => {
+    const base = DEMO_BUSINESSES.coLiving;
+    const cdn = "https://cdn.prod.website-files.com/66fef51bb2a32743f5bfff90/";
+    const exterior = cdn + "66fef51bb2a32743f5bfffe9_clay-banks-UEhjiKh63Ek-unsplash.jpg";
+    const living = photo("photo-1543806053-7f9ac02e6631", 1200);
+    const kitchen = photo("photo-1586753701871-07e025659129", 1200);
+    const bedroom = photo("photo-1628394029749-ea3dcce4caa6", 1200);
+    const porch = photo("photo-1510798831971-661eb04b3739", 1200);
+    const rooms = [
+        { title: "Woodland Studio", price: "$1,250", priceUnit: "per month", description: "A furnished studio for independent living, with a private kitchenette and a quiet view of the trees.", images: [bedroom, kitchen, exterior].map((url) => ({ url })), occupancy: "single", bathroom: "ensuite", furnished: true, featured: true, enabled: true, features: ["Private kitchenette", "Wi-Fi", "Ensuite bathroom", "Garden access"] },
+        { title: "Garden Room", price: "$950", priceUnit: "per month", description: "Your own peaceful room, with a shared kitchen, welcoming common spaces, and a garden to enjoy.", images: [living, bedroom].map((url) => ({ url })), occupancy: "single", bathroom: "shared", furnished: true, enabled: true, features: ["Furnished room", "Shared kitchen", "Housekeeping", "Wi-Fi"] },
+        { title: "Forest Cabin", price: "$1,650", priceUnit: "per month", description: "A home for two with a private kitchen, a covered porch, and access to our community spaces.", images: [porch, bedroom, kitchen].map((url) => ({ url })), occupancy: "double", bathroom: "ensuite", furnished: true, enabled: true, features: ["Private kitchen", "Covered porch", "Wi-Fi", "Community spaces"] },
+    ];
+    return {
+        ...base,
+        companyName: "Cabin",
+        title: "Escape",
+        subTitle: "Find your place among the trees. Furnished homes, shared moments, and space to breathe.",
+        cta: "Book a stay",
+        heroImages: [exterior, porch, bedroom],
+        gallery: [living, kitchen, bedroom, porch, exterior, photo("photo-1543806053-7f9ac02e6631", 1200)],
+        aboutImages: [living, porch, bedroom],
+        aboutTitle: "A place to slow down, settle in, and feel a little closer to nature.",
+        about: ["Make room for slow mornings, new friendships, and a home that feels like yours from the first day.", "Our furnished homes bring private space and shared living together, with nature on your doorstep."],
+        aboutPageStory: "Cabin grew from a simple idea. Create comfortable homes where people can live independently, find community, and enjoy more time outside.",
+        aboutPageMission: "Make settling into a new home feel simple, thoughtful, and welcoming.",
+        aboutPageValues: "Respect for shared spaces, care for our surroundings, and a warm welcome for every resident.",
+        partnerHeading: "Grow with Cabin",
+        partnerContent: "Tell us about your property or community idea. We welcome thoughtful partnerships that bring people and places together.",
+        address: "Main Street, Catskill, NY 12414",
+        testimonials: [
+            { name: "Maya Chen", jobPosition: "Resident", rating: 5, image: "", testimony: "Having my own space and a friendly community nearby made moving here feel easy. The quiet mornings are my favourite part." },
+            { name: "Leo Martin", jobPosition: "Resident", rating: 5, image: "", testimony: "A comfortable home, a proper place to work, and a garden to switch off in. I settled in much faster than I expected." },
+        ],
+        faqs: [
+            { question: "What is included in my stay?", answer: "Each home is furnished. The room listing shows its amenities and shared facilities. Ask our team about utilities and services before confirming your stay." },
+            { question: "Can I arrange a viewing?", answer: "Yes. Send us your preferred dates through the stay enquiry form and our team will help arrange a visit." },
+            { question: "How long can I stay?", answer: "Tell us your planned move-in date and length of stay. We will share the available homes and current terms." },
+            { question: "Where are you located?", answer: "Our homes are in Catskill, New York, close to woodland walks and local cafés. Contact us for directions." },
+        ],
+        page: { ...base.page, homeCardHeading: "Cabin homes", homeCardSubText: "Thoughtfully furnished homes, close to nature.", heroHeading: "Find your home", heroSubHeading: "Private rooms, studios, and cabins with a community to come home to.", heroImage: exterior, cardImage: porch },
+        extra: { ...base.extra, coLivingRooms: rooms },
+        settings: { ...base.settings, tourBooking: { enabled: false }, stayPolicy: { checkInTime: "15:00", checkOutTime: "11:00", houseRules: ["Quiet hours after 10 PM", "No smoking indoors", "Leave shared spaces ready for the next resident"] } },
+    };
+})();
+
 const coPlaceDemo = (() => {
     const base = DEMO_BUSINESSES.workspace;
     const shared = "photo-1524758631624-e2822e304c36";
@@ -1117,7 +1353,139 @@ const italianoDemo = (() => {
     };
 })();
 
+// Orchard takes its visual cues from a calm residential editorial: generous interiors, warm
+// neutrals and real shared spaces rather than party-hostel imagery.
+const ORCHARD_PHOTOS = {
+    hero: [
+        "photo-1774186184495-dc059ef40c75",
+        "photo-1657040899606-b22f17a6afd5",
+        "photo-1632119289059-793dd347950f",
+    ],
+    rooms: [
+        "photo-1727706572437-4fcda0cbd66f",
+        "photo-1611892440504-42a792e24d32",
+        "photo-1635247049915-dff57098ea0f",
+        "photo-1630827807282-6be2a754361d",
+        "photo-1632119289059-793dd347950f",
+        "photo-1679939153964-2b9bd027f6e3",
+    ],
+    spaces: [
+        "photo-1651407825801-eec2dcbd86bd",
+        "photo-1615876234886-fd9a39fda97f",
+        "photo-1579609702289-ecbad32c2cf6",
+        "photo-1721614664523-5e0d3fc786d0",
+        "photo-1516197067152-381321bc78e1",
+        "photo-1764006195843-e6f9a5781500",
+    ],
+    neighbourhood: [
+        "photo-1521335751419-603f61523713",
+        "photo-1464198016405-33fd4527b89d",
+        "photo-1539635278303-d4002c07eae3",
+    ],
+};
+
+const ORCHARD_DEMO_BUSINESS = (() => {
+    const base = DEMO_BUSINESSES.hostel;
+    const rooms = (base.extra?.dorms || []);
+    const roomNames = [
+        "The Orchard Studio",
+        "The Garden Room",
+        "The Courtyard Twin",
+        "The Resident Suite",
+    ];
+    const roomCopy = [
+        "A light-filled studio with a calm palette, a proper desk and everything you need for a longer stay.",
+        "A generous room overlooking the garden, with soft linens and a quiet corner for slow mornings.",
+        "Two comfortable beds, thoughtful storage and an easy, social feel in the heart of the house.",
+        "Our most spacious option, with a separate sitting area and the best light in the building.",
+    ];
+    return {
+        ...base,
+        companyName: "Orchard House",
+        title: "Designed for distinction. Built for belonging.",
+        subTitle:
+            "Considered rooms, generous shared spaces and a neighbourhood that feels like yours from day one.",
+        cta: "Schedule a Tour",
+        heroImages: ORCHARD_PHOTOS.hero.map((id) => photo(id, 2000)),
+        gallery: [
+            ...ORCHARD_PHOTOS.spaces,
+            ...ORCHARD_PHOTOS.rooms,
+            ...ORCHARD_PHOTOS.neighbourhood,
+        ].map((id) => photo(id, 1500)),
+        aboutImages: [
+            ORCHARD_PHOTOS.spaces[0],
+            ORCHARD_PHOTOS.spaces[2],
+            ORCHARD_PHOTOS.rooms[1],
+        ].map((id) => photo(id, 1300)),
+        address: "18 Orchard Lane, Indiranagar, Bengaluru 560038",
+        aboutTitle: "A considered home in the middle of it all",
+        aboutPageStory:
+            "Orchard House began with a simple idea: a place to stay should feel as thoughtful as a place to live. We took a quiet lane-side building, gave it warm materials and honest finishes, and filled it with the spaces that make everyday life easier.",
+        about: [
+            "The rooms are calm, comfortable and full of practical details—good light, proper storage and beds made for real rest.",
+            "Downstairs, the lounge, garden kitchen and rooftop give you room to work, cook, meet people or simply take an afternoon for yourself.",
+        ],
+        founders: [
+            {
+                name: "Ananya Rao",
+                role: "Founder & Host",
+                bio: "Ananya designed Orchard around the things she always looked for in a long stay: quiet, light and a good kitchen.",
+                highlights: "Local design · Slow mornings",
+                image: faceCrop("photo-1573497019236-17f8177b81e8"),
+            },
+            {
+                name: "Dev Menon",
+                role: "House Manager",
+                bio: "Dev knows every coffee stop, grocery run and shortcut in the neighbourhood, and is happy to share them.",
+                highlights: "Neighbourhood guide · Always helpful",
+                image: faceCrop("photo-1576558656222-ba66febe3dec"),
+            },
+        ],
+        page: {
+            ...base.page,
+            heroHeading: "Rooms designed for real life",
+            heroSubHeading:
+                "Studios, twins and suites with warm interiors, practical storage and the same attention to detail throughout.",
+            heroImage: photo(ORCHARD_PHOTOS.rooms[0], 1900),
+            cardImage: photo(ORCHARD_PHOTOS.spaces[0], 1200),
+        },
+        extra: {
+            ...base.extra,
+            dorms: rooms.slice(0, 4).map((room, index) => ({
+                ...room,
+                title: roomNames[index],
+                description: roomCopy[index],
+                price: ["3,200", "3,800", "2,650", "5,400"][index],
+                priceUnit: "night",
+                badge: index === 3 ? "Most spacious" : index === 0 ? "Popular" : "",
+                images: [0, 1, 2, 3].map((offset) =>
+                    photoValue(
+                        ORCHARD_PHOTOS.rooms[
+                            (index * 2 + offset) % ORCHARD_PHOTOS.rooms.length
+                        ],
+                        1200,
+                    ),
+                ),
+                features: [
+                    "Quality linen",
+                    "Fast Wi-Fi",
+                    "Personal storage",
+                    "Reading light",
+                    "Weekly housekeeping",
+                    index === 3 ? "Separate sitting area" : "Shared kitchen access",
+                ],
+                roomKind: index >= 2 ? "private" : "dorm",
+                genderPolicy: "mixed",
+                capacity: [1, 1, 2, 2][index],
+                bedType: index === 2 ? "twin" : "queen",
+                bathroom: index === 3 ? "ensuite" : "shared",
+            })),
+        },
+    };
+})();
+
 const demoBusinessFor = (kind, themeVariant) => {
+    if (themeVariant === "cabin" && kind === "coLiving") return cabinDemo;
     if (themeVariant === "tinyhome" && kind === "coLiving") return tinyHomeDemo;
     if (themeVariant === "italiano" && kind === "menu") return italianoDemo;
     if (themeVariant === "restobar" && kind === "menu") return RESTOBAR_DEMO_BUSINESS;
@@ -1131,6 +1499,10 @@ const demoBusinessFor = (kind, themeVariant) => {
         return FLOWSPACE_DEMO_BUSINESS;
     if (themeVariant === "workscape" && kind === "meeting")
         return WORKSCAPE_DEMO_BUSINESS;
+    if (themeVariant === "wavex" && kind === "meeting")
+        return WAVEX_DEMO_BUSINESS;
+    if (themeVariant === "workhub" && kind === "meeting")
+        return WORKHUB_DEMO_BUSINESS;
     if (themeVariant === "brixspace" && kind === "meeting")
         return BRIXSPACE_DEMO_BUSINESS;
     if (themeVariant === "worpace" && kind === "workspace")
@@ -1144,8 +1516,12 @@ const demoBusinessFor = (kind, themeVariant) => {
         return TRAVIGO_DEMO_BUSINESS;
     if (themeVariant === "lodge" && kind === "hostel")
         return LODGE_DEMO_BUSINESS;
+    if (themeVariant === "destinflow" && kind === "hostel")
+        return DESTINFLOW_DEMO_BUSINESS;
     if (themeVariant === "cali-hostel" && kind === "hostel")
         return CALI_HOSTEL_DEMO_BUSINESS;
+    if (themeVariant === "orchard" && kind === "hostel")
+        return ORCHARD_DEMO_BUSINESS;
     if (themeVariant === "tulum" && kind === "coLiving")
         return tulumDemo;
     if (themeVariant === "grindelwald" && kind === "coLiving")
@@ -1210,6 +1586,7 @@ export const buildDemoPreviewDraft = (themeVariant, serviceNames = []) => {
         sectionOverrides: {},
         vertical: primary.vertical,
         companyName: primary.companyName,
+        companyLogo: primary.companyLogo || "",
         registeredCompanyName: `${primary.companyName} Pvt Ltd`,
         copyrightText: `© ${primary.companyName}`,
         title: primary.title,

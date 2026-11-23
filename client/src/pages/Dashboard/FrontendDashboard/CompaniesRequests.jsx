@@ -5,7 +5,8 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import ThreeDotMenu from "../../../components/ThreeDotMenu";
 import { toast } from "sonner";
 import { queryClient } from "../../../main";
-import { Search, Eye, X } from "lucide-react";
+import { Building2, Clock, Eye, Layers, Sparkles, Tags, X } from "lucide-react";
+import DataTable from "../../../components/Tables/DataTable";
 
 const emptyForm = {
   companyName: "",
@@ -20,6 +21,40 @@ const slugify = (str) =>
     .toLowerCase()
     .replace(/\s+/g, "-")
     .replace(/[^\w-]+/g, "");
+
+const formatDate = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "-"
+    : date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+};
+
+const getLogoUrl = (request) => {
+  const logo = request?.logo;
+  if (typeof logo === "string") return logo;
+  return logo?.url || null;
+};
+
+const getInitials = (value) =>
+  String(value || "Company")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const FILTER_CLASS = (active) =>
+  `rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${
+    active
+      ? "border-[#2563EB]/40 text-[#2563EB]"
+      : "border-slate-200/60 text-slate-600"
+  }`;
 
 const CompaniesRequests = () => {
   const axiosPrivate = useAxiosPrivate();
@@ -118,7 +153,10 @@ const CompaniesRequests = () => {
         r.companyName?.toLowerCase().includes(q) ||
         r.companyCountry?.toLowerCase().includes(q) ||
         r.companyState?.toLowerCase().includes(q) ||
-        r.companyCity?.toLowerCase().includes(q)
+        r.companyCity?.toLowerCase().includes(q) ||
+        (r.companiesListingRequestedTypes || []).some((type) =>
+          String(type).toLowerCase().includes(q),
+        )
       );
     });
   }, [requests, searchQuery, ageFilter]);
@@ -137,175 +175,236 @@ const CompaniesRequests = () => {
     return <div className="p-6 text-red-500">Failed to load requests.</div>;
   }
 
+  const statCards = [
+    {
+      label: "Total Requests",
+      value: requests.length,
+      icon: Building2,
+      accent: "border-l-slate-400",
+      labelClass: "text-slate-500",
+      iconClass: "bg-slate-50 text-slate-600",
+    },
+    {
+      label: "New This Week",
+      value: newCount,
+      icon: Sparkles,
+      accent: "border-l-blue-500",
+      labelClass: "text-blue-600",
+      iconClass: "bg-blue-50 text-blue-600",
+    },
+    {
+      label: "Product Types Requested",
+      value: typeCount,
+      icon: Tags,
+      accent: "border-l-violet-500",
+      labelClass: "text-violet-600",
+      iconClass: "bg-violet-50 text-violet-600",
+    },
+    {
+      label: "Showing",
+      value: filteredRequests.length,
+      icon: Layers,
+      accent: "border-l-emerald-500",
+      labelClass: "text-emerald-600",
+      iconClass: "bg-emerald-50 text-emerald-600",
+    },
+  ];
+
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div data-tour="companies-requests-stats" className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1 shrink-0">
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-slate-400">
+        <div
+          data-tour="companies-requests-stats"
+          className="grid grid-cols-2 gap-3 mb-1 shrink-0 md:grid-cols-4"
+        >
+          {statCards.map(({ label, value, icon: Icon, accent, labelClass, iconClass }) => (
+            <div
+              key={label}
+              className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm transition-all hover:shadow-md ${accent}`}
+            >
               <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
-                  Total Requests
+                <p className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${labelClass}`}>
+                  {label}
                 </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{requests.length}</p>
+                <p className="text-[15px] font-pmedium text-slate-900">{value}</p>
+              </div>
+              <div className={`shrink-0 rounded-2xl p-2 ${iconClass}`}>
+                <Icon size={16} />
               </div>
             </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-blue-500">
-              <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-blue-600 uppercase tracking-widest mb-1">
-                  New This Week
-                </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{newCount}</p>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-violet-500">
-              <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-violet-600 uppercase tracking-widest mb-1">
-                  Product Types Requested
-                </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{typeCount}</p>
-              </div>
-            </div>
+          ))}
         </div>
 
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-          <div data-tour="companies-requests-filters" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            {[
-              { key: "all", label: "All" },
-              { key: "new", label: "New" },
-              { key: "older", label: "Older" },
-            ].map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setAgeFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${
-                  ageFilter === f.key
-                    ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200"
-                    : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"
-                }`}
+        <DataTable
+          rows={filteredRequests}
+          rowKey={(request) => request.companyId}
+          minWidth={1050}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search requests, types, city..."
+          filters={
+            <div data-tour="companies-requests-filters">
+              <select
+                value={ageFilter}
+                onChange={(event) => setAgeFilter(event.target.value)}
+                aria-label="Filter requests by age"
+                className={FILTER_CLASS(ageFilter !== "all")}
               >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="w-full xl:max-w-md">
-            <div className="relative w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-              <input
-                type="text"
-                placeholder="Search requests..."
-                className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+                <option value="all">All requests</option>
+                <option value="new">New this week</option>
+                <option value="older">Older</option>
+              </select>
             </div>
-          </div>
-        </div>
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-              <tr>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Logo</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Company Name</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Requested Types</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Continent</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Country</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">State</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">City</th>
-                <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRequests.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="text-center py-20 text-slate-400 font-pmedium">No requests found.</td>
-                </tr>
-              ) : (
-                filteredRequests.map((request, requestIndex) => {
-                  const logoUrl = typeof request.logo === "string" ? request.logo : request.logo?.url;
-                  return (
-                    <tr key={request.companyId} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-5 py-4 align-top">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain" />
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 align-top">
-                        <span
-                          className="text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
-                          onClick={() =>
-                            navigate(`/dashboard/companies/requests/${slugify(request.companyName)}`, {
-                              state: {
-                                companyId: request.companyId,
-                                companyName: request.companyName,
-                                companyCity: request.companyCity,
-                                companyState: request.companyState,
-                                companyCountry: request.companyCountry,
-                                companyContinent: request.companyContinent,
-                              },
-                            })
-                          }
-                        >
-                          {request.companyName || "-"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 align-top">
-                        {request.companiesListingRequestedTypes?.length ? (
-                          <div className="flex flex-wrap gap-1 max-w-[160px]">
-                            {request.companiesListingRequestedTypes.map((type) => (
-                              <span
-                                key={type}
-                                className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-pmedium capitalize whitespace-nowrap"
-                              >
-                                {type}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-xs">-</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyContinent || "-"}</td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyCountry || "-"}</td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyState || "-"}</td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{request.companyCity || "-"}</td>
-                      <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => openReview(request)}
-                            title="Review & Create"
-                            className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                          >
-                            <Eye size={15} strokeWidth={2.5} />
-                          </button>
-                          <ThreeDotMenu
-                            rowId={request.companyId}
-                            dataTour={requestIndex === 0 ? "companies-requests-more-actions" : undefined}
-                            menuItems={[
-                              {
-                                label: "Review & Create",
-                                onClick: () => openReview(request),
-                              },
-                              {
-                                label: "Reject",
-                                onClick: () => rejectRequest(request.companyId),
-                              },
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+          }
+          emptyText={
+            requests.length === 0
+              ? "No listing requests yet."
+              : "No requests match these filters."
+          }
+          emptyIcon={Building2}
+          tableProps={{ "data-tour": "companies-requests-table" }}
+          columns={[
+            {
+              key: "company",
+              header: "Company",
+              minWidth: 240,
+              render: (request) => {
+                const logoUrl = getLogoUrl(request);
+                return (
+                  <div className="flex items-center gap-3">
+                    {logoUrl ? (
+                      <img
+                        src={logoUrl}
+                        alt={`${request.companyName || "Company"} logo`}
+                        className="h-9 w-9 shrink-0 rounded-xl border border-slate-100 bg-white object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                        {getInitials(request.companyName)}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        title={request.companyName || "-"}
+                        onClick={() =>
+                          navigate(`/dashboard/companies/requests/${slugify(request.companyName)}`, {
+                            state: {
+                              companyId: request.companyId,
+                              companyName: request.companyName,
+                              companyCity: request.companyCity,
+                              companyState: request.companyState,
+                              companyCountry: request.companyCountry,
+                              companyContinent: request.companyContinent,
+                            },
+                          })
+                        }
+                        className="block max-w-[190px] truncate text-left text-[12px] font-pmedium text-blue-600 hover:underline"
+                      >
+                        {request.companyName || "-"}
+                      </button>
+                      {request.companiesListingRequestedAt ? (
+                        <p className="max-w-[190px] truncate text-[10px] text-slate-400">
+                          Requested {formatDate(request.companiesListingRequestedAt)}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              },
+            },
+            {
+              key: "types",
+              header: "Requested Types",
+              minWidth: 180,
+              render: (request) =>
+                request.companiesListingRequestedTypes?.length ? (
+                  <div className="flex max-w-[200px] flex-wrap gap-1">
+                    {request.companiesListingRequestedTypes.map((type) => (
+                      <span
+                        key={type}
+                        className="whitespace-nowrap rounded-md bg-blue-50 px-2 py-0.5 text-[10px] font-pmedium capitalize text-blue-700"
+                      >
+                        {type}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-slate-400">-</span>
+                ),
+            },
+            {
+              key: "location",
+              header: "Location",
+              minWidth: 200,
+              render: (request) => (
+                <div className="min-w-0">
+                  <p className="max-w-[230px] truncate text-slate-700">
+                    {[request.companyCity, request.companyState].filter(Boolean).join(", ") || "-"}
+                  </p>
+                  <p className="max-w-[230px] truncate text-[10px] text-slate-400">
+                    {[request.companyCountry, request.companyContinent]
+                      .filter(Boolean)
+                      .join(" · ") || "Country not set"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "requestedAt",
+              header: "Requested",
+              render: (request) => (
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-slate-600">
+                  <Clock size={12} className="shrink-0 text-slate-400" />
+                  {formatDate(request.companiesListingRequestedAt)}
+                </span>
+              ),
+            },
+            {
+              key: "age",
+              header: "Age",
+              align: "center",
+              render: (request) => (
+                <span
+                  className={`inline-flex w-max items-center rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${
+                    isNewRequest(request)
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {isNewRequest(request) ? "New" : "Backlog"}
+                </span>
+              ),
+            },
+          ]}
+          actions={(request, index) => (
+            <>
+              <button
+                type="button"
+                onClick={() => openReview(request)}
+                title="Review & Create"
+                aria-label={`Review ${request.companyName || "request"}`}
+                className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+              >
+                <Eye size={14} />
+              </button>
+              <ThreeDotMenu
+                rowId={request.companyId}
+                dataTour={index === 0 ? "companies-requests-more-actions" : undefined}
+                menuItems={[
+                  {
+                    label: "Review & Create",
+                    onClick: () => openReview(request),
+                  },
+                  {
+                    label: "Reject",
+                    onClick: () => rejectRequest(request.companyId),
+                  },
+                ]}
+              />
+            </>
+          )}
+        />
       </div>
 
       {reviewTarget ? (

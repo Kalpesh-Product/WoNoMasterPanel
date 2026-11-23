@@ -46,10 +46,12 @@ const planPaymentLinkSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    // Basic never generates a payment link (it's free) — only these two.
+    // Basic only generates a payment link once staff set a real price for
+    // it above $0 (see sendPlanPaymentLink's guard) — until then it stays
+    // free and never reaches here.
     plan: {
       type: String,
-      enum: ["professional", "custom"],
+      enum: ["basic", "professional", "custom"],
       required: true,
     },
     // The plan active right before THIS payment (null for the very first
@@ -134,18 +136,35 @@ const planPaymentLinkSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    // Required for a one-off Payment Link row, absent for a subscription
+    // row (trial start / renewal / cancellation), which has no Payment
+    // Link at all — see stripeSubscriptionId/stripeCustomerId below.
     stripePaymentLinkId: {
       type: String,
-      required: true,
       unique: true,
+      sparse: true,
       index: true,
     },
     stripePaymentLinkUrl: {
       type: String,
-      required: true,
       trim: true,
+      default: "",
     },
     stripeCheckoutSessionId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Set on a subscription-sourced row (Stripe Checkout in subscription
+    // mode — trial start, and every invoice.paid renewal after it) instead
+    // of stripePaymentLinkId/stripePaymentLinkUrl above.
+    stripeSubscriptionId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    stripeCustomerId: {
       type: String,
       trim: true,
       default: "",

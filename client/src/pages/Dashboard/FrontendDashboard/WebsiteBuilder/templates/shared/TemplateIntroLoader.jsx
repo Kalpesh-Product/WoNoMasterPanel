@@ -10,12 +10,16 @@ const LOADER_SPECS = {
   haven: { label: "Haven", kicker: "Come on in", motif: "haven", bg: "#f4f1ea", fg: "#26312b", accent: "#5b7f6a", font: "'Fraunces', Georgia, serif" },
   camelia: { label: "Camelia", kicker: "A quieter arrival", motif: "camelia", bg: "#f6f3ec", fg: "#2b2a26", accent: "#8a9a86", font: "'Poppins', sans-serif" },
   commons: { label: "Commons", kicker: "Making space", motif: "commons", bg: "#f6f7f9", fg: "#0b1f3a", accent: "#ffc21a", font: "'Plus Jakarta Sans', sans-serif" },
+  wavex: { label: "WaveX Rooms", kicker: "Your room is ready", motif: "huddle", bg: "#ffffff", fg: "#2b2b2f", accent: "#ed4e36", font: "'Inter', sans-serif" },
   huddle: { label: "Huddle", kicker: "Your room is nearly ready", motif: "huddle", bg: "#f5f6f8", fg: "#14161a", accent: "#3b6cf0", font: "'Sora', sans-serif" },
+  workhub: { label: "WorkHub", kicker: "Preparing your workspace", motif: "huddle", bg: "#f0f2fb", fg: "#242839", accent: "#285fe2", font: "'Outfit', sans-serif" },
   "warm-organic": { label: "Warm Organic", kicker: "Rooted in good things", motif: "organic", bg: "#f1e6d3", fg: "#2b211a", accent: "#b85c38", font: "Georgia, serif" },
   "emerald-studio": { label: "Emerald Studio", kicker: "Shaping something clear", motif: "emerald", bg: "#36577f", fg: "#ffffff", accent: "#dbeafe", font: "'Fraunces', Georgia, serif" },
   "figma-make": { label: "Emerald Studio", kicker: "Shaping something clear", motif: "emerald", bg: "#36577f", fg: "#ffffff", accent: "#dbeafe", font: "'Fraunces', Georgia, serif" },
   lodge: { label: "Lodge", kicker: "Settle in", motif: "lodge", bg: "#f5f3ee", fg: "#1c1f21", accent: "#7fa388", font: "'Inter', sans-serif" },
   "cali-hostel": { label: "Cali Hostel", kicker: "Checking in", motif: "cali", bg: "#f2eadb", fg: "#171711", accent: "#e86d43", font: "'Instrument Serif', Georgia, serif" },
+  orchard: { label: "Orchard Living", kicker: "Welcome home", motif: "lodge", bg: "#fafaf9", fg: "#353b41", accent: "#9aa88f", font: "'Outfit', sans-serif" },
+  destinflow: { label: "DestinFlow", kicker: "Your stay is waiting", motif: "lodge", bg: "#ffffff", fg: "#666b73", accent: "#3ba7da", font: "'Cormorant Garamond', Georgia, serif" },
 };
 
 const playedLoaders = new Set();

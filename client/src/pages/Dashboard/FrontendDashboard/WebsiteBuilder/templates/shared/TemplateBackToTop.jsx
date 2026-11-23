@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 const BACK_TO_TOP_SPECS = {
+  cabin: { bg: "#181916", fg: "#ffffff", border: "#ffffff", radius: "50%", shadow: "none", font: "'DM Sans', sans-serif" },
   default: { bg: "#ffffff", fg: "#1f2937", border: "#dbe3ef", radius: "14px", shadow: "0 14px 34px rgba(30,64,175,.16)", font: "'Poppins', sans-serif" },
   "minimal-swiss": { bg: "#050505", fg: "#ffffff", border: "#050505", radius: "0", shadow: "6px 6px 0 #d7263d", font: "'Inter', sans-serif" },
   "fresh-studio": { bg: "#0e0e0e", fg: "#ffffff", border: "#d94b4b", radius: "5px", shadow: "0 14px 32px rgba(14,14,14,.24)", font: "'Inter', sans-serif" },
@@ -11,9 +12,11 @@ const BACK_TO_TOP_SPECS = {
   haven: { bg: "#f4f1ea", fg: "#26312b", border: "#5b7f6a", radius: "28px 28px 8px 8px", shadow: "0 16px 34px rgba(38,49,43,.2)", font: "'Fraunces', Georgia, serif" },
   camelia: { bg: "#f6f3ec", fg: "#2b2a26", border: "#8a9a86", radius: "50%", shadow: "0 16px 34px rgba(43,42,38,.18)", font: "'Poppins', sans-serif" },
   commons: { bg: "#ffc21a", fg: "#0b1f3a", border: "#0b1f3a", radius: "10px", shadow: "5px 5px 0 #0b1f3a", font: "'Plus Jakarta Sans', sans-serif" },
+  wavex: { bg: "#ed4e36", fg: "#ffffff", border: "#ed4e36", radius: "6px", shadow: "0 16px 34px rgba(237,78,54,.3)", font: "'Inter', sans-serif" },
   huddle: { bg: "#3b6cf0", fg: "#ffffff", border: "#3b6cf0", radius: "50%", shadow: "0 16px 34px rgba(59,108,240,.3)", font: "'Sora', sans-serif" },
   flowspace: { bg: "#d9ff4f", fg: "#10110f", border: "#10110f", radius: "999px", shadow: "4px 4px 0 #10110f", font: "'Inter', sans-serif" },
   workscape: { bg: "#ffffff", fg: "#20201f", border: "#a99d93", radius: "50%", shadow: "0 15px 34px rgba(32,32,31,.18)", font: "'Inter', sans-serif" },
+  workhub: { bg: "#285fe2", fg: "#ffffff", border: "#285fe2", radius: "4px", shadow: "0 16px 34px rgba(40,95,226,.3)", font: "'Outfit', sans-serif" },
   brixspace: { bg: "#078b52", fg: "#ffffff", border: "#ffffff", radius: "18px", shadow: "0 16px 34px rgba(7,139,82,.28)", font: "'DM Sans', sans-serif" },
   worpace: { bg: "#f7f7e8", fg: "#11110f", border: "#11110f", radius: "5px", shadow: "5px 5px 0 rgba(17,17,15,.9)", font: "'Inter', sans-serif" },
   qerja: { bg: "#f3c441", fg: "#003f3a", border: "#003f3a", radius: "50%", shadow: "0 16px 34px rgba(0,63,58,.25)", font: "'Manrope', sans-serif" },
@@ -21,6 +24,8 @@ const BACK_TO_TOP_SPECS = {
   "warm-organic": { bg: "#2b211a", fg: "#f1e6d3", border: "#b85c38", radius: "62% 38% 58% 42%", shadow: "0 16px 34px rgba(43,33,26,.25)", font: "Georgia, serif" },
   "emerald-studio": { bg: "rgba(54,87,127,.9)", fg: "#ffffff", border: "rgba(255,255,255,.45)", radius: "16px", shadow: "0 18px 38px rgba(24,44,70,.3)", font: "'Fraunces', Georgia, serif" },
   "figma-make": { bg: "rgba(54,87,127,.9)", fg: "#ffffff", border: "rgba(255,255,255,.45)", radius: "16px", shadow: "0 18px 38px rgba(24,44,70,.3)", font: "'Fraunces', Georgia, serif" },
+  orchard: { bg: "#fafaf9", fg: "#353b41", border: "#9aa88f", radius: "50%", shadow: "0 16px 34px rgba(53,59,65,.16)", font: "'Outfit', sans-serif" },
+  destinflow: { bg: "#151819", fg: "#ffffff", border: "#3ba7da", radius: "0", shadow: "0 16px 34px rgba(21,24,25,.28)", font: "'Alegreya Sans', sans-serif" },
 };
 
 const TEMPLATES_WITH_OWN_BUTTON = new Set([

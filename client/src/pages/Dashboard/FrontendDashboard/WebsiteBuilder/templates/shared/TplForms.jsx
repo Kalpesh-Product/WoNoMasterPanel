@@ -92,7 +92,7 @@ export const RoleSection = ({ title, text, asList }) => {
         </ul>) : (<p className="tp-muted mt-3 whitespace-pre-wrap text-[15px] leading-relaxed">{text}</p>)}
     </div>);
 };
-export const ApplyForm = () => {
+export const ApplyForm = ({ submitLabel = "Submit application", centered = false } = {}) => {
     const { t } = useTpl();
     const form = t.careersApplyForm;
     const set = (key, transform) => (event) => t.setCareersApplyForm((prev) => ({ ...prev, [key]: transform ? transform(event.target.value) : event.target.value }));
@@ -157,8 +157,8 @@ export const ApplyForm = () => {
           </div>);
         })}
       {t.careersApplyError ? <p className="text-[13px] sm:col-span-2" role="alert" style={{ color: "#c0392b" }}>{t.careersApplyError}</p> : null}
-      <div className="sm:col-span-2">
-        <button type="submit" disabled={t.careersApplySubmitting} className="tp-btn tp-btn-primary w-full sm:w-auto">{t.careersApplySubmitting ? "Submitting…" : "Submit application"}</button>
+      <div className={`sm:col-span-2${centered ? " flex justify-center" : ""}`}>
+        <button type="submit" disabled={t.careersApplySubmitting} className={`tp-btn tp-btn-primary ${centered ? "w-auto" : "w-full sm:w-auto"}`}>{t.careersApplySubmitting ? "Submitting…" : submitLabel}</button>
       </div>
     </form>);
 };

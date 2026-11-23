@@ -2,32 +2,27 @@ import React, { useEffect, useState } from "react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import { Controller, useForm } from "react-hook-form";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import Input from '@mui/joy/Input';
-import Select from '@mui/joy/Select';
-import Option from '@mui/joy/Option';
-import Textarea from '@mui/joy/Textarea';
 import { toast } from "sonner";
 import PrimaryButton from "../../../components/PrimaryButton";
+import SecondaryButton from "../../../components/SecondaryButton";
+import WebsiteFormField from "../../../components/WebsiteFormField";
 import { City, Country, State } from "country-state-city";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import Button from '@mui/joy/Button';
-import SvgIcon from '@mui/joy/SvgIcon';
-import { styled } from '@mui/joy';
+import { Building2, Loader2, Trash2, Upload } from "lucide-react";
+import { statusPillClass } from "../../../lib/status-pill";
 
-const VisuallyHiddenInput = styled('input')`
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  height: 1px;
-  overflow: hidden;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  white-space: nowrap;
-  width: 1px;
-`;
+// A section heading inside the form grid — same treatment as the Nomad
+// listing edit form's "Reviews" divider.
+const SectionTitle = ({ title }) => (
+  <div className="col-span-1 mt-2 border-b border-gray-300 py-3 md:col-span-2">
+    <span className="text-lg font-medium text-primary">{title}</span>
+  </div>
+);
 
-const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
+// Logo picker: preview of the stored logo plus a native file input, styled
+// like the other labelled fields on this form.
+const LogoUploadField = ({ value, onChange, currentLogoUrl }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   useEffect(() => {
@@ -35,80 +30,69 @@ const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
       const objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
-    } else {
-      setPreviewUrl(null);
     }
+    setPreviewUrl(null);
   }, [value]);
 
-  const hasLogo = value || currentLogoUrl;
+  const resolvedLogo = previewUrl || currentLogoUrl || null;
 
   return (
-    <div className="flex flex-col gap-2 w-full mt-4">
-      <label className="text-sm text-slate-700">Company Logo</label>
-      <div className="flex items-center gap-3 h-[40px]">
-        <Button
-          component="label"
-          role={undefined}
-          tabIndex={-1}
-          variant="outlined"
-          color="neutral"
-          size="sm"
-          className="h-full"
-          startDecorator={
-            <SvgIcon>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
-                />
-              </svg>
-            </SvgIcon>
-          }
-        >
-          {hasLogo ? "Change Logo" : "Upload Logo"}
-          <VisuallyHiddenInput
-            type="file"
-            accept="image/*"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) {
-                onChange(file);
-              }
-            }}
-          />
-        </Button>
-
-        {hasLogo && (
-          <div className="flex items-center gap-2 h-full">
+    <div className="col-span-1 flex min-w-0 flex-col md:col-span-2">
+      <label
+        htmlFor="companyLogo"
+        className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest"
+      >
+        Company Logo
+      </label>
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/60 bg-white">
+          {resolvedLogo ? (
             <img
-              src={previewUrl || currentLogoUrl}
-              alt="Company Logo Preview"
-              className="w-10 h-10 rounded-md border border-slate-200 object-contain bg-white shadow-sm"
+              src={resolvedLogo}
+              alt="Company logo preview"
+              className="h-full w-full object-contain"
             />
-            {value && (
-              <span className="text-xs text-slate-500 max-w-[150px] truncate">
-                {value.name}
-              </span>
-            )}
-            {value && (
+          ) : (
+            <Building2 size={20} className="text-slate-300" />
+          )}
+        </div>
+        <div className="flex min-w-0 flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="companyLogo"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-3 py-2 text-[11px] font-pmedium uppercase tracking-wider text-slate-600 transition hover:border-[#2563EB] hover:text-[#2563EB]"
+            >
+              <Upload size={13} />
+              {resolvedLogo ? "Change logo" : "Upload logo"}
+            </label>
+            {value instanceof File ? (
               <button
                 type="button"
                 onClick={() => onChange(null)}
-                className="text-xs text-red-600 hover:text-red-800 font-medium ml-1"
+                className="inline-flex items-center gap-1 text-[11px] font-pmedium text-rose-600 hover:text-rose-800"
               >
+                <Trash2 size={12} />
                 Remove
               </button>
-            )}
+            ) : null}
           </div>
-        )}
+          <p className="max-w-[260px] truncate text-[10px] text-slate-400">
+            {value instanceof File
+              ? value.name
+              : "Leave unchanged to keep the current logo."}
+          </p>
+        </div>
       </div>
+      <input
+        id="companyLogo"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onChange(file);
+        }}
+      />
     </div>
   );
 };
@@ -119,43 +103,53 @@ const parseCommaSeparatedList = (value = "") =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+// Single place that maps the fetched company onto form defaults, so both the
+// initial prefill and "Reset" restore exactly what the server returned.
+const toFormValues = (company) => {
+  const selectedServices = company?.selectedServices || {};
+  return {
+    companyName: company?.companyName || "",
+    registeredEntityName: company?.registeredEntityName || "",
+    industry: company?.industry || "",
+    companySize: company?.companySize || "",
+    companyCity: company?.companyCity || "",
+    companyState: company?.companyState || "",
+    companyCountry: company?.companyCountry || "",
+    companyContinent: company?.companyContinent || "",
+    websiteURL: company?.websiteURL || company?.websiteLink || "",
+    linkedinURL: company?.linkedinURL || "",
+    selectedApps: (selectedServices.apps || [])
+      .map((item) => item?.appName)
+      .filter(Boolean)
+      .join(", "),
+    selectedModules: (selectedServices.modules || [])
+      .map((item) => item?.moduleName)
+      .filter(Boolean)
+      .join(", "),
+    selectedDefaults: (selectedServices.defaults || [])
+      .map((item) => item?.name)
+      .filter(Boolean)
+      .join(", "),
+    pocName: company?.pocName || "",
+    pocDesignation: company?.pocDesignation || "",
+    pocEmail: company?.pocEmail || "",
+    pocPhone: company?.pocPhone || "",
+    pocLinkedInProfile: company?.pocLinkedInProfile || "",
+    pocLanguages: (company?.pocLanguages || []).join(", "),
+    pocAddress: company?.pocAddress || "",
+    pocProfileImage: company?.pocProfileImage || "",
+    companyLogo: null,
+    isActive: company?.isActive ?? true,
+  };
+};
+
 const EditCompany = () => {
   const { companyId } = useParams();
   const axiosPrivate = useAxiosPrivate();
+  const navigate = useNavigate();
 
   const { control, handleSubmit, reset, setValue, watch } = useForm({
-    defaultValues: {
-      // name: "",
-      // email: "",
-      // mobile: "",
-      // country: "",
-      // state: "",
-      // city: "",
-      companyName: "",
-      registeredEntityName: "",
-      industry: "",
-      companySize: "",
-      companyCity: "",
-      companyState: "",
-      companyCountry: "",
-      companyContinent: "",
-      websiteURL: "",
-      linkedinURL: "",
-      selectedApps: "",
-      selectedModules: "",
-      selectedDefaults: "",
-
-      pocName: "",
-      pocDesignation: "",
-      pocEmail: "",
-      pocPhone: "",
-      pocLinkedInProfile: "",
-      pocLanguages: "",
-      pocAddress: "",
-      pocProfileImage: "",
-      companyLogo: null,
-      isActive: true,
-    },
+    defaultValues: toFormValues(null),
   });
 
   const {
@@ -183,48 +177,14 @@ const EditCompany = () => {
 
   useEffect(() => {
     if (!company) return;
-
-    const selectedServices = company?.selectedServices || {};
-    reset({
-      companyName: company.companyName || "",
-      registeredEntityName: company.registeredEntityName || "",
-      industry: company.industry || "",
-      companySize: company.companySize || "",
-      companyCity: company.companyCity || "",
-      companyState: company.companyState || "",
-      companyCountry: company.companyCountry || "",
-      companyContinent: company.companyContinent || "",
-      websiteURL: company.websiteURL || company.websiteLink || "",
-      linkedinURL: company.linkedinURL || "",
-      selectedApps: (selectedServices.apps || [])
-        .map((item) => item?.appName)
-        .filter(Boolean)
-        .join(", "),
-      selectedModules: (selectedServices.modules || [])
-        .map((item) => item?.moduleName)
-        .filter(Boolean)
-        .join(", "),
-      selectedDefaults: (selectedServices.defaults || [])
-        .map((item) => item?.name)
-        .filter(Boolean)
-        .join(", "),
-      pocName: company.pocName || "",
-      pocDesignation: company.pocDesignation || "",
-      pocEmail: company.pocEmail || "",
-      pocPhone: company.pocPhone || "",
-      pocLinkedInProfile: company.pocLinkedInProfile || "",
-      pocLanguages: (company.pocLanguages || []).join(", "),
-      pocAddress: company.pocAddress || "",
-      pocProfileImage: company.pocProfileImage || "",
-      isActive: company.isActive ?? true,
-    });
+    reset(toFormValues(company));
   }, [company, reset]);
 
   useEffect(() => {
     if (isCompanyError) {
       toast.error(
         companyError?.response?.data?.message ||
-        "Failed to fetch company details",
+          "Failed to fetch company details",
       );
     }
   }, [isCompanyError, companyError]);
@@ -294,221 +254,77 @@ const EditCompany = () => {
     updateCompany(formData);
   };
 
+  const currentLogoUrl = company?.logo?.url || null;
+  const resetToSaved = () => reset(toFormValues(company));
+
   return (
     <div className="p-4">
       <PageFrame>
-        <h1 className="text-title text-primary font-pmedium uppercase mb-4">
-          Edit Company
-        </h1>
-        {isCompanyLoading ? <p>Loading company details...</p> : null}
+        <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-title text-primary font-pmedium uppercase">
+              Edit Company
+            </h1>
+            <p className="mt-1 truncate text-xs font-pmedium text-slate-500">
+              {company?.companyName || "Company details"}
+              {companyId ? ` · ${companyId}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {company ? (
+              <span
+                className={statusPillClass(
+                  company.isRegistered ? "Active" : "Inactive",
+                )}
+              >
+                {company.isRegistered ? "Active" : "Inactive"}
+              </span>
+            ) : null}
+            <SecondaryButton
+              type="button"
+              title="Back"
+              handleSubmit={() => navigate(-1)}
+            />
+          </div>
+        </div>
+
+        {isCompanyLoading ? (
+          <p className="flex items-center gap-2 py-6 text-[12px] font-pmedium text-slate-400">
+            <Loader2 size={14} className="animate-spin" />
+            Loading company details...
+          </p>
+        ) : null}
+
         <form
-          className="grid grid-cols-1 gap-4 md:grid-cols-2"
+          className="grid grid-cols-1 gap-x-4 md:grid-cols-2"
           onSubmit={handleSubmit(onSubmit)}
         >
-          {/* Personal Details */}
-          {/* <Controller
-            name="name"
-            control={control}
-            rules={{ required: "Full Name is required" }}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Full Name"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
+          <SectionTitle title="Company Details" />
 
-          <Controller
-            name="email"
-            control={control}
-            rules={{
-              required: "Email is required",
-              pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
-            }}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Email"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="mobile"
-            control={control}
-            rules={{ required: "Mobile number is required" }}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Mobile"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          /> */}
-
-          {/* Location */}
-          {/* <Controller
-            name="country"
-            control={control}
-            // rules={{ required: "Country is required" }}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                select
-                label="Country"
-                fullWidth
-                margin="normal"
-                variant="standard"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  field.onChange(value); // update form with country name
-                  setValue("state", ""); // reset state
-                  setValue("city", ""); // reset city
-                }}
-              >
-                {Country.getAllCountries().map((c) => (
-                  <MenuItem key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-
-          <Controller
-            name="state"
-            control={control}
-            // rules={{ required: "State is required" }}
-            render={({ field, fieldState }) => {
-              const countryName = watch("country");
-              const countryObj = Country.getAllCountries().find(
-                (c) => c.name === countryName
-              );
-              const states = countryObj
-                ? State.getStatesOfCountry(countryObj.isoCode)
-                : [];
-
-              return (
-                <TextField
-                  {...field}
-                  select
-                  label="State"
-                  fullWidth
-                  margin="normal"
-                  variant="standard"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  disabled={!countryObj}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    field.onChange(value); // store state name
-                    setValue("city", ""); // reset city when state changes
-                  }}
-                >
-                  {states.map((s) => (
-                    <MenuItem key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              );
-            }}
-          />
-
-          <Controller
-            name="city"
-            control={control}
-            // rules={{ required: "City is required" }}
-            render={({ field, fieldState }) => {
-              const countryName = watch("country");
-              const stateName = watch("state");
-
-              const countryObj = Country.getAllCountries().find(
-                (c) => c.name === countryName
-              );
-              const stateObj =
-                countryObj &&
-                State.getStatesOfCountry(countryObj.isoCode).find(
-                  (s) => s.name === stateName
-                );
-
-              const cities =
-                countryObj && stateObj
-                  ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode)
-                  : [];
-
-              return (
-                <TextField
-                  {...field}
-                  select
-                  label="City"
-                  fullWidth
-                  margin="normal"
-                  variant="standard"
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  disabled={!stateObj}
-                >
-                  {cities.map((city) => (
-                    <MenuItem key={city.name} value={city.name}>
-                      {city.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              );
-            }}
-          /> */}
-
-          {/* Company Info */}
           <Controller
             name="companyName"
             control={control}
             rules={{ required: "Company Name is required" }}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Company Name</label>
-                <Input
-                  {...field}
-                  placeholder="Company Name"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Company Name"
+                required
+                placeholder="Company Name"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
-          {/* companyLogo (single) */}
-          {/* logo preview */}
           <Controller
-            name="companyLogo"
+            name="registeredEntityName"
             control={control}
             render={({ field }) => (
-              <LogoUploadInput
-                value={field.value}
-                onChange={field.onChange}
-                currentLogoUrl={company?.logo?.url}
+              <WebsiteFormField
+                field={field}
+                label="Registered Entity Name"
+                placeholder="Registered Entity Name"
               />
             )}
           />
@@ -517,112 +333,63 @@ const EditCompany = () => {
             name="industry"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Industry</label>
-                <Input
-                  {...field}
-                  placeholder="Industry"
-                  variant="outlined"
-                  color="neutral"
-                // error={!!fieldState.error}
-                />
-                {/* {fieldState.error ? ( */}
-                <span className="text-xs text-red-600">
-                  {/* {fieldState.error.message} */}
-                </span>
-                {/* ) : null} */}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Industry"
+                placeholder="e.g. Hospitality"
+              />
             )}
           />
 
           <Controller
             name="companySize"
             control={control}
-            render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Company Size</label>
-                <Input
-                  {...field}
-                  placeholder="Company Size"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
-            )}
-          />
-          <Controller
-            name="registeredEntityName"
-            control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Registered Entity Name</label>
-                <Input
-                  {...field}
-                  placeholder="Registered Entity Name"
-                  variant="outlined"
-                  color="neutral"
-                // error={!!fieldState.error}
-                />
-                {/* {fieldState.error ? ( */}
-                <span className="text-xs text-red-600">
-                  {/* {fieldState.error.message} */}
-                </span>
-                {/* ) : null} */}
-              </div>
-            )}
-          />
-
-          {/* <Controller
-            name="companyType"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Company Type"
-                fullWidth
-                margin="normal"
-                variant="standard"
+              <WebsiteFormField
+                field={field}
+                label="Company Size"
+                placeholder="e.g. 51-200"
               />
             )}
-          /> */}
+          />
 
-          {/* Company Location */}
+          <Controller
+            name="companyLogo"
+            control={control}
+            render={({ field }) => (
+              <LogoUploadField
+                value={field.value}
+                onChange={field.onChange}
+                currentLogoUrl={currentLogoUrl}
+              />
+            )}
+          />
+
+          <SectionTitle title="Location" />
+
           <Controller
             name="companyCountry"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Company Country</label>
-                <Select
-                  value={field.value || null}
-                  placeholder="Select Country"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                  onChange={(_, val) => {
-                    field.onChange(val);
-                    setValue("companyState", "");
-                    setValue("companyCity", "");
-                  }}
-                >
-                  {Country.getAllCountries().map((c) => (
-                    <Option key={c.isoCode} value={c.name}>
-                      {c.name}
-                    </Option>
-                  ))}
-                </Select>
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                select
+                label="Company Country"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+                onChange={(event) => {
+                  field.onChange(event);
+                  setValue("companyState", "");
+                  setValue("companyCity", "");
+                }}
+              >
+                <option value="">Select Country</option>
+                {Country.getAllCountries().map((c) => (
+                  <option key={c.isoCode} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </WebsiteFormField>
             )}
           />
 
@@ -639,32 +406,25 @@ const EditCompany = () => {
                 : [];
 
               return (
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  <label className="text-sm text-slate-700">Company State</label>
-                  <Select
-                    value={field.value || null}
-                    placeholder="Select State"
-                    variant="outlined"
-                    color="neutral"
-                    disabled={!companyCountryObj}
-                    error={!!fieldState.error}
-                    onChange={(_, val) => {
-                      field.onChange(val);
-                      setValue("companyCity", "");
-                    }}
-                  >
-                    {states.map((s) => (
-                      <Option key={s.isoCode} value={s.name}>
-                        {s.name}
-                      </Option>
-                    ))}
-                  </Select>
-                  {fieldState.error ? (
-                    <span className="text-xs text-red-600">
-                      {fieldState.error.message}
-                    </span>
-                  ) : null}
-                </div>
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Company State"
+                  disabled={!companyCountryObj}
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    setValue("companyCity", "");
+                  }}
+                >
+                  <option value="">Select State</option>
+                  {states.map((s) => (
+                    <option key={s.isoCode} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </WebsiteFormField>
               );
             }}
           />
@@ -688,37 +448,27 @@ const EditCompany = () => {
               const cities =
                 companyCountryObj && companyStateObj
                   ? City.getCitiesOfState(
-                    companyCountryObj.isoCode,
-                    companyStateObj.isoCode,
-                  )
+                      companyCountryObj.isoCode,
+                      companyStateObj.isoCode,
+                    )
                   : [];
 
               return (
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  <label className="text-sm text-slate-700">Company City</label>
-                  <Select
-                    value={field.value || null}
-                    placeholder="Select City"
-                    variant="outlined"
-                    color="neutral"
-                    disabled={!companyStateObj}
-                    error={!!fieldState.error}
-                    onChange={(_, val) => {
-                      field.onChange(val);
-                    }}
-                  >
-                    {cities.map((city) => (
-                      <Option key={city.name} value={city.name}>
-                        {city.name}
-                      </Option>
-                    ))}
-                  </Select>
-                  {fieldState.error ? (
-                    <span className="text-xs text-red-600">
-                      {fieldState.error.message}
-                    </span>
-                  ) : null}
-                </div>
+                <WebsiteFormField
+                  field={field}
+                  select
+                  label="Company City"
+                  disabled={!companyStateObj}
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                >
+                  <option value="">Select City</option>
+                  {cities.map((city) => (
+                    <option key={city.name} value={city.name}>
+                      {city.name}
+                    </option>
+                  ))}
+                </WebsiteFormField>
               );
             }}
           />
@@ -727,43 +477,27 @@ const EditCompany = () => {
             name="companyContinent"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Company Continent</label>
-                <Input
-                  {...field}
-                  placeholder="Company Continent"
-                  variant="outlined"
-                  color="neutral"
-                // error={!!fieldState.error}
-                />
-                {/* {fieldState.error ? ( */}
-                <span className="text-xs text-red-600">
-                  {/* {fieldState.error.message} */}
-                </span>
-                {/* ) : null} */}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Company Continent"
+                placeholder="e.g. Asia"
+              />
             )}
           />
+
+          <SectionTitle title="Web Presence" />
 
           <Controller
             name="websiteURL"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Website URL</label>
-                <Input
-                  {...field}
-                  placeholder="https://example.com"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Website URL"
+                placeholder="https://example.com"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -771,46 +505,30 @@ const EditCompany = () => {
             name="linkedinURL"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">LinkedIn URL</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                // error={!!fieldState.error}
-                />
-                {/* {fieldState.error ? ( */}
-                <span className="text-xs text-red-600">
-                  {/* {fieldState.error.message} */}
-                </span>
-                {/* ) : null} */}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="LinkedIn URL"
+                placeholder="https://linkedin.com/company/..."
+              />
             )}
           />
+
+          <SectionTitle title="Apps, Modules & Defaults" />
 
           <Controller
             name="selectedApps"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Apps (comma separated)</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                <span className="text-xs text-slate-500">
-                  Allowed: tickets, meetings, tasks, performance, visitors, assets
-                </span>
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Apps"
+                placeholder="tickets, meetings"
+                helperText={
+                  fieldState.error?.message ||
+                  "Comma separated. Allowed: tickets, meetings, tasks, performance, visitors, assets"
+                }
+                error={!!fieldState.error}
+              />
             )}
           />
 
@@ -818,79 +536,53 @@ const EditCompany = () => {
             name="selectedModules"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Modules (comma separated)</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                <span className="text-xs text-slate-500">
-                  Allowed: finance, sales, hr, admin, maintenance, it
-                </span>
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Modules"
+                placeholder="finance, hr"
+                helperText={
+                  fieldState.error?.message ||
+                  "Comma separated. Allowed: finance, sales, hr, admin, maintenance, it"
+                }
+                error={!!fieldState.error}
+              />
             )}
           />
 
-          <Controller
-            name="selectedDefaults"
-            control={control}
-            render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Defaults (comma separated)</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
+          <div className="col-span-1 md:col-span-2">
+            <Controller
+              name="selectedDefaults"
+              control={control}
+              render={({ field, fieldState }) => (
+                <WebsiteFormField
+                  field={field}
+                  label="Defaults"
+                  placeholder="websiteBuilder, leadGeneration"
+                  helperText={
+                    fieldState.error?.message ||
+                    "Comma separated. Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets"
+                  }
                   error={!!fieldState.error}
                 />
-                <span className="text-xs text-slate-500">
-                  Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets
-                </span>
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
-            )}
-          />
-
-          {/* ------------------- POC SECTION ------------------- */}
-          <div className="col-span-1 mt-6 md:col-span-2">
-            <h2 className="text-title font-pmedium text-primary mb-2">
-              Point of Contact (POC) Details
-            </h2>
+              )}
+            />
           </div>
+
+          <SectionTitle title="Point of Contact" />
 
           <Controller
             name="pocName"
             control={control}
             rules={{ required: "POC Name is required" }}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">POC Name</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="POC Name"
+                required
+                placeholder="Full name"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -898,21 +590,13 @@ const EditCompany = () => {
             name="pocDesignation"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">POC Designation</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="POC Designation"
+                placeholder="e.g. Operations Manager"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -924,21 +608,15 @@ const EditCompany = () => {
               pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
             }}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">POC Email</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="POC Email"
+                required
+                type="email"
+                placeholder="name@company.com"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -947,21 +625,14 @@ const EditCompany = () => {
             control={control}
             rules={{ required: "POC Phone is required" }}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">POC Phone</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="POC Phone"
+                required
+                placeholder="+91 00000 00000"
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -969,21 +640,13 @@ const EditCompany = () => {
             name="pocLinkedInProfile"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">LinkedIn Profile URL</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="LinkedIn Profile URL"
+                placeholder="https://linkedin.com/in/..."
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
@@ -991,44 +654,13 @@ const EditCompany = () => {
             name="pocLanguages"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Languages (comma separated)</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
-            )}
-          />
-
-          <Controller
-            name="pocAddress"
-            control={control}
-            render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">POC Address</label>
-                <Textarea
-                  {...field}
-                  placeholder="Type address here..."
-                  minRows={3}
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Languages"
+                placeholder="English, Hindi"
+                helperText={fieldState.error?.message || "Comma separated"}
+                error={!!fieldState.error}
+              />
             )}
           />
 
@@ -1036,47 +668,49 @@ const EditCompany = () => {
             name="pocProfileImage"
             control={control}
             render={({ field, fieldState }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Profile Image URL</label>
-                <Input
-                  {...field}
-                  placeholder="Type in here"
-                  variant="outlined"
-                  color="neutral"
-                  error={!!fieldState.error}
-                />
-                {fieldState.error ? (
-                  <span className="text-xs text-red-600">
-                    {fieldState.error.message}
-                  </span>
-                ) : null}
-              </div>
+              <WebsiteFormField
+                field={field}
+                label="Profile Image URL"
+                placeholder="https://..."
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
             )}
           />
 
-          {/* <Controller
-            name="pocAvailabilityTime"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Availability Time"
-                fullWidth
-                margin="normal"
-                variant="standard"
-              />
-            )}
-          /> */}
+          <div className="col-span-1 mt-3 md:col-span-2">
+            <Controller
+              name="pocAddress"
+              control={control}
+              render={({ field, fieldState }) => (
+                <WebsiteFormField
+                  field={field}
+                  label="POC Address"
+                  multiline
+                  minRows={3}
+                  placeholder="Type address here..."
+                  error={!!fieldState.error}
+                  helperText={fieldState.error?.message}
+                />
+              )}
+            />
+          </div>
 
-          {/* Later: selectedServices → you may want checkboxes or multi-select */}
-          <div className="flex justify-center items-center w-full col-span-1 md:col-span-2">
+          <div className="col-span-1 mt-4 flex items-center justify-center gap-3 md:col-span-2">
             <PrimaryButton
-              externalStyles={""}
-              title={"Submit"}
-              type={"submit"}
+              type="submit"
+              title={isUpdateCompanyLoading ? "Saving..." : "Submit"}
               isLoading={isUpdateCompanyLoading}
               disabled={isUpdateCompanyLoading}
             />
+            <button
+              type="button"
+              onClick={resetToSaved}
+              disabled={isUpdateCompanyLoading}
+              className="rounded-md bg-gray-200 px-6 py-2 text-[12px] font-pmedium text-black transition hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Reset
+            </button>
           </div>
         </form>
       </PageFrame>

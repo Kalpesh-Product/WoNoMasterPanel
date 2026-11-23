@@ -100,7 +100,13 @@ const WonoDestinationEditModal = ({ destination, onClose }) => {
           <button type="button" onClick={onClose} className="rounded-xl bg-slate-100 p-2 text-slate-500 transition-colors hover:bg-slate-200"><X size={16} /></button>
         </div>
 
-        <div className="p-6">
+        <form
+          className="p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save();
+          }}
+        >
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-500">Destination</label>
@@ -147,15 +153,14 @@ const WonoDestinationEditModal = ({ destination, onClose }) => {
           <div className="mt-6 flex justify-end gap-3">
             <button type="button" onClick={onClose} className="rounded-xl border border-slate-200 px-4 py-2 text-xs font-pmedium text-slate-600 transition hover:border-slate-300">Cancel</button>
             <button
-              type="button"
+              type="submit"
               disabled={isSaving || !form.destination.trim() || !form.country.trim() || !form.continent.trim()}
-              onClick={() => save()}
               className="rounded-xl bg-[#2563EB] px-4 py-2 text-xs font-pmedium text-white transition hover:bg-[#1d4ed8] disabled:opacity-50"
             >
               {isSaving ? "Saving..." : "Save"}
             </button>
           </div>
-        </div>
+        </form>
       </section>
     </div>
   );

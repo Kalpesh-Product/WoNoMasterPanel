@@ -32,12 +32,6 @@ const ValueAddsLeads = () => {
       heading: "Workation Leads",
       description: "Workation booking enquiries and group trip requests.",
     },
-    {
-      label: "Contributor",
-      path: "become-a-contributor",
-      heading: "Become A Contributor",
-      description: "Applications from individuals looking to contribute content or services.",
-    },
   ];
 
   return (
