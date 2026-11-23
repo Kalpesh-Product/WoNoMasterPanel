@@ -3,8 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useDispatch } from "react-redux";
 import { toast } from "sonner";
-import { Search, Eye, X, FileText, Pencil, Ban, CheckCircle2 } from "lucide-react";
+import {
+    Ban,
+    Building2,
+    CalendarDays,
+    CheckCircle2,
+    Eye,
+    FileText,
+    Layers,
+    Pencil,
+    X,
+} from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
+import DataTable from "../../../components/Tables/DataTable";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import useAuth from "../../../hooks/useAuth";
 import { queryClient } from "../../../main";
@@ -47,6 +58,13 @@ const formatDate = (value) => {
 
 const PLAN_LABELS = { basic: "Basic Plan", professional: "Professional Plan", custom: "Custom Plan" };
 
+const FILTER_CLASS = (active) =>
+    `shrink-0 rounded-lg border bg-white px-2 py-1.5 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${
+        active
+            ? "border-[#2563EB]/40 text-[#2563EB]"
+            : "border-slate-200/60 text-slate-600"
+    }`;
+
 // Reads the real, staff-configurable trial length from the dates actually
 // stored on this company rather than a hardcoded day count, so it stays
 // correct even after Plan Pricing settings' trial duration changes.
@@ -69,6 +87,60 @@ const getCurrentSubscriptionLabel = (company) => {
     return "Not Assigned";
 };
 
+const getCompanyInitials = (value) =>
+    String(value || "Company")
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+
+const getLogoUrl = (company) => {
+    const logo = company?.logo;
+    if (typeof logo === "string") return logo;
+    return logo?.url || null;
+};
+
+// A company can operate several verticals; the API merges them into
+// `verticals` (workspace business types + industry).
+const getVerticals = (company) => {
+    const list = Array.isArray(company?.verticals) && company.verticals.length
+        ? company.verticals
+        : [company?.industry, ...(company?.businessTypes || [])];
+    const seen = new Set();
+    // `industry` is stored as one free-text string ("Co-Working, Cafe,
+    // Meeting Rooms"), so split it into one chip per vertical.
+    return list
+        .flatMap((value) => String(value || "").split(/[,;|]/))
+        .map((value) => value.trim())
+        .filter((value) => {
+            if (!value) return false;
+            const key = value.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+};
+
+// Compact chips, wrapping two or three per line inside a narrow column.
+const VerticalChips = ({ values }) => {
+    if (!values.length) return <span className="text-slate-400">-</span>;
+    return (
+        <div className="flex max-w-[170px] flex-wrap gap-1">
+            {values.map((value) => (
+                <span
+                    key={value}
+                    className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-pmedium capitalize text-slate-600"
+                    title={value}
+                >
+                    {formatLabel(value)}
+                </span>
+            ))}
+        </div>
+    );
+};
+
 const HostCompanies = () => {
     const navigate = useNavigate();
     const axiosPrivate = useAxiosPrivate();
@@ -76,11 +148,58 @@ const HostCompanies = () => {
     const { auth } = useAuth();
     const [selectedCompany, setSelectedCompanyDetail] = useState(null);
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
+    // Same behaviour as the Companies tab: remember this tab's last search and
+    // filters, so opening a host company and coming back does not reset them.
+    const [initialFilters] = useState(() => {
+        try {
+            const parsed = JSON.parse(
+                sessionStorage.getItem("hostCompaniesListFilters") || "{}",
+            );
+            return parsed && typeof parsed === "object" ? parsed : {};
+        } catch (_error) {
+            return {};
+        }
+    });
+    const [searchQuery, setSearchQuery] = useState(initialFilters.search || "");
+    const [statusFilter, setStatusFilter] = useState(initialFilters.status || "All");
+    const [planFilter, setPlanFilter] = useState(initialFilters.plan || "All");
+    const [sortBy, setSortBy] = useState(initialFilters.sort || "registered");
+
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(
+                "hostCompaniesListFilters",
+                JSON.stringify({
+                    search: searchQuery,
+                    status: statusFilter,
+                    plan: planFilter,
+                    sort: sortBy,
+                }),
+            );
+        } catch (_error) {
+            /* storage unavailable — filters just won't persist */
+        }
+    }, [searchQuery, statusFilter, planFilter, sortBy]);
 
     const handleViewHostCompany = (company) => {
         setSelectedCompanyDetail(company);
         setIsViewModalOpen(true);
+    };
+
+    const openCompanyHub = (company) => {
+        dispatch(setSelectedCompany(company));
+        sessionStorage.setItem("companyId", company.companyId);
+        sessionStorage.setItem("companyName", company.companyName);
+        sessionStorage.setItem("workspaceId", company.workspaceId || "");
+        const companySlug = toCompanySlug(company.companyName);
+        navigate(`/dashboard/host-companies/${companySlug}`, {
+            state: {
+                companyId: company.companyId,
+                companyName: company.companyName,
+                selectedPlan: company.selectedPlan || company.plan || company.subscriptionPlan || "",
+                requestedPlan: company.requestedPlan || "",
+            },
+        });
     };
 
     const { mutate: toggleCompanyStatus } = useMutation({
@@ -161,36 +280,68 @@ const HostCompanies = () => {
         refetchInterval: 15000,
     });
 
-    const sortedCompanies = useMemo(
-        () =>
-            [...companies].sort((a, b) => {
-                if (a.isRegistered === b.isRegistered) return 0;
-                return a.isRegistered ? -1 : 1;
-            }),
-        [companies],
-    );
+    // Registered companies stay on top by default; the sort select lets staff
+    // switch to alphabetical when they are looking for one company by name.
+    const sortedCompanies = useMemo(() => {
+        const list = [...companies];
+        if (sortBy === "name") {
+            return list.sort((a, b) =>
+                String(a.companyName || "").localeCompare(String(b.companyName || ""), "en", {
+                    sensitivity: "base",
+                }),
+            );
+        }
+        return list.sort((a, b) => {
+            if (a.isRegistered === b.isRegistered) return 0;
+            return a.isRegistered ? -1 : 1;
+        });
+    }, [companies, sortBy]);
+
+    const planOptions = useMemo(() => {
+        const labels = new Set(companies.map((company) => getCurrentSubscriptionLabel(company)));
+        return [...labels].sort((a, b) => a.localeCompare(b));
+    }, [companies]);
 
     const filteredCompanies = useMemo(() => {
-        if (!searchQuery.trim()) return sortedCompanies;
         const q = searchQuery.trim().toLowerCase();
-        return sortedCompanies.filter(
-            (c) =>
-                c.companyName?.toLowerCase().includes(q) ||
-                c.industry?.toLowerCase().includes(q) ||
-                c.companyCountry?.toLowerCase().includes(q) ||
-                c.companyState?.toLowerCase().includes(q) ||
-                c.companyCity?.toLowerCase().includes(q),
-        );
-    }, [sortedCompanies, searchQuery]);
+        return sortedCompanies.filter((company) => {
+            const matchesStatus =
+                statusFilter === "All" ||
+                (statusFilter === "Active" ? Boolean(company.isRegistered) : !company.isRegistered);
+            const matchesPlan =
+                planFilter === "All" || getCurrentSubscriptionLabel(company) === planFilter;
+            const matchesQuery =
+                !q ||
+                [
+                    company.companyName,
+                    company.industry,
+                    company.companyCountry,
+                    company.companyState,
+                    company.companyCity,
+                    company.pocName,
+                    company.pocEmail,
+                    getCurrentSubscriptionLabel(company),
+                ]
+                    .filter(Boolean)
+                    .some((value) => String(value).toLowerCase().includes(q));
+            return matchesStatus && matchesPlan && matchesQuery;
+        });
+    }, [sortedCompanies, searchQuery, statusFilter, planFilter]);
 
-    const activeCount = useMemo(() => sortedCompanies.filter((c) => c.isRegistered).length, [sortedCompanies]);
-    const inactiveCount = useMemo(() => sortedCompanies.filter((c) => !c.isRegistered).length, [sortedCompanies]);
+    const activeCount = useMemo(() => companies.filter((c) => c.isRegistered).length, [companies]);
+    const inactiveCount = useMemo(() => companies.filter((c) => !c.isRegistered).length, [companies]);
+    const onTrialCount = useMemo(
+        () => companies.filter((c) => c.isTrialActive).length,
+        [companies],
+    );
 
     if (isLoading) {
         return (
             <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
                 <PageFrame>
-                    <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">Loading host companies...</div>
+                    <div className="flex items-center justify-center py-20 text-slate-400 font-pmedium">
+                        Loading host companies...
+                    </div>
                 </PageFrame>
             </div>
         );
@@ -198,6 +349,41 @@ const HostCompanies = () => {
     if (isError) {
         return <div className="p-6 text-red-500">Failed to load companies.</div>;
     }
+
+    const statCards = [
+        {
+            label: "Total Companies",
+            value: companies.length,
+            icon: Building2,
+            accent: "border-l-slate-400",
+            labelClass: "text-slate-500",
+            iconClass: "bg-slate-50 text-slate-600",
+        },
+        {
+            label: "Active",
+            value: activeCount,
+            icon: CheckCircle2,
+            accent: "border-l-emerald-500",
+            labelClass: "text-emerald-600",
+            iconClass: "bg-emerald-50 text-emerald-600",
+        },
+        {
+            label: "Inactive",
+            value: inactiveCount,
+            icon: Ban,
+            accent: "border-l-rose-500",
+            labelClass: "text-rose-600",
+            iconClass: "bg-rose-50 text-rose-600",
+        },
+        {
+            label: "On Trial",
+            value: onTrialCount,
+            icon: CalendarDays,
+            accent: "border-l-amber-500",
+            labelClass: "text-amber-600",
+            iconClass: "bg-amber-50 text-amber-600",
+        },
+    ];
 
     return (
         <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -210,202 +396,257 @@ const HostCompanies = () => {
                                 Host Companies
                             </h2>
                             <p className="text-xs font-pmedium text-slate-500 mt-1">
-                                Manage and view all host company registrations.
+                                Manage host company registrations, plans and module access.
                             </p>
                         </div>
                     </div>
 
-                    <div data-tour="host-companies-stats" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3 shrink-0">
-                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 border-l-4 border-l-slate-400 shadow-sm flex justify-between items-center transition-all hover:shadow-md">
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">Total Companies</p>
-                                <p className="text-[15px] font-pmedium text-slate-900">{sortedCompanies.length}</p>
-                            </div>
-                        </div>
-                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">Active</p>
-                                <p className="text-[15px] font-pmedium text-slate-900">{activeCount}</p>
-                            </div>
-                        </div>
-                        <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
-                            <div className="min-w-0">
-                                <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">Inactive</p>
-                                <p className="text-[15px] font-pmedium text-slate-900">{inactiveCount}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-                        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 sm:gap-4 bg-slate-50/50">
-                            <div className="w-full xl:max-w-md">
-                                <div className="relative w-full">
-                                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search companies..."
-                                        className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                    />
+                    <div
+                        data-tour="host-companies-stats"
+                        className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 shrink-0"
+                    >
+                        {statCards.map(({ label, value, icon: Icon, accent, labelClass, iconClass }) => (
+                            <div
+                                key={label}
+                                className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm transition-all hover:shadow-md ${accent}`}
+                            >
+                                <div className="min-w-0">
+                                    <p className={`text-[10px] font-pmedium uppercase tracking-widest mb-1 ${labelClass}`}>
+                                        {label}
+                                    </p>
+                                    <p className="text-[15px] font-pmedium text-slate-900">{value}</p>
+                                </div>
+                                <div className={`shrink-0 rounded-2xl p-2 ${iconClass}`}>
+                                    <Icon size={16} />
                                 </div>
                             </div>
-                        </div>
-                        <div className="overflow-x-auto flex-1">
-                            <table data-tour="host-companies-table" className="w-full min-w-[1140px] text-left border-collapse table-fixed">
-                                <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-                                    <tr>
-                                        <th className="w-[72px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Logo</th>
-                                        <th className="w-[200px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Company Name</th>
-                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Vertical</th>
-                                        <th className="w-[170px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Location</th>
-                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Registration</th>
-                                        <th className="w-[140px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Subscription</th>
-                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan Start</th>
-                                        <th className="w-[110px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left whitespace-nowrap">Plan End</th>
-                                        <th className="w-[120px] px-5 py-4 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-center whitespace-nowrap">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredCompanies.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={9} className="text-center py-20 text-slate-400 font-pmedium">No companies found.</td>
-                                        </tr>
-                                    ) : (
-                                        filteredCompanies.map((company) => {
-                                            const logoUrl = typeof company.logo === "string" ? company.logo : company.logo?.url;
-                                            return (
-                                                <tr key={company.companyId || company._id} className="hover:bg-slate-50/50 transition-colors group">
-                                                    <td className="px-5 py-4 align-top">
-                                                        {logoUrl ? (
-                                                            <img src={logoUrl} alt="logo" className="h-10 w-10 rounded object-contain" />
-                                                        ) : (
-                                                            <span className="text-slate-400">-</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-5 py-4 align-top max-w-[200px]">
-                                                        <span
-                                                            data-tour="host-companies-name-link"
-                                                            title={company.companyName || "-"}
-                                                            className="block truncate text-blue-600 hover:underline cursor-pointer font-pmedium text-[13px]"
-                                                            onClick={() => {
-                                                                dispatch(setSelectedCompany(company));
-                                                                sessionStorage.setItem("companyId", company.companyId);
-                                                                sessionStorage.setItem("companyName", company.companyName);
-                                                                sessionStorage.setItem("workspaceId", company.workspaceId || "");
-                                                                const companySlug = toCompanySlug(company.companyName);
-                                                                navigate(
-                                                                    `/dashboard/host-companies/${companySlug}`,
-                                                                    {
-                                                                        state: {
-                                                                            companyId: company.companyId,
-                                                                            companyName: company.companyName,
-                                                                            selectedPlan: company.selectedPlan || company.plan || company.subscriptionPlan || "",
-                                                                            requestedPlan: company.requestedPlan || "",
-                                                                        },
-                                                                    },
-                                                                );
-                                                            }}
-                                                        >
-                                                            {company.companyName || "-"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate">{company.industry || "-"}</td>
-                                                    <td
-                                                        className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 truncate max-w-[170px]"
-                                                        title={
-                                                            [company.companyCity, company.companyState, company.companyCountry]
-                                                                .filter(Boolean)
-                                                                .join(", ") || "-"
-                                                        }
-                                                    >
-                                                        {[company.companyCity, company.companyState, company.companyCountry]
-                                                            .filter(Boolean)
-                                                            .join(", ") || "-"}
-                                                    </td>
-                                                    <td data-tour="host-companies-registration-column" className="px-5 py-4 align-top text-center whitespace-nowrap">
-                                                        <span className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}>
-                                                            {company.isRegistered ? "Active" : "Inactive"}
-                                                        </span>
-                                                    </td>
-                                                    <td data-tour="host-companies-subscription-column" className="px-5 py-4 align-top whitespace-nowrap">
-                                                        <span className={statusPillClass(getCurrentSubscriptionLabel(company))}>
-                                                            {getCurrentSubscriptionLabel(company)}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
-                                                        {formatDate(company.planStartDate)}
-                                                    </td>
-                                                    <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600 whitespace-nowrap">
-                                                        {formatDate(company.planExpiryDate)}
-                                                    </td>
-                                                    <td className="px-5 py-4 align-top text-center whitespace-nowrap">
-                                                        <div data-tour="host-companies-row-actions" className="flex items-center justify-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleViewHostCompany(company)}
-                                                                title="View details"
-                                                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                                                            >
-                                                                <Eye size={15} strokeWidth={2.5} />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    navigate(
-                                                                        `/dashboard/host-companies/edit/${company.companyId}`,
-                                                                        {
-                                                                            state: {
-                                                                                companyId: company.companyId,
-                                                                                companyName: company.companyName,
-                                                                            },
-                                                                        },
-                                                                    )
-                                                                }
-                                                                title="Edit company"
-                                                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-amber-100 hover:text-amber-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
-                                                            >
-                                                                <Pencil size={15} strokeWidth={2.5} />
-                                                            </button>
-                                                            {company.isRegistered ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        toggleCompanyStatus({
-                                                                            companyId: company.companyId,
-                                                                            status: false,
-                                                                        })
-                                                                    }
-                                                                    title="Mark as inactive"
-                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
-                                                                >
-                                                                    <Ban size={15} strokeWidth={2.5} />
-                                                                </button>
-                                                            ) : (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        toggleCompanyStatus({
-                                                                            companyId: company.companyId,
-                                                                            status: true,
-                                                                        })
-                                                                    }
-                                                                    title="Mark as active"
-                                                                    className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
-                                                                >
-                                                                    <CheckCircle2 size={15} strokeWidth={2.5} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                        ))}
                     </div>
+
+                    <DataTable
+                        rows={filteredCompanies}
+                        rowKey={(company) => company.companyId || company._id}
+                        minWidth={1180}
+                        searchValue={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        searchPlaceholder="Search company, industry, city, POC..."
+                        filters={
+                            <div className="flex items-center justify-end gap-2">
+                                <select
+                                    value={statusFilter}
+                                    onChange={(event) => setStatusFilter(event.target.value)}
+                                    aria-label="Filter by registration status"
+                                    className={FILTER_CLASS(statusFilter !== "All")}
+                                >
+                                    <option value="All">All status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                                <select
+                                    value={planFilter}
+                                    onChange={(event) => setPlanFilter(event.target.value)}
+                                    aria-label="Filter by subscription"
+                                    className={FILTER_CLASS(planFilter !== "All")}
+                                >
+                                    <option value="All">All subscriptions</option>
+                                    {planOptions.map((plan) => (
+                                        <option key={plan} value={plan}>
+                                            {plan}
+                                        </option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={sortBy}
+                                    onChange={(event) => setSortBy(event.target.value)}
+                                    aria-label="Sort companies"
+                                    className={FILTER_CLASS(sortBy !== "registered")}
+                                >
+                                    <option value="registered">Active first</option>
+                                    <option value="name">Name A–Z</option>
+                                </select>
+                            </div>
+                        }
+                        emptyText={
+                            companies.length === 0
+                                ? "No host companies registered yet."
+                                : "No companies match these filters."
+                        }
+                        emptyIcon={Building2}
+                        tableProps={{ "data-tour": "host-companies-table" }}
+                        columns={[
+                            {
+                                key: "company",
+                                header: "Company",
+                                minWidth: 240,
+                                render: (company, index) => {
+                                    const logoUrl = getLogoUrl(company);
+                                    return (
+                                        <div className="flex items-center gap-3">
+                                            {logoUrl ? (
+                                                <img
+                                                    src={logoUrl}
+                                                    alt={`${company.companyName || "Company"} logo`}
+                                                    className="h-9 w-9 shrink-0 rounded-xl border border-slate-100 bg-white object-contain"
+                                                />
+                                            ) : (
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                                                    {getCompanyInitials(company.companyName)}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0">
+                                                <button
+                                                    type="button"
+                                                    data-tour={index === 0 ? "host-companies-name-link" : undefined}
+                                                    title={company.companyName || "-"}
+                                                    onClick={() => openCompanyHub(company)}
+                                                    className="block max-w-[190px] truncate text-left text-[12px] font-pmedium text-blue-600 hover:underline"
+                                                >
+                                                    {company.companyName || "-"}
+                                                </button>
+                                                {company.registeredEntityName ? (
+                                                    <p className="max-w-[190px] truncate text-[10px] text-slate-400">
+                                                        {company.registeredEntityName}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    );
+                                },
+                            },
+                            {
+                                key: "vertical",
+                                header: "Vertical",
+                                minWidth: 130,
+                                render: (company) => <VerticalChips values={getVerticals(company)} />,
+                            },
+                            {
+                                key: "location",
+                                header: "Location",
+                                minWidth: 180,
+                                render: (company) => (
+                                    <div className="min-w-0">
+                                        <p className="max-w-[220px] truncate text-slate-700">
+                                            {[company.companyCity, company.companyState]
+                                                .filter(Boolean)
+                                                .join(", ") || "-"}
+                                        </p>
+                                        <p className="max-w-[220px] truncate text-[10px] text-slate-400">
+                                            {company.companyCountry || "Country not set"}
+                                        </p>
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "registration",
+                                header: "Registration",
+                                align: "center",
+                                render: (company, index) => (
+                                    <span
+                                        data-tour={index === 0 ? "host-companies-registration-column" : undefined}
+                                        className={statusPillClass(company.isRegistered ? "Active" : "Inactive")}
+                                    >
+                                        {company.isRegistered ? "Active" : "Inactive"}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: "subscription",
+                                header: "Subscription",
+                                render: (company, index) => (
+                                    <span
+                                        data-tour={index === 0 ? "host-companies-subscription-column" : undefined}
+                                        className={statusPillClass(getCurrentSubscriptionLabel(company))}
+                                    >
+                                        {getCurrentSubscriptionLabel(company)}
+                                    </span>
+                                ),
+                            },
+                            {
+                                key: "planWindow",
+                                header: "Plan Period",
+                                minWidth: 190,
+                                render: (company) => (
+                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                        <CalendarDays size={12} className="shrink-0 text-slate-400" />
+                                        <span>
+                                            {formatDate(company.planStartDate)} — {formatDate(company.planExpiryDate)}
+                                        </span>
+                                    </div>
+                                ),
+                            },
+                            {
+                                key: "poc",
+                                header: "Point of Contact",
+                                minWidth: 180,
+                                render: (company) => (
+                                    <div className="min-w-0">
+                                        <p className="max-w-[200px] truncate text-slate-700">
+                                            {company.pocName || "-"}
+                                        </p>
+                                        <p className="max-w-[200px] truncate text-[10px] text-slate-400">
+                                            {company.pocEmail || "No email on file"}
+                                        </p>
+                                    </div>
+                                ),
+                            },
+                        ]}
+                        actions={(company, index) => (
+                            <div data-tour={index === 0 ? "host-companies-row-actions" : undefined} className="flex items-center justify-center gap-1.5">
+                                <button
+                                    type="button"
+                                    onClick={() => handleViewHostCompany(company)}
+                                    title="View details"
+                                    aria-label={`View details for ${company.companyName || "company"}`}
+                                    className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                                >
+                                    <Eye size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(
+                                            `/dashboard/host-companies/edit-company/${company.companyId}`,
+                                            {
+                                                state: {
+                                                    companyId: company.companyId,
+                                                    companyName: company.companyName,
+                                                },
+                                            },
+                                        )
+                                    }
+                                    title="Edit company"
+                                    aria-label={`Edit ${company.companyName || "company"}`}
+                                    className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-amber-100 hover:text-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/40"
+                                >
+                                    <Pencil size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        toggleCompanyStatus({
+                                            companyId: company.companyId,
+                                            status: !company.isRegistered,
+                                        })
+                                    }
+                                    title={company.isRegistered ? "Mark as inactive" : "Mark as active"}
+                                    aria-label={
+                                        company.isRegistered
+                                            ? `Mark ${company.companyName || "company"} as inactive`
+                                            : `Mark ${company.companyName || "company"} as active`
+                                    }
+                                    className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-emerald-100 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                                >
+                                    {company.isRegistered ? <Ban size={14} /> : <CheckCircle2 size={14} />}
+                                </button>
+                            </div>
+                        )}
+                    />
+
+                    {filteredCompanies.length > 0 && (
+                        <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                            Showing {filteredCompanies.length} of {companies.length} companies
+                        </p>
+                    )}
                 </div>
             </PageFrame>
 
@@ -520,6 +761,32 @@ const HostCompanies = () => {
                             </div>
 
                             <PlanHistorySection companyId={selectedCompany?.companyId} />
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                onClick={() => { setIsViewModalOpen(false); setSelectedCompanyDetail(null); }}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[12px] font-pmedium text-slate-600 transition hover:bg-slate-100"
+                            >
+                                Close
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const company = selectedCompany;
+                                    setIsViewModalOpen(false);
+                                    setSelectedCompanyDetail(null);
+                                    navigate(
+                                        `/dashboard/host-companies/edit-company/${company.companyId}`,
+                                        { state: { companyId: company.companyId, companyName: company.companyName } },
+                                    );
+                                }}
+                                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[12px] font-pmedium text-white transition hover:bg-blue-700"
+                            >
+                                <Pencil size={13} />
+                                Edit company
+                            </button>
                         </div>
                     </div>
                 </div>

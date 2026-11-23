@@ -850,7 +850,13 @@ export const routes = createBrowserRouter([
                         element: <HostCompanies />,
                       },
                       {
-                        path: "edit/:companyId",
+                        // "edit-company/:companyId" (not "edit/:companyId"):
+                        // a literal "edit" segment collided with the
+                        // ":companyId" hub route, so "…/host-companies/edit"
+                        // rendered the module-card hub and module cards then
+                        // linked to "…/host-companies/edit/<module>", which
+                        // matched this form route with companyId=<module>.
+                        path: "edit-company/:companyId",
                         element: <EditCompany />,
                       },
                       {

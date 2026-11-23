@@ -72,7 +72,7 @@ const DataTable = ({
   return (
     <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
       {hasToolbar && (
-        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/50">
+        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col sm:flex-row sm:flex-nowrap items-stretch sm:items-center gap-3 bg-slate-50/50">
           {onSearchChange ? (
             <div
               {...searchWrapperProps}
@@ -101,7 +101,7 @@ const DataTable = ({
 
           <div
             {...filtersProps}
-            className={`flex items-center justify-end gap-2 flex-wrap ${
+            className={`flex min-w-0 items-center justify-end gap-2 flex-nowrap overflow-x-auto sm:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
               filtersProps.className || ""
             }`}
           >
