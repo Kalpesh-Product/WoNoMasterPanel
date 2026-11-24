@@ -308,6 +308,71 @@ const createCompany = async (req, res, next) => {
   }
 };
 
+const createDirectoryCompany = async (req, res, next) => {
+  try {
+    const fields = [
+      "companyName",
+      "registeredEntityName",
+      "industry",
+      "companySize",
+      "address",
+      "companyCity",
+      "companyState",
+      "companyCountry",
+      "companyContinent",
+      "websiteLink",
+      "linkedinURL",
+    ];
+    const companyData = Object.fromEntries(
+      fields.map((field) => {
+        const value = req.body?.[field];
+        return [field, typeof value === "string" ? value.trim() : ""];
+      }),
+    );
+    const { companyName, companyCity, companyState, companyCountry } =
+      companyData;
+    if (!companyName || !companyCity || !companyState || !companyCountry) {
+      return res.status(400).json({
+        message: "Company name, city, state or region, and country are required.",
+      });
+    }
+
+    companyData.companyContinent ||= getContinentForCountry(companyCountry);
+    if (!companyData.companyContinent) {
+      return res.status(400).json({
+        message: "Select a continent for this company.",
+      });
+    }
+
+    const locationKey = { companyName, companyCity, companyState, companyCountry };
+    const duplicateFilter = Object.fromEntries(
+      Object.entries(locationKey).map(([field, value]) => [
+        field,
+        new RegExp(`^${escapeRegex(value)}$`, "i"),
+      ]),
+    );
+    if (await HostCompany.exists(duplicateFilter)) {
+      return res.status(409).json({
+        message: "A company with this name already exists in this location.",
+      });
+    }
+
+    const { companyId } = await HostCompany.create({
+      ...companyData,
+      companyId: randomUUID(),
+    });
+    req.logContext = {
+      ...req.logContext,
+      action: "add-company",
+      companyId,
+      companyName,
+    };
+    return res.status(201).json({ companyId, companyName });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const editCompany = async (req, res, next) => {
   try {
     const parsedBody = req.body?.data
@@ -376,6 +441,7 @@ const editCompany = async (req, res, next) => {
       registeredEntityName: payload.registeredEntityName,
       industry: payload.industry,
       companySize: payload.companySize,
+      address: payload.address,
       companyCity: payload.companyCity,
       companyState: payload.companyState,
       companyCountry: payload.companyCountry,
@@ -3078,6 +3144,7 @@ module.exports = {
   getNomadCompanyListingsForClaim,
   rejectExistingCompanyClaim,
   createCompany,
+  createDirectoryCompany,
   editCompany,
   activateProduct,
   setListingPublicStatus,

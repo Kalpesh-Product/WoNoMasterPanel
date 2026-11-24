@@ -53,7 +53,7 @@ export const Lightbox = () => {
         return () => window.removeEventListener("keydown", onKey);
     }, [open, t.galleryViewerIndex]);
     return (<AnimatePresence>
-      {open ? (<motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: "rgba(8,6,4,.92)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={t.closeGalleryViewer}>
+      {open && t.galleryItems[t.galleryViewerIndex] ? (<motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-4" style={{ background: "rgba(8,6,4,.92)" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="Photo viewer" onClick={t.closeGalleryViewer}>
           <button type="button" aria-label="Previous photo" className="absolute left-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white md:left-8" onClick={(e) => { e.stopPropagation(); t.goToGalleryIndex(t.galleryViewerIndex - 1); }}>
             <span style={{ transform: "rotate(180deg)", display: "flex" }}>{Icon.arrow(20)}</span>
           </button>

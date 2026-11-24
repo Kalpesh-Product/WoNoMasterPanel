@@ -40,7 +40,7 @@
     display: grid;
     grid-template-columns: 50% 50%;
     /* width: 100%; */
-    font-family: Popins-Semibold;
+    font-family: Poppins-SemiBold, sans-serif;
     height: 100vh;
 }
 
@@ -90,11 +90,15 @@
 }
 
 .poppinsRegular {
-    font-family: Popins-Regular;
+    font-family: Popins-Regular, sans-serif;
 }
 
 .poppinsSemibold {
-    font-family: Popins-Semibold;
+    font-family: Poppins-SemiBold, sans-serif;
+}
+
+.login-section :is(.MuiInputLabel-root, .MuiInputBase-root) {
+    font-family: inherit;
 }
 
 
@@ -362,7 +366,7 @@
     border: none;
     border-radius: 20px;
     padding: 0.50rem;
-    font-family: Popins-Semibold;
+    font-family: Poppins-SemiBold, sans-serif;
     margin: 0;
 }
 
@@ -542,8 +546,10 @@
     }
 }
 
-h2 {
-    font-family: Popins-SemiBold;
+.login-section h2,
+.login-container h2,
+.forgot-password-container h2 {
+    font-family: Poppins-SemiBold, sans-serif;
 }
 
 
@@ -594,7 +600,7 @@ h2 {
     border: none;
     border-radius: 20px;
     padding: 0.50rem;
-    font-family: Popins-Semibold;
+    font-family: Poppins-SemiBold, sans-serif;
     margin: 0;
     width: 50%;
 }
@@ -634,14 +640,6 @@ h2 {
         font-size: 2.4rem;
     }
 }
-
-h2 {
-    font-family: Popins-Semibold;
-}
-
-
-
-
 
 /* carousel */
 /* Arrows */

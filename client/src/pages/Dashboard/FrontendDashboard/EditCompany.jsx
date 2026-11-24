@@ -1,28 +1,29 @@
-import React, { useEffect, useState } from "react";
-import PageFrame from "../../../components/Pages/PageFrame";
+import { styled } from "@mui/joy";
+import Button from "@mui/joy/Button";
+import SvgIcon from "@mui/joy/SvgIcon";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { Link, useMatch, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import CompanyFormFields from "../../../components/CompanyFormFields";
+import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
-import SecondaryButton from "../../../components/SecondaryButton";
-import WebsiteFormField from "../../../components/WebsiteFormField";
-import { City, Country, State } from "country-state-city";
-import { useNavigate, useParams } from "react-router-dom";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
-import { Building2, Loader2, Trash2, Upload } from "lucide-react";
-import { statusPillClass } from "../../../lib/status-pill";
 
-// A section heading inside the form grid — same treatment as the Nomad
-// listing edit form's "Reviews" divider.
-const SectionTitle = ({ title }) => (
-  <div className="col-span-1 mt-2 border-b border-gray-300 py-3 md:col-span-2">
-    <span className="text-lg font-medium text-primary">{title}</span>
-  </div>
-);
+const VisuallyHiddenInput = styled("input")`
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  white-space: nowrap;
+  width: 1px;
+`;
 
-// Logo picker: preview of the stored logo plus a native file input, styled
-// like the other labelled fields on this form.
-const LogoUploadField = ({ value, onChange, currentLogoUrl }) => {
+const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
   const [previewUrl, setPreviewUrl] = useState(null);
 
   useEffect(() => {
@@ -37,35 +38,63 @@ const LogoUploadField = ({ value, onChange, currentLogoUrl }) => {
   const resolvedLogo = previewUrl || currentLogoUrl || null;
 
   return (
-    <div className="col-span-1 flex min-w-0 flex-col md:col-span-2">
-      <label
-        htmlFor="companyLogo"
-        className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest"
-      >
-        Company Logo
-      </label>
-      <div className="mt-1 flex flex-wrap items-center gap-3">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/60 bg-white">
-          {resolvedLogo ? (
+    <div className="flex flex-col gap-1.5 sm:col-span-2">
+      <span className="text-xs font-pmedium text-slate-700">Company Logo</span>
+      <div className="flex items-center gap-3 h-[40px]">
+        <Button
+          component="label"
+          role={undefined}
+          tabIndex={-1}
+          variant="outlined"
+          color="neutral"
+          size="sm"
+          className="h-full"
+          startDecorator={
+            <SvgIcon>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"
+                />
+              </svg>
+            </SvgIcon>
+          }
+        >
+          {hasLogo ? "Change Logo" : "Upload Logo"}
+          <VisuallyHiddenInput
+            type="file"
+            accept="image/*"
+            aria-label="Company Logo"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                onChange(file);
+                e.target.value = "";
+              }
+            }}
+          />
+        </Button>
+
+        {hasLogo && (
+          <div className="flex items-center gap-2 h-full">
             <img
-              src={resolvedLogo}
-              alt="Company logo preview"
-              className="h-full w-full object-contain"
+              src={previewUrl || currentLogoUrl}
+              alt="Company Logo Preview"
+              className="w-10 h-10 rounded-md border border-slate-200 object-contain bg-white shadow-sm"
             />
-          ) : (
-            <Building2 size={20} className="text-slate-300" />
-          )}
-        </div>
-        <div className="flex min-w-0 flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <label
-              htmlFor="companyLogo"
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200/60 bg-white px-3 py-2 text-[11px] font-pmedium uppercase tracking-wider text-slate-600 transition hover:border-[#2563EB] hover:text-[#2563EB]"
-            >
-              <Upload size={13} />
-              {resolvedLogo ? "Change logo" : "Upload logo"}
-            </label>
-            {value instanceof File ? (
+            {value && (
+              <span className="text-xs text-slate-500 max-w-[150px] truncate">
+                {value.name}
+              </span>
+            )}
+            {value && (
               <button
                 type="button"
                 onClick={() => onChange(null)}
@@ -97,622 +126,133 @@ const LogoUploadField = ({ value, onChange, currentLogoUrl }) => {
   );
 };
 
-const parseCommaSeparatedList = (value = "") =>
-  value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+const getFormValues = (company) => ({
+  companyName: company.companyName || "",
+  registeredEntityName: company.registeredEntityName || "",
+  industry: company.industry || "",
+  companySize: company.companySize || "",
+  companyCity: company.companyCity || "",
+  companyState: company.companyState || "",
+  companyCountry: company.companyCountry || "",
+  companyContinent: company.companyContinent || "",
+  address: company.address || "",
+  websiteLink: company.websiteLink ?? company.websiteURL ?? "",
+  linkedinURL: company.linkedinURL || "",
+  companyLogo: null,
+});
 
-// Single place that maps the fetched company onto form defaults, so both the
-// initial prefill and "Reset" restore exactly what the server returned.
-const toFormValues = (company) => {
-  const selectedServices = company?.selectedServices || {};
-  return {
-    companyName: company?.companyName || "",
-    registeredEntityName: company?.registeredEntityName || "",
-    industry: company?.industry || "",
-    companySize: company?.companySize || "",
-    companyCity: company?.companyCity || "",
-    companyState: company?.companyState || "",
-    companyCountry: company?.companyCountry || "",
-    companyContinent: company?.companyContinent || "",
-    websiteURL: company?.websiteURL || company?.websiteLink || "",
-    linkedinURL: company?.linkedinURL || "",
-    selectedApps: (selectedServices.apps || [])
-      .map((item) => item?.appName)
-      .filter(Boolean)
-      .join(", "),
-    selectedModules: (selectedServices.modules || [])
-      .map((item) => item?.moduleName)
-      .filter(Boolean)
-      .join(", "),
-    selectedDefaults: (selectedServices.defaults || [])
-      .map((item) => item?.name)
-      .filter(Boolean)
-      .join(", "),
-    pocName: company?.pocName || "",
-    pocDesignation: company?.pocDesignation || "",
-    pocEmail: company?.pocEmail || "",
-    pocPhone: company?.pocPhone || "",
-    pocLinkedInProfile: company?.pocLinkedInProfile || "",
-    pocLanguages: (company?.pocLanguages || []).join(", "),
-    pocAddress: company?.pocAddress || "",
-    pocProfileImage: company?.pocProfileImage || "",
-    companyLogo: null,
-    isActive: company?.isActive ?? true,
-  };
-};
+const EditCompanyForm = ({ company }) => {
+  const { companyId } = company;
+  const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
+  const form = useForm({ defaultValues: getFormValues(company) });
+  const { control, handleSubmit, reset, formState: { isSubmitting } } = form;
 
-const EditCompany = () => {
-  const { companyId } = useParams();
-  const axiosPrivate = useAxiosPrivate();
-  const navigate = useNavigate();
-
-  const { control, handleSubmit, reset, setValue, watch } = useForm({
-    defaultValues: toFormValues(null),
-  });
-
-  const {
-    data: company,
-    isLoading: isCompanyLoading,
-    isError: isCompanyError,
-    error: companyError,
-  } = useQuery({
-    queryKey: ["companyDetails", companyId],
-    enabled: Boolean(companyId),
-    queryFn: async () => {
-      const response = await axiosPrivate.get("/api/hosts/company", {
-        params: { companyId },
-      });
-
-      return response?.data?.data || response?.data;
+  const { mutateAsync: updateCompany, error } = useMutation({
+    mutationFn: async (payload) => {
+      const response = await axios.patch("/api/hosts/edit-company", payload);
+      return response.data.company;
+    },
+    onSuccess: (savedCompany) => {
+      reset(getFormValues(savedCompany));
+      queryClient.setQueryData(["companyDetails", companyId], savedCompany);
+      queryClient.setQueryData(["nomad-listing-company", companyId], savedCompany);
+      queryClient.invalidateQueries({ queryKey: ["companiesList"] });
+      queryClient.invalidateQueries({ queryKey: ["companyLocations"] });
+      queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
+      toast.success("Company updated successfully");
     },
   });
 
-  useEffect(() => {
-    if (!companyId) {
-      toast.error("Invalid company id");
-    }
-  }, [companyId]);
-
-  useEffect(() => {
-    if (!company) return;
-    reset(toFormValues(company));
-  }, [company, reset]);
-
-  useEffect(() => {
-    if (isCompanyError) {
-      toast.error(
-        companyError?.response?.data?.message ||
-          "Failed to fetch company details",
-      );
-    }
-  }, [isCompanyError, companyError]);
-
-  const { mutate: updateCompany, isPending: isUpdateCompanyLoading } =
-    useMutation({
-      mutationFn: async (payload) => {
-        const response = await axiosPrivate.patch(
-          "/api/hosts/edit-company",
-          payload,
-        );
-
-        return response.data;
-      },
-      onSuccess: () => {
-        toast.success("Company updated successfully");
-      },
-      onError: (error) => {
-        toast.error(error.response?.data?.message || "Something went wrong");
-      },
-    });
-
-  const onSubmit = (data) => {
-    if (!companyId) {
-      toast.error("Invalid company id");
-      return;
-    }
-
-    const formattedData = {
-      companyId,
-      companyName: data.companyName,
-      registeredEntityName: data.registeredEntityName,
-      industry: data.industry,
-      companySize: data.companySize,
-      companyCity: data.companyCity,
-      companyState: data.companyState,
-      companyCountry: data.companyCountry,
-      companyContinent: data.companyContinent,
-      websiteURL: data.websiteURL,
-      linkedinURL: data.linkedinURL,
-      selectedServices: {
-        apps: parseCommaSeparatedList(data.selectedApps).map((appName) => ({
-          appName,
-          isActive: true,
-        })),
-        modules: parseCommaSeparatedList(data.selectedModules).map(
-          (moduleName) => ({
-            moduleName,
-            isActive: true,
-          }),
-        ),
-        defaults: parseCommaSeparatedList(data.selectedDefaults).map(
-          (name) => ({
-            name,
-          }),
-        ),
-      },
-    };
-
+  const onSubmit = async ({ companyLogo, ...details }) => {
     const formData = new FormData();
-    formData.append("data", JSON.stringify(formattedData));
+    formData.append("data", JSON.stringify({ companyId, ...details }));
+    if (companyLogo instanceof File) formData.append("logo", companyLogo);
 
-    if (data.companyLogo instanceof File) {
-      formData.append("logo", data.companyLogo);
+    try {
+      await updateCompany(formData);
+    } catch {
+      // The mutation error is displayed below the form.
     }
-
-    updateCompany(formData);
   };
 
-  const currentLogoUrl = company?.logo?.url || null;
-  const resetToSaved = () => reset(toFormValues(company));
+  const hasCompleteLocation = Boolean(company.companyCity && company.companyState && company.companyCountry);
+  const seatInputType = company.companySize && !/^\d+$/.test(company.companySize) ? "text" : "number";
 
   return (
-    <div className="p-4">
-      <PageFrame>
-        <div className="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-title text-primary font-pmedium uppercase">
-              Edit Company
-            </h1>
-            <p className="mt-1 truncate text-xs font-pmedium text-slate-500">
-              {company?.companyName || "Company details"}
-              {companyId ? ` · ${companyId}` : ""}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {company ? (
-              <span
-                className={statusPillClass(
-                  company.isRegistered ? "Active" : "Inactive",
-                )}
-              >
-                {company.isRegistered ? "Active" : "Inactive"}
-              </span>
-            ) : null}
-            <SecondaryButton
-              type="button"
-              title="Back"
-              handleSubmit={() => navigate(-1)}
-            />
-          </div>
-        </div>
-
-        {isCompanyLoading ? (
-          <p className="flex items-center gap-2 py-6 text-[12px] font-pmedium text-slate-400">
-            <Loader2 size={14} className="animate-spin" />
-            Loading company details...
-          </p>
-        ) : null}
-
-        <form
-          className="grid grid-cols-1 gap-x-4 md:grid-cols-2"
-          onSubmit={handleSubmit(onSubmit)}
-        >
-          <SectionTitle title="Company Details" />
-
-          <Controller
-            name="companyName"
-            control={control}
-            rules={{ required: "Company Name is required" }}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Company Name"
-                required
-                placeholder="Company Name"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
+    <form onSubmit={handleSubmit(onSubmit)} aria-busy={isSubmitting}>
+      <fieldset disabled={isSubmitting} className="space-y-5">
+        <CompanyFormFields form={form} requireLocation={hasCompleteLocation} seatInputType={seatInputType}>
           <Controller
             name="registeredEntityName"
             control={control}
             render={({ field }) => (
-              <WebsiteFormField
-                field={field}
-                label="Registered Entity Name"
-                placeholder="Registered Entity Name"
-              />
-            )}
-          />
-
-          <Controller
-            name="industry"
-            control={control}
-            render={({ field }) => (
-              <WebsiteFormField
-                field={field}
-                label="Industry"
-                placeholder="e.g. Hospitality"
-              />
-            )}
-          />
-
-          <Controller
-            name="companySize"
-            control={control}
-            render={({ field }) => (
-              <WebsiteFormField
-                field={field}
-                label="Company Size"
-                placeholder="e.g. 51-200"
-              />
-            )}
-          />
-
-          <Controller
-            name="companyLogo"
-            control={control}
-            render={({ field }) => (
-              <LogoUploadField
+              <LogoUploadInput
                 value={field.value}
                 onChange={field.onChange}
-                currentLogoUrl={currentLogoUrl}
+                currentLogoUrl={company.logo?.url}
               />
             )}
           />
-
-          <SectionTitle title="Location" />
-
-          <Controller
-            name="companyCountry"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                select
-                label="Company Country"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-                onChange={(event) => {
-                  field.onChange(event);
-                  setValue("companyState", "");
-                  setValue("companyCity", "");
-                }}
-              >
-                <option value="">Select Country</option>
-                {Country.getAllCountries().map((c) => (
-                  <option key={c.isoCode} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-              </WebsiteFormField>
-            )}
+        </CompanyFormFields>
+        {error && (
+          <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            {error.response?.data?.message || "Could not save the company. Please try again."}
+          </p>
+        )}
+        <div className="flex items-center justify-center">
+          <PrimaryButton
+            type="submit"
+            title={isSubmitting ? "Saving Changes" : "Save Changes"}
+            isLoading={isSubmitting}
           />
+        </div>
+      </fieldset>
+    </form>
+  );
+};
 
-          <Controller
-            name="companyState"
-            control={control}
-            render={({ field, fieldState }) => {
-              const companyCountryName = watch("companyCountry");
-              const companyCountryObj = Country.getAllCountries().find(
-                (c) => c.name === companyCountryName,
-              );
-              const states = companyCountryObj
-                ? State.getStatesOfCountry(companyCountryObj.isoCode)
-                : [];
+const EditCompany = () => {
+  const { companyId } = useParams();
+  const isHostCompanyRoute = useMatch("/dashboard/host-companies/edit/:companyId");
+  const axios = useAxiosPrivate();
+  const { data: company, isPending, isError, refetch } = useQuery({
+    queryKey: ["companyDetails", companyId],
+    enabled: Boolean(companyId),
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/company", { params: { companyId } });
+      return response.data?.data || response.data;
+    },
+  });
 
-              return (
-                <WebsiteFormField
-                  field={field}
-                  select
-                  label="Company State"
-                  disabled={!companyCountryObj}
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                  onChange={(event) => {
-                    field.onChange(event);
-                    setValue("companyCity", "");
-                  }}
-                >
-                  <option value="">Select State</option>
-                  {states.map((s) => (
-                    <option key={s.isoCode} value={s.name}>
-                      {s.name}
-                    </option>
-                  ))}
-                </WebsiteFormField>
-              );
-            }}
-          />
-
-          <Controller
-            name="companyCity"
-            control={control}
-            render={({ field, fieldState }) => {
-              const companyCountryName = watch("companyCountry");
-              const companyStateName = watch("companyState");
-
-              const companyCountryObj = Country.getAllCountries().find(
-                (c) => c.name === companyCountryName,
-              );
-              const companyStateObj =
-                companyCountryObj &&
-                State.getStatesOfCountry(companyCountryObj.isoCode).find(
-                  (s) => s.name === companyStateName,
-                );
-
-              const cities =
-                companyCountryObj && companyStateObj
-                  ? City.getCitiesOfState(
-                      companyCountryObj.isoCode,
-                      companyStateObj.isoCode,
-                    )
-                  : [];
-
-              return (
-                <WebsiteFormField
-                  field={field}
-                  select
-                  label="Company City"
-                  disabled={!companyStateObj}
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                >
-                  <option value="">Select City</option>
-                  {cities.map((city) => (
-                    <option key={city.name} value={city.name}>
-                      {city.name}
-                    </option>
-                  ))}
-                </WebsiteFormField>
-              );
-            }}
-          />
-
-          <Controller
-            name="companyContinent"
-            control={control}
-            render={({ field }) => (
-              <WebsiteFormField
-                field={field}
-                label="Company Continent"
-                placeholder="e.g. Asia"
-              />
-            )}
-          />
-
-          <SectionTitle title="Web Presence" />
-
-          <Controller
-            name="websiteURL"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Website URL"
-                placeholder="https://example.com"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="linkedinURL"
-            control={control}
-            render={({ field }) => (
-              <WebsiteFormField
-                field={field}
-                label="LinkedIn URL"
-                placeholder="https://linkedin.com/company/..."
-              />
-            )}
-          />
-
-          <SectionTitle title="Apps, Modules & Defaults" />
-
-          <Controller
-            name="selectedApps"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Apps"
-                placeholder="tickets, meetings"
-                helperText={
-                  fieldState.error?.message ||
-                  "Comma separated. Allowed: tickets, meetings, tasks, performance, visitors, assets"
-                }
-                error={!!fieldState.error}
-              />
-            )}
-          />
-
-          <Controller
-            name="selectedModules"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Modules"
-                placeholder="finance, hr"
-                helperText={
-                  fieldState.error?.message ||
-                  "Comma separated. Allowed: finance, sales, hr, admin, maintenance, it"
-                }
-                error={!!fieldState.error}
-              />
-            )}
-          />
-
-          <div className="col-span-1 md:col-span-2">
-            <Controller
-              name="selectedDefaults"
-              control={control}
-              render={({ field, fieldState }) => (
-                <WebsiteFormField
-                  field={field}
-                  label="Defaults"
-                  placeholder="websiteBuilder, leadGeneration"
-                  helperText={
-                    fieldState.error?.message ||
-                    "Comma separated. Allowed: websiteBuilder, leadGeneration, automatedGoogleSheets"
-                  }
-                  error={!!fieldState.error}
-                />
+  return (
+    <div className="p-4">
+      <PageFrame>
+        <div className="mx-auto max-w-3xl">
+          <Link
+            to={isHostCompanyRoute ? "/dashboard/host-companies" : "/dashboard/companies/list"}
+            className="text-sm font-pmedium text-blue-700 hover:underline"
+          >
+            {isHostCompanyRoute ? "Back to Host Companies" : "Back to Companies"}
+          </Link>
+          <h1 className="mb-5 mt-3 text-title font-pmedium uppercase text-primary">
+            Edit Company
+          </h1>
+          {companyId && company?.companyId === companyId ? (
+            <EditCompanyForm key={companyId} company={company} />
+          ) : companyId && isPending ? (
+            <p role="status" className="text-sm text-slate-700">Loading company details…</p>
+          ) : (
+            <p role="alert" className="text-sm text-slate-700">
+              {isError ? "Could not load company details." : "Company not found."}
+              {isError && (
+                <button type="button" className="ml-2 text-blue-700 underline" onClick={() => refetch()}>
+                  Retry
+                </button>
               )}
-            />
-          </div>
-
-          <SectionTitle title="Point of Contact" />
-
-          <Controller
-            name="pocName"
-            control={control}
-            rules={{ required: "POC Name is required" }}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="POC Name"
-                required
-                placeholder="Full name"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocDesignation"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="POC Designation"
-                placeholder="e.g. Operations Manager"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocEmail"
-            control={control}
-            rules={{
-              required: "POC Email is required",
-              pattern: { value: /^\S+@\S+$/i, message: "Invalid email" },
-            }}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="POC Email"
-                required
-                type="email"
-                placeholder="name@company.com"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocPhone"
-            control={control}
-            rules={{ required: "POC Phone is required" }}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="POC Phone"
-                required
-                placeholder="+91 00000 00000"
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocLinkedInProfile"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="LinkedIn Profile URL"
-                placeholder="https://linkedin.com/in/..."
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocLanguages"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Languages"
-                placeholder="English, Hindi"
-                helperText={fieldState.error?.message || "Comma separated"}
-                error={!!fieldState.error}
-              />
-            )}
-          />
-
-          <Controller
-            name="pocProfileImage"
-            control={control}
-            render={({ field, fieldState }) => (
-              <WebsiteFormField
-                field={field}
-                label="Profile Image URL"
-                placeholder="https://..."
-                error={!!fieldState.error}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-
-          <div className="col-span-1 mt-3 md:col-span-2">
-            <Controller
-              name="pocAddress"
-              control={control}
-              render={({ field, fieldState }) => (
-                <WebsiteFormField
-                  field={field}
-                  label="POC Address"
-                  multiline
-                  minRows={3}
-                  placeholder="Type address here..."
-                  error={!!fieldState.error}
-                  helperText={fieldState.error?.message}
-                />
-              )}
-            />
-          </div>
-
-          <div className="col-span-1 mt-4 flex items-center justify-center gap-3 md:col-span-2">
-            <PrimaryButton
-              type="submit"
-              title={isUpdateCompanyLoading ? "Saving..." : "Submit"}
-              isLoading={isUpdateCompanyLoading}
-              disabled={isUpdateCompanyLoading}
-            />
-            <button
-              type="button"
-              onClick={resetToSaved}
-              disabled={isUpdateCompanyLoading}
-              className="rounded-md bg-gray-200 px-6 py-2 text-[12px] font-pmedium text-black transition hover:bg-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Reset
-            </button>
-          </div>
-        </form>
+            </p>
+          )}
+        </div>
       </PageFrame>
     </div>
   );

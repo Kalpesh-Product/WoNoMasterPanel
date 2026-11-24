@@ -2,39 +2,45 @@ import { useRef, useState } from "react";
 import { SOCIAL_ICON } from "../socialIcons";
 import { resolveSectionFromSlug } from "../useWebsiteTemplateData";
 import { useCabin } from "./CabinContext";
+import { cabinSrc } from "./cabinMedia";
 import { CabinHours, CabinImage } from "./CabinUI";
 function SocialLinks() {
     const { t } = useCabin();
     return <div className="cabin-socials">
-    {t.footerSocialLinks.map(({ key, href }) => href ? (<a key={key} href={href} target="_blank" rel="noreferrer" aria-label={key}>
+    {(t.footerSocialLinks || []).map(({ key, href }) => href ? (<a key={key} href={href} target="_blank" rel="noreferrer" aria-label={key}>
         <span aria-hidden="true">{SOCIAL_ICON[key] || key.charAt(0).toUpperCase()}</span>
       </a>) : null)}
   </div>;
 }
 export function CabinHeader() {
-    const { t, draft, primary, services, c, openLead } = useCabin();
+    const { t, draft, primary, services, openLead, c } = useCabin();
     const drawer = useRef(null);
     const [menuOpen, setMenuOpen] = useState(false);
+    const logo = cabinSrc(draft.companyLogo);
     const booking = primary?.leadEnabled ? primary : services.find((service) => service.leadEnabled);
     const book = () => {
         drawer.current?.close();
         if (booking)
             openLead(booking);
     };
-    const nav = () => t.navItems.map(({ name, slug }) => (<button type="button" key={slug} aria-current={resolveSectionFromSlug(slug) === t.currentSection ? "page" : undefined} onClick={() => {
-            drawer.current?.close();
-            t.goToSection(slug);
-        }}>{name}<span aria-hidden="true">↗</span>
+    const goTo = (slug) => {
+        drawer.current?.close();
+        t.goToSection(slug);
+    };
+    const nav = () => t.navItems.map(({ name, slug }) => (<button type="button" key={slug}
+      aria-current={resolveSectionFromSlug(slug) === t.currentSection ? "page" : undefined}
+      onClick={() => goTo(slug)}>
+      {name}<span aria-hidden="true">↗</span>
     </button>));
     return <>
     <a className="cabin-skip" href="#cabin-main">Skip to content</a>
     <header className="cabin-header">
       <button className="cabin-brand" type="button" onClick={() => t.goToSection("home")} aria-label="Home">
-        {draft.companyLogo ? <CabinImage src={draft.companyLogo} alt={draft.companyName || "Cabin"} eager/> : draft.companyName || "Cabin"}
+        {logo ? <CabinImage src={logo} alt={draft.companyName || "Cabin"} eager/> : draft.companyName || "Cabin"}
       </button>
       <nav className="cabin-desktop-nav" aria-label="Main navigation">{nav()}</nav>
       <div className="cabin-header-actions">
-        {booking ? <button type="button" className="cabin-header-book" onClick={book}>{c("booking.cta", "Book a stay")} <span aria-hidden="true">↗</span>
+        {booking ? <button type="button" className="cabin-header-book" onClick={book}>{draft.CTAButtonText || c("booking.cta", "Book a stay")} <span aria-hidden="true">↗</span>
         </button> : null}
         <button type="button" className="cabin-menu-toggle" aria-label="Open menu" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls="cabin-menu" onClick={() => {
             drawer.current?.showModal();
@@ -61,12 +67,13 @@ export function CabinHeader() {
 }
 export function CabinFooter() {
     const { t, draft, c } = useCabin();
+    const logo = cabinSrc(draft.companyLogo);
     return <footer className="cabin-footer">
     <div className="cabin-shell">
       <div className="cabin-footer-grid">
         <div className="cabin-footer-intro">
           <button type="button" className="cabin-brand" onClick={() => t.goToSection("home")}>
-            {draft.companyLogo ? <CabinImage src={draft.companyLogo} alt={draft.companyName || "Cabin"}/> : draft.companyName || "Cabin"}
+            {logo ? <CabinImage src={logo} alt={draft.companyName || "Cabin"}/> : draft.companyName || "Cabin"}
           </button>
           <h2>{c("footer.title", "Get in touch with us")}</h2>
           {c("footer.body", draft.subTitle || "") ? <p>{c("footer.body", draft.subTitle || "")}</p> : null}

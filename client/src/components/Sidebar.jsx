@@ -1,10 +1,19 @@
 import React, { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "../context/SideBarContext";
 import { MASTER_PANEL_MODULES, hasModuleAccess } from "../constants/masterPanelModules";
 import { LuLayoutDashboard } from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
+import useAxiosPrivate from "../hooks/useAxiosPrivate";
+import {
+  DEFAULT_COMPANY_REVIEWS_PATH,
+  NOMAD_LISTING_REVIEWS_PATH,
+  nomadReviewQueryOptions,
+} from "../pages/Dashboard/CompanyReviews/nomadReviewQuery";
+import { destinationReviewQueries } from "../pages/Dashboard/CompanyReviews/destinationReviewQueries";
+import "./Sidebar.css";
 
 const Sidebar = ({ onCloseDrawer }) => {
   const { isSidebarOpen } = useSidebar();
@@ -15,6 +24,8 @@ const Sidebar = ({ onCloseDrawer }) => {
   const [moduleSearch, setModuleSearch] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { auth } = useAuth();
+  const axiosPrivate = useAxiosPrivate();
+  const queryClient = useQueryClient();
 
   const isSuperAdmin = auth?.user?.isSuperAdmin;
   const allowedModules = auth?.user?.allowedModules || [];
@@ -36,7 +47,18 @@ const Sidebar = ({ onCloseDrawer }) => {
     if (onCloseDrawer) onCloseDrawer();
   };
 
+  const prefetchCompanyReviews = (route) => {
+    if (
+      auth?.accessToken &&
+      (route === DEFAULT_COMPANY_REVIEWS_PATH || route === NOMAD_LISTING_REVIEWS_PATH)
+    ) {
+      queryClient.prefetchInfiniteQuery(nomadReviewQueryOptions(axiosPrivate, auth.user?.email));
+      for (const options of destinationReviewQueries) queryClient.prefetchQuery(options);
+    }
+  };
+
   const handleMenuOpen = (item) => {
+    prefetchCompanyReviews(item.route);
     navigateFromSidebar(item.route);
   };
 
@@ -113,7 +135,7 @@ const Sidebar = ({ onCloseDrawer }) => {
   return (
     <div
       data-tour="sidebar-nav"
-      className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
+      className={`sidebar-navigation ${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
         <span className="text-[10px] font-semibold tracking-wide text-black/70 bg-white px-3 py-1 rounded-full uppercase">
@@ -138,7 +160,7 @@ const Sidebar = ({ onCloseDrawer }) => {
               placeholder="Search modules"
               aria-label="Search modules"
               autoComplete="off"
-              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-pmedium text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
+              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-semibold text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
             />
             {moduleSearch ? (
               <button
@@ -158,7 +180,7 @@ const Sidebar = ({ onCloseDrawer }) => {
         {!isSidebarOpen ? (
           <div className="px-4 pt-3">
             <div className="border-t border-black/10 pt-2">
-              <div className="text-[10px] font-pbold tracking-wide text-black/80 uppercase text-center">
+              <div className="text-[10px] font-bold tracking-wide text-black/80 uppercase text-center">
                 MNU
               </div>
             </div>
@@ -186,7 +208,7 @@ const Sidebar = ({ onCloseDrawer }) => {
                       : "text-black/80"
                   }`}
                 />
-                <span className="font-['Poppins'] text-xs font-semibold uppercase tracking-wide">
+                <span className="text-xs font-semibold uppercase tracking-wide">
                   Dashboard
                 </span>
               </button>
@@ -202,7 +224,7 @@ const Sidebar = ({ onCloseDrawer }) => {
                   <>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between text-left font-['Poppins'] text-xs font-semibold uppercase tracking-wide text-black/80"
+                      className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-black/80"
                       onClick={() => handleModuleClick(module, index)}
                     >
                       <span className="flex items-center gap-2">
@@ -263,6 +285,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                                         ? "bg-white text-black shadow-sm"
                                         : "text-black/80"
                                     }`}
+                                    onPointerEnter={() => prefetchCompanyReviews(submenu.route)}
+                                    onFocus={() => prefetchCompanyReviews(submenu.route)}
                                     onClick={() => handleMenuOpen(submenu)}
                                   >
                                     <submenu.icon
@@ -274,8 +298,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                                       }`}
                                     />
                                     <span
-                                      className={`truncate font-['Poppins'] text-xs font-medium ${
-                                        isActive(submenu.route) ? "font-semibold" : ""
+                                      className={`truncate text-xs ${
+                                        isActive(submenu.route) ? "font-semibold" : "font-medium"
                                       }`}
                                     >
                                       {submenu.title}

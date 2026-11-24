@@ -1,12 +1,22 @@
+import { useEffect, useState } from "react";
 import { motion as Motion, useReducedMotion } from "framer-motion";
 import { groupOpeningHours } from "../templateKit";
 import { useCabin } from "./CabinContext";
+import { CABIN_FALLBACK_IMAGES, cabinSrc } from "./cabinMedia";
 export function CabinReveal({ children, className = "" }) {
     const reducedMotion = useReducedMotion();
     return <Motion.div className={className} initial={reducedMotion ? false : { opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.08 }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}>{children}</Motion.div>;
 }
-export function CabinImage({ src, alt = "", eager = false }) {
-    return src ? <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async"/> : null;
+export function CabinImage({ src, alt = "", eager = true, fallback = CABIN_FALLBACK_IMAGES[0] }) {
+    const requested = cabinSrc(src) || fallback || CABIN_FALLBACK_IMAGES[0];
+    const [current, setCurrent] = useState(requested);
+    useEffect(() => {
+        setCurrent(requested);
+    }, [requested]);
+    return <img src={current} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" onError={() => {
+        if (current !== CABIN_FALLBACK_IMAGES[0])
+            setCurrent(CABIN_FALLBACK_IMAGES[0]);
+    }}/>;
 }
 export function CabinPageHero({ title, label, image, body }) {
     return (<section className="cabin-page-hero">

@@ -1,17 +1,17 @@
 import { useMemo, useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import { Country, State, City } from "country-state-city";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
 import SecondaryButton from "../../../components/SecondaryButton";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import publicAxios from "axios";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import UploadMultipleFilesInput from "../../../components/UploadMultipleFilesInput";
 import WebsiteFormField from "../../../components/WebsiteFormField";
 import WebsiteMultiSelectField from "../../../components/WebsiteMultiSelectField";
-import { useLocation } from "react-router-dom";
+import LocationDropdowns from "../../../components/LocationDropdowns";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 // Company types
@@ -106,10 +106,58 @@ const defaultReview = {
 
 const NomadListing = () => {
   const location = useLocation();
+  const { companyId: companyRoute } = useParams();
   const navState = location?.state || {};
+  // Older links use a company-name slug here. The Add Company link uses its UUID.
+  const companyIdFromUrl = /^[a-f\d]{8}(?:-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(companyRoute)
+    ? companyRoute
+    : "";
   const companyId =
-    navState.companyId || sessionStorage.getItem("companyId") || "";
+    navState.companyId || companyIdFromUrl || sessionStorage.getItem("companyId") || "";
   const axios = useAxiosPrivate();
+  const { data: company, isPending, isError, refetch } = useQuery({
+    queryKey: ["nomad-listing-company", companyId],
+    enabled: Boolean(companyId),
+    queryFn: async () => {
+      const response = await axios.get("/api/hosts/company", { params: { companyId } });
+      return response.data;
+    },
+  });
+
+  if (company?.companyId === companyId && companyId) {
+    return <NomadListingForm key={companyId} company={company} />;
+  }
+
+  return (
+    <div className="p-4">
+      <PageFrame>
+        <h2 className="mb-4 text-title font-pmedium uppercase text-primary">Add Product</h2>
+        {companyId && isPending ? (
+          <p role="status">Loading company details…</p>
+        ) : (
+          <p role="alert" className="text-sm text-slate-700">
+            {isError ? "Could not load company details." : "Select a company to add a product."}{" "}
+            {isError ? (
+              <button type="button" className="text-blue-700 underline" onClick={() => refetch()}>
+                Retry
+              </button>
+            ) : (
+              <Link className="text-blue-700 underline" to="/dashboard/companies/list">
+                Back to Companies
+              </Link>
+            )}
+          </p>
+        )}
+      </PageFrame>
+    </div>
+  );
+};
+
+const NomadListingForm = ({ company }) => {
+  const { companyId, companyName } = company;
+  const seatCount = company.companySize && Number(company.companySize);
+  const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
   const formRef = useRef(null);
 
   const { data: existingListings = [] } = useQuery({
@@ -159,18 +207,7 @@ const NomadListing = () => {
   // });
   // Fallback preview when no per-listing logo is uploaded — the listing
   // then just uses this, the Host Company's own profile logo.
-  const { data: hostCompanies = [] } = useQuery({
-    queryKey: ["hostCompaniesList"],
-    queryFn: async () => {
-      const res = await axios.get("/api/hosts/host-companies");
-      return res.data || [];
-    },
-  });
-  const profileLogoUrl = useMemo(
-    () =>
-      hostCompanies.find((c) => c.companyId === companyId)?.logo?.url || "",
-    [hostCompanies, companyId],
-  );
+  const profileLogoUrl = company.logo?.url;
 
   const {
     control,
@@ -184,21 +221,22 @@ const NomadListing = () => {
     defaultValues: {
       businessId: `BIZ_${Date.now()}`,
       companyType: "",
-      companyTitle: "",
-      website: "",
+      companyTitle: companyName || "",
+      website: company.websiteLink || "",
       ratings: "",
       totalReviews: "",
-      // totalSeats: "",
+      totalSeats: Number.isInteger(seatCount) && seatCount >= 0 ? String(seatCount) : "",
       latitude: "",
       longitude: "",
-      country: "",
-      state: "",
-      city: "",
+      continent: company.companyContinent || "",
+      country: company.companyCountry || "",
+      state: company.companyState || "",
+      city: company.companyCity || "",
       inclusions: [],
       // services: [],
       // units: [],
       about: "",
-      address: "",
+      address: company.address || "",
       images: [],
       logo: [],
       googleMap: "",
@@ -233,7 +271,7 @@ const NomadListing = () => {
     remove: removeReview,
   } = useFieldArray({ control, name: "reviews" });
 
-  const { mutate: createCompany, isLoading } = useMutation({
+  const { mutate: createCompany, isPending } = useMutation({
     mutationFn: async (fd) => {
       const res = await axios.post("/api/hosts/add-company-listing", fd, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -241,11 +279,13 @@ const NomadListing = () => {
       return res.data;
     },
     onSuccess: () => {
-      toast.success("Company added successfully!");
+      toast.success("Product added successfully");
+      queryClient.invalidateQueries({ queryKey: ["nomad-listings", companyId] });
+      queryClient.invalidateQueries({ queryKey: ["nomad-listing-types", companyId] });
       reset();
     },
     onError: (err) => {
-      toast.error(err?.response?.data?.message || "Failed to add company");
+      toast.error(err?.response?.data?.message || "Could not add the product");
     },
   });
 
@@ -277,7 +317,7 @@ const NomadListing = () => {
     fd.set("website", values.website);
     fd.set("ratings", values.ratings);
     fd.set("totalReviews", values.totalReviews);
-    // fd.set("totalSeats", values.totalSeats);
+    if (values.totalSeats !== "") fd.set("totalSeats", values.totalSeats);
     fd.set("latitude", values.latitude);
     fd.set("longitude", values.longitude);
     fd.set("about", values.about);
@@ -288,6 +328,7 @@ const NomadListing = () => {
         [values.city, values.state, values.country].filter(Boolean).join(", "),
     );
     fd.set("googleMap", values.googleMap);
+    fd.set("continent", values.continent);
     fd.set("country", values.country);
     fd.set("state", values.state);
     fd.set("city", values.city);
@@ -346,7 +387,7 @@ const NomadListing = () => {
               Add Product
             </h2>
             <p className="text-xs font-pmedium text-slate-500 mt-1">
-              Create a new listing for your co-working or co-living space on Wono Nomads.
+              Create a Wono Nomads listing for {companyName}.
             </p>
           </div>
         </div>
@@ -566,22 +607,17 @@ const NomadListing = () => {
             </div>
           </div>
 
-          Total Seats
+          */}
+
           <Controller
             name="totalSeats"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Total Seats"
-                type="number"
-                inputProps={{ min: 0, step: 1 }}
-                className="col-span-2 md:col-span-1"
-              />
+              <div className="col-span-2 md:col-span-1">
+                <WebsiteFormField field={field} label="Total Seats" type="number" min={0} step={1} />
+              </div>
             )}
           />
-          */}
 
           {/* Address */}
           {/* <div className="col-span-2"> */}
@@ -645,123 +681,9 @@ const NomadListing = () => {
             )}
           />
 
-          {/* Country — each listing has its own location, independent of
-              the Host Company's registered address. */}
-          <Controller
-            name="country"
-            control={control}
-            rules={{ required: "Country is required" }}
-            render={({ field }) => (
-              <div className="col-span-2 md:col-span-1">
-                <WebsiteFormField
-                  field={field}
-                  select
-                  label="Country"
-                  error={!!errors.country}
-                  helperText={errors?.country?.message}
-                  onChange={(e) => {
-                    field.onChange(e);
-                    setValue("state", "");
-                    setValue("city", "");
-                  }}
-                >
-                  <option value="" disabled>
-                    Select Country
-                  </option>
-                  {Country.getAllCountries().map((c) => (
-                    <option key={c.isoCode} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </WebsiteFormField>
-              </div>
-            )}
-          />
-
-          {/* State */}
-          <Controller
-            name="state"
-            control={control}
-            rules={{ required: "State is required" }}
-            render={({ field }) => {
-              const countryName = watch("country");
-              const countryObj = Country.getAllCountries().find(
-                (c) => c.name === countryName,
-              );
-              const states = countryObj
-                ? State.getStatesOfCountry(countryObj.isoCode)
-                : [];
-              return (
-                <div className="col-span-2 md:col-span-1">
-                  <WebsiteFormField
-                    field={field}
-                    select
-                    label="State"
-                    disabled={!countryObj}
-                    error={!!errors.state}
-                    helperText={errors?.state?.message}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      setValue("city", "");
-                    }}
-                  >
-                    <option value="" disabled>
-                      Select State
-                    </option>
-                    {states.map((s) => (
-                      <option key={s.isoCode} value={s.name}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </WebsiteFormField>
-                </div>
-              );
-            }}
-          />
-
-          {/* City */}
-          <Controller
-            name="city"
-            control={control}
-            rules={{ required: "City is required" }}
-            render={({ field }) => {
-              const countryName = watch("country");
-              const stateName = watch("state");
-              const countryObj = Country.getAllCountries().find(
-                (c) => c.name === countryName,
-              );
-              const stateObj =
-                countryObj &&
-                State.getStatesOfCountry(countryObj.isoCode).find(
-                  (s) => s.name === stateName,
-                );
-              const cities =
-                countryObj && stateObj
-                  ? City.getCitiesOfState(countryObj.isoCode, stateObj.isoCode)
-                  : [];
-              return (
-                <div className="col-span-2 md:col-span-1">
-                  <WebsiteFormField
-                    field={field}
-                    select
-                    label="City"
-                    disabled={!stateObj}
-                    error={!!errors.city}
-                    helperText={errors?.city?.message}
-                  >
-                    <option value="" disabled>
-                      Select City
-                    </option>
-                    {cities.map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </WebsiteFormField>
-                </div>
-              );
-            }}
-          />
+          <div className="col-span-2 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <LocationDropdowns control={control} setValue={setValue} />
+          </div>
 
           {/* Images Upload */}
           {/* <div className="col-span-2"> */}
@@ -955,7 +877,7 @@ const NomadListing = () => {
 
           {/* Submit / Reset */}
           <div className="col-span-2 flex items-center justify-center gap-4">
-            <PrimaryButton type="submit" title="Submit" isLoading={isLoading} />
+            <PrimaryButton type="submit" title="Add Product" isLoading={isPending} />
             <SecondaryButton handleSubmit={handleReset} title="Reset" />
           </div>
         </form>
