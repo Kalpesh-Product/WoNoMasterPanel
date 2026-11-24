@@ -4415,16 +4415,18 @@ const handleStripeWebhook = async (req, res) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
-    // Subscription-mode sessions (startTrialCheckout) have no payment_link
-    // at all — that's the Payment-Link-only branch below — so they're
-    // routed by mode instead.
+    // Subscription-mode sessions (startTrialCheckout) are routed by mode.
+    // One-time payments (BookingPaymentLink) can either be created via
+    // stripe.paymentLinks.create (session.payment_link is set) or via
+    // stripe.checkout.sessions.create (for expiring hostel/co-living sessions,
+    // where session.payment_link is null and session.id matches stripeCheckoutSessionId).
     if (session.mode === "subscription") {
       try {
         await handleTrialSubscriptionCheckoutCompleted(session);
       } catch (error) {
         console.error("Failed to finalize trial subscription checkout:", error);
       }
-    } else if (session.payment_link) {
+    } else {
       try {
         // The { status: { $ne: "paid" } } filter makes this an atomic
         // "transition once" — if Stripe redelivers this same event (it
