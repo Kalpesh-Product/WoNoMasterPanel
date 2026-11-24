@@ -31,11 +31,12 @@ const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
       const objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
+    } else {
+      setPreviewUrl(null);
     }
-    setPreviewUrl(null);
   }, [value]);
 
-  const resolvedLogo = previewUrl || currentLogoUrl || null;
+  const hasLogo = value || currentLogoUrl;
 
   return (
     <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -98,30 +99,14 @@ const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
               <button
                 type="button"
                 onClick={() => onChange(null)}
-                className="inline-flex items-center gap-1 text-[11px] font-pmedium text-rose-600 hover:text-rose-800"
+                className="text-xs text-red-600 hover:text-red-800 font-medium ml-1"
               >
-                <Trash2 size={12} />
                 Remove
               </button>
-            ) : null}
+            )}
           </div>
-          <p className="max-w-[260px] truncate text-[10px] text-slate-400">
-            {value instanceof File
-              ? value.name
-              : "Leave unchanged to keep the current logo."}
-          </p>
-        </div>
+        )}
       </div>
-      <input
-        id="companyLogo"
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) onChange(file);
-        }}
-      />
     </div>
   );
 };
@@ -146,7 +131,12 @@ const EditCompanyForm = ({ company }) => {
   const axios = useAxiosPrivate();
   const queryClient = useQueryClient();
   const form = useForm({ defaultValues: getFormValues(company) });
-  const { control, handleSubmit, reset, formState: { isSubmitting } } = form;
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting },
+  } = form;
 
   const { mutateAsync: updateCompany, error } = useMutation({
     mutationFn: async (payload) => {
@@ -156,7 +146,10 @@ const EditCompanyForm = ({ company }) => {
     onSuccess: (savedCompany) => {
       reset(getFormValues(savedCompany));
       queryClient.setQueryData(["companyDetails", companyId], savedCompany);
-      queryClient.setQueryData(["nomad-listing-company", companyId], savedCompany);
+      queryClient.setQueryData(
+        ["nomad-listing-company", companyId],
+        savedCompany,
+      );
       queryClient.invalidateQueries({ queryKey: ["companiesList"] });
       queryClient.invalidateQueries({ queryKey: ["companyLocations"] });
       queryClient.invalidateQueries({ queryKey: ["hostCompaniesList"] });
@@ -176,15 +169,24 @@ const EditCompanyForm = ({ company }) => {
     }
   };
 
-  const hasCompleteLocation = Boolean(company.companyCity && company.companyState && company.companyCountry);
-  const seatInputType = company.companySize && !/^\d+$/.test(company.companySize) ? "text" : "number";
+  const hasCompleteLocation = Boolean(
+    company.companyCity && company.companyState && company.companyCountry,
+  );
+  const seatInputType =
+    company.companySize && !/^\d+$/.test(company.companySize)
+      ? "text"
+      : "number";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} aria-busy={isSubmitting}>
       <fieldset disabled={isSubmitting} className="space-y-5">
-        <CompanyFormFields form={form} requireLocation={hasCompleteLocation} seatInputType={seatInputType}>
+        <CompanyFormFields
+          form={form}
+          requireLocation={hasCompleteLocation}
+          seatInputType={seatInputType}
+        >
           <Controller
-            name="registeredEntityName"
+            name="companyLogo"
             control={control}
             render={({ field }) => (
               <LogoUploadInput
@@ -196,8 +198,12 @@ const EditCompanyForm = ({ company }) => {
           />
         </CompanyFormFields>
         {error && (
-          <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
-            {error.response?.data?.message || "Could not save the company. Please try again."}
+          <p
+            role="alert"
+            className="rounded-xl bg-red-50 p-3 text-sm text-red-700"
+          >
+            {error.response?.data?.message ||
+              "Could not save the company. Please try again."}
           </p>
         )}
         <div className="flex items-center justify-center">
@@ -214,13 +220,22 @@ const EditCompanyForm = ({ company }) => {
 
 const EditCompany = () => {
   const { companyId } = useParams();
-  const isHostCompanyRoute = useMatch("/dashboard/host-companies/edit/:companyId");
+  const isHostCompanyRoute = useMatch(
+    "/dashboard/host-companies/edit/:companyId",
+  );
   const axios = useAxiosPrivate();
-  const { data: company, isPending, isError, refetch } = useQuery({
+  const {
+    data: company,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ["companyDetails", companyId],
     enabled: Boolean(companyId),
     queryFn: async () => {
-      const response = await axios.get("/api/hosts/company", { params: { companyId } });
+      const response = await axios.get("/api/hosts/company", {
+        params: { companyId },
+      });
       return response.data?.data || response.data;
     },
   });
@@ -230,10 +245,16 @@ const EditCompany = () => {
       <PageFrame>
         <div className="mx-auto max-w-3xl">
           <Link
-            to={isHostCompanyRoute ? "/dashboard/host-companies" : "/dashboard/companies/list"}
+            to={
+              isHostCompanyRoute
+                ? "/dashboard/host-companies"
+                : "/dashboard/companies/list"
+            }
             className="text-sm font-pmedium text-blue-700 hover:underline"
           >
-            {isHostCompanyRoute ? "Back to Host Companies" : "Back to Companies"}
+            {isHostCompanyRoute
+              ? "Back to Host Companies"
+              : "Back to Companies"}
           </Link>
           <h1 className="mb-5 mt-3 text-title font-pmedium uppercase text-primary">
             Edit Company
@@ -241,12 +262,20 @@ const EditCompany = () => {
           {companyId && company?.companyId === companyId ? (
             <EditCompanyForm key={companyId} company={company} />
           ) : companyId && isPending ? (
-            <p role="status" className="text-sm text-slate-700">Loading company details…</p>
+            <p role="status" className="text-sm text-slate-700">
+              Loading company details…
+            </p>
           ) : (
             <p role="alert" className="text-sm text-slate-700">
-              {isError ? "Could not load company details." : "Company not found."}
+              {isError
+                ? "Could not load company details."
+                : "Company not found."}
               {isError && (
-                <button type="button" className="ml-2 text-blue-700 underline" onClick={() => refetch()}>
+                <button
+                  type="button"
+                  className="ml-2 text-blue-700 underline"
+                  onClick={() => refetch()}
+                >
                   Retry
                 </button>
               )}
