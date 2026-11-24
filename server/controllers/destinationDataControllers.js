@@ -267,19 +267,29 @@ const fetchNomadsCompanyListings = async () => {
   return state.items;
 };
 
+let destinationSourcesPromise;
+const fetchDestinationSources = () => {
+  if (!destinationSourcesPromise) {
+    // Both summaries use these sources. Share the work while requests overlap.
+    destinationSourcesPromise = Promise.all([
+      HostCompany.find()
+        .select("companyCountry companyState companyCity companyContinent")
+        .lean(),
+      fetchNomadsRows("/blogs/destination-counts"),
+      fetchNomadsRows("/news/destination-counts"),
+      fetchNomadsRows("/events"),
+      fetchNomadsRows("/places"),
+      fetchNomadsRows("/restaurants"),
+    ]).finally(() => {
+      destinationSourcesPromise = null;
+    });
+  }
+  return destinationSourcesPromise;
+};
+
 const buildDestinationStats = async ({ includeListings = false } = {}) => {
-  const [companies, blogs, news, events, places, restaurants, listings] = await Promise.all([
-    HostCompany.find()
-      .select("companyCountry companyState companyCity companyContinent")
-      .lean(),
-    // Pre-aggregated on the Nomads side (destination + count only) — pulling
-    // full blog/news documents just to count them by destination was taking
-    // 50-120s+ over this link; the grouped summary takes well under a second.
-    fetchNomadsRows("/blogs/destination-counts"),
-    fetchNomadsRows("/news/destination-counts"),
-    fetchNomadsRows("/events"),
-    fetchNomadsRows("/places"),
-    fetchNomadsRows("/restaurants"),
+  const [[companies, blogs, news, events, places, restaurants], listings] = await Promise.all([
+    fetchDestinationSources(),
     includeListings ? fetchNomadsCompanyListings() : Promise.resolve([]),
   ]);
 

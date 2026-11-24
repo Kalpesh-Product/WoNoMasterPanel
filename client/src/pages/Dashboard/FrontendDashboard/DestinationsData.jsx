@@ -25,6 +25,11 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import { NOMADS_BACKEND_URL, NOMADS_API_BASE_URL } from "../../../constants/api";
 import { statusPillClass } from "../../../lib/status-pill";
+import {
+  DESTINATIONS_DATA_BASE_PATH,
+  DESTINATION_SUMMARY_PAGE_SIZE as PAGE_SIZE,
+  destinationSummaryQueryOptions,
+} from "./destinationSummaryQuery";
 
 const BLOG_ENDPOINTS = [
   "/api/blogs",
@@ -48,7 +53,6 @@ const RESTAURANT_ENDPOINTS = [`${NOMADS_API_BASE_URL}/restaurants`];
 const RESTAURANT_API_BASE_URL = NOMADS_BACKEND_URL;
 
 const COMPANY_ENDPOINTS = ["/api/hosts/companies"];
-const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 700;
 
 const SUMMARY_TABS = [
@@ -60,7 +64,6 @@ const SUMMARY_TAB_BY_PATH = SUMMARY_TABS.reduce(
   (tabs, tab) => ({ ...tabs, [tab.path]: tab }),
   {},
 );
-const DESTINATIONS_DATA_BASE_PATH = "/dashboard/destinations-data";
 
 const CONTENT_STATS = [
   { label: "Total Destinations", valueKey: "destinations", textColor: "text-slate-400", borderColor: "border-l-slate-400" },
@@ -283,61 +286,6 @@ const fetchFirstSuccessfulArray = async (axios, endpoints) => {
   return [];
 };
 
-const DestinationsDataSkeleton = ({ stats, gridClassName }) => (
-  <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
-    <PageFrame>
-      <div className="flex flex-col gap-4 animate-pulse">
-        <div className="mb-3 space-y-2">
-          <div className="h-5 w-44 rounded-lg bg-slate-200" />
-          <div className="h-3 w-full max-w-lg rounded-full bg-slate-100" />
-        </div>
-
-        <div className={`${gridClassName} mb-3 shrink-0`}>
-          {stats.map((stat) => (
-            <div
-              key={stat.valueKey}
-              className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm"
-            >
-              <div className="h-2.5 w-24 max-w-full rounded-full bg-slate-200 mb-3" />
-              <div className="h-4 w-12 rounded-full bg-slate-200" />
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[500px]">
-          <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50">
-            <div className="flex flex-col lg:flex-row gap-2.5">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-10 min-w-[140px] flex-1 rounded-lg bg-slate-200" />
-              ))}
-              <div className="h-10 min-w-[220px] flex-[2] rounded-lg bg-slate-200" />
-            </div>
-          </div>
-          <div className="overflow-hidden">
-            <div className="grid grid-cols-9 gap-4 border-b border-slate-100 bg-slate-50/50 px-5 py-4">
-              {Array.from({ length: 9 }).map((_, index) => (
-                <div key={index} className="h-2.5 rounded-full bg-slate-200" />
-              ))}
-            </div>
-            <div className="divide-y divide-slate-100/60 px-5">
-              {Array.from({ length: 8 }).map((_, rowIndex) => (
-                <div key={rowIndex} className="grid grid-cols-9 gap-4 py-4">
-                  {Array.from({ length: 9 }).map((_, columnIndex) => (
-                    <div
-                      key={columnIndex}
-                      className={`h-3 rounded-full bg-slate-100 ${columnIndex === 3 ? "w-full" : "w-3/4"}`}
-                    />
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </PageFrame>
-  </div>
-);
-
 const DestinationsData = () => {
   const { locationType } = useParams();
   const location = useLocation();
@@ -526,55 +474,39 @@ const DestinationsData = () => {
       Boolean(selectedLocation),
   });
 
+  const summaryFilters = {
+    search: debouncedSearch,
+    continent: continentFilter,
+    country: countryFilter,
+    state: stateFilter,
+  };
+  const listingsSummary = useInfiniteQuery({
+    ...destinationSummaryQueryOptions(axios, "listings", summaryFilters),
+    enabled: currentView === "summary",
+    placeholderData: (previousData) => previousData,
+  });
+  const contentSummary = useInfiniteQuery({
+    ...destinationSummaryQueryOptions(axios, "content", summaryFilters),
+    enabled: currentView === "summary",
+    placeholderData: (previousData) => previousData,
+  });
   const {
     data: summaryData,
     isLoading: isSummaryLoading,
-    isError: isSummaryError,
+    isLoadingError: isSummaryError,
+    isPlaceholderData: isSummaryPlaceholder,
+    isFetching: isSummaryFetching,
+    isFetchNextPageError: isSummaryNextPageError,
     fetchNextPage,
     hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: [
-      "destinations-data-summary",
-      effectiveSummaryTab,
-      debouncedSearch,
-      continentFilter,
-      countryFilter,
-      stateFilter,
-    ],
-    initialPageParam: 1,
-    enabled: currentView === "summary",
-    placeholderData: (previousData) => previousData,
-    // A cold server cache returns an empty page immediately and refreshes in
-    // the background. Poll until that refresh lands instead of leaving the
-    // table empty/stuck. Once cached, this stops automatically.
-    refetchInterval: (query) =>
-      query.state.data?.pages?.[0]?.isRefreshing ? 5000 : false,
-    queryFn: async ({ pageParam }) => {
-      const response = await axios.get("/api/hosts/destinations-data", {
-        params: {
-          page: pageParam,
-          limit: PAGE_SIZE,
-          tab: effectiveSummaryTab,
-          search: debouncedSearch,
-          continent: continentFilter,
-          country: countryFilter,
-          state: stateFilter,
-        },
-      });
-      return response.data;
-    },
-    getNextPageParam: (lastPage) =>
-      lastPage.hasMore ? lastPage.page + 1 : undefined,
-  });
+  } = effectiveSummaryTab === "listings" ? listingsSummary : contentSummary;
 
   const summaryItems = useMemo(
     () => summaryData?.pages.flatMap((page) => page.items) ?? [],
     [summaryData],
   );
   const summaryFirstPage = summaryData?.pages?.[0];
-  const isSummaryRefreshing = Boolean(summaryFirstPage?.isRefreshing);
-  const isSummaryInitialLoading = Boolean(summaryFirstPage?.isInitialLoading);
+  const isSummaryWaiting = isSummaryLoading || Boolean(summaryFirstPage?.isInitialLoading);
   const summaryCounts = summaryFirstPage?.counts ?? EMPTY_COUNTS;
   const summaryStats = effectiveSummaryTab === "listings" ? LISTING_STATS : CONTENT_STATS;
   const summaryColumns = effectiveSummaryTab === "listings" ? LISTING_COLUMNS : CONTENT_COLUMNS;
@@ -588,21 +520,25 @@ const DestinationsData = () => {
 
   useEffect(() => {
     const node = loadMoreRef.current;
-    if (!node || !hasNextPage || currentView !== "summary") return undefined;
+    if (!node || !hasNextPage || currentView !== "summary" || isSummaryPlaceholder ||
+      isSummaryFetching || isSummaryNextPageError) return undefined;
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          fetchNextPage();
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          fetchNextPage({ cancelRefetch: false });
         }
       },
-      { rootMargin: "250px" },
+      { root: node.closest("#scrollable-content"), rootMargin: "0px 0px 1000px" },
     );
     observer.observe(node);
     return () => observer.disconnect();
   }, [
     currentView,
+    effectiveSummaryTab,
     hasNextPage,
-    isFetchingNextPage,
+    isSummaryFetching,
+    isSummaryNextPageError,
+    isSummaryPlaceholder,
     fetchNextPage,
     summaryItems.length,
   ]);
@@ -1211,15 +1147,6 @@ const DestinationsData = () => {
     );
   };
 
-  if (currentView === "summary" && isSummaryLoading && !summaryData) {
-    return (
-      <DestinationsDataSkeleton
-        stats={summaryStats}
-        gridClassName={SUMMARY_STATS_GRID[effectiveSummaryTab]}
-      />
-    );
-  }
-
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
       <PageFrame>
@@ -1246,9 +1173,7 @@ const DestinationsData = () => {
                     ? "Overview of Nomad listing categories across all destinations."
                     : "Overview of content across all destinations like blogs, news, places, restaurants, and events."
                   : `Managing ${detailLabel.toLowerCase()} for ${selectedLocation}.`}
-                {(currentView === "summary"
-                  ? isSummaryRefreshing
-                  : isListingDetail && isDetailListingsRefreshing) && (
+                {currentView === "detail" && isListingDetail && isDetailListingsRefreshing && (
                   <span className="ml-2 text-[10px] uppercase tracking-widest text-blue-500">
                     Refreshing data…
                   </span>
@@ -1285,7 +1210,7 @@ const DestinationsData = () => {
                 {SUMMARY_TABS.map((tab) => (
                   <NavLink
                     key={tab.key}
-                    to={`${DESTINATIONS_DATA_BASE_PATH}/${tab.path}`}
+                    to={{ pathname: `${DESTINATIONS_DATA_BASE_PATH}/${tab.path}`, search: location.search }}
                     onClick={() => handleSummaryTabChange(tab.key)}
                     className={() =>
                       `flex-1 shrink-0 rounded-xl px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest transition-all text-center whitespace-nowrap ${
@@ -1307,7 +1232,7 @@ const DestinationsData = () => {
                   >
                     <div className="min-w-0">
                       <p className={`text-[9px] font-pmedium uppercase tracking-wide mb-1 whitespace-nowrap ${stat.textColor}`}>{stat.label}</p>
-                      <p className="text-[15px] font-pmedium text-slate-900">{summaryCounts[stat.valueKey] || 0}</p>
+                      <p className="text-[15px] font-pmedium text-slate-900">{isSummaryWaiting ? "—" : summaryCounts[stat.valueKey] || 0}</p>
                     </div>
                   </div>
                 ))}
@@ -1391,7 +1316,7 @@ const DestinationsData = () => {
                   ))}
                 </div>
               ) : currentView === "summary" ? (
-                <table data-tour="destinations-data-table" className="w-full text-left border-collapse">
+                <table data-tour="destinations-data-table" aria-busy={isSummaryWaiting} className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
                     <tr>
                       <th className="px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left">Sr No</th>
@@ -1409,15 +1334,10 @@ const DestinationsData = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {summaryItems.length === 0 ? (
+                    {summaryItems.length === 0 && !isSummaryWaiting ? (
                       <tr>
                         <td colSpan={4 + summaryColumns.length} className="text-center py-20 text-slate-400 font-pmedium">
-                          {isSummaryInitialLoading ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <span className="h-5 w-5 rounded-full border-2 border-slate-200 border-t-[#2563EB] animate-spin" />
-                              <span>Preparing destination data… this can take a moment on first load.</span>
-                            </div>
-                          ) : isSummaryError ? (
+                          {isSummaryError ? (
                             "Failed to load destinations."
                           ) : (
                             "No destinations found."
@@ -1452,11 +1372,15 @@ const DestinationsData = () => {
                     {hasNextPage ? (
                       <tr ref={loadMoreRef}>
                         <td colSpan={4 + summaryColumns.length} className="py-4 text-center">
-                          {isFetchingNextPage ? (
-                            <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
-                              Loading more destinations...
-                            </span>
-                          ) : null}
+                          {isSummaryNextPageError && !isSummaryFetching && (
+                            <button
+                              type="button"
+                              onClick={() => fetchNextPage({ cancelRefetch: false })}
+                              className="text-xs font-pmedium text-blue-700 hover:underline"
+                            >
+                              Retry loading more destinations
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ) : null}
