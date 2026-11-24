@@ -262,4 +262,4 @@ const getContinentForCountry = (country) => {
   return COUNTRY_TO_CONTINENT[normalized] || "";
 };
 
-module.exports = { getContinentForCountry };
+module.exports = { COUNTRY_TO_CONTINENT, getContinentForCountry };

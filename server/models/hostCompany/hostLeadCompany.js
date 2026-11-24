@@ -30,6 +30,10 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    address: {
+      type: String,
+      trim: true,
+    },
     companyCity: {
       type: String,
       trim: true,

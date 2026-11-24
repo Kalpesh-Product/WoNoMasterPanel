@@ -1,5 +1,7 @@
 const router = require("express").Router();
 const upload = require("../config/multerConfig");
+const verifyJwt = require("../middlewares/verifyJwt");
+const { COUNTRY_TO_CONTINENT } = require("../utils/countryContinent");
 const { setLogModule } = require("../middlewares/logContext");
 const { getCompanyOverview } = require("../controllers/companyOverviewController");
 
@@ -9,6 +11,7 @@ router.use(setLogModule("Companies"));
 
 const {
   createCompany,
+  createDirectoryCompany,
   getCompany,
   getCompanies,
   getCompanyLocations,
@@ -103,6 +106,10 @@ router.post(
 );
 // router.patch("/bulk-insert-logos", upload.single("logos"), bulkInsertLogos);
 router.post("/onboard-company", createCompany);
+router.post("/companies", verifyJwt, createDirectoryCompany);
+router.get("/location-continents", verifyJwt, (_req, res) => {
+  res.json(COUNTRY_TO_CONTINENT);
+});
 router.patch("/edit-company", upload.single("logo"), editCompany);
 router.patch("/activate-product", activateProduct);
 router.patch("/set-public-status", setListingPublicStatus);
