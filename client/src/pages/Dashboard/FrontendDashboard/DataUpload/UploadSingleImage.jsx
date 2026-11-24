@@ -1,6 +1,6 @@
 // src/pages/Dashboard/FrontendDashboard/UploadSingleImage.jsx
 import React, { useRef, useState, useEffect, useMemo } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TextField, MenuItem } from "@mui/material";
 import { toast } from "sonner";
 import axios from "axios";
@@ -8,17 +8,19 @@ import { useLocation } from "react-router-dom";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { UploadCloud } from "lucide-react";
 import UploadResultSummary from "./UploadResultSummary";
-import { UploadCard, UploadPanel, UploadActions, muiFieldSx } from "./UploadUI";
+import { DropdownLogo, UploadCard, UploadPanel, UploadActions, muiFieldSx } from "./UploadUI";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
 
 const API_BASE = NOMADS_API_BASE_URL;
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const UPLOAD_FILTERS_STORAGE_KEY = "dataUploadFilters";
+const COMPANY_LOGOS_QUERY_KEY = ["single-image-company-logos"];
 
 const UploadSingleImage = () => {
   const inputRef = useRef(null);
   const location = useLocation();
   const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
 
   const [country, setCountry] = useState("");
   const [companyType, setCompanyType] = useState("");
@@ -67,6 +69,23 @@ const UploadSingleImage = () => {
   const filteredCompanies = companies.filter(
     (c) => c.country === country && c.companyType === companyType,
   );
+  const { data: companyLogos } = useQuery({
+    queryKey: [...COMPANY_LOGOS_QUERY_KEY, companyType],
+    enabled: filteredCompanies.length > 0,
+    queryFn: async ({ signal }) => {
+      const { data } = await axios.get(`${API_BASE}/company/companies`, {
+        params: { type: companyType },
+        signal,
+      });
+
+      return Object.fromEntries(
+        data.map(({ _id, logo }) => [
+          _id,
+          typeof logo === "string" ? logo : logo?.url,
+        ]),
+      );
+    },
+  });
 
   useEffect(() => {
     if (!companies.length) return;
@@ -158,8 +177,11 @@ const UploadSingleImage = () => {
       });
       return res.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, { type }) => {
       toast.success(data?.message || "Upload successful");
+      if (type === "logo") {
+        queryClient.invalidateQueries({ queryKey: COMPANY_LOGOS_QUERY_KEY });
+      }
       setFile(null);
       setPreview(null);
       setCompanyId("");
@@ -353,6 +375,7 @@ const UploadSingleImage = () => {
                   )
                   .map((c) => (
                     <MenuItem key={c._id} value={c._id}>
+                      <DropdownLogo src={companyLogos?.[c._id]} />
                       {c.companyName}
                     </MenuItem>
                   ))}

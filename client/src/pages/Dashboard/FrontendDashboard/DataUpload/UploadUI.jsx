@@ -145,6 +145,23 @@ export const muiFieldSx = {
   "& .MuiInputLabel-root.Mui-focused": { color: "#2563EB" },
 };
 
+export const DropdownLogo = ({ src }) => (
+  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-5 shrink-0">
+    {src && (
+      <img
+        key={src}
+        src={src}
+        alt=""
+        loading="lazy"
+        className="h-full w-full rounded object-contain"
+        onError={(event) => {
+          event.currentTarget.hidden = true;
+        }}
+      />
+    )}
+  </span>
+);
+
 // A thumbnail for an existing, already-uploaded image. Shows a clean
 // "Unavailable" placeholder instead of the browser's broken-image glyph
 // when the URL 404s/times out — the failure is still visible, just tidy.

@@ -615,9 +615,9 @@ const getRestaurantImageReuploadTargets = async (req, res) => {
     const forGallery = req.path === "/restaurant-images-reupload";
     const targets = data
       .filter(({ images }) => !forGallery || (Array.isArray(images) && images.some((image) => image?.url)))
-      .map(({ _id, restaurantName, businessName, country, destination, state, images }) => ({
+      .map(({ _id, restaurantName, businessName, country, destination, state, images, logo }) => ({
         _id, restaurantName, businessName, country, destination, state,
-        ...(forGallery && { images }),
+        ...(forGallery ? { images } : { logo }),
       }));
     return res.json(targets);
   } catch (error) {

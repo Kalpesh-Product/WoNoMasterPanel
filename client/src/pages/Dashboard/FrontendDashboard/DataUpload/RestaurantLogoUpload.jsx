@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
 import { UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
-import { UploadActions, UploadCard, UploadPanel, muiFieldSx } from "./UploadUI";
+import { DropdownLogo, UploadActions, UploadCard, UploadPanel, muiFieldSx } from "./UploadUI";
 
 const LOGO_ENDPOINT = "/api/admin/upload-restaurant-logo";
+const RESTAURANTS_QUERY_KEY = ["restaurants-for-logo-upload"];
 const MAX_BYTES = 5 * 1024 * 1024;
 const FILTERS_STORAGE_KEY = "restaurantLogoUploadFilters";
 
 const RestaurantLogoUpload = () => {
   const inputRef = useRef(null);
   const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
 
   const [country, setCountry] = useState("");
   const [destination, setDestination] = useState("");
@@ -22,8 +24,8 @@ const RestaurantLogoUpload = () => {
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
 
-  const { data: restaurants = [], isLoading, isError } = useQuery({
-    queryKey: ["restaurants-for-logo-upload"],
+  const { data: restaurants = [], isLoading, isLoadingError } = useQuery({
+    queryKey: RESTAURANTS_QUERY_KEY,
     queryFn: async () => {
       const res = await axios.get(LOGO_ENDPOINT);
       return Array.isArray(res.data) ? res.data : [];
@@ -128,6 +130,7 @@ const RestaurantLogoUpload = () => {
     onSuccess: (data) => {
       if (data?.cleanupFailed) toast.warning(data.message);
       else toast.success(data?.message || "Restaurant logo uploaded successfully");
+      queryClient.invalidateQueries({ queryKey: RESTAURANTS_QUERY_KEY });
       setFile(null);
       setPreview(null);
       setRestaurantId("");
@@ -180,7 +183,7 @@ const RestaurantLogoUpload = () => {
       <UploadPanel>
         {isLoading ? (
           <p className="text-xs font-pmedium text-slate-500">Loading restaurants...</p>
-        ) : isError ? (
+        ) : isLoadingError ? (
           <p role="alert" className="text-xs font-pmedium text-rose-600">
             Could not load restaurants from Nomads.
           </p>
@@ -277,6 +280,7 @@ const RestaurantLogoUpload = () => {
                   )
                   .map((restaurant) => (
                     <MenuItem key={restaurant._id} value={restaurant._id}>
+                      <DropdownLogo src={restaurant.logo} />
                       {restaurant.restaurantName || restaurant.businessName}
                     </MenuItem>
                   ))}
