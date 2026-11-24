@@ -13,6 +13,10 @@ import {
   nomadReviewQueryOptions,
 } from "../pages/Dashboard/CompanyReviews/nomadReviewQuery";
 import { destinationReviewQueries } from "../pages/Dashboard/CompanyReviews/destinationReviewQueries";
+import {
+  DESTINATIONS_DATA_BASE_PATH,
+  destinationSummaryQueryOptions,
+} from "../pages/Dashboard/FrontendDashboard/destinationSummaryQuery";
 import "./Sidebar.css";
 
 const Sidebar = ({ onCloseDrawer }) => {
@@ -47,18 +51,21 @@ const Sidebar = ({ onCloseDrawer }) => {
     if (onCloseDrawer) onCloseDrawer();
   };
 
-  const prefetchCompanyReviews = (route) => {
-    if (
-      auth?.accessToken &&
-      (route === DEFAULT_COMPANY_REVIEWS_PATH || route === NOMAD_LISTING_REVIEWS_PATH)
-    ) {
+  const prefetchSidebarRoute = (route) => {
+    if (!auth?.accessToken) return;
+    if (route === DEFAULT_COMPANY_REVIEWS_PATH || route === NOMAD_LISTING_REVIEWS_PATH) {
       queryClient.prefetchInfiniteQuery(nomadReviewQueryOptions(axiosPrivate, auth.user?.email));
       for (const options of destinationReviewQueries) queryClient.prefetchQuery(options);
+    }
+    if (route === DESTINATIONS_DATA_BASE_PATH) {
+      for (const tab of ["listings", "content"]) {
+        queryClient.prefetchInfiniteQuery(destinationSummaryQueryOptions(axiosPrivate, tab));
+      }
     }
   };
 
   const handleMenuOpen = (item) => {
-    prefetchCompanyReviews(item.route);
+    prefetchSidebarRoute(item.route);
     navigateFromSidebar(item.route);
   };
 
@@ -285,8 +292,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                                         ? "bg-white text-black shadow-sm"
                                         : "text-black/80"
                                     }`}
-                                    onPointerEnter={() => prefetchCompanyReviews(submenu.route)}
-                                    onFocus={() => prefetchCompanyReviews(submenu.route)}
+                                    onPointerEnter={() => prefetchSidebarRoute(submenu.route)}
+                                    onFocus={() => prefetchSidebarRoute(submenu.route)}
                                     onClick={() => handleMenuOpen(submenu)}
                                   >
                                     <submenu.icon
