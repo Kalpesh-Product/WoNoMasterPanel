@@ -31,12 +31,11 @@ const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
       const objectUrl = URL.createObjectURL(value);
       setPreviewUrl(objectUrl);
       return () => URL.revokeObjectURL(objectUrl);
-    } else {
-      setPreviewUrl(null);
     }
+    setPreviewUrl(null);
   }, [value]);
 
-  const hasLogo = value || currentLogoUrl;
+  const resolvedLogo = previewUrl || currentLogoUrl || null;
 
   return (
     <div className="flex flex-col gap-1.5 sm:col-span-2">
@@ -99,14 +98,30 @@ const LogoUploadInput = ({ value, onChange, currentLogoUrl }) => {
               <button
                 type="button"
                 onClick={() => onChange(null)}
-                className="text-xs text-red-600 hover:text-red-800 font-medium ml-1"
+                className="inline-flex items-center gap-1 text-[11px] font-pmedium text-rose-600 hover:text-rose-800"
               >
+                <Trash2 size={12} />
                 Remove
               </button>
-            )}
+            ) : null}
           </div>
-        )}
+          <p className="max-w-[260px] truncate text-[10px] text-slate-400">
+            {value instanceof File
+              ? value.name
+              : "Leave unchanged to keep the current logo."}
+          </p>
+        </div>
       </div>
+      <input
+        id="companyLogo"
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) onChange(file);
+        }}
+      />
     </div>
   );
 };
@@ -169,7 +184,7 @@ const EditCompanyForm = ({ company }) => {
       <fieldset disabled={isSubmitting} className="space-y-5">
         <CompanyFormFields form={form} requireLocation={hasCompleteLocation} seatInputType={seatInputType}>
           <Controller
-            name="companyLogo"
+            name="registeredEntityName"
             control={control}
             render={({ field }) => (
               <LogoUploadInput

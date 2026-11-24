@@ -758,10 +758,10 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
   if (!companies || !companies.length) return [];
 
   const workspaces = await Workspace.find({ isActive: true })
-    .select("_id company companyId businessName selectedPlan")
+    .select("_id company companyId businessName selectedPlan businessTypes")
     .lean();
   const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
-    .select("searchKey companyId companyName isActive isPublished")
+    .select("searchKey companyId companyName isActive isPublished vertical")
     .lean();
 
   const normalize = (value) =>
@@ -787,6 +787,16 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
       ...company,
       workspaceId: workspace?._id ? String(workspace._id) : "",
       workspaceCompanyId: String(workspace?.companyId || "").trim(),
+      // Every vertical this company operates in: the workspace's business
+      // types, its free-text industry, and its website template's vertical.
+      businessTypes: Array.isArray(workspace?.businessTypes)
+        ? workspace.businessTypes
+        : [],
+      verticals: toVerticalList(
+        workspace?.businessTypes,
+        company?.industry,
+        template?.vertical,
+      ),
       selectedPlan: workspace?.selectedPlan || company?.selectedPlan || "",
       isWebsiteTemplate: Boolean(template),
       websiteTemplate: template || null,
@@ -796,7 +806,17 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
 
 const getCompanies = async (req, res, next) => {
   try {
-    const { page, limit, search, status, country, state, city, lookupKeys } = req.query;
+    const {
+      page,
+      limit,
+      search,
+      status,
+      continent,
+      country,
+      state,
+      city,
+      lookupKeys,
+    } = req.query;
 
     if (lookupKeys !== undefined) {
       const keys = String(lookupKeys || "")
@@ -854,6 +874,13 @@ const getCompanies = async (req, res, next) => {
     if (status === "active") filter.isRegistered = true;
     else if (status === "inactive") filter.isRegistered = false;
 
+    const trimmedContinent = String(continent || "").trim();
+    if (trimmedContinent) {
+      filter.companyContinent = new RegExp(
+        `^${escapeRegex(trimmedContinent)}$`,
+        "i",
+      );
+    }
     const trimmedCountry = String(country || "").trim();
     if (trimmedCountry) {
       filter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
@@ -873,6 +900,7 @@ const getCompanies = async (req, res, next) => {
       filter.$or = [
         { companyName: searchRegex },
         { industry: searchRegex },
+        { companyContinent: searchRegex },
         { companyCountry: searchRegex },
         { companyState: searchRegex },
         { companyCity: searchRegex },
@@ -920,14 +948,51 @@ const sortDistinct = (values = []) =>
     (a, b) => a.localeCompare(b),
   );
 
+// A company's "vertical" is its company type, which isn't kept in one place:
+// the workspace holds the real business types, older rows only have the
+// free-text `industry`, and a company with a website has its template's own
+// vertical. Merge them into one deduped list (case-insensitive) so the table
+// can render every vertical the company actually operates in.
+const toVerticalList = (...sources) => {
+  const seen = new Set();
+  const out = [];
+  sources.forEach((source) => {
+    const values = Array.isArray(source) ? source : [source];
+    values.forEach((value) => {
+      // `industry` is one free-text string ("Co-Working, Cafe, Meeting
+      // Rooms"), so a single source can describe several verticals.
+      String(value || "")
+        .split(/[,;|]/)
+        .forEach((part) => {
+          const label = part.trim();
+          if (!label) return;
+          const key = label.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          out.push(label);
+        });
+    });
+  });
+  return out;
+};
+
 // Returns cascading location options: states are scoped to the selected
 // country, cities to the selected state, so the Companies filter dropdowns
 // only ever show combinations that exist in the data.
 const getCompanyLocations = async (req, res, next) => {
   try {
-    const { country, state } = req.query;
+    const { continent, country, state } = req.query;
 
-    const countryFilter = {};
+    const continentFilter = {};
+    const trimmedContinent = String(continent || "").trim();
+    if (trimmedContinent) {
+      continentFilter.companyContinent = new RegExp(
+        `^${escapeRegex(trimmedContinent)}$`,
+        "i",
+      );
+    }
+
+    const countryFilter = { ...continentFilter };
     const trimmedCountry = String(country || "").trim();
     if (trimmedCountry) {
       countryFilter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
@@ -939,13 +1004,15 @@ const getCompanyLocations = async (req, res, next) => {
       stateFilter.companyState = new RegExp(`^${escapeRegex(trimmedState)}$`, "i");
     }
 
-    const [countries, states, cities] = await Promise.all([
-      HostCompany.distinct("companyCountry", {}),
+    const [continents, countries, states, cities] = await Promise.all([
+      HostCompany.distinct("companyContinent", {}),
+      HostCompany.distinct("companyCountry", continentFilter),
       HostCompany.distinct("companyState", countryFilter),
       HostCompany.distinct("companyCity", stateFilter),
     ]);
 
     return res.status(200).json({
+      continents: sortDistinct(continents),
       countries: sortDistinct(countries),
       states: sortDistinct(states),
       cities: sortDistinct(cities),
@@ -973,11 +1040,11 @@ const getHostLeadCompanies = async (req, res, next) => {
     // seeing their old plan (exactly today's duplicate-lead-record bug).
     const allWorkspaces = await Workspace.find({ isActive: true })
       .select(
-        "_id companyId businessName selectedPlan purchasedPlan planStatus planStartDate planExpiryDate",
+        "_id companyId businessName selectedPlan businessTypes purchasedPlan planStatus planStartDate planExpiryDate",
       )
       .lean();
     const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
-      .select("searchKey companyId companyName isActive isPublished")
+      .select("searchKey companyId companyName isActive isPublished vertical")
       .lean();
 
     const companiesWithPlanStatus = companies.map((company) => {
@@ -1039,6 +1106,16 @@ const getHostLeadCompanies = async (req, res, next) => {
         ...company,
         workspaceId: matchedWorkspace?._id ? String(matchedWorkspace._id) : "",
         workspaceCompanyId: String(matchedWorkspace?.companyId || "").trim(),
+        // Same as the Companies list: merge the workspace's business types
+        // with the record's own free-text industry.
+        businessTypes: Array.isArray(matchedWorkspace?.businessTypes)
+          ? matchedWorkspace.businessTypes
+          : [],
+        verticals: toVerticalList(
+          matchedWorkspace?.businessTypes,
+          company?.industry,
+          matchedTemplate?.vertical,
+        ),
         selectedPlan:
           matchedWorkspace?.selectedPlan ||
           company?.selectedPlan ||

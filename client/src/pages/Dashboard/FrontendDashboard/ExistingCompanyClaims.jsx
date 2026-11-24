@@ -3,7 +3,20 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { toast } from "sonner";
 import { queryClient } from "../../../main";
-import { Search, Eye, X, FileText, ExternalLink, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Eye,
+  ExternalLink,
+  FileText,
+  Layers,
+  ShieldCheck,
+  X,
+  XCircle,
+} from "lucide-react";
+import DataTable from "../../../components/Tables/DataTable";
 
 const CLAIMS_KEY = ["existingCompanyClaims"];
 
@@ -38,12 +51,28 @@ const STATUS_STYLES = {
   rejected: "bg-rose-50 text-rose-700",
 };
 
-const FILTERS = [
-  { key: "all", label: "All" },
+const STATUS_OPTIONS = [
+  { key: "all", label: "All claims" },
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
 ];
+
+const getInitials = (value) =>
+  String(value || "Company")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
+const FILTER_CLASS = (active) =>
+  `rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none cursor-pointer focus:ring-2 focus:ring-[#2563EB]/20 ${
+    active
+      ? "border-[#2563EB]/40 text-[#2563EB]"
+      : "border-slate-200/60 text-slate-600"
+  }`;
 
 // Host-initiated "Verify existing listings" claims (HostPanel > Listings).
 // Approving runs the same whole-company Transfer staff can already do from a
@@ -138,7 +167,8 @@ const ExistingCompanyClaims = () => {
       return (
         c.companyName?.toLowerCase().includes(q) ||
         c.existingCompanyClaim?.nomadsCompanyName?.toLowerCase().includes(q) ||
-        c.existingCompanyClaim?.email?.toLowerCase().includes(q)
+        c.existingCompanyClaim?.email?.toLowerCase().includes(q) ||
+        c.existingCompanyClaim?.fullName?.toLowerCase().includes(q)
       );
     });
   }, [claims, searchQuery, statusFilter]);
@@ -156,138 +186,205 @@ const ExistingCompanyClaims = () => {
 
   const listings = detail?.listings || [];
   const isPendingClaim = claim?.status === "pending";
-  const th = "px-4 py-3.5 text-[11px] font-pmedium text-slate-400 uppercase tracking-widest text-left";
+
+  const statCards = [
+    {
+      label: "Total Claims",
+      value: counts.all,
+      icon: Building2,
+      accent: "border-l-slate-400",
+      labelClass: "text-slate-500",
+      iconClass: "bg-slate-50 text-slate-600",
+    },
+    {
+      label: "Pending",
+      value: counts.pending,
+      icon: Clock,
+      accent: "border-l-amber-500",
+      labelClass: "text-amber-600",
+      iconClass: "bg-amber-50 text-amber-600",
+    },
+    {
+      label: "Approved",
+      value: counts.approved,
+      icon: CheckCircle2,
+      accent: "border-l-emerald-500",
+      labelClass: "text-emerald-600",
+      iconClass: "bg-emerald-50 text-emerald-600",
+    },
+    {
+      label: "Rejected",
+      value: counts.rejected,
+      icon: XCircle,
+      accent: "border-l-rose-500",
+      labelClass: "text-rose-600",
+      iconClass: "bg-rose-50 text-rose-600",
+    },
+  ];
 
   return (
     <>
       <div className="flex flex-col gap-4">
-        <div data-tour="companies-claims-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-1 shrink-0">
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-slate-400">
+        <div
+          data-tour="companies-claims-stats"
+          className="grid grid-cols-2 gap-3 mb-1 shrink-0 lg:grid-cols-4"
+        >
+          {statCards.map(({ label, value, icon: Icon, accent, labelClass, iconClass }) => (
+            <div
+              key={label}
+              className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm transition-all hover:shadow-md ${accent}`}
+            >
               <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-slate-400 uppercase tracking-widest mb-1">
-                  Total Claims
+                <p className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${labelClass}`}>
+                  {label}
                 </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{counts.all}</p>
+                <p className="text-[15px] font-pmedium text-slate-900">{value}</p>
+              </div>
+              <div className={`shrink-0 rounded-2xl p-2 ${iconClass}`}>
+                <Icon size={16} />
               </div>
             </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-amber-500">
-              <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-amber-600 uppercase tracking-widest mb-1">
-                  Pending
-                </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{counts.pending}</p>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-emerald-500">
-              <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-emerald-600 uppercase tracking-widest mb-1">
-                  Approved
-                </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{counts.approved}</p>
-              </div>
-            </div>
-            <div className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm flex justify-between items-center transition-all hover:shadow-md border-l-4 border-l-rose-500">
-              <div className="min-w-0">
-                <p className="text-[10px] font-pmedium text-rose-600 uppercase tracking-widest mb-1">
-                  Rejected
-                </p>
-                <p className="text-[15px] font-pmedium text-slate-900">{counts.rejected}</p>
-              </div>
-            </div>
+          ))}
         </div>
 
-      <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-        <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 bg-slate-50/50 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-          <div data-tour="companies-claims-filters" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-            {FILTERS.map((f) => (
-              <button
-                key={f.key}
-                type="button"
-                onClick={() => setStatusFilter(f.key)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${
-                  statusFilter === f.key
-                    ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200"
-                    : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"
-                }`}
+        <DataTable
+          rows={filtered}
+          rowKey={(c) => c._key}
+          minWidth={1100}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="Search host company, claimed company, contact..."
+          filters={
+            <div data-tour="companies-claims-filters">
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+                aria-label="Filter claims by status"
+                className={FILTER_CLASS(statusFilter !== "all")}
               >
-                {f.label}
-              </button>
-            ))}
-          </div>
-          <div className="relative w-full xl:max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <input
-              type="text"
-              placeholder="Search claims..."
-              className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-        <div className="overflow-x-auto flex-1">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100/60">
-              <tr>
-                <th className={th}>Host Company</th>
-                <th className={th}>Claims Company</th>
-                <th className={th}>Listings</th>
-                <th className={th}>Contact</th>
-                <th className={th}>Requested</th>
-                <th className={th}>Status</th>
-                <th className={`${th} text-center`}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-20 text-slate-400 font-pmedium">
-                    No {statusFilter === "all" ? "" : `${statusFilter} `}claims.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((c) => {
-                  const cl = c.existingCompanyClaim || {};
-                  return (
-                    <tr key={c._key} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4 align-top text-[13px] font-pmedium text-slate-800">{c.companyName || "-"}</td>
-                      <td className="px-5 py-4 align-top text-[13px] font-pmedium text-blue-700">
-                        {cl.nomadsCompanyName || "-"}
-                      </td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{cl.listingCount ?? "-"}</td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">
-                        {cl.fullName}
-                        <span className="block text-slate-400">{cl.email}</span>
-                      </td>
-                      <td className="px-5 py-4 align-top text-xs font-pmedium text-slate-600">{formatDate(cl.requestedAt)}</td>
-                      <td className="px-5 py-4 align-top">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-pmedium capitalize ${STATUS_STYLES[cl.status] || "bg-slate-100 text-slate-500"}`}
-                        >
-                          {cl.status || "-"}
-                        </span>
-                        {cl.status !== "pending" && cl.reviewedAt ? (
-                          <span className="block mt-1 text-[10px] text-slate-400">{formatDate(cl.reviewedAt)}</span>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4 align-top text-center">
-                        <button
-                          type="button"
-                          onClick={() => setReviewTarget(c)}
-                          title={cl.status === "pending" ? "Review claim" : "View claim"}
-                          className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
-                        >
-                          <Eye size={15} strokeWidth={2.5} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          }
+          emptyText={
+            claims.length === 0
+              ? "No claims to verify yet."
+              : `No ${statusFilter === "all" ? "" : `${statusFilter} `}claims match this search.`
+          }
+          emptyIcon={ShieldCheck}
+          tableProps={{ "data-tour": "companies-claims-table" }}
+          columns={[
+            {
+              key: "hostCompany",
+              header: "Host Company",
+              minWidth: 220,
+              render: (c) => (
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[10px] font-pmedium text-white">
+                    {getInitials(c.companyName)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="max-w-[200px] truncate text-slate-800" title={c.companyName}>
+                      {c.companyName || "-"}
+                    </p>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              key: "claimedCompany",
+              header: "Claimed Company",
+              minWidth: 200,
+              render: (c) => (
+                <div className="min-w-0">
+                  <p className="max-w-[210px] truncate font-pmedium text-blue-700">
+                    {c.existingCompanyClaim?.nomadsCompanyName || "-"}
+                  </p>
+                  <p className="max-w-[210px] truncate text-[10px] text-slate-400">
+                    {[
+                      c.existingCompanyClaim?.nomadsCompanyId,
+                      c.companyCity,
+                      c.companyCountry,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "Not linked to a listing yet"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "listingCount",
+              header: "Listings",
+              align: "center",
+              render: (c) => (
+                <span className="inline-flex w-max items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-pmedium text-slate-600">
+                  <Layers size={11} />
+                  {c.existingCompanyClaim?.listingCount ?? "-"}
+                </span>
+              ),
+            },
+            {
+              key: "contact",
+              header: "Contact",
+              minWidth: 190,
+              render: (c) => (
+                <div className="min-w-0">
+                  <p className="max-w-[200px] truncate text-slate-700">
+                    {c.existingCompanyClaim?.fullName || "-"}
+                  </p>
+                  <p className="max-w-[200px] truncate text-[10px] text-slate-400">
+                    {c.existingCompanyClaim?.email || "No email on file"}
+                  </p>
+                </div>
+              ),
+            },
+            {
+              key: "requestedAt",
+              header: "Requested",
+              render: (c) => (
+                <span className="whitespace-nowrap text-slate-600">
+                  {formatDate(c.existingCompanyClaim?.requestedAt)}
+                </span>
+              ),
+            },
+            {
+              key: "status",
+              header: "Status",
+              render: (c) => {
+                const cl = c.existingCompanyClaim || {};
+                return (
+                  <div className="flex flex-col gap-1">
+                    <span
+                      className={`inline-flex w-max items-center rounded-full px-2.5 py-1 text-[10px] font-pmedium capitalize ${
+                        STATUS_STYLES[cl.status] || "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {cl.status || "-"}
+                    </span>
+                    {cl.status !== "pending" && cl.reviewedAt ? (
+                      <span className="text-[10px] text-slate-400">{formatDate(cl.reviewedAt)}</span>
+                    ) : null}
+                  </div>
+                );
+              },
+            },
+          ]}
+          actions={(c) => (
+            <button
+              type="button"
+              onClick={() => setReviewTarget(c)}
+              title={c.existingCompanyClaim?.status === "pending" ? "Review claim" : "View claim"}
+              aria-label={`Review claim for ${c.companyName || "host"}`}
+              className="rounded-lg bg-slate-100 p-2 text-slate-600 transition hover:bg-blue-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+            >
+              <Eye size={14} />
+            </button>
+          )}
+        />
       </div>
 
       {reviewTarget ? (

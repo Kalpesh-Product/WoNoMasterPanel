@@ -19,13 +19,13 @@ import {
   Layers,
   Plus,
   RotateCcw,
-  Search,
   Tags,
   Target,
   Trash2,
   XCircle,
 } from "lucide-react";
 import { statusPillClass, STATUS_PILL_BASE } from "../../../lib/status-pill";
+import DataTable from "../../../components/Tables/DataTable";
 
 const getInitials = (value) =>
   String(value || "")
@@ -380,46 +380,47 @@ export default function NomadListingsOverview({
               <ListingStat label="Deleted" value={deletedListings} icon={Trash2} tone="rose" />
             </div>
 
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
-              <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-3 bg-slate-50/50">
-                <div data-tour="nomad-listings-status-filter" className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-                  {["all", "active", "inactive"].map((filter) => (
-                    <button
-                      key={filter}
-                      type="button"
-                      onClick={() => setStatusFilter(filter)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] sm:text-[12px] font-pmedium whitespace-nowrap transition-all ${
-                        statusFilter === filter
-                          ? "bg-[#2563EB] text-white shadow-sm shadow-blue-200"
-                          : "bg-slate-100/70 text-slate-500 hover:bg-slate-200/70 hover:text-slate-700"
-                      }`}
-                    >
-                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-3 w-full xl:w-auto flex-wrap sm:flex-nowrap">
-                  <div className="text-[11px] font-pmedium text-slate-500 whitespace-nowrap">
+                        <DataTable
+              rows={filteredListings}
+              rowKey={(item, index) => item._id || item.businessId || index}
+              minWidth={1180}
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              searchPlaceholder="Search by name, type, city..."
+              searchWrapperProps={{ "data-tour": "nomad-listings-search" }}
+              filters={
+                <div
+                  data-tour="nomad-listings-status-filter"
+                  className="flex items-center gap-2"
+                >
+                  <span className="whitespace-nowrap text-[11px] font-pmedium text-slate-500">
                     {listingItems.length} listings
-                  </div>
-                  <div data-tour="nomad-listings-search" className="relative flex-1 min-w-[180px]">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                    <input
-                      type="text"
-                      placeholder="Search by name, type, city..."
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                    />
-                  </div>
+                  </span>
+                  <select
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    aria-label="Filter by master status"
+                    className={`cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${
+                      statusFilter === "all"
+                        ? "border-slate-200/60 text-slate-600"
+                        : "border-[#2563EB]/40 text-[#2563EB]"
+                    }`}
+                  >
+                    <option value="all">All listings</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+              }
+              toolbarActions={
+                <>
                   {secondaryActionTitle && (
                     <button
                       type="button"
                       data-tour="nomad-listings-transfer"
                       onClick={handleSecondaryAction}
                       disabled={!listingItems.length}
-                      className="px-4 py-2.5 rounded-2xl border border-blue-200 bg-white text-blue-700 font-pmedium text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                      className="flex items-center gap-1.5 whitespace-nowrap rounded-xl border border-blue-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-wider text-blue-700 shadow-sm transition-all hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       <ArrowRightLeft size={13} /> {secondaryActionTitle}
                     </button>
@@ -428,67 +429,103 @@ export default function NomadListingsOverview({
                     type="button"
                     data-tour="nomad-listings-add"
                     onClick={handleAddClick}
-                    className="px-4 py-2.5 rounded-2xl bg-[#2563EB] text-white font-pmedium text-[10px] uppercase tracking-wider flex items-center gap-1.5 shadow-sm hover:bg-blue-700 active:scale-95 transition-all whitespace-nowrap"
+                    className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-[#2563EB] px-3 py-2 text-[10px] font-pmedium uppercase tracking-wider text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95"
                   >
                     <Plus size={13} strokeWidth={3} /> Add Product
                   </button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto flex-1">
-                <table data-tour="nomad-listings-table" className="w-full text-left min-w-[1280px]">
-                  <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-                    <tr>
-                      <th className="px-5 py-4 whitespace-nowrap">Sr No</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Company Name</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Title</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Product Type</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Country</th>
-                      <th className="px-5 py-4 whitespace-nowrap">State</th>
-                      <th className="px-5 py-4 whitespace-nowrap">City</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Master Status</th>
-                      <th className="px-5 py-4 whitespace-nowrap">Visibility</th>
-                      <th className="px-5 py-4 text-center whitespace-nowrap">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100/60">
-                    {filteredListings.length === 0 ? (
-                      <tr>
-                        <td colSpan={10} className="px-5 py-16 text-center">
-                          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400 mx-auto">
-                            <Target size={28} />
-                          </div>
-                          <p className="text-slate-400 font-pmedium">No listings found.</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredListings.map((item, index) => (
-                        <tr key={item._id || item.businessId || index} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-400 whitespace-nowrap">{index + 1}</td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2.5">
-                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white shadow-sm">
-                                {getInitials(item.companyName)}
-                              </div>
-                              <p className="text-[12px] font-pmedium text-slate-900">{item.companyName || "—"}</p>
-                            </div>
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.companyTitle || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 capitalize whitespace-nowrap">{item.companyType || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.country || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.state || "—"}</td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-600 whitespace-nowrap">{item.city || "—"}</td>
-                          <td className="px-5 py-4 whitespace-nowrap"><span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>{item.isActive ? "Active" : "Inactive"}</span></td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <span
-                              className={`${STATUS_PILL_BASE} ${item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"}`}
-                              title={item.isPublic ? "Public on the Nomads website" : "Hidden by the host"}
-                            >
-                              {item.isPublic ? "Public" : "Private"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            {item.isDeleted ? (
+                </>
+              }
+              emptyText="No listings found."
+              emptyIcon={Target}
+              tableProps={{ "data-tour": "nomad-listings-table" }}
+              columns={[
+                {
+                  key: "srNo",
+                  header: "Sr No",
+                  render: (_item, index) => (
+                    <span className="text-slate-400">{index + 1}</span>
+                  ),
+                },
+                {
+                  key: "companyName",
+                  header: "Company Name",
+                  minWidth: 210,
+                  render: (item) => (
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-[9px] font-pmedium text-white shadow-sm">
+                        {getInitials(item.companyName)}
+                      </div>
+                      <p className="max-w-[190px] truncate font-pmedium text-slate-900">
+                        {item.companyName || "—"}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "companyTitle",
+                  header: "Title",
+                  minWidth: 180,
+                  render: (item) => (
+                    <span className="block max-w-[200px] truncate">
+                      {item.companyTitle || "—"}
+                    </span>
+                  ),
+                },
+                {
+                  key: "companyType",
+                  header: "Product Type",
+                  render: (item) => (
+                    <span className="capitalize">{item.companyType || "—"}</span>
+                  ),
+                },
+                {
+                  key: "location",
+                  header: "Location",
+                  minWidth: 190,
+                  render: (item) => (
+                    <div className="min-w-0">
+                      <p className="max-w-[220px] truncate text-slate-700">
+                        {[item.city, item.state].filter(Boolean).join(", ") || "—"}
+                      </p>
+                      <p className="max-w-[220px] truncate text-[10px] text-slate-400">
+                        {item.country || "Country not set"}
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  key: "isActive",
+                  header: "Master Status",
+                  align: "center",
+                  render: (item) => (
+                    <span className={statusPillClass(item.isActive ? "Active" : "Inactive")}>
+                      {item.isActive ? "Active" : "Inactive"}
+                    </span>
+                  ),
+                },
+                {
+                  key: "isPublic",
+                  header: "Visibility",
+                  align: "center",
+                  render: (item) => (
+                    <span
+                      className={`${STATUS_PILL_BASE} ${
+                        item.isPublic ? "bg-blue-50 text-blue-700" : "bg-slate-100 text-slate-500"
+                      }`}
+                      title={
+                        item.isPublic
+                          ? "Public on the Nomads website"
+                          : "Hidden by the host"
+                      }
+                    >
+                      {item.isPublic ? "Public" : "Private"}
+                    </span>
+                  ),
+                },
+              ]}
+              actions={(item, index) => (
+                <>
+                  {item.isDeleted ? (
                               <div className="flex items-center justify-center gap-2">
                                 <span className="text-[11px] font-pmedium text-slate-400 whitespace-nowrap">
                                   Deleted by host
@@ -553,14 +590,9 @@ export default function NomadListingsOverview({
                                 </button>
                               </div>
                             )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                </>
+              )}
+            />
             </>
           )}
         </div>

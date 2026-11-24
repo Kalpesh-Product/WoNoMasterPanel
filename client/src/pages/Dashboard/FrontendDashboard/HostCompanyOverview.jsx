@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import PageFrame from "../../../components/Pages/PageFrame";
+import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { statusPillClass } from "../../../lib/status-pill";
 
 const cards = [
@@ -13,18 +15,87 @@ const cards = [
     // { title: "Website Credit Requests", path: "website-credit-requests" },
 ];
 
+// "edit" / "edit-company" / "add" are route segments, not company slugs. When
+// one of them reached this page (e.g. an old "…/host-companies/edit" link) the
+// hub rendered with no company behind it and every module card then navigated
+// to "…/host-companies/edit/<module>", which matched the edit form route and
+// loaded no data.
+const RESERVED_COMPANY_SEGMENTS = new Set([
+    "edit",
+    "edit-company",
+    "add",
+    "add-company",
+]);
+
+const toCompanySlug = (value = "") =>
+    String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
 const HostCompanyOverview = () => {
     const { companyId: companySlug } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
+    const axiosPrivate = useAxiosPrivate();
     const { companyId, companyName, selectedPlan, requestedPlan } = location?.state || {};
-    const storedCompanyName = String(sessionStorage.getItem("companyName") || "").trim();
-    const pageTitle = String(companyName || companySlug || "Host Company")
-        .replace(/-/g, " ")
-        .trim();
-    const finalPageTitle = String(companyName || storedCompanyName || pageTitle || "Host Company")
-        .replace(/-/g, " ")
-        .trim();
+    const isReservedSegment = RESERVED_COMPANY_SEGMENTS.has(
+        String(companySlug || "").toLowerCase(),
+    );
+
+    // Deep links and breadcrumb navigations arrive with only the slug — no
+    // companyId in location.state. Resolve it from the same list the Host
+    // Companies table uses so the module cards always carry a real company id
+    // (the module pages read it from location.state/sessionStorage).
+    const { data: hostCompanies = [] } = useQuery({
+        queryKey: ["hostCompaniesList"],
+        enabled: !isReservedSegment && !companyId,
+        queryFn: async () => {
+            const response = await axiosPrivate.get("/api/hosts/host-companies");
+            return Array.isArray(response.data) ? response.data : [];
+        },
+    });
+
+    const matchedCompany = useMemo(() => {
+        if (companyId || isReservedSegment) return null;
+        const targetSlug = toCompanySlug(companyName || companySlug);
+        if (!targetSlug) return null;
+        return (
+            hostCompanies.find(
+                (company) => toCompanySlug(company.companyName) === targetSlug,
+            ) || null
+        );
+    }, [companyId, companyName, companySlug, hostCompanies, isReservedSegment]);
+
+    const resolvedCompanyId = companyId || matchedCompany?.companyId || "";
+    const resolvedCompanyName =
+        companyName ||
+        matchedCompany?.companyName ||
+        String(companySlug || "").replace(/-/g, " ").trim();
+
+    useEffect(() => {
+        if (isReservedSegment) {
+            navigate("/dashboard/host-companies", { replace: true });
+        }
+    }, [isReservedSegment, navigate]);
+
+    // Keeps the module pages (which fall back to sessionStorage) pointed at
+    // this hub's company instead of whichever company was opened last.
+    useEffect(() => {
+        if (!resolvedCompanyId) return;
+        sessionStorage.setItem("companyId", String(resolvedCompanyId));
+        if (resolvedCompanyName) {
+            sessionStorage.setItem("companyName", resolvedCompanyName);
+        }
+        if (matchedCompany?.workspaceId) {
+            sessionStorage.setItem("workspaceId", matchedCompany.workspaceId);
+        }
+    }, [matchedCompany, resolvedCompanyId, resolvedCompanyName]);
+
+    if (isReservedSegment) return null;
+
+    const finalPageTitle = String(resolvedCompanyName || "Host Company").trim();
 
     return (
         <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -42,8 +113,8 @@ const HostCompanyOverview = () => {
                                 Open the host company's nested modules from one place.
                             </p>
                         </div>
-                        <span className={statusPillClass(companyId ? "Active" : "Pending")}>
-                            {companyId ? "Company Selected" : "Selection Missing"}
+                        <span className={statusPillClass(resolvedCompanyId ? "Active" : "Pending")}>
+                            {resolvedCompanyId ? "Company Selected" : "Selection Missing"}
                         </span>
                     </div>
 
@@ -58,7 +129,12 @@ const HostCompanyOverview = () => {
                                 className="cursor-pointer rounded-[1.75rem] border border-slate-100 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                                 onClick={() =>
                                     navigate(`/dashboard/host-companies/${companySlug}/${card.path}`, {
-                                        state: { companyId, companyName, selectedPlan, requestedPlan },
+                                        state: {
+                                            companyId: resolvedCompanyId,
+                                            companyName: resolvedCompanyName,
+                                            selectedPlan,
+                                            requestedPlan,
+                                        },
                                     })
                                 }
                             >
