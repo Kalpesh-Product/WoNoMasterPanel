@@ -940,7 +940,10 @@ const parseReviewList = (response) => {
 const parseReviewPagination = (response, fallbackTotal) => {
   const payload = response?.data || {};
   const data = payload?.data || {};
+  const pagination = payload?.pagination ?? data?.pagination;
   const total =
+    pagination?.total ??
+    pagination?.totalCount ??
     payload?.total ??
     payload?.totalReviews ??
     payload?.totalCount ??
@@ -953,6 +956,8 @@ const parseReviewPagination = (response, fallbackTotal) => {
 
   return {
     total: Number.isFinite(Number(total)) ? Number(total) : fallbackTotal,
+    isPaginated: Boolean(pagination),
+    hasNextPage: pagination?.hasNextPage,
   };
 };
 
@@ -1426,9 +1431,10 @@ const getReviewsByCompany = async (req, res, next) => {
 
     let response;
     let reviews = [];
-    let upstreamTotal = 0;
+    let upstreamPagination;
     try {
       response = await axios.get(`${NOMADS_BASE}/review`, {
+        ...(wantsPagination ? { timeout: 10000 } : {}),
         params: {
           ...(companyId ? { companyId } : {}),
           companyType,
@@ -1444,8 +1450,16 @@ const getReviewsByCompany = async (req, res, next) => {
       }
 
       reviews = parseReviewList(response);
-      upstreamTotal = parseReviewPagination(response, reviews.length).total;
+      upstreamPagination = parseReviewPagination(response, reviews.length);
     } catch (err) {
+      if (wantsPagination && !err.response) {
+        const timedOut = err.code === "ECONNABORTED" || err.code === "ETIMEDOUT";
+        return res.status(timedOut ? 504 : 502).json({
+          message: timedOut
+            ? "The Nomads review service timed out"
+            : "Could not connect to the Nomads review service",
+        });
+      }
       return res.status(err.response?.status || 500).json({
         message:
           err.response?.data?.message ||
@@ -1475,9 +1489,10 @@ const getReviewsByCompany = async (req, res, next) => {
       .filter((review) => reviewMatchesStatus(review, effectiveStatus))
       .filter((review) => reviewMatchesSearch(review, requestedSearch));
     const upstreamLooksPaginated =
-      wantsPagination && upstreamTotal > filteredReviews.length;
+      wantsPagination &&
+      (upstreamPagination.isPaginated || upstreamPagination.total > reviews.length);
     const total = upstreamLooksPaginated
-      ? upstreamTotal
+      ? upstreamPagination.total
       : filteredReviews.length;
     const pageReviews = wantsPagination && !upstreamLooksPaginated
       ? paginateList(filteredReviews, requestedPage, requestedLimit)
@@ -1501,12 +1516,16 @@ const getReviewsByCompany = async (req, res, next) => {
     }
 
     const [admins, hosts] = await Promise.all([
-      AdminUser.find({ _id: { $in: [...adminIds] } })
-        .select("_id firstName lastName email")
-        .lean(),
-      HostUser.find({ _id: { $in: [...hostIds] } })
-        .select("_id name phone email")
-        .lean(),
+      adminIds.size
+        ? AdminUser.find({ _id: { $in: [...adminIds] } })
+            .select("_id firstName lastName email")
+            .lean()
+        : [],
+      hostIds.size
+        ? HostUser.find({ _id: { $in: [...hostIds] } })
+            .select("_id name phone email")
+            .lean()
+        : [],
     ]);
 
     const adminMap = Object.fromEntries(
@@ -1572,7 +1591,9 @@ const getReviewsByCompany = async (req, res, next) => {
         limit: requestedLimit,
         total,
         totalPages: Math.max(Math.ceil(total / requestedLimit), 1),
-        hasNextPage: requestedPage * requestedLimit < total,
+        hasNextPage: upstreamLooksPaginated && typeof upstreamPagination.hasNextPage === "boolean"
+          ? upstreamPagination.hasNextPage
+          : requestedPage * requestedLimit < total,
       },
     });
   } catch (error) {

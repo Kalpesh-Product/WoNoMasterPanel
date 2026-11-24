@@ -6,7 +6,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Playwrite+US+Modern:wght@100..400&display=swap');
 
 .font-play {
-    font-family: "Playwrite US Modern";
+    font-family: "Playwrite US Modern", Popins-Regular, sans-serif;
 }
 
 
