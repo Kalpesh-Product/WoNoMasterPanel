@@ -35,6 +35,14 @@ const workspaceSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    // Mirrored from HostPanel's Workspace schema too: the website's public
+    // template endpoint reads preferences.currency from here so prices are
+    // rendered in the unit's own currency. Without it, Mongoose drops the
+    // nested preferences object on every read.
+    preferences: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
     selectedPlan: {
       type: String,
       enum: ["basic", "professional", "custom"],

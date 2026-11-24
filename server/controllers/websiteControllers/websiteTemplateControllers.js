@@ -4381,6 +4381,35 @@ const buildSnapshotFromTemplate = (templateDoc) => {
 // Serves the latest published WebsiteTemplateVersion snapshot when the master
 // publish flow created one, and falls back to the live template document for
 // websites published directly from the website builder.
+// The hosted site renders every price with the owning unit's currency symbol.
+// Resolve it from the workspace's Unit Settings on each request — never a
+// hard-coded default — so a currency change (or a site published before the
+// field existed) is reflected without republishing.
+const resolvePublishedCurrency = async (template) => {
+  const workspaceId = String(template?.workspaceId || "").trim();
+  const companyId = String(template?.companyId || "").trim();
+  try {
+    let workspace = null;
+    if (workspaceId && mongoose.isValidObjectId(workspaceId)) {
+      workspace = await Workspace.findById(workspaceId)
+        .select("preferences.currency")
+        .lean();
+    } else if (companyId) {
+      workspace = await Workspace.findOne({ companyId })
+        .select("preferences.currency")
+        .lean();
+    }
+    const currency = String(workspace?.preferences?.currency || "")
+      .trim()
+      .toUpperCase();
+    if (/^[A-Z]{3}$/.test(currency)) return currency;
+  } catch (error) {
+    // Fall through to whatever the published snapshot carried.
+  }
+  const stored = String(template?.currency || "").trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(stored) ? stored : "";
+};
+
 const getTemplate = async (req, res) => {
   try {
     const { companyName } = req.params;
@@ -4412,8 +4441,12 @@ const getTemplate = async (req, res) => {
           new Date(latestPublished.publishedAt || 0).getTime());
 
     if (latestPublished?.templateSnapshot && !builderPublishIsNewer) {
+      const currency = await resolvePublishedCurrency(
+        template || latestPublished.templateSnapshot,
+      );
       return res.json({
         ...latestPublished.templateSnapshot,
+        ...(currency ? { currency } : {}),
         isPublished: true,
         publishedVersion: latestPublished.version,
         publishedAt: latestPublished.publishedAt,
@@ -4427,7 +4460,10 @@ const getTemplate = async (req, res) => {
     // Website builder publishes directly to the live template document without
     // creating a WebsiteTemplateVersion snapshot.
     if (template.isPublished === true) {
-      return res.json(serializeWebsiteTemplateForClient(template));
+      const payload = serializeWebsiteTemplateForClient(template);
+      const currency = await resolvePublishedCurrency(template);
+      if (currency) payload.currency = currency;
+      return res.json(payload);
     }
 
     return res.status(404).json({
