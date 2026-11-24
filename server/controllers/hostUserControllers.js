@@ -4245,16 +4245,31 @@ const sendBookingPaymentLinkEmail = async (req, res, next) => {
             currency: resolvedCurrency,
           });
 
+    // The Stripe link and its BookingPaymentLink row already exist at this
+    // point, so a mail outage must not fail the whole request and make the
+    // caller think no link was created. Report delivery separately instead.
+    let emailSent = false;
     if (sendEmail !== false) {
-      await sendMail({
-        to: customerEmail,
-        ...paymentEmail,
-      });
+      try {
+        await sendMail({
+          to: customerEmail,
+          ...paymentEmail,
+        });
+        emailSent = true;
+      } catch (mailError) {
+        console.error(
+          "Payment link email failed -- link was still created:",
+          mailError?.message || mailError,
+        );
+      }
     }
 
     return res.status(200).json({
-      message: "Payment link email sent successfully",
+      message: emailSent
+        ? "Payment link email sent successfully"
+        : "Payment link created, but the email could not be sent",
       paymentLinkUrl: paymentUrl,
+      emailSent,
     });
   } catch (error) {
     next(error);
