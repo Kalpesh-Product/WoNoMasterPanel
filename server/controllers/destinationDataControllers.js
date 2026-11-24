@@ -6,6 +6,7 @@ const WonoDestinationRanking = require("../models/WonoDestinationRanking");
 const priorityLabels = { P1: "Immediate Priority", P2: "High Priority", P3: "Medium Priority", P4: "Low Priority" };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const LISTINGS_INITIAL_WAIT_MS = 750;
 // Minimum gap between two attempts when a source is down/empty, so client
 // polling cannot hammer an already struggling Nomads backend.
 const REFRESH_RETRY_MS = 30 * 1000;
@@ -174,29 +175,27 @@ const normalizeDestination = (row) =>
     "-",
   );
 
+const requestNomadsRows = async (path, timeout = FETCH_TIMEOUT_MS) => {
+  const response = await axios.get(`${NOMADS_BASE_URL}${path}`, {
+    timeout,
+    headers: process.env.NOMADS_ADMIN_API_KEY
+      ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+      : {},
+  });
+  return toArray(response.data);
+};
+
 const fetchNomadsRows = async (path) => {
   try {
-    const response = await axios.get(`${NOMADS_BASE_URL}${path}`, {
-      timeout: FETCH_TIMEOUT_MS,
-      headers: process.env.NOMADS_ADMIN_API_KEY
-        ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
-        : {},
-    });
-    return toArray(response.data);
+    return await requestNomadsRows(path);
   } catch (error) {
     console.error(`Failed to fetch destination source ${path}:`, error.message);
     return [];
   }
 };
 
-// `/company/companies` answers in one fast call — that's what keeps this
-// tab loading quickly, same spirit as the pre-aggregated blogs/news
-// endpoints below. It does drop inactive listings and "privatestay" at the
-// DB level, which is why its counts run a bit under Publish Listings'
-// (intentional — see the Public Listings card, which only ever tracked
-// these 5 active listing types). `fetchAllNomadListings` — the full
-// per-company crawl, 30-50s cold — is only a fallback for when that
-// endpoint comes back empty, never the primary path.
+// Listing details still read the full listing records. The summary uses
+// grouped counts when the Nomads server supports them.
 const refreshNomadsCompanyListingsCache = () => {
   if (!nomadsCompanyListingsRefreshPromise) {
     nomadsCompanyListingsRefreshPromise = (async () => {
@@ -267,6 +266,17 @@ const fetchNomadsCompanyListings = async () => {
   return state.items;
 };
 
+const fetchNomadListingCounts = async () => {
+  try {
+    return await requestNomadsRows("/company/destination-listing-counts", 15000);
+  } catch (error) {
+    if (error.response?.status !== 404) throw error;
+
+    // A Master Panel deployment may precede the new Nomads endpoint.
+    return fetchNomadsCompanyListings();
+  }
+};
+
 let destinationSourcesPromise;
 const fetchDestinationSources = () => {
   if (!destinationSourcesPromise) {
@@ -290,7 +300,7 @@ const fetchDestinationSources = () => {
 const buildDestinationStats = async ({ includeListings = false } = {}) => {
   const [[companies, blogs, news, events, places, restaurants], listings] = await Promise.all([
     fetchDestinationSources(),
-    includeListings ? fetchNomadsCompanyListings() : Promise.resolve([]),
+    includeListings ? fetchNomadListingCounts() : Promise.resolve([]),
   ]);
 
   const destinationMap = new Map();
@@ -393,8 +403,8 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
     if (!countField) return;
     const entry = ensureDestination(listing);
     if (!entry) return;
-    entry[countField] += 1;
-    if (listing.isPublic === true) entry.publicListingCount += 1;
+    entry[countField] += listing.count ?? 1;
+    entry.publicListingCount += listing.publicCount ?? (listing.isPublic === true ? 1 : 0);
   });
 
   return destinationEntries
@@ -594,13 +604,20 @@ const getDestinationsData = async (req, res, next) => {
     }
 
     const activeTab = normalizeSearchValue(req.query.tab) === "listings" ? "listings" : "content";
-    const {
-      items: allItems,
-      isRefreshing,
-      isInitialLoading,
-    } = getCachedDestinationStats({
-      includeListings: activeTab === "listings",
-    });
+    const includeListings = activeTab === "listings";
+    let snapshot = getCachedDestinationStats({ includeListings });
+    const listingsRefresh = destinationRefreshPromises.listings;
+    if (includeListings && snapshot.isInitialLoading && listingsRefresh) {
+      // A quick refresh can satisfy the first request without a client poll.
+      let timer;
+      await Promise.race([
+        listingsRefresh.catch(() => {}),
+        new Promise((resolve) => { timer = setTimeout(resolve, LISTINGS_INITIAL_WAIT_MS); }),
+      ]);
+      clearTimeout(timer);
+      snapshot = getCachedDestinationStats({ includeListings });
+    }
+    const { items: allItems, isRefreshing, isInitialLoading } = snapshot;
     const contentItems = allItems.filter(hasContentData);
     const scopedItems = activeTab === "listings"
       ? allItems.filter(hasListingData)
