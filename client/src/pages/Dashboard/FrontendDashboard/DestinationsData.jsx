@@ -1165,7 +1165,9 @@ const DestinationsData = () => {
                     <ArrowLeft size={15} />
                   </button>
                 )}
-                {currentView === "summary" ? "Destinations Data" : `${detailLabel} in ${selectedLocation}`}
+                {currentView === "summary"
+                  ? SUMMARY_TABS.find((tab) => tab.key === effectiveSummaryTab).label
+                  : `${detailLabel} in ${selectedLocation}`}
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
                 {currentView === "summary"
