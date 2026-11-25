@@ -51,12 +51,12 @@ export const MessageForm = ({ inquiryType, submitLabel, success }) => {
       <button type="submit" disabled={state === "sending"} className="tp-btn tp-btn-primary">{state === "sending" ? "Sending…" : submitLabel}</button>
     </form>);
 };
-export const ReviewModal = () => {
+export const ReviewModal = ({ panelBackground = "var(--t-bg)" }) => {
     const { t } = useTpl();
     return (<AnimatePresence>
       {t.reviewModalOpen ? (<motion.div className="fixed inset-0 z-[60] flex items-center justify-center p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true" aria-label="Write a review">
           <div className="absolute inset-0" style={{ background: "rgba(10,8,6,.6)", backdropFilter: "blur(4px)" }} onClick={() => t.setReviewModalOpen(false)}/>
-          <motion.form onSubmit={t.submitReviewForm} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="relative w-full max-w-lg rounded-[32px] p-7 md:p-9" style={{ background: "var(--t-bg)", color: "var(--t-text)" }}>
+          <motion.form onSubmit={t.submitReviewForm} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }} className="relative w-full max-w-lg rounded-[32px] p-7 md:p-9" style={{ background: panelBackground, color: "var(--t-text)" }}>
             <button type="button" aria-label="Close" onClick={() => t.setReviewModalOpen(false)} className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--t-text) 8%, transparent)" }}>{Icon.close()}</button>
             <h2 className="tp-h3 mb-6 pr-10">Share your experience</h2>
             <div className="grid gap-4">
