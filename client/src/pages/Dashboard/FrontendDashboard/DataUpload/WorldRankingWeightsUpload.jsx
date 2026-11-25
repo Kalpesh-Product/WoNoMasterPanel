@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
-  Download,
+  FileDown,
   X,
 } from "lucide-react";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
@@ -18,7 +18,11 @@ import {
   STATEWISE_WEIGHT_FORMULAS,
   calculateScore,
 } from "../../../../utils/weightCalculationsV2";
-import { downloadCsv } from "../../../../utils/csvExport";
+import { toCsv } from "../../../../utils/csvExport";
+import {
+  exportDryRunPdf,
+  readDryRunReportError,
+} from "../../../../utils/dryRunReport";
 import {
   FileDropzone,
   UploadActions,
@@ -38,9 +42,9 @@ const METRIC_LABELS = Object.fromEntries(
 );
 
 // Mirrors the "Export Weights (.csv)" header row on World Ranking Weights V2,
-// so a hand-built sheet lines up with what the importer reads (it normalises
-// header text: lower-case, strips spaces/underscores/&()/).
-const TEMPLATE_HEADERS = [
+// so the sheet downloaded here is exactly what the importer reads (it
+// normalises header text: lower-case, strips spaces/underscores/&()/).
+const CURRENT_DATA_HEADERS = [
   "_id",
   "Rank",
   "Destination",
@@ -53,6 +57,15 @@ const TEMPLATE_HEADERS = [
 ];
 
 const isCsv = (file) => /\.csv$/i.test(file.name);
+
+const destinationName = (row = {}) =>
+  row.destination || row.state || row.title || row.city || "-";
+
+const toNumericOrFallback = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) return fallback;
+  const numericValue = Number(value);
+  return Number.isNaN(numericValue) ? fallback : numericValue;
+};
 
 const metricLabel = (field) => METRIC_LABELS[field] || field;
 
@@ -167,19 +180,21 @@ const DryRunPanel = ({
   isCommitting,
   attributeImpact,
   impactPending,
+  onExportPdf,
+  isExporting,
 }) => {
   const preview = result.preview || [];
   const hasChanges = preview.length > 0;
 
   return (
     <section className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
+      <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3">
         {hasChanges ? (
           <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-500" />
         ) : (
           <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-600" />
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-pmedium text-slate-800">
             {hasChanges
               ? `Dry run — ${plural(preview.length, "destination will change", "destinations will change")}`
@@ -196,6 +211,15 @@ const DryRunPanel = ({
             stored Rank column in the sheet is never read or written.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={onExportPdf}
+          disabled={isExporting}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition hover:border-[#2563EB]/40 hover:text-[#2563EB] disabled:opacity-50"
+        >
+          <FileDown size={12} />
+          {isExporting ? "Exporting…" : "Export PDF"}
+        </button>
       </div>
 
       <StatGrid
@@ -534,8 +558,9 @@ const WorldRankingWeightsUpload = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  // Live weights, only needed once there is a diff to explain. Shares the
-  // weights page's query key so opening that page afterwards is instant.
+  // Live weights: the dry-run diff explanation and "Download current data"
+  // both start from them. Shares the weights page's query key so opening that
+  // page afterwards is instant.
   const { data: liveWeights = [], isPending: isWeightsPending } = useQuery({
     queryKey: ["world-ranking-weights-v2"],
     queryFn: async () => {
@@ -546,8 +571,44 @@ const WorldRankingWeightsUpload = () => {
       if (Array.isArray(payload?.rows)) return payload.rows;
       return [];
     },
-    enabled: Boolean(preview.data),
   });
+
+  // The card header's "Download current data (.csv)" — the same matrix the
+  // World Ranking Weights V2 export produces, so export → edit → upload is a
+  // round trip with the importer's own headers.
+  const [currentDataHref, setCurrentDataHref] = useState("");
+
+  useEffect(() => {
+    if (!liveWeights.length) {
+      setCurrentDataHref("");
+      return undefined;
+    }
+
+    const matrix = [
+      CURRENT_DATA_HEADERS,
+      ...liveWeights.map((row) => [
+        row._id || "",
+        row.rank ?? "",
+        destinationName(row),
+        row.state || "",
+        row.title || "",
+        row.country || "",
+        row.continent || "",
+        row.isActive === true || row.isActive === "true" ? "Active" : "Inactive",
+        ...ALGO2_BASE_METRICS.map((metric) =>
+          toNumericOrFallback(row.weight?.[metric.field] ?? row?.[metric.field], 0),
+        ),
+      ]),
+    ];
+
+    const blob = new Blob(["\uFEFF", toCsv(matrix)], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const url = window.URL.createObjectURL(blob);
+    setCurrentDataHref(url);
+
+    return () => window.URL.revokeObjectURL(url);
+  }, [liveWeights]);
 
   // The backend dry run ranks ONE attribute (bestForNomads by default). Every
   // other attribute that uses a changed metric gets its score and its rank
@@ -650,10 +711,128 @@ const WorldRankingWeightsUpload = () => {
     });
   };
 
-  const downloadTemplate = () => {
-    downloadCsv({ filename: "wono_state_weight_v2_template.csv", matrix: [TEMPLATE_HEADERS] });
-    toast.success("Header template downloaded.");
+  // Everything the dry run shows — changed metrics, the recalculated attribute
+  // scores/ranks, skipped _ids and row issues — becomes the archived PDF.
+  const buildReport = () => {
+    const result = preview.data || {};
+    const previewRows = result.preview || [];
+    const metricRows = [];
+    const attributeRows = [];
+
+    previewRows.forEach((row) => {
+      const label = row.title || row.state || "Untitled";
+      const meta = [label, row.state, row.country, `Row ${row.rowNumber}`]
+        .filter(Boolean)
+        .join(" · ");
+
+      (row.changedFields || []).forEach((change) => {
+        metricRows.push([
+          meta,
+          metricLabel(change.field),
+          String(change.oldValue ?? ""),
+          String(change.newValue ?? ""),
+        ]);
+      });
+
+      (attributeImpact?.byId?.[row.id] || []).forEach((item) => {
+        attributeRows.push([
+          meta,
+          item.label,
+          formatScore(item.scoreBefore),
+          formatScore(item.scoreAfter),
+          item.rankBefore ? `#${item.rankBefore}` : "—",
+          item.rankAfter ? `#${item.rankAfter}` : "—",
+        ]);
+      });
+    });
+
+    const notFoundRows = (result.notFound || []).map((entry) => [
+      `Row ${entry.rowNumber}`,
+      entry.id,
+    ]);
+
+    const errorRows = (result.rowErrors || []).map((entry) => [
+      `Row ${entry.rowNumber}`,
+      entry.id || "—",
+      entry.reason,
+    ]);
+
+    const sections = [
+      {
+        title: `Metric changes (${metricRows.length})`,
+        columns: [
+          { label: "Destination", width: 0.38 },
+          { label: "Metric", width: 0.3 },
+          { label: "Before", width: 0.16 },
+          { label: "After", width: 0.16 },
+        ],
+        rows: metricRows,
+      },
+      {
+        title: `Attribute score changes (${attributeRows.length})`,
+        columns: [
+          { label: "Destination", width: 0.32 },
+          { label: "Attribute", width: 0.26 },
+          { label: "Score before", width: 0.12 },
+          { label: "Score after", width: 0.12 },
+          { label: "Rank before", width: 0.09 },
+          { label: "Rank after", width: 0.09 },
+        ],
+        rows: attributeRows,
+      },
+      {
+        title: `_ids not in DB — skipped (${notFoundRows.length})`,
+        columns: [
+          { label: "Row", width: 0.2 },
+          { label: "_id", width: 0.8 },
+        ],
+        rows: notFoundRows,
+      },
+      {
+        title: `Row issues (${errorRows.length})`,
+        columns: [
+          { label: "Row", width: 0.16 },
+          { label: "_id", width: 0.26 },
+          { label: "Reason", width: 0.58 },
+        ],
+        rows: errorRows,
+      },
+    ].filter((section) => section.rows.length > 0);
+
+    return {
+      title: "World Ranking Weights — Dry Run",
+      module: "Data Upload",
+      page: "World Ranking Weights Upload",
+      action: "Dry run PDF — World Ranking Weights",
+      fileName: file?.name || "",
+      summary: [
+        { label: "Rows read", value: formatCount(result.processedRows) },
+        { label: "Will update", value: formatCount(result.willUpdateCount) },
+        { label: "No change", value: formatCount(result.unchangedCount) },
+        { label: "Not in DB", value: formatCount(result.notFoundCount) },
+        { label: "Row issues", value: formatCount((result.rowErrors || []).length) },
+        { label: "Attributes ranked over", value: formatCount(attributeImpact?.universeCount) },
+      ],
+      sections,
+      notes: [
+        "This is a dry run: no weight values were written by generating this report.",
+        "Rows are matched by _id only — unknown _ids are skipped and never inserted.",
+        "The stored Rank column in the sheet is never read or written; ranks below are position across all destinations for that attribute's own score.",
+      ],
+    };
   };
+
+  const pdfExport = useMutation({
+    mutationFn: () => exportDryRunPdf({ axios, report: buildReport() }),
+    onSuccess: ({ stored }) => {
+      if (stored) {
+        toast.success("PDF downloaded and archived in Master Panel logs.");
+      } else {
+        toast.warning("PDF downloaded, but the archived copy could not be saved to logs.");
+      }
+    },
+    onError: async (error) => toast.error(await readDryRunReportError(error)),
+  });
 
   const previewResult = preview.data;
   const commitResult = commit.data;
@@ -665,21 +844,14 @@ const WorldRankingWeightsUpload = () => {
       <UploadCard
         title="World Ranking Weights Upload"
         description="Update Algo 2.0 destination weights from a CSV exported out of World Ranking Weights V2."
+        templateHref={currentDataHref}
+        templateLabel="Download current data (.csv)"
       >
-        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <button
-            type="button"
-            onClick={downloadTemplate}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-pmedium text-[#2563EB] transition hover:bg-[#2563EB]/10"
-          >
-            <Download size={12} />
-            Download header template
-          </button>
-          <p className="text-[10px] font-pmedium text-slate-400">
-            Best flow: open World Ranking Weights V2 → “Export Weights (.csv)” →
-            edit the metric columns → upload here.
-          </p>
-        </div>
+        <p className="mb-3 text-[10px] font-pmedium text-slate-400">
+          Best flow: download the current data → edit the metric columns → upload
+          here. The sheet keeps the _id and stored Rank columns exactly as the
+          database has them.
+        </p>
 
         <UploadPanel>
           <FileDropzone
@@ -719,6 +891,8 @@ const WorldRankingWeightsUpload = () => {
               isCommitting={commit.isPending}
               attributeImpact={attributeImpact}
               impactPending={isWeightsPending}
+              onExportPdf={() => pdfExport.mutate()}
+              isExporting={pdfExport.isPending}
             />
           )}
 

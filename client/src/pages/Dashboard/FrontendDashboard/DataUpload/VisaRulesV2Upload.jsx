@@ -5,12 +5,17 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
+  FileDown,
   Plus,
   X,
 } from "lucide-react";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
+import {
+  exportDryRunPdf,
+  readDryRunReportError,
+} from "../../../../utils/dryRunReport";
 import {
   FileDropzone,
   UploadActions,
@@ -171,7 +176,14 @@ const PreviewGroup = ({ title, description, rows, tone }) => {
   );
 };
 
-const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting }) => {
+const DryRunPanel = ({
+  result,
+  onConfirm,
+  onDiscard,
+  isCommitting,
+  onExportPdf,
+  isExporting,
+}) => {
   const preview = result.preview || [];
   const inserts = preview.filter((row) => row.action === "insert");
   const updates = preview.filter((row) => row.action !== "insert");
@@ -179,13 +191,13 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting }) => {
 
   return (
     <section className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-start gap-2 border-b border-slate-100 px-4 py-3">
+      <div className="flex items-start gap-3 border-b border-slate-100 px-4 py-3">
         {hasChanges ? (
           <AlertTriangle size={15} className="mt-0.5 shrink-0 text-amber-500" />
         ) : (
           <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-emerald-600" />
         )}
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-xs font-pmedium text-slate-800">
             {hasChanges
               ? `Dry run — ${preview.length} rule${
@@ -205,6 +217,15 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting }) => {
             </p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={onExportPdf}
+          disabled={isExporting}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition hover:border-[#2563EB]/40 hover:text-[#2563EB] disabled:opacity-50"
+        >
+          <FileDown size={12} />
+          {isExporting ? "Exporting…" : "Export PDF"}
+        </button>
       </div>
 
       <StatGrid
@@ -402,6 +423,85 @@ const VisaRulesV2Upload = () => {
     commit.reset();
   };
 
+  // The archived PDF mirrors the dry-run preview: every rule that would be
+  // inserted or corrected, plus the rows the backend skipped.
+  const buildReport = () => {
+    const result = preview.data || {};
+    const previewRows = result.preview || [];
+    const changeRows = [];
+
+    previewRows.forEach((row) => {
+      (row.changedFields || []).forEach((change) => {
+        changeRows.push([
+          row.action === "insert" ? "New row" : "Update",
+          row.passport || "",
+          row.destination || "",
+          FIELD_LABELS[change.field] || change.field,
+          formatFieldValue(change.field, change.oldValue),
+          formatFieldValue(change.field, change.newValue),
+        ]);
+      });
+    });
+
+    const skippedRows = (result.rowErrors || []).map((entry) => [
+      `Row ${entry.rowNumber}`,
+      entry.reason,
+    ]);
+
+    return {
+      title: "Visa Rules V2 — Dry Run",
+      module: "Data Upload",
+      page: "Visa Rules V2 Import",
+      action: "Dry run PDF — Visa Rules V2",
+      fileName: file?.name || "",
+      summary: [
+        { label: "Rows read", value: result.processedRows ?? 0 },
+        { label: "New rows", value: result.willInsertCount ?? 0 },
+        { label: "Will update", value: result.willUpdateCount ?? 0 },
+        { label: "No change", value: result.unchangedCount ?? 0 },
+        { label: "Row issues", value: (result.rowErrors || []).length },
+      ],
+      sections: [
+        {
+          title: `Rules changing (${previewRows.length})`,
+          columns: [
+            { label: "Action", width: 0.1 },
+            { label: "Passport", width: 0.2 },
+            { label: "Destination", width: 0.2 },
+            { label: "Field", width: 0.16 },
+            { label: "Before", width: 0.17 },
+            { label: "After", width: 0.17 },
+          ],
+          rows: changeRows,
+        },
+        {
+          title: `Rows skipped (${skippedRows.length})`,
+          columns: [
+            { label: "Row", width: 0.16 },
+            { label: "Reason", width: 0.84 },
+          ],
+          rows: skippedRows,
+        },
+      ].filter((section) => section.rows.length > 0),
+      notes: [
+        "This is a dry run: no visa rule was written by generating this report.",
+        "Import upserts by passport + destination. Blank cells leave a field untouched, -1 clears it, and an unknown pair is inserted.",
+      ],
+    };
+  };
+
+  const pdfExport = useMutation({
+    mutationFn: () => exportDryRunPdf({ axios, report: buildReport() }),
+    onSuccess: ({ stored }) => {
+      if (stored) {
+        toast.success("PDF downloaded and archived in Master Panel logs.");
+      } else {
+        toast.warning("PDF downloaded, but the archived copy could not be saved to logs.");
+      }
+    },
+    onError: async (error) => toast.error(await readDryRunReportError(error)),
+  });
+
   const busy = preview.isPending || commit.isPending;
   const failedRequest = preview.error || commit.error;
   const failedResult = failedRequest?.response?.data;
@@ -481,6 +581,8 @@ const VisaRulesV2Upload = () => {
               onConfirm={() => commit.mutate()}
               onDiscard={() => preview.reset()}
               isCommitting={commit.isPending}
+              onExportPdf={() => pdfExport.mutate()}
+              isExporting={pdfExport.isPending}
             />
           )}
 
