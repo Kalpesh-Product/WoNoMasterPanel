@@ -1,4 +1,6 @@
 const axios = require("axios");
+const ExcelJS = require("exceljs");
+const { Readable } = require("stream");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const { fetchAllNomadListings } = require("./hostListingControllers");
 const WonoDestinationRanking = require("../models/WonoDestinationRanking");
@@ -888,9 +890,219 @@ const updateWonoDestination = async (req, res, next) => {
   }
 };
 
+// Header labels matching the data team's "Destination Ranking" sheet
+// (Sequence Sheet _ 132 destinations) — same labels shown in the Ranking
+// page's scoring-model guide, so the monthly refresh sheet lines up with the
+// factors the formula actually uses. "Client Opportunity", "WoNo Priority
+// Score", rank and priority are all recomputed from the factors below by
+// recomputeActiveRanking() — the sheet's own copies of those are ignored on
+// import, the same way editing one destination's factors here always does.
+const RANKING_FIELD_LABELS = {
+  country: "Country",
+  continent: "Continent",
+  targetBusinessSupply: "Target Business Supply",
+  tourismAccommodationBase: "Tourism / Accommodation Base",
+  marketScale: "Market Scale",
+  nomadDemandCommunity: "Nomad Demand & Community",
+  remoteWorkInfrastructure: "Remote Work Infrastructure",
+  businessJobsEcosystem: "Business & Jobs Ecosystem",
+  flightConnectivity: "Flight Connectivity",
+  affordability: "Affordability",
+  visaEntryAccessibility: "Visa Entry Accessibility",
+  safetyHealthcare: "Safety / Healthcare",
+};
+const RANKING_HEADER_BY_FIELD = Object.fromEntries(
+  Object.entries(RANKING_FIELD_LABELS).map(([field, label]) => [field, normalizeRankingHeader(label)]),
+);
+
+function normalizeRankingHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+const rankingCellValue = (row, col) => {
+  if (!col) return undefined;
+  const value = row.getCell(col).value;
+  return value && typeof value === "object" && "result" in value ? value.result : value;
+};
+const rankingCellStr = (row, col) => {
+  const value = rankingCellValue(row, col);
+  return value === null || value === undefined ? "" : String(value).trim();
+};
+const rankingCellNum = (row, col) => {
+  const value = rankingCellValue(row, col);
+  if (value === null || value === undefined || value === "") return undefined;
+  return Number(value);
+};
+
+const rankingChangedFields = (existing, item) => {
+  const fields = [];
+  const pushIfChanged = (field, oldValue, newValue) => {
+    if (oldValue === newValue) return;
+    fields.push({ field, label: RANKING_FIELD_LABELS[field], oldValue: oldValue ?? null, newValue });
+  };
+  pushIfChanged("country", existing?.country ?? null, item.country);
+  pushIfChanged("continent", existing?.continent ?? null, item.continent);
+  WonoDestinationRanking.FACTOR_KEYS.forEach((field) => {
+    pushIfChanged(field, existing?.factors?.[field] ?? null, item.factors[field]);
+  });
+  return fields;
+};
+
+// Monthly refresh of the global ranking's 10 scoring factors from the data
+// team's CSV export (one row per destination). Upserts by destination name;
+// ?dryRun=true previews the diff with no writes, same URL with no query
+// commits it. Destinations missing from the sheet are left as-is — this
+// never deletes or deactivates anything, and rank/priority/score are always
+// recomputed from the factors, never read from the sheet.
+const bulkImportDestinationRanking = async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "Upload a .csv file." });
+    const dryRun = String(req.query.dryRun || "") === "true";
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.csv.read(Readable.from(req.file.buffer));
+    const sheet = workbook.worksheets[0];
+    if (!sheet) return res.status(400).json({ message: "The file has no readable rows." });
+
+    const columnCount = sheet.actualColumnCount || sheet.columnCount;
+    const headerRow = sheet.getRow(1);
+    const columns = {};
+    for (let col = 1; col <= columnCount; col += 1) {
+      const header = normalizeRankingHeader(headerRow.getCell(col).value);
+      if (header === "destination") columns.destination = col;
+      else {
+        const field = Object.keys(RANKING_HEADER_BY_FIELD).find((key) => RANKING_HEADER_BY_FIELD[key] === header);
+        if (field) columns[field] = col;
+      }
+    }
+    if (!columns.destination || !columns.country || !columns.continent) {
+      return res.status(400).json({ message: 'Could not find "Destination", "Country" and "Continent" columns.' });
+    }
+
+    let processedRows = 0;
+    const parsedRows = [];
+    const rowErrors = [];
+
+    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const destination = rankingCellStr(row, columns.destination);
+      const country = rankingCellStr(row, columns.country);
+      const continent = rankingCellStr(row, columns.continent);
+      if (!destination && !country && !continent) return;
+      processedRows += 1;
+
+      if (!destination || !country || !continent) {
+        rowErrors.push({ rowNumber, reason: "Missing destination, country or continent." });
+        return;
+      }
+
+      const factors = {};
+      const missing = [];
+      WonoDestinationRanking.FACTOR_KEYS.forEach((field) => {
+        const value = rankingCellNum(row, columns[field]);
+        if (typeof value !== "number" || Number.isNaN(value) || value < 0 || value > 100) missing.push(RANKING_FIELD_LABELS[field]);
+        else factors[field] = value;
+      });
+      if (missing.length) {
+        rowErrors.push({ rowNumber, destination, reason: `Missing or invalid (must be 0-100): ${missing.join(", ")}.` });
+        return;
+      }
+
+      parsedRows.push({ rowNumber, destination, country, continent, factors });
+    });
+
+    if (!parsedRows.length) {
+      return res.status(200).json({
+        processedRows,
+        willInsertCount: 0,
+        willUpdateCount: 0,
+        unchangedCount: 0,
+        rowErrors,
+        preview: [],
+        message: "No valid destination rows were found. Nothing was changed.",
+      });
+    }
+
+    const key = (value) => String(value || "").trim().toLowerCase();
+    const existingDocs = await WonoDestinationRanking.find({}).lean();
+    const existingByKey = new Map(existingDocs.map((doc) => [key(doc.destination), doc]));
+
+    let willInsertCount = 0;
+    let willUpdateCount = 0;
+    let unchangedCount = 0;
+    const preview = [];
+    const operations = [];
+
+    parsedRows.forEach((item) => {
+      const existing = existingByKey.get(key(item.destination));
+      const changedFields = rankingChangedFields(existing, item);
+
+      if (existing && !changedFields.length) {
+        unchangedCount += 1;
+        return;
+      }
+
+      const action = existing ? "update" : "insert";
+      if (action === "insert") willInsertCount += 1; else willUpdateCount += 1;
+      preview.push({
+        id: existing ? String(existing._id) : key(item.destination),
+        destination: item.destination,
+        country: item.country,
+        continent: item.continent,
+        rowNumber: item.rowNumber,
+        action,
+        changedFields,
+      });
+
+      if (existing) {
+        operations.push({
+          updateOne: {
+            filter: { _id: existing._id },
+            update: { $set: { country: item.country, continent: item.continent, factors: item.factors, isActive: true } },
+          },
+        });
+      } else {
+        operations.push({
+          insertOne: {
+            document: { destination: item.destination, country: item.country, continent: item.continent, factors: item.factors, isActive: true },
+          },
+        });
+      }
+    });
+
+    if (dryRun) {
+      return res.status(200).json({ processedRows, willInsertCount, willUpdateCount, unchangedCount, rowErrors, preview });
+    }
+
+    let matchedCount = 0;
+    let modifiedCount = 0;
+    let upsertedCount = 0;
+    if (operations.length) {
+      const result = await WonoDestinationRanking.bulkWrite(operations);
+      matchedCount = result.matchedCount || 0;
+      modifiedCount = result.modifiedCount || 0;
+      upsertedCount = result.insertedCount || 0;
+      await recomputeActiveRanking();
+    }
+
+    return res.status(200).json({
+      message: "Destination ranking updated from CSV.",
+      processedRows,
+      matchedCount,
+      modifiedCount,
+      upsertedCount,
+      rowErrors,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDestinationsData,
   getWonoDestinationAnalytics,
   createWonoDestination,
   updateWonoDestination,
+  bulkImportDestinationRanking,
+  fetchNomadsCompanyListings,
 };

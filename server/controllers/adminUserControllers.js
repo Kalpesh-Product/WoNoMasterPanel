@@ -5,12 +5,14 @@ const { default: mongoose } = require("mongoose");
 const axios = require("axios");
 const FormData = require("form-data");
 const ExcelJS = require("exceljs");
+const { Readable } = require("stream");
 const {
   uploadFileToS3,
   deleteFileFromS3ByUrl,
 } = require("../config/s3config");
 const HostCompany = require("../models/hostCompany/hostCompany");
 const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
+const { fetchNomadsCompanyListings } = require("./destinationDataControllers");
 const HostUser = require("../models/hostCompany/hostUser");
 const Workspace = require("../models/hostCompany/Workspace");
 const WebsiteTemplate = require("../models/website/WebsiteTemplate");
@@ -323,19 +325,21 @@ const bulkUploadData = async (req, res) => {
   }
 };
 
-// Listings Data Update: parses the data team's "Business ALL Data" xlsx
-// (11k+ rows) and forwards compact rows to the Nomads backend, which owns
-// the companies collection. Blank Ratings/Total Reviews cells are skipped —
-// they must never overwrite live values with 0. IN-ACTIVE rows only get
-// isPublic:false on the Nomads side; nothing is ever force-published.
+// Listings Data Update: parses a CSV of ratings/reviews/status (exported via
+// "Download current data", same round-trip the other Data Upload CSVs use)
+// and forwards compact rows to the Nomads backend, which owns the companies
+// collection. Blank Ratings/Total Reviews cells are skipped — they must never
+// overwrite live values with 0. IN-ACTIVE rows only get isPublic:false on the
+// Nomads side; nothing is ever force-published.
 const bulkUpdateListingStats = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file provided" });
     }
+    const dryRun = String(req.query.dryRun || "") === "true";
 
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(req.file.buffer);
+    await workbook.csv.read(Readable.from(req.file.buffer));
 
     const norm = (v) =>
       String(v ?? "")
@@ -345,28 +349,22 @@ const bulkUpdateListingStats = async (req, res) => {
 
     // Columns found by header text, not fixed position — same defensive
     // approach as parseDestinationRawData.js, since the team's sheets vary.
-    let sheet = null;
-    let cols = null;
-    for (const ws of workbook.worksheets) {
-      const header = ws.getRow(1);
-      const map = {};
-      for (let c = 1; c <= (ws.actualColumnCount || ws.columnCount); c += 1) {
+    const sheet = workbook.worksheets[0];
+    const cols = {};
+    if (sheet) {
+      const header = sheet.getRow(1);
+      for (let c = 1; c <= (sheet.actualColumnCount || sheet.columnCount); c += 1) {
         const h = norm(header.getCell(c).value);
-        if (h === "business id") map.businessId = c;
-        else if (h === "ratings" || h === "rating") map.ratings = c;
-        else if (h === "total reviews") map.totalReviews = c;
-        else if (h === "status" || h === "business status") map.status = c;
-      }
-      if (map.businessId) {
-        sheet = ws;
-        cols = map;
-        break;
+        if (h === "business id") cols.businessId = c;
+        else if (h === "ratings" || h === "rating") cols.ratings = c;
+        else if (h === "total reviews") cols.totalReviews = c;
+        else if (h === "status" || h === "business status") cols.status = c;
       }
     }
-    if (!sheet) {
+    if (!sheet || !cols.businessId) {
       return res
         .status(400)
-        .json({ message: 'No sheet with a "Business ID" column found' });
+        .json({ message: 'No "Business ID" column found in the CSV.' });
     }
 
     const cellStr = (row, c) => {
@@ -474,6 +472,63 @@ const bulkUpdateListingStats = async (req, res) => {
       });
     }
 
+    // Dry run: diff each row against Nomads' own company directory before
+    // writing anything — the write endpoint itself has no preview mode, so
+    // the comparison happens here, against the full directory (not just
+    // this host's linked companies, since "Business ALL Data" covers every
+    // business Nomads knows about).
+    if (dryRun) {
+      const allListings = await fetchNomadsCompanyListings();
+      const byBusinessId = new Map(allListings.map((item) => [String(item.businessId), item]));
+
+      const notFound = [];
+      const preview = [];
+      let unchangedCount = 0;
+
+      updates.forEach((update) => {
+        const current = byBusinessId.get(String(update.businessId));
+        const rowNumber = rowByBusinessId.get(update.businessId);
+        if (!current) {
+          notFound.push({ rowNumber, id: update.businessId });
+          return;
+        }
+
+        const changedFields = [];
+        if (update.ratings !== undefined && update.ratings !== current.ratings) {
+          changedFields.push({ field: "ratings", label: "Ratings", oldValue: current.ratings ?? null, newValue: update.ratings });
+        }
+        if (update.totalReviews !== undefined && update.totalReviews !== current.totalReviews) {
+          changedFields.push({ field: "totalReviews", label: "Total Reviews", oldValue: current.totalReviews ?? null, newValue: update.totalReviews });
+        }
+        if (update.makePrivate && current.isPublic !== false) {
+          changedFields.push({ field: "status", label: "Status", oldValue: current.isPublic === false ? "Inactive" : "Active", newValue: "Inactive" });
+        }
+
+        if (!changedFields.length) {
+          unchangedCount += 1;
+          return;
+        }
+        preview.push({
+          id: update.businessId,
+          businessId: update.businessId,
+          businessName: current.companyName || current.businessName || "",
+          rowNumber,
+          changedFields,
+        });
+      });
+
+      return res.status(200).json({
+        processedRows: totalRows,
+        willUpdateCount: preview.length,
+        unchangedCount,
+        notFoundCount: notFound.length,
+        rowErrors: failures,
+        notFound,
+        preview,
+        warnings,
+      });
+    }
+
     const response = await axios.patch(
       `${NOMADS_BASE}/company/bulk-update-company-stats`,
       { updates },
@@ -510,6 +565,27 @@ const bulkUpdateListingStats = async (req, res) => {
       message:
         err.response?.data?.message || err.message || "Listings update failed",
     });
+  }
+};
+
+// Live export for Listings Data Update's "Download current data" — the same
+// Nomads company directory bulkUpdateListingStats's dry run diffs against,
+// shaped as the columns that upload reads back (Business ID, Ratings, Total
+// Reviews, STATUS), so admins have a monthly reference and a round-trip file.
+const getListingsCurrentData = async (req, res, next) => {
+  try {
+    const listings = await fetchNomadsCompanyListings();
+    return res.status(200).json({
+      items: listings.map((item) => ({
+        businessId: item.businessId,
+        businessName: item.companyName || item.businessName || "",
+        ratings: item.ratings ?? "",
+        totalReviews: item.totalReviews ?? "",
+        status: item.isPublic === false ? "IN-ACTIVE" : "ACTIVE",
+      })),
+    });
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -1644,6 +1720,7 @@ module.exports = {
   changePassword,
   bulkUploadData,
   bulkUpdateListingStats,
+  getListingsCurrentData,
   bulkUploadImages,
   bulkUploadRestaurantImages,
   getRestaurantImageReuploadTargets,
