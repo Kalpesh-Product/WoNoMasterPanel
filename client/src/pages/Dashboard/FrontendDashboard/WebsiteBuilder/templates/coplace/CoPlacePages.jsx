@@ -2,7 +2,7 @@ import { getCareersJobMeta, getCareersJobTitle, getMediaSrc } from "../useWebsit
 import { ApplyForm, MessageForm, RoleSection } from "../shared/TplForms";
 import { FaqSection } from "../shared/TplParts";
 import { useCoPlace } from "./CoPlaceContext";
-import { CoPlaceHours, CoPlaceImage, CoPlacePageHero } from "./CoPlaceUI";
+import { CoPlaceHours, CoPlaceImage, CoPlaceMap, CoPlacePageHero } from "./CoPlaceUI";
 export function AboutPage() {
     const { t, draft, navLabel, photo } = useCoPlace();
     const images = draft.aboutPageImages || [];
@@ -38,7 +38,7 @@ export function GalleryPage() {
     return (<>
       <CoPlacePageHero title={draft.galleryPageHeading || navLabel("gallery", "Gallery")} image={t.galleryItems[0] || t.heroImages[0]}/>
       <section className="coplace-section coplace-shell">
-        {t.galleryItems.length ? <div className="coplace-gallery">
+        {t.galleryItems.length ? <div className="coplace-gallery coplace-gallery-page">
           {t.galleryItems.map((image, index) => <button key={image + index} type="button" aria-label={"Open gallery photo " + (index + 1)} onClick={() => t.openGalleryViewer(index)}><CoPlaceImage src={image}/></button>)}
         </div> : <p>No photos have been added yet.</p>}
       </section>
@@ -62,7 +62,6 @@ export function ReviewsPage() {
 export function ContactPage() {
     const { t, draft, navLabel } = useCoPlace();
     const query = encodeURIComponent(t.contactAddress || "");
-    const map = draft.mapUrl || (query ? "https://www.google.com/maps?q=" + query + "&output=embed" : "");
     return (<>
       <CoPlacePageHero title={draft.contactPageHeading || navLabel("contact", "Contact")} body={draft.contactPageIntro} image={t.heroImages[0]}/>
       <section className="coplace-section coplace-shell">
@@ -80,7 +79,7 @@ export function ContactPage() {
             <MessageForm inquiryType="General Enquiry" submitLabel="Send message" success={draft.contactInquirySuccessMessage || "Thanks for getting in touch. We’ll reply soon."}/>
           </div> : null}
         </div>
-        {map ? <iframe className="coplace-map" title="Workspace location" src={map} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/> : null}
+        <CoPlaceMap />
       </section>
     </>);
 }
