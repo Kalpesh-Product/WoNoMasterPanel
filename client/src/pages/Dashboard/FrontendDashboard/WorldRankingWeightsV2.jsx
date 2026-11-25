@@ -720,6 +720,8 @@ const WorldRankingWeightsV2 = () => {
     const matrix = [
       [
         "_id",
+        // Stored rank, exported as-is. It is the published ordering and already
+        // breaks equal-weight ties A→Z, so the CSV must keep shipping it.
         "Rank",
         "Destination",
         "State",

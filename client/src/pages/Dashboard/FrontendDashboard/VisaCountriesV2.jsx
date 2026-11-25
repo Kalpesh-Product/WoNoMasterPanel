@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  AlertCircle,
+  CheckCircle2,
   Download,
   Edit,
   Globe2,
@@ -10,6 +12,7 @@ import {
   Search,
   ShieldCheck,
   TicketCheck,
+  UploadCloud,
   X,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
@@ -21,7 +24,10 @@ import {
   getCountryMeta,
   isSameCountry,
 } from "../../../utils/visaCountryMeta";
-import { downloadCsv } from "../../../utils/csvExport";
+import { FileDropzone } from "./DataUpload/UploadUI";
+
+const VISA_ROWS_EXPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/export-csv`;
+const VISA_ROWS_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-rows-csv`;
 
 const CONTINENT_OPTIONS = ["Europe", "Asia", "Africa", "Americas", "Oceania"];
 
@@ -29,7 +35,7 @@ const REQUIREMENT_FILTERS = [
   { value: "visa free", label: "Visa Free" },
   { value: "visa on arrival", label: "Visa on Arrival" },
   { value: "e-visa", label: "e-Visa" },
-  { value: "visa required", label: "Visa Required" },
+  { value: "physical visa", label: "Physical Visa" },
 ];
 
 const EDIT_REQUIREMENT_OPTIONS = [
@@ -43,9 +49,9 @@ const REQUIREMENT_ALIASES = {
   "e visa": "e-visa",
   evisa: "e-visa",
   "e-visa": "e-visa",
-  "traditional visa": "visa required",
-  "physical visa": "visa required",
-  "visa required": "visa required",
+  "traditional visa": "physical visa",
+  "physical visa": "physical visa",
+  "visa required": "physical visa",
   "visa on arrival": "visa on arrival",
   "visa free": "visa free",
   "visa freee": "visa free",
@@ -70,7 +76,7 @@ const visaPillClass = (requirement) => {
   if (requirement === "e-visa") {
     return `${STATUS_PILL_BASE} bg-violet-50 text-violet-700`;
   }
-  if (requirement === "visa required") {
+  if (requirement === "physical visa") {
     return `${STATUS_PILL_BASE} bg-amber-50 text-amber-700`;
   }
   return `${STATUS_PILL_BASE} bg-slate-100 text-slate-600`;
@@ -89,6 +95,80 @@ const Stat = ({ label, value, icon: Icon, border, accent }) => (
   </div>
 );
 
+const ImportStat = ({ label, value, tone = "text-slate-800" }) => (
+  <div className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+    <p className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">
+      {label}
+    </p>
+    <p className={`mt-1 text-sm font-pmedium ${tone}`}>{value}</p>
+  </div>
+);
+
+const ImportRowErrors = ({ rowErrors = [] }) => {
+  if (!rowErrors.length) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-3 py-2.5">
+      <p className="flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest text-amber-700">
+        <AlertCircle size={12} /> {rowErrors.length} row
+        {rowErrors.length === 1 ? "" : "s"} skipped
+      </p>
+      <ul className="mt-1.5 max-h-40 space-y-1 overflow-y-auto">
+        {rowErrors.slice(0, 50).map((entry) => (
+          <li
+            key={`${entry.rowNumber}-${entry.reason}`}
+            className="text-[10px] font-pmedium text-amber-800"
+          >
+            Row {entry.rowNumber}: {entry.reason}
+          </li>
+        ))}
+      </ul>
+      {rowErrors.length > 50 && (
+        <p className="mt-1 text-[10px] font-pmedium text-amber-700">
+          +{rowErrors.length - 50} more
+        </p>
+      )}
+    </div>
+  );
+};
+
+const ImportResultPanel = ({ result }) => (
+  <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <div className="flex items-start gap-2 border-b border-slate-100 px-3 py-2.5">
+      <CheckCircle2 size={14} className="mt-0.5 shrink-0 text-emerald-600" />
+      <p className="text-[11px] font-pmedium text-slate-800">
+        {result.message || "Visa rules imported successfully."}
+      </p>
+    </div>
+    <div className="grid grid-cols-2 gap-2 px-3 py-3 sm:grid-cols-4">
+      <ImportStat label="Rows read" value={result.processedRows ?? 0} />
+      <ImportStat label="Matched" value={result.matchedCount ?? 0} />
+      <ImportStat
+        label="Modified"
+        value={result.modifiedCount ?? 0}
+        tone="text-amber-700"
+      />
+      <ImportStat
+        label="New rows"
+        value={result.upsertedCount ?? 0}
+        tone="text-[#2563EB]"
+      />
+    </div>
+    <div className="px-3 pb-3">
+      <ImportRowErrors rowErrors={result.rowErrors} />
+    </div>
+  </div>
+);
+
+const ImportErrorPanel = ({ error }) => (
+  <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50/60 px-3 py-2.5">
+    <p className="flex items-start gap-1.5 text-[11px] font-pmedium text-rose-700">
+      <AlertCircle size={13} className="mt-0.5 shrink-0" />
+      {error.message || "The import could not be processed."}
+    </p>
+    <ImportRowErrors rowErrors={error.rowErrors} />
+  </div>
+);
+
 const VisaCountriesV2 = () => {
   const axiosPrivate = useAxiosPrivate();
   const queryClient = useQueryClient();
@@ -99,6 +179,9 @@ const VisaCountriesV2 = () => {
   const [search, setSearch] = useState("");
   const [editingRow, setEditingRow] = useState(null);
   const [editForm, setEditForm] = useState({ requirement: "", durationDays: "" });
+  const [importFile, setImportFile] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState(null);
 
   const {
     data: passportCountries = [],
@@ -185,7 +268,7 @@ const VisaCountriesV2 = () => {
       voaOrEvisa: rows.filter((row) =>
         ["visa on arrival", "e-visa"].includes(row.requirement),
       ).length,
-      visaRequired: rows.filter((row) => row.requirement === "visa required").length,
+      visaRequired: rows.filter((row) => row.requirement === "physical visa").length,
     }),
     [rows],
   );
@@ -234,7 +317,7 @@ const VisaCountriesV2 = () => {
         (option) => option.value === row.requirement,
       )
         ? row.requirement
-        : row.rawRequirement || row.requirement || "visa required",
+        : row.rawRequirement || row.requirement || "physical visa",
       durationDays: row.durationDays ?? "",
     });
   };
@@ -255,24 +338,36 @@ const VisaCountriesV2 = () => {
     });
   };
 
-  const handleExportMatrix = () => {
-    const matrix = [
-      ["Sr No", "Country", "Continent", "Visa Requirement", "Duration (Days)"],
-      ...rows.map((row) => [
-        row.srNo,
-        row.country,
-        row.continent,
-        row.requirement,
-        row.durationDays ?? "",
-      ]),
-    ];
-    const safePassport = selectedPassport.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    downloadCsv({
-      filename: `visa-matrix-${safePassport || "passport"}.csv`,
-      matrix,
-    });
-    toast.success(`Visa matrix exported for ${selectedPassport}`);
-  };
+  // Full-dataset export straight from the backend: the server already sends
+  // the round-trippable Passport / Destination / Requirement / DurationDays
+  // CSV with a Content-Disposition filename, so a plain link downloads it.
+  const importRows = useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append("visa-rules-file", file);
+      const response = await axiosPrivate.post(VISA_ROWS_IMPORT_ENDPOINT, formData);
+      return response.data;
+    },
+    onSuccess: (result) => {
+      setImportError(null);
+      setImportResult(result);
+      setImportFile(null);
+      toast.success(result?.message || "Visa rules imported successfully");
+      // The file can touch any passport, not just the selected one.
+      queryClient.invalidateQueries({ queryKey: ["visaRulesByPassport"] });
+      queryClient.invalidateQueries({ queryKey: ["visaCountriesList"] });
+    },
+    onError: (error) => {
+      const data = error?.response?.data;
+      setImportResult(null);
+      setImportError(
+        data && (data.message || data.rowErrors?.length)
+          ? data
+          : { message: "Import failed. Please try again." },
+      );
+      toast.error(data?.message || "Import failed. Please try again.");
+    },
+  });
 
   const passportMeta = getCountryMeta(selectedPassport);
   const isLoading =
@@ -294,15 +389,14 @@ const VisaCountriesV2 = () => {
                 selected passport matrix.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleExportMatrix}
-              disabled={!rows.length}
+            <a
+              href={VISA_ROWS_EXPORT_ENDPOINT}
+              download
               data-tour="visa-countries-v2-export"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700"
             >
-              <Download size={13} /> Export Visa Matrix (.csv)
-            </button>
+              <Download size={13} /> Export All Visa Rules (.csv)
+            </a>
           </div>
 
           {isPassportError ? (
@@ -371,7 +465,7 @@ const VisaCountriesV2 = () => {
                   accent="text-blue-600"
                 />
                 <Stat
-                  label="Visa Required"
+                  label="Physical Visa"
                   value={isLoading ? "—" : kpis.visaRequired}
                   icon={Plane}
                   border="border-l-amber-500"
@@ -514,6 +608,50 @@ const VisaCountriesV2 = () => {
                     </table>
                   )}
                 </div>
+              </section>
+
+              <section
+                data-tour="visa-countries-v2-import"
+                className="rounded-2xl border border-slate-100 bg-white px-4 py-4 shadow-sm sm:px-5"
+              >
+                <div className="mb-3">
+                  <h3 className="flex items-center gap-1.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    <UploadCloud size={13} className="text-[#2563EB]" /> Bulk Import Visa
+                    Rules
+                  </h3>
+                  <p className="mt-1 text-[10px] font-pmedium text-slate-400">
+                    Upload the CSV from “Export All Visa Rules” to update every
+                    passport at once. Blank Requirement / DurationDays leaves
+                    that field unchanged, -1 clears it, and an unknown Passport +
+                    Destination pair is inserted as a new row.
+                  </p>
+                </div>
+
+                <FileDropzone
+                  file={importFile}
+                  onPick={(picked) => {
+                    setImportFile(picked);
+                    setImportResult(null);
+                    setImportError(null);
+                  }}
+                  onRemove={() => setImportFile(null)}
+                  accept=".csv,text/csv"
+                  hint="CSV with columns: Passport, Destination, Requirement, DurationDays"
+                  dataTour="visa-countries-v2-import-file"
+                  disabled={importRows.isPending}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => importRows.mutate(importFile)}
+                  disabled={!importFile || importRows.isPending}
+                  className="mt-3 w-full rounded-xl bg-[#2563EB] px-4 py-2.5 text-xs font-pmedium text-white transition hover:bg-[#1d4ed8] disabled:opacity-50"
+                >
+                  {importRows.isPending ? "Importing..." : "Upload & Apply"}
+                </button>
+
+                {importResult && <ImportResultPanel result={importResult} />}
+                {importError && <ImportErrorPanel error={importError} />}
               </section>
             </>
           )}

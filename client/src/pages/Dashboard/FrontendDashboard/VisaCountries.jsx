@@ -13,7 +13,7 @@ const REQUIREMENT_OPTIONS = [
   "visa free",
   "visa freee",
   "visa on arrival",
-  "visa required",
+  "physical visa",
 ];
 
 const VisaCountries = () => {
