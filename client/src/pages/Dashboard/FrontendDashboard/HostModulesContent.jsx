@@ -165,6 +165,11 @@ const HostModulesContent = () => {
   const [editingRow, setEditingRow] = useState(null); // { module, childId }
   const [editForm, setEditForm] = useState(null);
   const [screenshotFile, setScreenshotFile] = useState(null);
+  const [planScreenshotFiles, setPlanScreenshotFiles] = useState({
+    basic: null,
+    professional: null,
+    custom: null,
+  });
   const [dragKey, setDragKey] = useState(null);
   const [isAddModuleOpen, setIsAddModuleOpen] = useState(false);
   const [addCategoryChoice, setAddCategoryChoice] = useState("");
@@ -328,12 +333,14 @@ const HostModulesContent = () => {
       verticals: row.module.verticals || [],
     });
     setScreenshotFile(null);
+    setPlanScreenshotFiles({ basic: null, professional: null, custom: null });
   };
 
   const closeEdit = () => {
     setEditingRow(null);
     setEditForm(null);
     setScreenshotFile(null);
+    setPlanScreenshotFiles({ basic: null, professional: null, custom: null });
   };
 
   const { mutate: saveEdit, isPending: isSaving } = useMutation({
@@ -355,6 +362,18 @@ const HostModulesContent = () => {
         formData.append("image", screenshotFile);
         await axiosPrivate.post(
           `/api/host-modules/${activeCategory.id}/modules/${moduleId}/screenshot`,
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } },
+        );
+      }
+
+      for (const plan of Object.keys(planScreenshotFiles)) {
+        const file = planScreenshotFiles[plan];
+        if (!file) continue;
+        const formData = new FormData();
+        formData.append("image", file);
+        await axiosPrivate.post(
+          `/api/host-modules/${activeCategory.id}/modules/${moduleId}/screenshot/${plan}`,
           formData,
           { headers: { "Content-Type": "multipart/form-data" } },
         );
@@ -1070,11 +1089,46 @@ const HostModulesContent = () => {
                   )}
                 </div>
                 <UploadFileInput
+                  id="edit-screenshot-main"
                   label="Replace Screenshot"
                   value={screenshotFile}
                   onChange={setScreenshotFile}
                   allowedExtensions={["jpg", "jpeg", "png", "webp", "gif"]}
                 />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest">
+                  Plan-specific Screenshots
+                </label>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Optional — only needed when the real HostPanel screen looks different per plan (e.g. a plan badge or extra tabs). Leave blank to keep showing the screenshot above for that plan.
+                </p>
+                <div className="mt-2 flex flex-col gap-3">
+                  {["basic", "professional", "custom"].map((plan) => (
+                    <div key={plan} className="rounded-xl border border-slate-100 p-3">
+                      <p className="mb-1.5 text-[10px] font-pmedium uppercase tracking-wide text-slate-500">
+                        {PLAN_LABELS[plan]}
+                      </p>
+                      {editingRow.module.planImages?.[plan]?.url ? (
+                        <img
+                          src={editingRow.module.planImages[plan].url}
+                          alt={`${editingRow.module.label} (${PLAN_LABELS[plan]})`}
+                          className="mb-2 h-20 rounded-lg border border-slate-100 object-contain bg-slate-50"
+                        />
+                      ) : null}
+                      <UploadFileInput
+                        id={`edit-screenshot-${plan}`}
+                        label={`Replace ${PLAN_LABELS[plan]} Screenshot`}
+                        value={planScreenshotFiles[plan]}
+                        onChange={(file) =>
+                          setPlanScreenshotFiles((current) => ({ ...current, [plan]: file }))
+                        }
+                        allowedExtensions={["jpg", "jpeg", "png", "webp", "gif"]}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
