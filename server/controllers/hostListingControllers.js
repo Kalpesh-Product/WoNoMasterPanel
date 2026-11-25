@@ -106,7 +106,12 @@ const firstNonEmptyString = (...values) => {
 // per-request timeout here as a safety net so one slow/broken company still
 // can't freeze the whole crawl. Stale-while-revalidate + patch-in-place
 // below keep this off the request path except on a cold cache.
-const NOMAD_LISTINGS_CACHE_TTL_MS = 60 * 1000;
+// Was 60s, which meant any request landing right after expiry had to wait
+// on a full re-crawl (one HTTP call per company to the Nomads backend).
+// Raised to 5min + a background self-refresh (below) so that wait almost
+// never happens — a request only blocks on the crawl once, right after a
+// server restart.
+const NOMAD_LISTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
 const NOMAD_LISTINGS_FETCH_CONCURRENCY = 40;
 const NOMAD_LISTINGS_FETCH_TIMEOUT_MS = 4000;
 let nomadListingsCache = { items: null, fetchedAt: 0 };
@@ -237,6 +242,17 @@ const invalidateNomadListingsCache = () => {
   nomadListingsCache = { items: null, fetchedAt: 0 };
 };
 
+// Keeps the cache warm proactively so a request almost never lands on an
+// expired cache and has to wait on the crawl inline — only skips while a
+// refresh (from here or from fetchAllNomadListings) is already in flight.
+setInterval(() => {
+  if (nomadListingsCache.items) {
+    refreshNomadListingsCache().catch((error) => {
+      console.error("Scheduled Nomad listings refresh failed:", error.message);
+    });
+  }
+}, NOMAD_LISTINGS_CACHE_TTL_MS);
+
 const normalizeListingValue = (value) => String(value || "").trim().toLowerCase();
 const normalizeListingTypeKey = (value) =>
   normalizeListingValue(value).replace(/[^a-z0-9]/g, "");
@@ -282,6 +298,7 @@ const createCompanyListing = async (req, res) => {
       city,
       state,
       country,
+      continent,
       inclusions,
       about,
       address,
@@ -306,11 +323,13 @@ const createCompanyListing = async (req, res) => {
     const resolvedCity = String(city || "").trim() || company.companyCity;
     const resolvedState = String(state || "").trim() || company.companyState;
     const resolvedCountry = String(country || "").trim() || company.companyCountry;
-    // Nomads' Company schema requires `continent` — most Host Company
-    // records don't have one on file, so fall back to deriving it from the
-    // listing's own country.
-    const resolvedContinent =
-      company.companyContinent || getContinentForCountry(resolvedCountry);
+    const companyContinent =
+      resolvedCountry === company.companyCountry ? company.companyContinent : "";
+    const resolvedContinent = firstNonEmptyString(
+      continent,
+      companyContinent,
+      getContinentForCountry(resolvedCountry),
+    );
 
     if (!resolvedContinent) {
       return res.status(400).json({
@@ -416,8 +435,10 @@ const createCompanyListing = async (req, res) => {
     }
 
     try {
+      const nomadsBase = (process.env.NOMADS_BASE_URL || "http://localhost:3000/api")
+        .replace(/\/+$/, "");
       const response = await axios.post(
-        "http://localhost:3000/api/company/create-company",
+        `${nomadsBase}/company/create-company`,
         listingData,
       );
 

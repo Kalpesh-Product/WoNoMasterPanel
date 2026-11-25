@@ -20,18 +20,23 @@ const TravigoTemplate = lazy(() => import("./travigo/TravigoTemplate"));
 const TulumTemplate = lazy(() => import("./tulum/TulumTemplate"));
 const GrindelwaldTemplate = lazy(() => import("./grindelwald/GrindelwaldTemplate"));
 const LodgeTemplate = lazy(() => import("./lodge/LodgeTemplate"));
+const OrchardTemplate = lazy(() => import("./orchard/OrchardTemplate"));
+const DestinflowTemplate = lazy(() => import("./destinflow/DestinflowTemplate"));
 const CaliHostelTemplate = lazy(() => import("./caliHostel/CaliHostelTemplate"));
 const TastycTemplate = lazy(() => import("./tastyc/TastycTemplate"));
 const GrandBarTemplate = lazy(() => import("./grandbar/GrandBarTemplate"));
 const AromaticaTemplate = lazy(() => import("./aromatica/AromaticaTemplate"));
 const ItalianoTemplate = lazy(() => import("./italiano/ItalianoTemplate"));
 const RestobarTemplate = lazy(() => import("./restobar/RestobarTemplate"));
+const CabinTemplate = lazy(() => import("./cabin/CabinTemplate"));
 const TinyHomeTemplate = lazy(() => import("./tinyhome/TinyHomeTemplate"));
 const FlowspaceTemplate = lazy(() => import("./flowspace/FlowspaceTemplate"));
 const WorpaceTemplate = lazy(() => import("./worpace/WorpaceTemplate"));
 const CoPlaceTemplate = lazy(() => import("./coplace/CoPlaceTemplate"));
 const CoboxTemplate = lazy(() => import("./cobox/CoboxTemplate"));
 const WorkscapeTemplate = lazy(() => import("./workscape/WorkscapeTemplate"));
+const WaveXTemplate = lazy(() => import("./wavex/WaveXTemplate"));
+const WorkhubTemplate = lazy(() => import("./workhub/WorkhubTemplate"));
 const BrixspaceTemplate = lazy(() => import("./brixspace/BrixspaceTemplate"));
 const QerjaTemplate = lazy(() => import("./qerja/QerjaTemplate"));
 export const DEFAULT_TEMPLATE_ID = "default";
@@ -105,6 +110,16 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["menu"],
         supportsBooking: true,
     },
+    cabin: {
+        id: "cabin",
+        name: "Cabin",
+        description: "Cabin CMS-inspired co-living design: a full-bleed photo hero with rotating serif words, a tilted photo collage, rounded image grids, dark pricing band and stay enquiries.",
+        component: CabinTemplate,
+        swatch: { bg: "#efefef", fg: "#1f1f1f", accent: "#eeac3f", font: "'Nyghtserif', serif" },
+        recommendedFor: ["coLiving"],
+        supportsBooking: true,
+    },
+
     tinyhome: {
         id: "tinyhome",
         name: "Tiny Home",
@@ -235,6 +250,36 @@ export const TEMPLATE_REGISTRY = {
         recommendedFor: ["hostel"],
         supportsBooking: true,
     },
+    orchard: {
+        id: "orchard",
+        name: "Orchard Living",
+        description:
+            "Residential-editorial hostel style — oversized Outfit type, warm off-white canvas, roomy amenity galleries, floor-plan cards and a calm tour request. Inspired by Orchard Living, works for any service.",
+        component: OrchardTemplate,
+        swatch: {
+            bg: "#fafaf9",
+            fg: "#353b41",
+            accent: "#9aa88f",
+            font: "'Outfit', ui-sans-serif, sans-serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
+    destinflow: {
+        id: "destinflow",
+        name: "DestinFlow",
+        description:
+            "Editorial hostel style — a centered photographic hero, square dark buttons, pale-blue facilities and a dark gallery strip. Inspired by DestinFlow, works for any service.",
+        component: DestinflowTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#666b73",
+            accent: "#3ba7da",
+            font: "'Cormorant Garamond', Georgia, serif",
+        },
+        recommendedFor: ["hostel"],
+        supportsBooking: true,
+    },
     haven: {
         id: "haven",
         name: "Haven",
@@ -316,6 +361,29 @@ export const TEMPLATE_REGISTRY = {
             accent: "#a99d93",
             font: "'Inter', sans-serif",
         },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    wavex: {
+        id: "wavex",
+        name: "WaveX Rooms",
+        description: "Warm editorial meeting-room design — coral accents, natural-light photography, community storytelling and a friendly booking flow.",
+        component: WaveXTemplate,
+        swatch: {
+            bg: "#ffffff",
+            fg: "#2b2b2f",
+            accent: "#ed4e36",
+            font: "'Inter', sans-serif",
+        },
+        recommendedFor: ["meeting"],
+        supportsBooking: true,
+    },
+    workhub: {
+        id: "workhub",
+        name: "WorkHub",
+        description: "Polished corporate meeting-space design — blue accents, modular service cards, location storytelling, member proof and a focused enquiry flow.",
+        component: WorkhubTemplate,
+        swatch: { bg: "#f0f2fb", fg: "#242839", accent: "#285fe2", font: "'Outfit', sans-serif" },
         recommendedFor: ["meeting"],
         supportsBooking: true,
     },

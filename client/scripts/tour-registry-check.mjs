@@ -17,6 +17,10 @@ const EXPECTED = [
   { path: "/dashboard/signup-leads", expectedId: "signup-leads" },
   { path: "/dashboard/all-leads/all-enquiry", expectedId: "all-leads" },
   { path: "/dashboard/all-leads/job-applications", expectedId: "all-leads" },
+  {
+    path: "/dashboard/all-leads/content-removal",
+    expectedId: "all-leads-content-removal",
+  },
   { path: "/dashboard/value-adds-leads/visa-support", expectedId: "value-adds-leads" },
   { path: "/dashboard/access-tree", expectedId: "access-tree" },
   { path: "/dashboard/requested-services", expectedId: "requested-services" },

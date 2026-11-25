@@ -616,7 +616,7 @@ const Contributions = () => {
       <PageFrame>
         <div className="flex flex-col gap-4 text-slate-700 font-sans">
           <div className="mb-1 flex flex-col gap-1.5">
-            <h2 className="text-title font-pmedium text-primary uppercase">Contributions</h2>
+            <h2 className="text-title font-pmedium text-primary uppercase">{activeTab.label}</h2>
             <p className="text-xs font-pmedium text-slate-500">Manage submitted Blogs, News, Places, and Events across all companies.</p>
           </div>
 

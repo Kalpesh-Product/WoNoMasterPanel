@@ -199,6 +199,7 @@ import AllEnquiryTable from "../pages/Dashboard/Leads/AllEnquiryTable";
 import AllPOCContactTable from "../pages/Dashboard/Leads/AllPOCContactTable";
 import ConnectWithUsTable from "../pages/Dashboard/Leads/ConnectWithUsTable";
 import JobApplicationsTable from "../pages/Dashboard/Leads/JobApplicationsTable";
+import ContentRemovalTable from "../pages/Dashboard/Leads/ContentRemovalTable";
 import {
   VisaSupportTable,
   OverallActivationSupportTable,
@@ -220,7 +221,6 @@ import {
   CompanySetupPartnersTable,
   ConsultationPartnersTable,
   WorkationPartnersTable,
-  BecomeAContributorPartnersTable,
 } from "../pages/Dashboard/ValueAddsPartners/ValueAddsPartnerTabs";
 import CompanyReviews from "../pages/Dashboard/CompanyReviews/CompanyReviews";
 import Contributions from "../pages/Dashboard/Contributions/Contributions";
@@ -229,7 +229,7 @@ import WonoDestinationAnalyticsDashboard from "../pages/Dashboard/FrontendDashbo
 import WonoDestinationAnalytics from "../pages/Dashboard/FrontendDashboard/WonoDestinationAnalytics";
 import WonoDestinationExecutiveDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationExecutiveDashboard";
 import WonoDestinationCategoryDashboard from "../pages/Dashboard/FrontendDashboard/WonoDestinationCategoryDashboard";
-import EditBlogNews from "../pages/Dashboard/FrontendDashboard/EditBlogNews";
+import DestinationsDataEditRouter from "../pages/Dashboard/FrontendDashboard/DestinationsDataEditRouter";
 import EditCompany from "../pages/Dashboard/FrontendDashboard/EditCompany";
 import WorldRankingWeights from "../pages/Dashboard/FrontendDashboard/WorldRankingWeights";
 import WorldRankingWeightsV2 from "../pages/Dashboard/FrontendDashboard/WorldRankingWeightsV2";
@@ -345,6 +345,10 @@ export const routes = createBrowserRouter([
                         path: "job-applications",
                         element: <JobApplicationsTable />,
                       },
+                      {
+                        path: "content-removal",
+                        element: <ContentRemovalTable />,
+                      },
                     ],
                   },
                   {
@@ -459,6 +463,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "bulk-restaurant-images-upload",
                         element: <BulkRestaurantImagesUpload />,
+                      },
+                      {
+                        path: "restaurant-images-reupload",
+                        element: <BulkRestaurantImagesUpload key="restaurant-reupload" reupload />,
                       },
                       {
                         path: "restaurant-logo-upload",
@@ -615,10 +623,6 @@ export const routes = createBrowserRouter([
                         path: "workation/edit/:partnerId",
                         element: <EditWorkationPartner />,
                       },
-                      {
-                        path: "become-a-contributor",
-                        element: <BecomeAContributorPartnersTable />,
-                      },
                     ],
                   },
                   {
@@ -626,7 +630,7 @@ export const routes = createBrowserRouter([
                     children: [
                       {
                         index: true,
-                        element: <Navigate to="content-data" replace />,
+                        element: <Navigate to="nomad-listings" replace />,
                       },
                       {
                         path: "content-data",
@@ -649,11 +653,11 @@ export const routes = createBrowserRouter([
                           },
                           {
                             path: "add",
-                            element: <EditBlogNews />,
+                            element: <DestinationsDataEditRouter />,
                           },
                           {
                             path: "edit",
-                            element: <EditBlogNews />,
+                            element: <DestinationsDataEditRouter />,
                           },
                         ],
                       },
@@ -861,7 +865,13 @@ export const routes = createBrowserRouter([
                         element: <HostCompanies />,
                       },
                       {
-                        path: "edit/:companyId",
+                        // "edit-company/:companyId" (not "edit/:companyId"):
+                        // a literal "edit" segment collided with the
+                        // ":companyId" hub route, so "…/host-companies/edit"
+                        // rendered the module-card hub and module cards then
+                        // linked to "…/host-companies/edit/<module>", which
+                        // matched this form route with companyId=<module>.
+                        path: "edit-company/:companyId",
                         element: <EditCompany />,
                       },
                       {

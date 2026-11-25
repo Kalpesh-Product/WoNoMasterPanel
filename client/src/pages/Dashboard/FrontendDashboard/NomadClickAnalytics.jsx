@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { capitalizeLocationName } from "./nomadAnalyticsLocation";
 
 const DATE_FILTER_OPTIONS = [
   { key: "today", label: "Today" },
@@ -138,20 +139,16 @@ const getDateRange = (mode, customRange) => {
 const getDestinationLabel = (item) => {
   const destination = item || {};
   return (
-    [destination.title || destination.state, destination.country]
+    [destination.state || destination.title, destination.country]
+      .map(capitalizeLocationName)
       .filter(Boolean)
       .join(", ") || "-"
   );
 };
 
-const toTitleCase = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-
 const getListingLabel = (item = {}) =>
   item.companyName
-    ? `${item.companyName}${item.city ? ` - ${item.city}` : ""}`
+    ? `${item.companyName}${item.city ? ` - ${capitalizeLocationName(item.city)}` : ""}`
     : item.businessId || item.companyId || "-";
 
 const getPercent = (clicks, totalClicks) => {
@@ -342,7 +339,7 @@ const NomadClickAnalytics = () => {
     const query = search.trim().toLowerCase();
     if (!query) return items;
     return items.filter((item) =>
-      [item.title, item.state, item.country, item.continent]
+      [item.state || item.title, item.country, item.continent]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -381,7 +378,6 @@ const NomadClickAnalytics = () => {
       viewMode,
       selectedDestination?.country || "",
       selectedDestination?.state || "",
-      selectedDestination?.title || "",
       selectedDestination?.continent || "",
       from?.toISOString?.() || "all",
       to?.toISOString?.() || "all",
@@ -394,7 +390,6 @@ const NomadClickAnalytics = () => {
           params: {
             country: selectedDestination.country,
             state: selectedDestination.state,
-            title: selectedDestination.title,
             continent: selectedDestination.continent,
             from: from?.toISOString?.(),
             to: to?.toISOString?.(),
@@ -438,7 +433,6 @@ const NomadClickAnalytics = () => {
       "nomadDestinationUsersModal",
       selectedDestination?.country || "",
       selectedDestination?.state || "",
-      selectedDestination?.title || "",
       selectedDestination?.continent || "",
       from?.toISOString?.() || "all",
       to?.toISOString?.() || "all",
@@ -451,7 +445,6 @@ const NomadClickAnalytics = () => {
           params: {
             country: selectedDestination.country,
             state: selectedDestination.state,
-            title: selectedDestination.title,
             continent: selectedDestination.continent,
             from: from?.toISOString?.(),
             to: to?.toISOString?.(),
@@ -542,7 +535,7 @@ const NomadClickAnalytics = () => {
     },
     {
       label: "Most Popular Destination",
-      value: toTitleCase(getDestinationLabel(topDestination)),
+      value: getDestinationLabel(topDestination),
       icon: MapPin,
       accent: "border-l-blue-500",
       textColor: "text-blue-600",
@@ -550,7 +543,7 @@ const NomadClickAnalytics = () => {
     },
     {
       label: "Most Popular Continent",
-      value: toTitleCase(getTopValueByClicks(items, "continent")),
+      value: capitalizeLocationName(getTopValueByClicks(items, "continent")),
       icon: Building2,
       accent: "border-l-violet-500",
       textColor: "text-violet-600",
@@ -558,7 +551,7 @@ const NomadClickAnalytics = () => {
     },
     {
       label: "Most Popular Country",
-      value: toTitleCase(getTopValueByClicks(items, "country")),
+      value: capitalizeLocationName(getTopValueByClicks(items, "country")),
       icon: Building2,
       accent: "border-l-cyan-500",
       textColor: "text-cyan-600",
@@ -950,7 +943,7 @@ const NomadClickAnalytics = () => {
                       );
                       return (
                         <tr
-                          key={`${item.country}-${item.state}-${item.title || index}`}
+                          key={JSON.stringify([item.country, item.state, item.continent, item.title])}
                           className="transition-colors hover:bg-slate-50/50"
                         >
                           <td className="px-5 py-4">
@@ -959,12 +952,13 @@ const NomadClickAnalytics = () => {
                             </span>
                           </td>
                           <td className="px-5 py-4">
-                            <div className="min-w-0">
+                            <div className="min-w-0 capitalize">
                               <p className="truncate text-[12px] font-pmedium text-slate-900">
                                 {getDestinationLabel(item)}
                               </p>
                               <p className="truncate text-[10px] font-pmedium text-slate-500">
                                 {[item.state, item.continent]
+                                  .map(capitalizeLocationName)
                                   .filter(Boolean)
                                   .join(" - ") || "-"}
                               </p>
@@ -1219,7 +1213,7 @@ const NomadClickAnalytics = () => {
                         Continent
                       </p>
                       <p className="text-[12px] font-pmedium text-slate-900">
-                        {selectedDestination.continent || "-"}
+                        {capitalizeLocationName(selectedDestination.continent) || "-"}
                       </p>
                     </div>
                     <div>
@@ -1302,7 +1296,7 @@ const NomadClickAnalytics = () => {
                                 {getListingLabel(listing)}
                               </p>
                               <p className="truncate text-[10px] font-pmedium text-slate-500">
-                                {[listing.state, listing.country].filter(Boolean).join(" - ") || "-"}
+                                {[listing.state, listing.country].map(capitalizeLocationName).filter(Boolean).join(" - ") || "-"}
                               </p>
                             </div>
                             <div className="shrink-0 text-right">
@@ -1373,6 +1367,7 @@ const NomadClickAnalytics = () => {
                               {[entry.location?.city, entry.location?.state, entry.location?.country]
                                 .filter(Boolean).length > 0
                                 ? ` - ${[entry.location?.city, entry.location?.state, entry.location?.country]
+                                    .map(capitalizeLocationName)
                                     .filter(Boolean)
                                     .join(", ")}`
                                 : ""}

@@ -10,6 +10,7 @@ import {
   Pencil,
   Save,
   ShieldCheck,
+  Trash2,
   UserRound,
   X,
 } from "lucide-react";
@@ -121,6 +122,34 @@ const UserDetails = () => {
       );
     },
   });
+
+  const removePhotoMutation = useMutation({
+    mutationFn: async () => {
+      const formData = new FormData();
+      formData.append("removeProfilePicture", "true");
+      return axios.patch(`/api/admin/update-profile/${userId}`, formData);
+    },
+    onSuccess: (res) => {
+      const updatedUser = res.data?.user || {};
+      setAuth((previous) => ({
+        ...previous,
+        user: { ...previous.user, ...updatedUser, profilePicture: null },
+      }));
+      cancelPhoto();
+      toast.success(res.data?.message || "Profile photo removed successfully.");
+    },
+    onError: (error) => {
+      toast.error(
+        error.response?.data?.message || "Failed to remove profile photo.",
+      );
+    },
+  });
+
+  const handleRemovePhoto = () => {
+    if (removePhotoMutation.isPending) return;
+    if (!window.confirm("Remove your profile photo?")) return;
+    removePhotoMutation.mutate();
+  };
 
   const onSubmit = (data) => {
     if (!editMode || profileMutation.isPending) return;
@@ -247,6 +276,20 @@ const UserDetails = () => {
                     Active
                   </span>
                 </div>
+
+                {!selectedImage && user.profilePicture?.url && (
+                  <button
+                    type="button"
+                    onClick={handleRemovePhoto}
+                    disabled={removePhotoMutation.isPending}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-[11px] font-pmedium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Trash2 size={13} />
+                    {removePhotoMutation.isPending
+                      ? "Removing..."
+                      : "Remove Photo"}
+                  </button>
+                )}
 
                 {selectedImage && (
                   <div className="mt-4 flex flex-wrap items-center gap-2">

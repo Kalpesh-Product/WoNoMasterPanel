@@ -26,6 +26,12 @@ const AllLeads = () => {
       heading: "Job Applications",
       description: "Review and manage incoming job applications.",
     },
+    {
+      label: "Content Removal",
+      path: "content-removal",
+      heading: "Content Use & Removal",
+      description: "Review and manage content modification and takedown requests.",
+    },
   ];
 
   return (

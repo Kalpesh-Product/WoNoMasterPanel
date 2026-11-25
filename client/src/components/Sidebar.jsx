@@ -1,10 +1,23 @@
 import React, { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSidebar } from "../context/SideBarContext";
-import { MASTER_PANEL_MODULES } from "../constants/masterPanelModules";
+import { MASTER_PANEL_MODULES, hasModuleAccess } from "../constants/masterPanelModules";
 import { LuLayoutDashboard } from "react-icons/lu";
 import useAuth from "../hooks/useAuth";
+import useAxiosPrivate from "../hooks/useAxiosPrivate";
+import {
+  DEFAULT_COMPANY_REVIEWS_PATH,
+  NOMAD_LISTING_REVIEWS_PATH,
+  nomadReviewQueryOptions,
+} from "../pages/Dashboard/CompanyReviews/nomadReviewQuery";
+import { destinationReviewQueries } from "../pages/Dashboard/CompanyReviews/destinationReviewQueries";
+import {
+  DESTINATIONS_DATA_BASE_PATH,
+  destinationSummaryQueryOptions,
+} from "../pages/Dashboard/FrontendDashboard/destinationSummaryQuery";
+import "./Sidebar.css";
 
 const Sidebar = ({ onCloseDrawer }) => {
   const { isSidebarOpen } = useSidebar();
@@ -13,17 +26,46 @@ const Sidebar = ({ onCloseDrawer }) => {
   const [expandedModules, setExpandedModules] = useState(new Set([0]));
   const [collapsedCategories, setCollapsedCategories] = useState({});
   const [moduleSearch, setModuleSearch] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const { auth } = useAuth();
+  const axiosPrivate = useAxiosPrivate();
+  const queryClient = useQueryClient();
 
   const isSuperAdmin = auth?.user?.isSuperAdmin;
   const allowedModules = auth?.user?.allowedModules || [];
+
+  // Browsers (including Chrome's password manager) autofill any usable text
+  // input when credentials are filled elsewhere on the page. Keeping this box
+  // read-only unless the user is actually typing in it makes it ineligible for
+  // autofill altogether; the focus check also rejects injected values.
+  const handleModuleSearchChange = (event) => {
+    if (!isSearchFocused || document.activeElement !== event.currentTarget) {
+      event.target.value = moduleSearch;
+      return;
+    }
+    setModuleSearch(event.target.value);
+  };
 
   const navigateFromSidebar = (route) => {
     navigate(route, { flushSync: true });
     if (onCloseDrawer) onCloseDrawer();
   };
 
+  const prefetchSidebarRoute = (route) => {
+    if (!auth?.accessToken) return;
+    if (route === DEFAULT_COMPANY_REVIEWS_PATH || route === NOMAD_LISTING_REVIEWS_PATH) {
+      queryClient.prefetchInfiniteQuery(nomadReviewQueryOptions(axiosPrivate, auth.user?.email));
+      for (const options of destinationReviewQueries) queryClient.prefetchQuery(options);
+    }
+    if (route === DESTINATIONS_DATA_BASE_PATH) {
+      for (const tab of ["listings", "content"]) {
+        queryClient.prefetchInfiniteQuery(destinationSummaryQueryOptions(axiosPrivate, tab));
+      }
+    }
+  };
+
   const handleMenuOpen = (item) => {
+    prefetchSidebarRoute(item.route);
     navigateFromSidebar(item.route);
   };
 
@@ -71,7 +113,7 @@ const Sidebar = ({ onCloseDrawer }) => {
             ...category,
             submenus: category.submenus
               .filter((submenu) => !submenu.superAdminOnly)
-              .filter((submenu) => allowedModules.includes(submenu.key)),
+              .filter((submenu) => hasModuleAccess(allowedModules, submenu.key)),
           }))
           .filter((category) => category.submenus.length > 0),
       }))
@@ -100,7 +142,7 @@ const Sidebar = ({ onCloseDrawer }) => {
   return (
     <div
       data-tour="sidebar-nav"
-      className={`${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
+      className={`sidebar-navigation ${isSidebarOpen ? "w-64" : "w-16"} flex h-full flex-col overflow-hidden border-r border-black/10 bg-[#efefef] transition-all duration-300`}
     >
       <div className="px-4 py-3 flex justify-center">
         <span className="text-[10px] font-semibold tracking-wide text-black/70 bg-white px-3 py-1 rounded-full uppercase">
@@ -116,13 +158,16 @@ const Sidebar = ({ onCloseDrawer }) => {
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
             />
             <input
-              type="text"
+              type="search"
               value={moduleSearch}
-              onChange={(e) => setModuleSearch(e.target.value)}
+              onChange={handleModuleSearchChange}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              readOnly={!isSearchFocused}
               placeholder="Search modules"
               aria-label="Search modules"
               autoComplete="off"
-              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-pmedium text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+              className="h-9 w-full rounded-md border border-black/15 bg-white pl-9 pr-8 font-semibold text-xs text-black placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent [&::-webkit-search-cancel-button]:hidden"
             />
             {moduleSearch ? (
               <button
@@ -142,7 +187,7 @@ const Sidebar = ({ onCloseDrawer }) => {
         {!isSidebarOpen ? (
           <div className="px-4 pt-3">
             <div className="border-t border-black/10 pt-2">
-              <div className="text-[10px] font-pbold tracking-wide text-black/80 uppercase text-center">
+              <div className="text-[10px] font-bold tracking-wide text-black/80 uppercase text-center">
                 MNU
               </div>
             </div>
@@ -170,7 +215,7 @@ const Sidebar = ({ onCloseDrawer }) => {
                       : "text-black/80"
                   }`}
                 />
-                <span className="font-['Poppins'] text-xs font-semibold uppercase tracking-wide">
+                <span className="text-xs font-semibold uppercase tracking-wide">
                   Dashboard
                 </span>
               </button>
@@ -186,7 +231,7 @@ const Sidebar = ({ onCloseDrawer }) => {
                   <>
                     <button
                       type="button"
-                      className="flex w-full items-center justify-between text-left font-['Poppins'] text-xs font-semibold uppercase tracking-wide text-black/80"
+                      className="flex w-full items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-black/80"
                       onClick={() => handleModuleClick(module, index)}
                     >
                       <span className="flex items-center gap-2">
@@ -247,6 +292,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                                         ? "bg-white text-black shadow-sm"
                                         : "text-black/80"
                                     }`}
+                                    onPointerEnter={() => prefetchSidebarRoute(submenu.route)}
+                                    onFocus={() => prefetchSidebarRoute(submenu.route)}
                                     onClick={() => handleMenuOpen(submenu)}
                                   >
                                     <submenu.icon
@@ -258,8 +305,8 @@ const Sidebar = ({ onCloseDrawer }) => {
                                       }`}
                                     />
                                     <span
-                                      className={`truncate font-['Poppins'] text-xs font-medium ${
-                                        isActive(submenu.route) ? "font-semibold" : ""
+                                      className={`truncate text-xs ${
+                                        isActive(submenu.route) ? "font-semibold" : "font-medium"
                                       }`}
                                     >
                                       {submenu.title}

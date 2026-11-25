@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MenuItem, TextField } from "@mui/material";
+import { UploadCloud } from "lucide-react";
 import { toast } from "sonner";
-import PrimaryButton from "../../../../components/PrimaryButton";
-import SecondaryButton from "../../../../components/SecondaryButton";
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
-import { NOMADS_API_BASE_URL } from "../../../../constants/api";
+import { DropdownLogo, UploadActions, UploadCard, UploadPanel, muiFieldSx } from "./UploadUI";
 
+const LOGO_ENDPOINT = "/api/admin/upload-restaurant-logo";
+const RESTAURANTS_QUERY_KEY = ["restaurants-for-logo-upload"];
 const MAX_BYTES = 5 * 1024 * 1024;
 const FILTERS_STORAGE_KEY = "restaurantLogoUploadFilters";
 
 const RestaurantLogoUpload = () => {
   const inputRef = useRef(null);
   const axios = useAxiosPrivate();
+  const queryClient = useQueryClient();
 
   const [country, setCountry] = useState("");
   const [destination, setDestination] = useState("");
@@ -22,10 +24,10 @@ const RestaurantLogoUpload = () => {
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
 
-  const { data: restaurants = [], isLoading } = useQuery({
-    queryKey: ["restaurants-for-logo-upload"],
+  const { data: restaurants = [], isLoading, isLoadingError } = useQuery({
+    queryKey: RESTAURANTS_QUERY_KEY,
     queryFn: async () => {
-      const res = await axios.get(`${NOMADS_API_BASE_URL}/restaurants`);
+      const res = await axios.get(LOGO_ENDPOINT);
       return Array.isArray(res.data) ? res.data : [];
     },
   });
@@ -120,13 +122,15 @@ const RestaurantLogoUpload = () => {
       form.append("restaurantId", restaurantId);
       form.append("image", file);
 
-      const res = await axios.post("/api/admin/upload-restaurant-logo", form, {
+      const res = await axios.post(LOGO_ENDPOINT, form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       return res.data;
     },
     onSuccess: (data) => {
-      toast.success(data?.message || "Restaurant logo uploaded successfully");
+      if (data?.cleanupFailed) toast.warning(data.message);
+      else toast.success(data?.message || "Restaurant logo uploaded successfully");
+      queryClient.invalidateQueries({ queryKey: RESTAURANTS_QUERY_KEY });
       setFile(null);
       setPreview(null);
       setRestaurantId("");
@@ -172,160 +176,167 @@ const RestaurantLogoUpload = () => {
   };
 
   return (
-    <div className="p-0">
-      <div className="p-6 flex flex-col gap-6 max-w-2xl mx-auto">
+    <UploadCard
+      title="Restaurant Logo Upload"
+      description="Pick a restaurant, then upload a logo for it."
+    >
+      <UploadPanel>
         {isLoading ? (
-          <p>Loading restaurants...</p>
+          <p className="text-xs font-pmedium text-slate-500">Loading restaurants...</p>
+        ) : isLoadingError ? (
+          <p role="alert" className="text-xs font-pmedium text-rose-600">
+            Could not load restaurants from Nomads.
+          </p>
+        ) : !restaurants.length ? (
+          <p className="text-xs font-pmedium text-slate-500">
+            No restaurants are available for logo upload yet.
+          </p>
         ) : (
           <>
-            <div data-tour="data-upload-target-picker" className="flex flex-col gap-6">
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label="Country"
-              value={country}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setDestination("");
-                setRestaurantId("");
-                setSearchTerm("");
-              }}
-            >
-              {countries.map((item) => (
-                <MenuItem key={item} value={item}>
-                  {item}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label="Destination"
-              value={destination}
-              onChange={(e) => {
-                setDestination(e.target.value);
-                setRestaurantId("");
-                setSearchTerm("");
-              }}
-              disabled={!country}
-            >
-              {destinations.map((item) => (
-                <MenuItem key={item} value={item}>
-                  {item}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              select
-              size="small"
-              fullWidth
-              label="Restaurant"
-              value={restaurantId}
-              onChange={(e) => setRestaurantId(e.target.value)}
-              disabled={!destination}
-              SelectProps={{
-                MenuProps: {
-                  PaperProps: {
-                    sx: { maxHeight: 300 },
-                  },
-                },
-                renderValue: (selected) => {
-                  const restaurant = filteredRestaurants.find(
-                    (item) => item._id === selected,
-                  );
-                  return restaurant ? restaurant.restaurantName : "";
-                },
-              }}
-            >
-              <MenuItem disableRipple disableTouchRipple>
-                <TextField
-                  size="small"
-                  placeholder="Search restaurant..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  fullWidth
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-              </MenuItem>
-
-              {filteredRestaurants
-                .filter((restaurant) =>
-                  String(restaurant.restaurantName || restaurant.businessName)
-                    .toLowerCase()
-                    .includes(searchTerm.toLowerCase()),
-                )
-                .map((restaurant) => (
-                  <MenuItem key={restaurant._id} value={restaurant._id}>
-                    {restaurant.restaurantName || restaurant.businessName}
+            <div data-tour="data-upload-target-picker" className="grid gap-3 sm:grid-cols-3">
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label="Country"
+                value={country}
+                sx={muiFieldSx}
+                onChange={(e) => {
+                  setCountry(e.target.value);
+                  setDestination("");
+                  setRestaurantId("");
+                  setSearchTerm("");
+                }}
+              >
+                {countries.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {item}
                   </MenuItem>
                 ))}
-            </TextField>
+              </TextField>
+
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label="Destination"
+                value={destination}
+                sx={muiFieldSx}
+                onChange={(e) => {
+                  setDestination(e.target.value);
+                  setRestaurantId("");
+                  setSearchTerm("");
+                }}
+                disabled={!country}
+              >
+                {destinations.map((item) => (
+                  <MenuItem key={item} value={item}>
+                    {item}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                size="small"
+                fullWidth
+                label="Restaurant"
+                value={restaurantId}
+                sx={muiFieldSx}
+                onChange={(e) => setRestaurantId(e.target.value)}
+                disabled={!destination}
+                SelectProps={{
+                  MenuProps: {
+                    PaperProps: {
+                      sx: { maxHeight: 300 },
+                    },
+                  },
+                  renderValue: (selected) => {
+                    const restaurant = filteredRestaurants.find(
+                      (item) => item._id === selected,
+                    );
+                    return restaurant ? restaurant.restaurantName : "";
+                  },
+                }}
+              >
+                <MenuItem disableRipple disableTouchRipple>
+                  <TextField
+                    size="small"
+                    placeholder="Search restaurant..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    fullWidth
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </MenuItem>
+
+                {filteredRestaurants
+                  .filter((restaurant) =>
+                    String(restaurant.restaurantName || restaurant.businessName)
+                      .toLowerCase()
+                      .includes(searchTerm.toLowerCase()),
+                  )
+                  .map((restaurant) => (
+                    <MenuItem key={restaurant._id} value={restaurant._id}>
+                      <DropdownLogo src={restaurant.logo} />
+                      {restaurant.restaurantName || restaurant.businessName}
+                    </MenuItem>
+                  ))}
+              </TextField>
             </div>
 
             <input
               ref={inputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               onChange={onFileChange}
               className="hidden"
               id="restaurant-logo-input"
             />
-            <div
-              data-tour="data-upload-dropzone" className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-gray-400"
+            <button
+              type="button"
+              data-tour="data-upload-dropzone"
+              className="mt-4 flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-slate-200 bg-white px-4 py-7 text-center transition hover:border-[#2563EB]/40 hover:bg-blue-50/30"
               onClick={() => inputRef.current?.click()}
             >
-              <p className="font-medium">
+              <UploadCloud size={22} className="text-slate-400" />
+              <span className="text-xs font-pmedium text-slate-600">
                 {file ? "Change logo" : "Upload logo here (click to browse)"}
-              </p>
-              {file && (
-                <p className="text-sm text-gray-600">
-                  Selected: {file.name} - {humanSize(file.size)}
-                </p>
-              )}
-            </div>
+              </span>
+              <span className="text-[10px] font-pmedium text-slate-400">
+                {file
+                  ? `${file.name} · ${humanSize(file.size)}`
+                  : `.jpg, .png, .webp · Max ${humanSize(MAX_BYTES)}`}
+              </span>
+            </button>
 
             {preview && (
               <div className="mt-4">
                 <img
                   src={preview}
                   alt="preview"
-                  className="w-48 h-48 object-cover border rounded-lg mx-auto"
+                  className="mx-auto h-48 w-48 rounded-xl border border-slate-200 object-cover"
                 />
               </div>
             )}
 
-            <p className="text-xs text-gray-500">
-              Accepted type: <code>.jpg, .png, .webp</code>. Max size:{" "}
-              {humanSize(MAX_BYTES)}.
-            </p>
+            {error && <div className="mt-2 text-xs text-rose-600">{error}</div>}
 
-            {error && <div className="text-sm text-red-600">{error}</div>}
-
-            <div className="flex gap-4 justify-center" data-tour="data-upload-actions">
-              <PrimaryButton
-                type="button"
-                title={isPending ? "Uploading..." : "Upload"}
-                handleSubmit={handleUpload}
-                isLoading={isPending}
-                disabled={!file || !restaurantId || isPending}
-              />
-              <SecondaryButton
-                type="button"
-                title="Reset"
-                handleSubmit={handleReset}
-                disabled={isPending}
+            <div className="mt-4" data-tour="data-upload-actions">
+              <UploadActions
+                onUpload={handleUpload}
+                onReset={handleReset}
+                pending={isPending}
+                uploadDisabled={!file || !restaurantId || isPending}
+                resetDisabled={isPending}
               />
             </div>
           </>
         )}
-      </div>
-    </div>
+      </UploadPanel>
+    </UploadCard>
   );
 };
 

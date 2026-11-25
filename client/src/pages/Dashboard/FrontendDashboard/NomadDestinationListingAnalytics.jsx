@@ -13,6 +13,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import { capitalizeLocationName } from "./nomadAnalyticsLocation";
 
 const formatNumber = (value) => new Intl.NumberFormat("en-US").format(Number(value) || 0);
 
@@ -35,11 +36,11 @@ const getPercent = (clicks, totalClicks) => {
 };
 
 const getDestinationLabel = ({ title, state, country } = {}) =>
-  [title || state, country].filter(Boolean).join(", ") || "Destination";
+  [state || title, country].map(capitalizeLocationName).filter(Boolean).join(", ") || "Destination";
 
 const getListingLabel = (item = {}) =>
   item.companyName
-    ? `${item.companyName}${item.city ? ` - ${item.city}` : ""}`
+    ? `${item.companyName}${item.city ? ` - ${capitalizeLocationName(item.city)}` : ""}`
     : item.businessId || item.companyId || "-";
 
 const NomadDestinationListingAnalytics = () => {
@@ -277,7 +278,7 @@ const NomadDestinationListingAnalytics = () => {
                                 {getListingLabel(item)}
                               </p>
                               <p className="truncate text-[10px] font-pmedium text-slate-500">
-                                {[item.state, item.country].filter(Boolean).join(" - ") || "-"}
+                                {[item.state, item.country].map(capitalizeLocationName).filter(Boolean).join(" - ") || "-"}
                               </p>
                             </div>
                           </td>

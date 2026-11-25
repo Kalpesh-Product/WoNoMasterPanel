@@ -10,7 +10,32 @@ const masterPanelModules = [
       { key: "dashboard.all-leads", label: "All Leads" },
       { key: "dashboard.contributor-leads", label: "Contributor Leads" },
       { key: "dashboard.value-adds-leads", label: "Value Adds Leads" },
-      { key: "dashboard.data-upload", label: "Data Upload" },
+      {
+        key: "dashboard.data-upload",
+        label: "Data Upload",
+        // Having this bare key means full access to every tab (unchanged
+        // for anyone already granted it). These let a superadmin instead
+        // hand out just specific tabs — keys must stay in sync with the
+        // `path`s in client/src/.../DataUpload/UploadLayout.jsx.
+        tabs: [
+          { key: "company-upload", label: "Company Upload" },
+          { key: "product-upload", label: "Products Upload" },
+          { key: "bulk-upload-images", label: "Bulk Upload Images" },
+          { key: "bulk-reupload-images", label: "Bulk Reupload Images" },
+          { key: "upload-single-image", label: "Upload Single Image" },
+          { key: "news-upload", label: "News Upload" },
+          { key: "blogs-upload", label: "Blogs Upload" },
+          { key: "events-upload", label: "Events Upload" },
+          { key: "places-upload", label: "Places Upload" },
+          { key: "restaurants-upload", label: "Restaurants Upload" },
+          { key: "bulk-restaurant-images-upload", label: "Bulk Restaurant Images Upload" },
+          { key: "restaurant-images-reupload", label: "Restaurant Images Reupload" },
+          { key: "restaurant-logo-upload", label: "Restaurant Logo Upload" },
+          { key: "destination-add-upload", label: "Add Destination Data" },
+          { key: "destination-reupload", label: "Reupload Destination Data" },
+          { key: "listings-data-update", label: "Listings Data Update" },
+        ],
+      },
       { key: "dashboard.publish-listings", label: "Publish Listings" },
       { key: "dashboard.contributions", label: "Contributions" },
       { key: "dashboard.nomad-signup-leads", label: "Nomad Signup Leads" },
@@ -51,7 +76,10 @@ const masterPanelModules = [
 ];
 
 const allModuleKeys = masterPanelModules.flatMap((m) =>
-  m.submenus.map((s) => s.key)
+  m.submenus.flatMap((s) => [
+    s.key,
+    ...(s.tabs || []).map((t) => `${s.key}.${t.key}`),
+  ])
 );
 
 module.exports = { masterPanelModules, allModuleKeys };

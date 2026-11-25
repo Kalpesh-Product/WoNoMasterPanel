@@ -46,6 +46,16 @@ const planPricingSettingsSchema = new mongoose.Schema(
       default: null,
       min: 0,
     },
+    // How many months a new company stays on Basic for free before it's
+    // required to pay (e.g. 6). Nothing reads this yet — the actual
+    // countdown (setting planExpiryDate at Basic signup, the
+    // reminder/expiry cron jobs, and locking a workspace once it lapses)
+    // is separate work that spans HostPanel too. This is groundwork only.
+    basicFreeDurationMonths: {
+      type: Number,
+      default: 6,
+      min: 1,
+    },
     // Master switch for the Professional free-trial offer, plus how long a
     // newly-started trial runs. Changing freeTrialDurationDays only affects
     // trials started after the change — a trial already in progress keeps
@@ -59,6 +69,30 @@ const planPricingSettingsSchema = new mongoose.Schema(
       type: Number,
       default: 30,
       min: 1,
+    },
+    // An optional, staff-named Stripe Promotion Code to use INSTEAD of the
+    // system's own free-trial coupon below (e.g. a branded "LAUNCH100" for
+    // a marketing push) — never both at once, never stacked. Empty = just
+    // use the system coupon, which is what actually makes the trial free;
+    // this field never controls whether the trial itself is free.
+    activeTrialPromotionCodeId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Auto-provisioned once (getOrCreateSystemFreeTrialCoupon,
+    // modulePricingService.js) and reused forever — a Stripe Coupon,
+    // 100% off, duration "once". This is THE mechanism that makes the
+    // free trial actually free: startTrialCheckout applies it to every
+    // trial's first invoice instead of using Stripe's own trial_period_days,
+    // so that invoice is a real $199 charge discounted to $0 (visible
+    // breakdown, not a blank "free trial" placeholder), and nothing ever
+    // re-applies it after that one invoice. Staff never edit this
+    // directly — it's not the same thing as the named promo codes above.
+    systemFreeTrialCouponId: {
+      type: String,
+      trim: true,
+      default: "",
     },
     updatedByEmail: {
       type: String,

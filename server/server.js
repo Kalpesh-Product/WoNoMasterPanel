@@ -78,7 +78,7 @@ const {
 } = require("./controllers/websiteControllers/websiteTemplateControllers");
 const { handleStripeWebhook } = require("./controllers/hostUserControllers");
 const { getPublicPlanPricing } = require("./controllers/planPricingControllers");
-const { getPublicPlanPaymentStatus } = require("./controllers/planPaymentControllers");
+const { getPublicPlanPaymentStatus, getPublicTrialCheckoutStatus } = require("./controllers/planPaymentControllers");
 const { getPublicWebsiteThemes } = require("./controllers/websiteControllers/websiteThemeCatalogController");
 
 require("./listeners/logEventListener");
@@ -134,6 +134,8 @@ app.use("/api/hosts", verifyJwtOptional, auditLogger, hostCompanyRoutes);
 app.get("/api/public/plan-pricing", getPublicPlanPricing);
 // Public: payment-confirmation polling for HostPanel's /payment-success page.
 app.get("/api/public/plan-payment-status", getPublicPlanPaymentStatus);
+// Public: trial-checkout polling for HostPanel's /trial-success page.
+app.get("/api/public/trial-checkout-status", getPublicTrialCheckoutStatus);
 app.use("/api/employee", employeeRoutes);
 app.get("/api/editor/get-website/:companyName", getTemplate); // public website template
 app.use("/api/recruitment", verifyJwtOptional, auditLogger, recruitmentRoutes); // public careers jobs
@@ -242,6 +244,15 @@ app.use(errorHandler);
 
 mongoose.connection.once("open", () => {
   console.log("process.env.PORT:", process.env.PORT);
+
+  // Warm the cache behind the plan-based website credit limits
+  // (website_credits_settings) so the first credit check/builder read already
+  // uses the staff-configured numbers instead of the code defaults.
+  require("./utils/websiteCredits")
+    .loadCreditsSettings({ force: true })
+    .catch((error) =>
+      console.error("Failed to warm website credit settings:", error?.message),
+    );
 
   app.listen(PORT);
   console.log(`✅ Server running on port ${PORT}`);

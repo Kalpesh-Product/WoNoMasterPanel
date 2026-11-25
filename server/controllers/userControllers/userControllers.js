@@ -450,6 +450,37 @@ const updateProfile = async (req, res, next) => {
 
     let profilePictureUpdate = null;
 
+    const removeProfilePicture =
+      updateData.removeProfilePicture === true ||
+      updateData.removeProfilePicture === "true";
+
+    if (removeProfilePicture && !newProfilePicture) {
+      const foundUser = await User.findOne({ _id: userId }).lean().exec();
+
+      if (foundUser?.profilePicture?.id) {
+        try {
+          const response = await handleFileDelete(foundUser.profilePicture.id);
+          if (response.result !== "ok") {
+            throw new CustomError(
+              "Failed to delete profile picture",
+              logPath,
+              logAction,
+              logSourceKey
+            );
+          }
+        } catch (error) {
+          throw new CustomError(
+            "Error deleting profile picture: " + error.message,
+            logPath,
+            logAction,
+            logSourceKey
+          );
+        }
+      }
+
+      filteredUpdateData.profilePicture = null;
+    }
+
     if (newProfilePicture) {
       const foundUser = await User.findOne({ _id: userId }).lean().exec();
 

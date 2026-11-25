@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import { NavLink, useNavigate, useParams } from "react-router-dom";
 import {
@@ -21,8 +20,11 @@ import { format, isValid } from "date-fns";
 import { toast } from "sonner";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
+import useAuth from "../../../hooks/useAuth";
 import { statusPillClass } from "../../../lib/status-pill";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
+import { nomadReviewQueryOptions } from "./nomadReviewQuery";
+import { destinationReviewQueries } from "./destinationReviewQueries";
 
 const REVIEW_TABS = {
   nomadListings: 0,
@@ -42,14 +44,6 @@ const DEFAULT_REVIEW_TAB = REVIEW_TAB_ITEMS[0];
 const REVIEW_TAB_BY_SLUG = REVIEW_TAB_ITEMS.reduce((tabs, tab) => ({ ...tabs, [tab.slug]: tab }), {});
 
 const STATUSES = ["pending", "approved", "rejected"];
-const NOMAD_REVIEWS_PAGE_SIZE = 25;
-
-const getReviewsFromResponse = (response) => {
-  const payload = response?.data;
-  const reviews =
-    payload?.reviews ?? payload?.data?.reviews ?? payload?.data ?? payload;
-  return Array.isArray(reviews) ? reviews : [];
-};
 
 const formatDate = (raw) => {
   if (!raw) return "—";
@@ -146,6 +140,7 @@ const CompanyReviews = () => {
   const { reviewTab } = useParams();
   const selectedCompany = useSelector((state) => state.company.selectedCompany);
   const axiosPrivate = useAxiosPrivate();
+  const { auth } = useAuth();
   const queryClient = useQueryClient();
 
   const activeTabItem = REVIEW_TAB_BY_SLUG[reviewTab] || DEFAULT_REVIEW_TAB;
@@ -182,89 +177,21 @@ const CompanyReviews = () => {
   const {
     data: nomadReviewPages,
     isPending,
+    isFetching,
     isFetchingNextPage,
+    isFetchNextPageError,
     hasNextPage,
     fetchNextPage,
-    isError,
+    isLoadingError,
   } = useInfiniteQuery({
-    queryKey: ["companyReviews", "all-nomad-listings", stageFilter, debouncedSearchQuery],
+    ...nomadReviewQueryOptions(axiosPrivate, auth.user?.email, stageFilter, debouncedSearchQuery),
     enabled: activeTab === REVIEW_TABS.nomadListings,
-    initialPageParam: 1,
-    queryFn: async ({ pageParam }) => {
-      const response = await axiosPrivate.get("/api/admin/reviews", {
-        params: {
-          reviewScope: "nomads",
-          allCompanies: true,
-          page: pageParam,
-          limit: NOMAD_REVIEWS_PAGE_SIZE,
-          ...(stageFilter !== "all" ? { status: stageFilter } : {}),
-          ...(debouncedSearchQuery ? { search: debouncedSearchQuery } : {}),
-        },
-        headers: { "Cache-Control": "no-cache" },
-      });
-      const pagination = response?.data?.pagination || {};
-      const mergedReviews = getReviewsFromResponse(response).slice(0, NOMAD_REVIEWS_PAGE_SIZE);
-      const uniqueReviews = new Map();
-      mergedReviews.forEach((review, index) => {
-        const reviewId = review?._id || review?.id;
-        if (!reviewId || !uniqueReviews.has(reviewId)) {
-          uniqueReviews.set(reviewId || `review-${index}`, review);
-        }
-      });
-      return {
-        reviews: Array.from(uniqueReviews.values()),
-        page: Number(pagination.page || pageParam),
-        total: Number(pagination.total || 0),
-        hasNextPage: Boolean(pagination.hasNextPage),
-      };
-    },
-    getNextPageParam: (lastPage) => lastPage?.hasNextPage ? lastPage.page + 1 : undefined,
   });
 
-  const {
-    data: eventReviews = [],
-    isPending: isEventReviewsPending,
-    isError: isEventReviewsError,
-  } = useQuery({
-    queryKey: ["eventReviews"],
-    enabled: activeTab === REVIEW_TABS.eventReviews,
-    queryFn: async () => {
-      const response = await axios.get(`${NOMADS_API_BASE_URL}/event-reviews/all`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
-      return Array.isArray(response?.data?.data) ? response.data.data : [];
-    },
-  });
-
-  const {
-    data: placeReviews = [],
-    isPending: isPlaceReviewsPending,
-    isError: isPlaceReviewsError,
-  } = useQuery({
-    queryKey: ["placeReviews"],
-    enabled: activeTab === REVIEW_TABS.placeReviews,
-    queryFn: async () => {
-      const response = await axios.get(`${NOMADS_API_BASE_URL}/place-reviews/all`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
-      return Array.isArray(response?.data?.data) ? response.data.data : [];
-    },
-  });
-
-  const {
-    data: restaurantReviews = [],
-    isPending: isRestaurantReviewsPending,
-    isError: isRestaurantReviewsError,
-  } = useQuery({
-    queryKey: ["restaurantReviews"],
-    enabled: activeTab === REVIEW_TABS.restaurantReviews,
-    queryFn: async () => {
-      const response = await axios.get(`${NOMADS_API_BASE_URL}/restaurantreviews/all`, {
-        headers: { "Cache-Control": "no-cache" },
-      });
-      return Array.isArray(response?.data?.data) ? response.data.data : [];
-    },
-  });
+  const [eventQuery, placeQuery, restaurantQuery] = useQueries({ queries: destinationReviewQueries });
+  const { data: eventReviews = [] } = eventQuery;
+  const { data: placeReviews = [] } = placeQuery;
+  const { data: restaurantReviews = [] } = restaurantQuery;
 
   const updateReviewStatusMutation = useMutation({
     mutationFn: async ({ reviewId, updates = {} }) => {
@@ -444,33 +371,36 @@ const CompanyReviews = () => {
 
   const activeStats = getActiveStats();
   const activeReviews = getActiveReviews();
+  const hasMoreNomadReviews = activeTab === REVIEW_TABS.nomadListings && hasNextPage;
+  const isSearchSettled = searchQuery.trim() === debouncedSearchQuery;
   const activeScope = activeTab === REVIEW_TABS.nomadListings ? "nomad"
     : activeTab === REVIEW_TABS.eventReviews ? "event"
       : activeTab === REVIEW_TABS.placeReviews ? "place" : "restaurant";
 
   useEffect(() => {
     const node = loadMoreRef.current;
-    if (activeTab !== REVIEW_TABS.nomadListings || !node || !hasNextPage) return undefined;
+    if (!node || !hasMoreNomadReviews || isFetching || isFetchNextPageError || !isSearchSettled) {
+      return undefined;
+    }
 
     const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isFetchingNextPage) {
-          fetchNextPage();
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          fetchNextPage({ cancelRefetch: false });
         }
       },
-      { rootMargin: "200px" },
+      { root: node.closest("#scrollable-content"), rootMargin: "0px 0px 1000px" },
     );
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [activeTab, hasNextPage, isFetchingNextPage, fetchNextPage, activeReviews.length]);
+  }, [hasMoreNomadReviews, isFetching, isFetchNextPageError, isSearchSettled, fetchNextPage, nomadReviewPages]);
 
-  const isLoading = activeTab === REVIEW_TABS.nomadListings ? isPending
-    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsPending
-      : activeTab === REVIEW_TABS.placeReviews ? isPlaceReviewsPending : isRestaurantReviewsPending;
-  const hasError = activeTab === REVIEW_TABS.nomadListings ? isError
-    : activeTab === REVIEW_TABS.eventReviews ? isEventReviewsError
-      : activeTab === REVIEW_TABS.placeReviews ? isPlaceReviewsError : isRestaurantReviewsError;
+  const activeDestinationQuery = activeTab === REVIEW_TABS.nomadListings ? null
+    : activeTab === REVIEW_TABS.eventReviews ? eventQuery
+      : activeTab === REVIEW_TABS.placeReviews ? placeQuery : restaurantQuery;
+  const isLoading = activeDestinationQuery ? activeDestinationQuery.isPending : isPending;
+  const hasError = activeDestinationQuery ? activeDestinationQuery.isLoadingError : isLoadingError;
 
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
@@ -479,7 +409,7 @@ const CompanyReviews = () => {
 
           <div className="mb-1 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
             <div>
-              <h2 className="text-title font-pmedium text-primary uppercase">Company Reviews</h2>
+              <h2 className="text-title font-pmedium text-primary uppercase">{activeTabItem.label}</h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
                 Manage reviews from Nomads, Events, Places, and Restaurants across all companies.
               </p>
@@ -525,7 +455,19 @@ const CompanyReviews = () => {
               </div>
             </div>
           ) : hasError ? (
-            <div className="py-12 text-center text-red-500 text-sm font-semibold">Failed to load reviews. Please try again.</div>
+            <div className="py-12 text-center text-red-500 text-sm font-semibold">
+              Failed to load reviews. Please try again.
+              {activeDestinationQuery && (
+                <button
+                  type="button"
+                  onClick={() => activeDestinationQuery.refetch()}
+                  disabled={activeDestinationQuery.isFetching}
+                  className="ml-2 text-blue-700 underline disabled:opacity-50"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           ) : (
             <>
               <div data-tour="company-reviews-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-1 shrink-0">
@@ -573,7 +515,7 @@ const CompanyReviews = () => {
                   </div>
                 </div>
 
-                {activeReviews.length === 0 ? (
+                {activeReviews.length === 0 && !hasMoreNomadReviews ? (
                   <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
                     <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400"><Target size={28} /></div>
                     <p className="text-slate-400 font-semibold">No matching reviews found.</p>
@@ -722,19 +664,25 @@ const CompanyReviews = () => {
                             </tr>
                           );
                         })}
-                        {activeTab === REVIEW_TABS.nomadListings && hasNextPage ? (
-                          <tr ref={loadMoreRef}>
-                            <td colSpan={8} className="py-4 text-center">
-                              {isFetchingNextPage ? (
-                                <span className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
-                                  Loading more reviews...
-                                </span>
-                              ) : null}
-                            </td>
-                          </tr>
-                        ) : null}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {hasMoreNomadReviews && (
+                  <div ref={loadMoreRef} className="py-4 text-center">
+                    {isFetchingNextPage ? (
+                      <span role="status" className="text-[11px] font-pmedium uppercase tracking-widest text-slate-400">
+                        Loading more reviews...
+                      </span>
+                    ) : isFetchNextPageError ? (
+                      <button
+                        type="button"
+                        onClick={() => fetchNextPage({ cancelRefetch: false })}
+                        className="text-[12px] font-pmedium text-blue-700 hover:underline"
+                      >
+                        Retry loading more reviews
+                      </button>
+                    ) : null}
                   </div>
                 )}
               </div>

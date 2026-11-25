@@ -30,6 +30,10 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    address: {
+      type: String,
+      trim: true,
+    },
     companyCity: {
       type: String,
       trim: true,
@@ -132,6 +136,45 @@ const hostLeadCompanySchema = new mongoose.Schema(
       type: String,
       trim: true,
       default: "",
+    },
+    // Set once this company starts a Professional trial through Stripe
+    // Checkout (subscription mode) — the card-on-file that lets Stripe
+    // auto-charge when the trial ends, instead of the old no-card
+    // DB-only startTrial flow. Empty for a company that never started a
+    // card-backed trial (including every company on the old flow).
+    stripeCustomerId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    stripeSubscriptionId: {
+      type: String,
+      trim: true,
+      default: "",
+      index: true,
+    },
+    // Which Stripe Promotion Code (if any) this company has already been
+    // given on a card-backed checkout (startTrialCheckout) — empty means
+    // never. Blocks the auto-apply logic from granting the same company a
+    // second discount, regardless of that code's own Stripe duration
+    // (even a "forever" coupon is only ever handed to a given company
+    // once by us — Stripe's own "forever" just means it keeps discounting
+    // THAT one subscription's future invoices, not that we hand it out
+    // again). Set only once the webhook confirms the checkout actually
+    // completed, same timing as hasUsedTrial, so an abandoned checkout
+    // doesn't burn the company's one redemption.
+    redeemedPromotionCodeId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    // Staff override: lets THIS specific company redeem the auto-apply
+    // discount one more time even though redeemedPromotionCodeId is
+    // already set. Consumed (reset to false) the moment it's used, same
+    // one-shot shape as bonusTrialOffer.active below.
+    promoCodeRetryAllowed: {
+      type: Boolean,
+      default: false,
     },
     // A staff-granted extra trial window for THIS company specifically —
     // separate from the normal one-time freeTrialEnabled/hasUsedTrial flow,

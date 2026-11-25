@@ -2,6 +2,7 @@ const sharp = require("sharp");
 const WebsiteTemplate = require("../../models/website/WebsiteTemplate");
 const {
   creditsForPlan,
+  normalizeCompanyKey,
   resolveWorkspacePlan,
 } = require("../../utils/websiteCredits");
 const mongoose = require("mongoose");
@@ -427,38 +428,49 @@ const deductWorkspaceCreditOnSuccess = async ({
   const normalizedCompanyId = String(companyId || "").trim();
   if (!normalizedWorkspaceId && !normalizedCompanyId) return;
 
-  // The schema's own unique index is the *compound* pair {companyId,
-  // workspaceId} — matching on $or of the two fields independently (the old
-  // behavior) means a company can inherit and increment a totally unrelated
-  // company's credit usage just because one of the two ids happens to
-  // collide (seen in this data: several docs reuse the same value for both
-  // fields). Require both together when both are known; only fall back to a
-  // single-field match when just one identifier is actually available.
-  const lookupFilter =
-    normalizedWorkspaceId && normalizedCompanyId
-      ? { workspaceId: normalizedWorkspaceId, companyId: normalizedCompanyId }
-      : normalizedWorkspaceId
-        ? { workspaceId: normalizedWorkspaceId }
-        : { companyId: normalizedCompanyId };
+  // One shared pool per company: every unit draws from the same document, so
+  // the company key is authoritative. Matching the (companyId, workspaceId)
+  // pair here would miss the company's pool and try to insert a second row,
+  // which the unique companyId index rejects.
+  const companyKey = normalizeCompanyKey(normalizedCompanyId);
+  const lookupFilter = companyKey
+    ? { companyId: companyKey }
+    : { workspaceId: normalizedWorkspaceId };
 
-  return await WorkspaceSubscription.findOneAndUpdate(
-    lookupFilter,
-    {
-      $setOnInsert: {
-        workspaceId: normalizedWorkspaceId || normalizedCompanyId || undefined,
-        companyId: normalizedCompanyId || normalizedWorkspaceId || undefined,
-        plan: "basic",
-        creditsLimit: 5,
-        creditsResetDate: getFirstDayOfNextMonthUtc(),
-      },
-      $inc: { creditsUsed: 1 },
+  // workspaceId appears in ONE operator only — $set and $setOnInsert on the
+  // same path is a hard MongoDB conflict error, and the caller swallows it, so
+  // the edit would silently cost nothing. $set also applies on insert.
+  const update = {
+    $setOnInsert: {
+      companyId: companyKey || normalizedWorkspaceId || undefined,
+      plan: "basic",
+      // Basic plan's current allowance (staff-editable from Master Panel), not
+      // a hardcoded 5.
+      creditsLimit: creditsForPlan("basic"),
+      creditsResetDate: getFirstDayOfNextMonthUtc(),
     },
-    {
+    $inc: { creditsUsed: 1 },
+  };
+  if (normalizedWorkspaceId) {
+    update.$set = { workspaceId: normalizedWorkspaceId };
+  }
+
+  try {
+    return await WorkspaceSubscription.findOneAndUpdate(lookupFilter, update, {
       upsert: true,
       new: true,
       setDefaultsOnInsert: true,
-    },
-  ).exec();
+    }).exec();
+  } catch (error) {
+    // Two units spent their first credit at the same moment; the loser just
+    // increments the winner's document.
+    if (error?.code !== 11000) throw error;
+    return await WorkspaceSubscription.findOneAndUpdate(
+      lookupFilter,
+      { $inc: { creditsUsed: 1 } },
+      { new: true },
+    ).exec();
+  }
 };
 
 // Credits still available on a subscription doc (monthly limit + purchased

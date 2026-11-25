@@ -20,7 +20,15 @@ const {
   fetchAllNomadListings,
 } = require("../hostListingControllers");
 const { getDefaultEnabledModuleIdsForWorkspace } = require("../../config/hostWorkspaceModuleCatalog");
-const { getFreeTrialConfig } = require("../../services/modulePricingService");
+const {
+  getFreeTrialConfig,
+  getProfessionalPlanPriceUsd,
+  getActiveTrialPromotionCodeId,
+  getOrCreateSystemFreeTrialCoupon,
+} = require("../../services/modulePricingService");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const { resolveHostPanelFrontendUrl } = require("../planPaymentControllers");
+const PlanPaymentLink = require("../../models/PlanPaymentLink");
 
 const serviceOptions = [
   {
@@ -300,6 +308,71 @@ const createCompany = async (req, res, next) => {
   }
 };
 
+const createDirectoryCompany = async (req, res, next) => {
+  try {
+    const fields = [
+      "companyName",
+      "registeredEntityName",
+      "industry",
+      "companySize",
+      "address",
+      "companyCity",
+      "companyState",
+      "companyCountry",
+      "companyContinent",
+      "websiteLink",
+      "linkedinURL",
+    ];
+    const companyData = Object.fromEntries(
+      fields.map((field) => {
+        const value = req.body?.[field];
+        return [field, typeof value === "string" ? value.trim() : ""];
+      }),
+    );
+    const { companyName, companyCity, companyState, companyCountry } =
+      companyData;
+    if (!companyName || !companyCity || !companyState || !companyCountry) {
+      return res.status(400).json({
+        message: "Company name, city, state or region, and country are required.",
+      });
+    }
+
+    companyData.companyContinent ||= getContinentForCountry(companyCountry);
+    if (!companyData.companyContinent) {
+      return res.status(400).json({
+        message: "Select a continent for this company.",
+      });
+    }
+
+    const locationKey = { companyName, companyCity, companyState, companyCountry };
+    const duplicateFilter = Object.fromEntries(
+      Object.entries(locationKey).map(([field, value]) => [
+        field,
+        new RegExp(`^${escapeRegex(value)}$`, "i"),
+      ]),
+    );
+    if (await HostCompany.exists(duplicateFilter)) {
+      return res.status(409).json({
+        message: "A company with this name already exists in this location.",
+      });
+    }
+
+    const { companyId } = await HostCompany.create({
+      ...companyData,
+      companyId: randomUUID(),
+    });
+    req.logContext = {
+      ...req.logContext,
+      action: "add-company",
+      companyId,
+      companyName,
+    };
+    return res.status(201).json({ companyId, companyName });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const editCompany = async (req, res, next) => {
   try {
     const parsedBody = req.body?.data
@@ -368,6 +441,7 @@ const editCompany = async (req, res, next) => {
       registeredEntityName: payload.registeredEntityName,
       industry: payload.industry,
       companySize: payload.companySize,
+      address: payload.address,
       companyCity: payload.companyCity,
       companyState: payload.companyState,
       companyCountry: payload.companyCountry,
@@ -684,10 +758,10 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
   if (!companies || !companies.length) return [];
 
   const workspaces = await Workspace.find({ isActive: true })
-    .select("_id company companyId businessName selectedPlan")
+    .select("_id company companyId businessName selectedPlan businessTypes")
     .lean();
   const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
-    .select("searchKey companyId companyName isActive isPublished")
+    .select("searchKey companyId companyName isActive isPublished vertical")
     .lean();
 
   const normalize = (value) =>
@@ -713,6 +787,16 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
       ...company,
       workspaceId: workspace?._id ? String(workspace._id) : "",
       workspaceCompanyId: String(workspace?.companyId || "").trim(),
+      // Every vertical this company operates in: the workspace's business
+      // types, its free-text industry, and its website template's vertical.
+      businessTypes: Array.isArray(workspace?.businessTypes)
+        ? workspace.businessTypes
+        : [],
+      verticals: toVerticalList(
+        workspace?.businessTypes,
+        company?.industry,
+        template?.vertical,
+      ),
       selectedPlan: workspace?.selectedPlan || company?.selectedPlan || "",
       isWebsiteTemplate: Boolean(template),
       websiteTemplate: template || null,
@@ -722,7 +806,17 @@ const enrichCompaniesWithWorkspaceAndTemplate = async (companies) => {
 
 const getCompanies = async (req, res, next) => {
   try {
-    const { page, limit, search, status, country, state, city, lookupKeys } = req.query;
+    const {
+      page,
+      limit,
+      search,
+      status,
+      continent,
+      country,
+      state,
+      city,
+      lookupKeys,
+    } = req.query;
 
     if (lookupKeys !== undefined) {
       const keys = String(lookupKeys || "")
@@ -780,6 +874,13 @@ const getCompanies = async (req, res, next) => {
     if (status === "active") filter.isRegistered = true;
     else if (status === "inactive") filter.isRegistered = false;
 
+    const trimmedContinent = String(continent || "").trim();
+    if (trimmedContinent) {
+      filter.companyContinent = new RegExp(
+        `^${escapeRegex(trimmedContinent)}$`,
+        "i",
+      );
+    }
     const trimmedCountry = String(country || "").trim();
     if (trimmedCountry) {
       filter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
@@ -799,6 +900,7 @@ const getCompanies = async (req, res, next) => {
       filter.$or = [
         { companyName: searchRegex },
         { industry: searchRegex },
+        { companyContinent: searchRegex },
         { companyCountry: searchRegex },
         { companyState: searchRegex },
         { companyCity: searchRegex },
@@ -846,14 +948,51 @@ const sortDistinct = (values = []) =>
     (a, b) => a.localeCompare(b),
   );
 
+// A company's "vertical" is its company type, which isn't kept in one place:
+// the workspace holds the real business types, older rows only have the
+// free-text `industry`, and a company with a website has its template's own
+// vertical. Merge them into one deduped list (case-insensitive) so the table
+// can render every vertical the company actually operates in.
+const toVerticalList = (...sources) => {
+  const seen = new Set();
+  const out = [];
+  sources.forEach((source) => {
+    const values = Array.isArray(source) ? source : [source];
+    values.forEach((value) => {
+      // `industry` is one free-text string ("Co-Working, Cafe, Meeting
+      // Rooms"), so a single source can describe several verticals.
+      String(value || "")
+        .split(/[,;|]/)
+        .forEach((part) => {
+          const label = part.trim();
+          if (!label) return;
+          const key = label.toLowerCase();
+          if (seen.has(key)) return;
+          seen.add(key);
+          out.push(label);
+        });
+    });
+  });
+  return out;
+};
+
 // Returns cascading location options: states are scoped to the selected
 // country, cities to the selected state, so the Companies filter dropdowns
 // only ever show combinations that exist in the data.
 const getCompanyLocations = async (req, res, next) => {
   try {
-    const { country, state } = req.query;
+    const { continent, country, state } = req.query;
 
-    const countryFilter = {};
+    const continentFilter = {};
+    const trimmedContinent = String(continent || "").trim();
+    if (trimmedContinent) {
+      continentFilter.companyContinent = new RegExp(
+        `^${escapeRegex(trimmedContinent)}$`,
+        "i",
+      );
+    }
+
+    const countryFilter = { ...continentFilter };
     const trimmedCountry = String(country || "").trim();
     if (trimmedCountry) {
       countryFilter.companyCountry = new RegExp(`^${escapeRegex(trimmedCountry)}$`, "i");
@@ -865,13 +1004,15 @@ const getCompanyLocations = async (req, res, next) => {
       stateFilter.companyState = new RegExp(`^${escapeRegex(trimmedState)}$`, "i");
     }
 
-    const [countries, states, cities] = await Promise.all([
-      HostCompany.distinct("companyCountry", {}),
+    const [continents, countries, states, cities] = await Promise.all([
+      HostCompany.distinct("companyContinent", {}),
+      HostCompany.distinct("companyCountry", continentFilter),
       HostCompany.distinct("companyState", countryFilter),
       HostCompany.distinct("companyCity", stateFilter),
     ]);
 
     return res.status(200).json({
+      continents: sortDistinct(continents),
       countries: sortDistinct(countries),
       states: sortDistinct(states),
       cities: sortDistinct(cities),
@@ -899,11 +1040,11 @@ const getHostLeadCompanies = async (req, res, next) => {
     // seeing their old plan (exactly today's duplicate-lead-record bug).
     const allWorkspaces = await Workspace.find({ isActive: true })
       .select(
-        "_id companyId businessName selectedPlan purchasedPlan planStatus planStartDate planExpiryDate",
+        "_id companyId businessName selectedPlan businessTypes purchasedPlan planStatus planStartDate planExpiryDate",
       )
       .lean();
     const templates = await WebsiteTemplate.find({ isDeleted: { $ne: true } })
-      .select("searchKey companyId companyName isActive isPublished")
+      .select("searchKey companyId companyName isActive isPublished vertical")
       .lean();
 
     const companiesWithPlanStatus = companies.map((company) => {
@@ -965,6 +1106,16 @@ const getHostLeadCompanies = async (req, res, next) => {
         ...company,
         workspaceId: matchedWorkspace?._id ? String(matchedWorkspace._id) : "",
         workspaceCompanyId: String(matchedWorkspace?.companyId || "").trim(),
+        // Same as the Companies list: merge the workspace's business types
+        // with the record's own free-text industry.
+        businessTypes: Array.isArray(matchedWorkspace?.businessTypes)
+          ? matchedWorkspace.businessTypes
+          : [],
+        verticals: toVerticalList(
+          matchedWorkspace?.businessTypes,
+          company?.industry,
+          matchedTemplate?.vertical,
+        ),
         selectedPlan:
           matchedWorkspace?.selectedPlan ||
           company?.selectedPlan ||
@@ -1175,6 +1326,172 @@ const startTrial = async (req, res, next) => {
   }
 };
 
+// PATCH /api/hosts/start-trial-checkout  { companyId, companyName, email, name }
+// Card-backed version of startTrial above: instead of flipping the DB
+// straight to an active trial, this creates a Stripe Checkout Session in
+// subscription mode — the host enters a card on Stripe's hosted page. The
+// subscription activates immediately (no Stripe trial_period_days) with a
+// 100%-off-once discount on its first invoice, so that invoice is a real
+// $199 charge discounted to $0 — full "plan price, discount, $0 total"
+// breakdown visible, like a normal receipt — instead of Stripe's own trial
+// mechanic, which skips billing entirely and shows a blank placeholder.
+// Stripe auto-charges the real rate from the second invoice onward — no
+// autopay logic to write ourselves, Stripe does the charging. The actual
+// DB flip (same shape as startTrial's) happens once Stripe confirms the
+// session, via handleTrialSubscriptionCheckoutCompleted
+// (planPaymentControllers.js) on the checkout.session.completed webhook —
+// never here, since the host hasn't necessarily finished entering their
+// card yet when this returns.
+const startTrialCheckout = async (req, res, next) => {
+  try {
+    const { companyId, companyName, email, name } = req.body || {};
+    if (!companyId) {
+      return res.status(400).json({ message: "companyId is required" });
+    }
+    if (!email) {
+      return res.status(400).json({ message: "email is required" });
+    }
+    const normalizedCompanyId = String(companyId).trim();
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    const { freeTrialEnabled, freeTrialDurationDays } = await getFreeTrialConfig();
+    if (!freeTrialEnabled) {
+      return res.status(403).json({ message: "The free trial offer is not currently active." });
+    }
+
+    const leadCompany = await HostLeadCompany.findOneAndUpdate(
+      { companyId: normalizedCompanyId },
+      {
+        $setOnInsert: {
+          companyId: normalizedCompanyId,
+          companyName: companyName || normalizedCompanyId,
+          pocEmail: normalizedEmail,
+          pocName: name || "",
+        },
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    if (leadCompany.hasUsedTrial) {
+      return res.status(409).json({ message: "This company has already used its free trial." });
+    }
+
+    let stripeCustomerId = leadCompany.stripeCustomerId;
+    if (!stripeCustomerId) {
+      const customer = await stripe.customers.create({
+        email: normalizedEmail,
+        name: name || companyName || normalizedCompanyId,
+        metadata: { companyId: normalizedCompanyId },
+      });
+      stripeCustomerId = customer.id;
+      await HostLeadCompany.updateOne(
+        { _id: leadCompany._id },
+        { $set: { stripeCustomerId } },
+      );
+    }
+
+    const professionalPlanPriceUsd = await getProfessionalPlanPriceUsd();
+    const frontendBaseUrl = resolveHostPanelFrontendUrl();
+
+    const sessionParams = {
+      mode: "subscription",
+      customer: stripeCustomerId,
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(professionalPlanPriceUsd * 100),
+            recurring: { interval: "month" },
+            product_data: {
+              name: `Professional Plan (${companyName || normalizedCompanyId})`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      // No trial_period_days — the free trial IS the 100%-off-once
+      // discount below applied to a real, immediately-active
+      // subscription. That makes the first invoice a genuine $199
+      // charge discounted to $0 (full breakdown visible on the invoice
+      // itself), instead of Stripe's own trial mechanic, which skips
+      // billing entirely and shows a blank "free trial" placeholder with
+      // no price to discount.
+      client_reference_id: normalizedCompanyId,
+      success_url: `${frontendBaseUrl}/trial-success?session_id={CHECKOUT_SESSION_ID}`,
+      // Backing out of Stripe's page just returns to the dashboard —
+      // nothing was charged or changed, so no dedicated page is needed.
+      cancel_url: `${frontendBaseUrl}/dashboard`,
+    };
+
+    // Exactly ONE discount, never both: a staff-named marketing code
+    // (Plan Pricing settings) if one is active and this company hasn't
+    // already redeemed it — tracked by OUR OWN redeemedPromotionCodeId,
+    // independent of whatever duration that code's coupon has, so even a
+    // "forever" coupon is only ever handed to a company once here; staff
+    // can allow exactly one further redemption via promoCodeRetryAllowed
+    // (Trial Companies modal). Otherwise, the system's own always-on
+    // free-trial coupon — this is what guarantees every first-time
+    // company gets its one free month even if no marketing code is set.
+    const activeTrialPromotionCodeId = await getActiveTrialPromotionCodeId();
+    const canApplyNamedPromo =
+      Boolean(activeTrialPromotionCodeId) &&
+      (!leadCompany.redeemedPromotionCodeId || leadCompany.promoCodeRetryAllowed);
+
+    let session;
+    if (canApplyNamedPromo) {
+      try {
+        session = await stripe.checkout.sessions.create({
+          ...sessionParams,
+          discounts: [{ promotion_code: activeTrialPromotionCodeId }],
+          metadata: {
+            companyId: normalizedCompanyId,
+            appliedPromotionCodeId: activeTrialPromotionCodeId,
+            trialDays: String(freeTrialDurationDays),
+          },
+        });
+      } catch (error) {
+        console.error(
+          "Active trial promo code failed, falling back to the system free-trial coupon:",
+          error.message,
+        );
+      }
+    }
+    if (!session) {
+      const systemFreeTrialCouponId = await getOrCreateSystemFreeTrialCoupon();
+      session = await stripe.checkout.sessions.create({
+        ...sessionParams,
+        discounts: [{ coupon: systemFreeTrialCouponId }],
+        metadata: { companyId: normalizedCompanyId, trialDays: String(freeTrialDurationDays) },
+      });
+    }
+
+    // Pre-created as "pending" so /trial-success's polling page has a row
+    // to see immediately after Stripe redirects back — without this, the
+    // window before the webhook lands would look identical to "no such
+    // payment" instead of "still confirming". The webhook
+    // (handleTrialSubscriptionCheckoutCompleted) upserts this same row by
+    // stripeCheckoutSessionId rather than creating a second one.
+    await PlanPaymentLink.create({
+      companyId: normalizedCompanyId,
+      leadId: leadCompany._id,
+      leadName: name || leadCompany.pocName,
+      leadEmail: normalizedEmail,
+      companyName: companyName || leadCompany.companyName,
+      plan: "professional",
+      changeType: "initial",
+      billingCycle: "monthly",
+      amount: 0,
+      currency: "usd",
+      stripeCustomerId,
+      stripeCheckoutSessionId: session.id,
+      status: "pending",
+    });
+
+    return res.status(200).json({ checkoutUrl: session.url });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // GET /api/hosts/trial-companies — every company that has ever started the
 // free trial (trialStartAt set), for the Plan Pricing page's "who's on
 // trial" view. Not the full company list — only ones with trial history.
@@ -1182,7 +1499,7 @@ const getTrialCompanies = async (req, res, next) => {
   try {
     const companies = await HostLeadCompany.find({ trialStartAt: { $ne: null } })
       .select(
-        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer",
+        "companyId companyName pocName pocEmail trialStartAt trialEndAt isTrialActive hasUsedTrial bonusTrialOffer redeemedPromotionCodeId promoCodeRetryAllowed",
       )
       .sort({ isTrialActive: -1, trialEndAt: -1 })
       .lean();
@@ -1227,6 +1544,32 @@ const setBonusTrialOffer = async (req, res, next) => {
     if (!company) return res.status(404).json({ message: "Host lead company not found" });
 
     return res.status(200).json({ message: "Bonus trial offer updated", company });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// PATCH /api/hosts/trial-companies/:companyId/promo-retry  { active }
+// Staff override for a SPECIFIC company that has already redeemed the
+// auto-apply trial promo code once (redeemedPromotionCodeId is set) — lets
+// them redeem it (or whatever code is currently active) one more time.
+// Consumed automatically the moment their next checkout actually uses it
+// (see handleTrialSubscriptionCheckoutCompleted), so this only ever grants
+// one extra redemption per flip, never a standing exemption.
+const setPromoCodeRetryAllowed = async (req, res, next) => {
+  try {
+    const { companyId } = req.params;
+    const { active } = req.body || {};
+    if (!companyId) return res.status(400).json({ message: "companyId is required" });
+
+    const company = await HostLeadCompany.findOneAndUpdate(
+      { companyId: String(companyId).trim() },
+      { $set: { promoCodeRetryAllowed: Boolean(active) } },
+      { new: true },
+    );
+    if (!company) return res.status(404).json({ message: "Host lead company not found" });
+
+    return res.status(200).json({ message: "Promo code retry updated", company });
   } catch (error) {
     next(error);
   }
@@ -2801,6 +3144,7 @@ module.exports = {
   getNomadCompanyListingsForClaim,
   rejectExistingCompanyClaim,
   createCompany,
+  createDirectoryCompany,
   editCompany,
   activateProduct,
   setListingPublicStatus,
@@ -2811,8 +3155,10 @@ module.exports = {
   sendUpgradePaymentLink,
   requestUpgradePlan,
   startTrial,
+  startTrialCheckout,
   getTrialCompanies,
   setBonusTrialOffer,
+  setPromoCodeRetryAllowed,
   claimBonusTrial,
   updateRequestedPlanModules,
   updateUpgradePaymentStatus,

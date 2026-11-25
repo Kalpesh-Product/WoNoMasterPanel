@@ -1,4 +1,5 @@
 import React from "react";
+import { FormControl, MenuItem, Select } from "@mui/material";
 import { Download, FileSpreadsheet, ImageOff, UploadCloud, X } from "lucide-react";
 
 // Shared visual shell for every Data Upload tab — matches Listings Data
@@ -129,9 +130,7 @@ export const UploadSubmitButton = ({ onClick, disabled, pending, label, pendingL
   </button>
 );
 
-// Restyles a MUI <TextField select> to match the slate/blue look used
-// everywhere else here, for the few pickers (searchable company list) that
-// still need MUI instead of a native <select>.
+// Styles the MUI upload pickers to match the slate and blue upload panels.
 export const muiFieldSx = {
   "& .MuiOutlinedInput-root": {
     borderRadius: "0.75rem",
@@ -145,6 +144,23 @@ export const muiFieldSx = {
   "& .MuiInputLabel-root": { fontSize: "0.75rem", fontWeight: 500 },
   "& .MuiInputLabel-root.Mui-focused": { color: "#2563EB" },
 };
+
+export const DropdownLogo = ({ src }) => (
+  <span aria-hidden="true" className="mr-2 inline-flex h-5 w-5 shrink-0">
+    {src && (
+      <img
+        key={src}
+        src={src}
+        alt=""
+        loading="lazy"
+        className="h-full w-full rounded object-contain"
+        onError={(event) => {
+          event.currentTarget.hidden = true;
+        }}
+      />
+    )}
+  </span>
+);
 
 // A thumbnail for an existing, already-uploaded image. Shows a clean
 // "Unavailable" placeholder instead of the browser's broken-image glyph
@@ -196,25 +212,43 @@ export const UploadActions = ({ onUpload, onReset, uploadLabel, pendingLabel, up
   </div>
 );
 
-export const selectCls =
-  "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
+export const SelectField = ({ label, value, onChange, options, disabled }) => {
+  const id = React.useId();
+  const labelId = `${id}-label`;
 
-export const SelectField = ({ label, value, onChange, options, disabled }) => (
-  <div>
-    <label className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
-      {label}
-    </label>
-    <select
-      className={`${selectCls} mt-1`}
-      value={value}
+  return (
+    <FormControl
+      fullWidth
+      size="small"
       disabled={disabled}
-      onChange={(event) => onChange(event.target.value)}
+      className="font-pmedium"
+      sx={muiFieldSx}
     >
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+      <span
+        id={labelId}
+        className="text-[10px] uppercase tracking-widest text-slate-400"
+      >
+        {label}
+      </span>
+      <Select
+        id={id}
+        labelId={labelId}
+        className="mt-1"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        sx={{
+          fontFamily: "inherit",
+          color: "#0f172a",
+          "& .MuiSelect-select": { paddingBlock: "0.625rem" },
+          "&.Mui-disabled": { backgroundColor: "#f1f5f9" },
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option} value={option} sx={{ fontSize: "0.75rem" }}>
+            {option}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+};

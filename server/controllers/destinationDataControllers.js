@@ -6,6 +6,10 @@ const WonoDestinationRanking = require("../models/WonoDestinationRanking");
 const priorityLabels = { P1: "Immediate Priority", P2: "High Priority", P3: "Medium Priority", P4: "Low Priority" };
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const LISTINGS_INITIAL_WAIT_MS = 750;
+// Minimum gap between two attempts when a source is down/empty, so client
+// polling cannot hammer an already struggling Nomads backend.
+const REFRESH_RETRY_MS = 30 * 1000;
 // Some Nomads collections are abnormally slow to query right now — `blogs`
 // alone (only ~11MB / 1062 docs) measured over 2 minutes for a plain sorted
 // find, which points to a real problem on the Nomads DB side (missing
@@ -28,9 +32,10 @@ const destinationRefreshPromises = {
   content: null,
   listings: null,
 };
+const destinationRefreshAttempts = { content: 0, listings: 0 };
 const nomadsCompanyListingsCache = { items: null, fetchedAt: 0 };
 let nomadsCompanyListingsRefreshPromise = null;
-
+let nomadsListingsRefreshAttemptAt = 0;
 const toArray = (payload) => {
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
@@ -170,21 +175,27 @@ const normalizeDestination = (row) =>
     "-",
   );
 
+const requestNomadsRows = async (path, timeout = FETCH_TIMEOUT_MS) => {
+  const response = await axios.get(`${NOMADS_BASE_URL}${path}`, {
+    timeout,
+    headers: process.env.NOMADS_ADMIN_API_KEY
+      ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
+      : {},
+  });
+  return toArray(response.data);
+};
+
 const fetchNomadsRows = async (path) => {
   try {
-    const response = await axios.get(`${NOMADS_BASE_URL}${path}`, {
-      timeout: FETCH_TIMEOUT_MS,
-      headers: process.env.NOMADS_ADMIN_API_KEY
-        ? { "x-admin-api-key": process.env.NOMADS_ADMIN_API_KEY }
-        : {},
-    });
-    return toArray(response.data);
+    return await requestNomadsRows(path);
   } catch (error) {
     console.error(`Failed to fetch destination source ${path}:`, error.message);
     return [];
   }
 };
 
+// Listing details still read the full listing records. The summary uses
+// grouped counts when the Nomads server supports them.
 const refreshNomadsCompanyListingsCache = () => {
   if (!nomadsCompanyListingsRefreshPromise) {
     nomadsCompanyListingsRefreshPromise = (async () => {
@@ -197,8 +208,10 @@ const refreshNomadsCompanyListingsCache = () => {
         return previousItems;
       }
 
+      // An empty cold crawl is not a successful refresh — leave the cache
+      // stale so the next poll can try again after the retry cooldown.
       nomadsCompanyListingsCache.items = items;
-      nomadsCompanyListingsCache.fetchedAt = Date.now();
+      nomadsCompanyListingsCache.fetchedAt = items.length ? Date.now() : 0;
       return items;
     })().finally(() => {
       nomadsCompanyListingsRefreshPromise = null;
@@ -208,37 +221,86 @@ const refreshNomadsCompanyListingsCache = () => {
   return nomadsCompanyListingsRefreshPromise;
 };
 
-const fetchNomadsCompanyListings = async () => {
+// Non-blocking variant used by request handlers: a cold cache must never hold
+// the HTTP response hostage while the Nomads backend is slow/unavailable.
+// The caller gets an empty page plus a refresh flag and polls until the
+// background crawl lands in the cache.
+const getNomadsCompanyListingsState = () => {
   const isFresh =
     nomadsCompanyListingsCache.items &&
     Date.now() - nomadsCompanyListingsCache.fetchedAt < CACHE_TTL_MS;
 
-  if (isFresh) return nomadsCompanyListingsCache.items;
+  if (isFresh) {
+    return {
+      items: nomadsCompanyListingsCache.items,
+      isRefreshing: false,
+      isInitialLoading: false,
+    };
+  }
 
-  if (nomadsCompanyListingsCache.items) {
+  if (
+    !nomadsCompanyListingsRefreshPromise &&
+    Date.now() - nomadsListingsRefreshAttemptAt >= REFRESH_RETRY_MS
+  ) {
+    nomadsListingsRefreshAttemptAt = Date.now();
     refreshNomadsCompanyListingsCache().catch((error) => {
       console.error("Background Nomads company listings refresh failed:", error.message);
     });
-    return nomadsCompanyListingsCache.items;
   }
 
-  return refreshNomadsCompanyListingsCache();
+  return {
+    items: nomadsCompanyListingsCache.items || [],
+    isRefreshing: true,
+    isInitialLoading: !nomadsCompanyListingsCache.items,
+  };
+};
+
+const fetchNomadsCompanyListings = async () => {
+  const state = getNomadsCompanyListingsState();
+  if (state.isInitialLoading) {
+    // Used by buildDestinationStats, which runs as a background refresh and
+    // needs to wait for the crawl rather than return an empty snapshot.
+    await nomadsCompanyListingsRefreshPromise;
+    return nomadsCompanyListingsCache.items || [];
+  }
+  return state.items;
+};
+
+const fetchNomadListingCounts = async () => {
+  try {
+    return await requestNomadsRows("/company/destination-listing-counts", 15000);
+  } catch (error) {
+    if (error.response?.status !== 404) throw error;
+
+    // A Master Panel deployment may precede the new Nomads endpoint.
+    return fetchNomadsCompanyListings();
+  }
+};
+
+let destinationSourcesPromise;
+const fetchDestinationSources = () => {
+  if (!destinationSourcesPromise) {
+    // Both summaries use these sources. Share the work while requests overlap.
+    destinationSourcesPromise = Promise.all([
+      HostCompany.find()
+        .select("companyCountry companyState companyCity companyContinent")
+        .lean(),
+      fetchNomadsRows("/blogs/destination-counts"),
+      fetchNomadsRows("/news/destination-counts"),
+      fetchNomadsRows("/events"),
+      fetchNomadsRows("/places"),
+      fetchNomadsRows("/restaurants"),
+    ]).finally(() => {
+      destinationSourcesPromise = null;
+    });
+  }
+  return destinationSourcesPromise;
 };
 
 const buildDestinationStats = async ({ includeListings = false } = {}) => {
-  const [companies, blogs, news, events, places, restaurants, listings] = await Promise.all([
-    HostCompany.find()
-      .select("companyCountry companyState companyCity companyContinent")
-      .lean(),
-    // Pre-aggregated on the Nomads side (destination + count only) — pulling
-    // full blog/news documents just to count them by destination was taking
-    // 50-120s+ over this link; the grouped summary takes well under a second.
-    fetchNomadsRows("/blogs/destination-counts"),
-    fetchNomadsRows("/news/destination-counts"),
-    fetchNomadsRows("/events"),
-    fetchNomadsRows("/places"),
-    fetchNomadsRows("/restaurants"),
-    includeListings ? fetchNomadsCompanyListings() : Promise.resolve([]),
+  const [[companies, blogs, news, events, places, restaurants], listings] = await Promise.all([
+    fetchDestinationSources(),
+    includeListings ? fetchNomadListingCounts() : Promise.resolve([]),
   ]);
 
   const destinationMap = new Map();
@@ -341,8 +403,8 @@ const buildDestinationStats = async ({ includeListings = false } = {}) => {
     if (!countField) return;
     const entry = ensureDestination(listing);
     if (!entry) return;
-    entry[countField] += 1;
-    if (listing.isPublic === true) entry.publicListingCount += 1;
+    entry[countField] += listing.count ?? 1;
+    entry.publicListingCount += listing.publicCount ?? (listing.isPublic === true ? 1 : 0);
   });
 
   return destinationEntries
@@ -379,11 +441,14 @@ const refreshDestinationCache = (scope, options) => {
     destinationRefreshPromises[scope] = buildDestinationStats(options)
       .then((items) => {
         const previousItems = destinationCaches[scope].items;
-        if (scope === "listings" && items.length === 0 && previousItems?.length) {
+        if (items.length === 0 && previousItems?.length) {
           destinationCaches[scope] = { items: previousItems, fetchedAt: Date.now() };
           return previousItems;
         }
-        destinationCaches[scope] = { items, fetchedAt: Date.now() };
+        destinationCaches[scope] = {
+          items,
+          fetchedAt: items.length ? Date.now() : 0,
+        };
         return items;
       })
       .finally(() => {
@@ -393,19 +458,38 @@ const refreshDestinationCache = (scope, options) => {
   return destinationRefreshPromises[scope];
 };
 
-const getCachedDestinationStats = async ({ includeListings = false } = {}) => {
+// Same non-blocking contract as getNomadsCompanyListingsState: serve whatever
+// is cached immediately, refresh in the background, and tell the client to
+// poll while the first crawl is still running. Previously a cold cache made
+// this endpoint wait on multi-minute Nomads queries, so the page looked stuck.
+const getCachedDestinationStats = ({ includeListings = false } = {}) => {
   const scope = includeListings ? "listings" : "content";
   const destinationCache = destinationCaches[scope];
   const isFresh =
     destinationCache.items && Date.now() - destinationCache.fetchedAt < CACHE_TTL_MS;
-  if (isFresh) return destinationCache.items;
-  if (destinationCache.items) {
+  if (isFresh) {
+    return {
+      items: destinationCache.items,
+      isRefreshing: false,
+      isInitialLoading: false,
+    };
+  }
+
+  if (
+    !destinationRefreshPromises[scope] &&
+    Date.now() - destinationRefreshAttempts[scope] >= REFRESH_RETRY_MS
+  ) {
+    destinationRefreshAttempts[scope] = Date.now();
     refreshDestinationCache(scope, { includeListings }).catch((error) => {
       console.error("Background destination refresh failed:", error.message);
     });
-    return destinationCache.items;
   }
-  return refreshDestinationCache(scope, { includeListings });
+
+  return {
+    items: destinationCache.items || [],
+    isRefreshing: true,
+    isInitialLoading: !destinationCache.items,
+  };
 };
 
 const summarize = (items) =>
@@ -455,7 +539,11 @@ const hasListingData = (item) =>
   0;
 
 const getDestinationListingDetails = async (req, res) => {
-  const listings = await fetchNomadsCompanyListings();
+  const {
+    items: listings,
+    isRefreshing,
+    isInitialLoading,
+  } = getNomadsCompanyListingsState();
   const requestedType = req.query.detailType;
   const destinationKey = normalizeKey(req.query.destination);
   const search = normalizeSearchValue(req.query.search);
@@ -490,9 +578,22 @@ const getDestinationListingDetails = async (req, res) => {
     return String(left.companyTitle || "").localeCompare(String(right.companyTitle || ""));
   });
 
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const start = (page - 1) * limit;
+  const total = filtered.length;
+
   return res.status(200).json({
-    items: filtered.map((item, index) => ({ ...item, srNo: index + 1 })),
-    total: filtered.length,
+    items: filtered.slice(start, start + limit).map((item, index) => ({
+      ...item,
+      srNo: start + index + 1,
+    })),
+    page,
+    limit,
+    total,
+    hasMore: page * limit < total,
+    isRefreshing,
+    isInitialLoading,
   });
 };
 
@@ -503,21 +604,35 @@ const getDestinationsData = async (req, res, next) => {
     }
 
     const activeTab = normalizeSearchValue(req.query.tab) === "listings" ? "listings" : "content";
-    const allItems = await getCachedDestinationStats({
-      includeListings: activeTab === "listings",
-    });
+    const includeListings = activeTab === "listings";
+    let snapshot = getCachedDestinationStats({ includeListings });
+    const listingsRefresh = destinationRefreshPromises.listings;
+    if (includeListings && snapshot.isInitialLoading && listingsRefresh) {
+      // A quick refresh can satisfy the first request without a client poll.
+      let timer;
+      await Promise.race([
+        listingsRefresh.catch(() => {}),
+        new Promise((resolve) => { timer = setTimeout(resolve, LISTINGS_INITIAL_WAIT_MS); }),
+      ]);
+      clearTimeout(timer);
+      snapshot = getCachedDestinationStats({ includeListings });
+    }
+    const { items: allItems, isRefreshing, isInitialLoading } = snapshot;
     const contentItems = allItems.filter(hasContentData);
     const scopedItems = activeTab === "listings"
       ? allItems.filter(hasListingData)
       : contentItems;
+    const continent = normalizeSearchValue(req.query.continent);
     const country = normalizeSearchValue(req.query.country);
     const state = normalizeSearchValue(req.query.state);
-    const city = normalizeSearchValue(req.query.city);
     const search = normalizeSearchValue(req.query.search);
 
-    const countryScoped = country
-      ? scopedItems.filter((item) => normalizeSearchValue(item.country) === country)
+    const continentScoped = continent
+      ? scopedItems.filter((item) => normalizeSearchValue(item.continent) === continent)
       : scopedItems;
+    const countryScoped = country
+      ? continentScoped.filter((item) => normalizeSearchValue(item.country) === country)
+      : continentScoped;
     const stateScoped = state
       ? countryScoped.filter((item) =>
           item.states.some((value) => normalizeSearchValue(value) === state),
@@ -525,11 +640,6 @@ const getDestinationsData = async (req, res, next) => {
       : countryScoped;
 
     let filtered = stateScoped;
-    if (city) {
-      filtered = filtered.filter((item) =>
-        item.cities.some((value) => normalizeSearchValue(value) === city),
-      );
-    }
     if (search) {
       filtered = filtered.filter((item) =>
         [
@@ -547,14 +657,14 @@ const getDestinationsData = async (req, res, next) => {
     const start = (page - 1) * limit;
     const total = filtered.length;
 
+    const continents = Array.from(
+      new Set(scopedItems.map((item) => item.continent).filter((value) => value && value !== "-")),
+    ).sort((a, b) => a.localeCompare(b));
     const countries = Array.from(
-      new Set(scopedItems.map((item) => item.country).filter(Boolean)),
+      new Set(continentScoped.map((item) => item.country).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
     const states = Array.from(
       new Set(countryScoped.flatMap((item) => item.states).filter(Boolean)),
-    ).sort((a, b) => a.localeCompare(b));
-    const cities = Array.from(
-      new Set(stateScoped.flatMap((item) => item.cities).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
 
     return res.status(200).json({
@@ -566,11 +676,13 @@ const getDestinationsData = async (req, res, next) => {
       limit,
       total,
       hasMore: page * limit < total,
+      isRefreshing,
+      isInitialLoading,
       counts: {
         destinations: contentItems.length,
         ...summarize(scopedItems),
       },
-      filterOptions: { countries, states, cities },
+      filterOptions: { continents, countries, states },
     });
   } catch (error) {
     next(error);

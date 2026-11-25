@@ -351,7 +351,7 @@ const ContributorLeads = () => {
           <div className="mb-1 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <h2 className="text-title font-pmedium uppercase text-primary">
-                Contributor Leads
+                {activeTab.label}
               </h2>
             </div>
             <p className="text-xs font-pmedium text-slate-500">

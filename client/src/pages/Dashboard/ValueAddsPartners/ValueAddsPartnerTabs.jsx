@@ -5,103 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { NOMADS_BACKEND_URL } from "../../../constants/api";
 import ValueAddsPartnersTable from "./ValueAddsPartnersTable";
-
-const commonColumns = [
-  { field: "partnerName", headerName: "Partner Name" },
-  { field: "companyName", headerName: "Company" },
-  { field: "region", headerName: "Region" },
-  { field: "contactPerson", headerName: "Contact Person" },
-  { field: "email", headerName: "Email" },
-  { field: "phone", headerName: "Phone" },
-  { field: "status", headerName: "Status" },
-  { field: "lastUpdated", headerName: "Last Updated" },
-];
-
-const partnerRows = {
-  "activation-support": [
-    {
-      id: "activation-1",
-      partnerName: "LaunchBridge",
-      companyName: "BridgeOps",
-      region: "India",
-      contactPerson: "Riya Kapoor",
-      email: "launch@example.com",
-      phone: "+91 98765 43210",
-      status: "Active",
-      lastUpdated: "2026-08-04",
-      notes: "Supports partner onboarding and activation checklists.",
-    },
-    {
-      id: "activation-2",
-      partnerName: "GoLive Partners",
-      companyName: "GoLive Services",
-      region: "Singapore",
-      contactPerson: "Daniel Tan",
-      email: "golive@example.com",
-      phone: "+65 8000 1020",
-      status: "Inactive",
-      lastUpdated: "2026-07-20",
-      notes: "Commercial terms require renewal before activation.",
-    },
-  ],
-  "company-setup": [
-    {
-      id: "setup-1",
-      partnerName: "Entity Works",
-      companyName: "Entity Works Advisory",
-      region: "United Kingdom",
-      contactPerson: "Meera Shah",
-      email: "setup@example.com",
-      phone: "+44 20 0000 0912",
-      status: "Active",
-      lastUpdated: "2026-08-01",
-      notes: "Covers company setup, tax registration, and local documentation.",
-    },
-  ],
-  consultation: [
-    {
-      id: "consultation-1",
-      partnerName: "Borderless Advisory",
-      companyName: "Borderless Group",
-      region: "Global",
-      contactPerson: "Omar Haddad",
-      email: "advisory@example.com",
-      phone: "+1 415 000 0191",
-      status: "Active",
-      lastUpdated: "2026-08-05",
-      notes:
-        "General consultation partner for expansion and mobility planning.",
-    },
-  ],
-  workation: [
-    {
-      id: "workation-1",
-      partnerName: "Remote Retreats",
-      companyName: "Remote Retreats Co.",
-      region: "Bali",
-      contactPerson: "Nisha Rao",
-      email: "retreats@example.com",
-      phone: "+62 812 0000 9821",
-      status: "Pending",
-      lastUpdated: "2026-07-30",
-      notes: "Workation stay packages and local experience coordination.",
-    },
-  ],
-  "become-a-contributor": [
-    {
-      id: "contributor-1",
-      partnerName: "Creator Circle",
-      companyName: "Creator Circle",
-      region: "Remote",
-      contactPerson: "Elena Morris",
-      email: "contributors@example.com",
-      phone: "+1 646 000 1172",
-      status: "Active",
-      lastUpdated: "2026-08-06",
-      notes: "Contributor network for destination guides and service content.",
-    },
-  ],
-};
+import { partnerQueryOptions } from "./partnerTabsConfig";
 
 const visaSupportColumns = [
   { field: "company", headerName: "Company" },
@@ -639,15 +543,7 @@ export const VisaSupportPartnersTable = () => {
     isPending,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["valueAddsPartners", "visa-support"],
-    queryFn: async () => {
-      const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/visa-support/partners`,
-      );
-      return response?.data?.data || [];
-    },
-  });
+  } = useQuery(partnerQueryOptions("visa-support"));
 
   const rows = useMemo(() => flattenVisaSupportPartners(data), [data]);
 
@@ -718,17 +614,7 @@ export const ActivationSupportPartnersTable = () => {
     isPending,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["valueAddsPartners", "activation-support"],
-    queryFn: async () => {
-      const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/activation-support/partners`,
-        { timeout: 30000 },
-      );
-      return response?.data?.data || [];
-    },
-    retry: false,
-  });
+  } = useQuery(partnerQueryOptions("activation-support"));
 
   const rows = useMemo(() => flattenActivationSupportPartners(data), [data]);
 
@@ -798,17 +684,7 @@ export const CompanySetupPartnersTable = () => {
     isPending,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["valueAddsPartners", "company-setup"],
-    queryFn: async () => {
-      const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/company-setup-support/partners`,
-        { timeout: 30000 },
-      );
-      return response?.data?.data || [];
-    },
-    retry: false,
-  });
+  } = useQuery(partnerQueryOptions("company-setup"));
 
   const rows = useMemo(() => flattenCompanySetupSupportPartners(data), [data]);
 
@@ -878,17 +754,7 @@ export const ConsultationPartnersTable = () => {
     isPending,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["valueAddsPartners", "consultation"],
-    queryFn: async () => {
-      const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/consultation-support/partners`,
-        { timeout: 30000 },
-      );
-      return response?.data?.data || [];
-    },
-    retry: false,
-  });
+  } = useQuery(partnerQueryOptions("consultation"));
 
   const rows = useMemo(() => flattenConsultationSupportPartners(data), [data]);
 
@@ -958,17 +824,7 @@ export const WorkationPartnersTable = () => {
     isPending,
     isError,
     error,
-  } = useQuery({
-    queryKey: ["valueAddsPartners", "workation"],
-    queryFn: async () => {
-      const response = await axios.get(
-        `${NOMADS_BACKEND_URL}/api/workation-support/partners`,
-        { timeout: 30000 },
-      );
-      return response?.data?.data || [];
-    },
-    retry: false,
-  });
+  } = useQuery(partnerQueryOptions("workation"));
 
   const rows = useMemo(() => flattenWorkationSupportPartners(data), [data]);
 
@@ -1029,11 +885,3 @@ export const WorkationPartnersTable = () => {
     />
   );
 };
-
-export const BecomeAContributorPartnersTable = () => (
-  <ValueAddsPartnersTable
-    title="Become a Contributor"
-    rows={partnerRows["become-a-contributor"]}
-    columns={commonColumns}
-  />
-);

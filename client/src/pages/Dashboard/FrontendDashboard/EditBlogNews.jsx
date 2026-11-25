@@ -1,17 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useForm, Controller, useFieldArray } from "react-hook-form";
-import { Typography } from "@mui/material";
-import Input from "@mui/joy/Input";
-import Select from "@mui/joy/Select";
-import Option from "@mui/joy/Option";
-import Textarea from "@mui/joy/Textarea";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import PageFrame from "../../../components/Pages/PageFrame";
 import PrimaryButton from "../../../components/PrimaryButton";
-import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import SecondaryButton from "../../../components/SecondaryButton";
+import WebsiteFormField from "../../../components/WebsiteFormField";
+import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
 
 const defaultValues = {
@@ -83,6 +79,9 @@ const openImagePreview = (event, src) => {
   previewWindow.document.body.appendChild(image);
 };
 
+const fileInputClass = "w-full rounded-xl border border-slate-200/60 p-2.5 text-[13px] font-pmedium text-[#0F172A]";
+const fileLabelClass = "text-[10px] font-pmedium text-slate-500 uppercase tracking-widest";
+
 const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) => {
   const inputRef = useRef(null);
   const [preview, setPreview] = useState("");
@@ -99,9 +98,13 @@ const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) =
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-3">
-      <div className="flex min-w-0 flex-col gap-2">
-        <label className="text-sm text-slate-700">Section Image URL</label>
-        <Input {...field} placeholder="Section Image URL" variant="outlined" color="neutral" disabled={disabled || !!file} />
+      <div className="flex min-w-0 flex-col gap-1">
+        <WebsiteFormField
+          field={field}
+          label="Section Image URL"
+          placeholder="Section Image URL"
+          disabled={disabled || !!file}
+        />
         {(preview || field.value) && (
           <a
             href={preview || field.value}
@@ -115,14 +118,14 @@ const ContentSectionImageInput = ({ field, file, onFileChange, id, disabled }) =
         )}
       </div>
       <div className="flex min-w-0 flex-col gap-2">
-        <label htmlFor={id} className="text-sm text-slate-700">Or upload a section image</label>
+        <label htmlFor={id} className={fileLabelClass}>Or upload a section image</label>
         <input
           id={id}
           ref={inputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           disabled={disabled}
-          className="w-full rounded-lg border border-slate-300 p-2 text-sm"
+          className={fileInputClass}
           onChange={(event) => {
             const selected = event.target.files?.[0];
             if (!selected) return;
@@ -244,6 +247,12 @@ const EditBlogNews = () => {
         { omitStatus: !isEdit },
       );
 
+      if (isRestaurant) {
+        // The detail response includes review records and their count for display.
+        delete cleanData.reviews;
+        delete cleanData.totalReviews;
+      }
+
       const resourceType =
         type === "blog"
           ? "blogs"
@@ -315,12 +324,11 @@ const EditBlogNews = () => {
   return (
     <div className="p-4">
       <PageFrame>
-        <Typography
-          variant="h5"
-          className="mb-6 font-semibold uppercase p-4 my-3"
-        >
-          {isEdit ? "Edit" : "Add"} {type}
-        </Typography>
+        <div className="mb-4">
+          <h2 className="text-title font-pmedium text-primary uppercase">
+            {isEdit ? "Edit" : "Add"} {type}
+          </h2>
+        </div>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -330,21 +338,13 @@ const EditBlogNews = () => {
             name="destination"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Destination</label>
-                <Select
-                  value={field.value || null}
-                  placeholder="Select Destination"
-                  variant="outlined"
-                  color="neutral"
-                  onChange={(_, val) => field.onChange(val)}
-                >
+              <div className="w-full">
+                <WebsiteFormField field={field} select label="Destination">
+                  <option value="">Select Destination</option>
                   {destinations.map((dest) => (
-                    <Option key={dest} value={dest}>
-                      {dest}
-                    </Option>
+                    <option key={dest} value={dest}>{dest}</option>
                   ))}
-                </Select>
+                </WebsiteFormField>
               </div>
             )}
           />
@@ -354,16 +354,8 @@ const EditBlogNews = () => {
               name="serialNumber"
               control={control}
               render={({ field }) => (
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  <label className="text-sm text-slate-700">
-                    Serial Number
-                  </label>
-                  <Input
-                    {...field}
-                    placeholder="Serial number"
-                    variant="outlined"
-                    color="neutral"
-                  />
+                <div className="w-full">
+                  <WebsiteFormField field={field} label="Serial Number" placeholder="Serial number" />
                 </div>
               )}
             />
@@ -373,15 +365,8 @@ const EditBlogNews = () => {
             name="link"
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">Link</label>
-                <Input
-                  {...field}
-                  placeholder="Type URL here"
-                  variant="outlined"
-                  color="neutral"
-                />
-
+              <div className="w-full">
+                <WebsiteFormField field={field} label="Link" placeholder="Type URL here" />
               </div>
             )}
           />
@@ -390,21 +375,19 @@ const EditBlogNews = () => {
             name={titleFieldName}
             control={control}
             render={({ field }) => (
-              <div className="flex flex-col gap-2 w-full mt-4">
-                <label className="text-sm text-slate-700">
-                  {isEvent
-                    ? "Event Name"
-                    : isPlace
-                      ? "Place Name"
-                      : isRestaurant
-                        ? "Restaurant Name"
-                        : "Main Title"}
-                </label>
-                <Input
-                  {...field}
+              <div className="w-full">
+                <WebsiteFormField
+                  field={field}
+                  label={
+                    isEvent
+                      ? "Event Name"
+                      : isPlace
+                        ? "Place Name"
+                        : isRestaurant
+                          ? "Restaurant Name"
+                          : "Main Title"
+                  }
                   placeholder="Type title here"
-                  variant="outlined"
-                  color="neutral"
                 />
               </div>
             )}
@@ -414,14 +397,12 @@ const EditBlogNews = () => {
             name="mainImage"
             control={control}
             render={({ field }) => (
-              <div className={`grid gap-4 w-full mt-4 ${supportsImageUploads ? "col-span-full md:grid-cols-2" : "grid-cols-1"}`}>
-                <div className="flex min-w-0 flex-col gap-2">
-                  <label className="text-sm text-slate-700">Main Image URL</label>
-                  <Input
-                    {...field}
+              <div className={`grid gap-4 w-full ${supportsImageUploads ? "col-span-full md:grid-cols-2" : "grid-cols-1"}`}>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <WebsiteFormField
+                    field={field}
+                    label="Main Image URL"
                     placeholder="Type URL here"
-                    variant="outlined"
-                    color="neutral"
                     disabled={supportsImageUploads && !!mainImageFile}
                   />
                   {supportsImageUploads && (mainImagePreview || field.value) && (
@@ -438,7 +419,7 @@ const EditBlogNews = () => {
                 </div>
                 {supportsImageUploads && (
                   <div className="flex min-w-0 flex-col gap-2">
-                    <label htmlFor="blog-main-image-file" className="text-sm text-slate-700">
+                    <label htmlFor="blog-main-image-file" className={fileLabelClass}>
                       Or upload a main image
                     </label>
                     <input
@@ -447,7 +428,7 @@ const EditBlogNews = () => {
                       type="file"
                       accept="image/jpeg,image/png,image/webp"
                       disabled={isPending}
-                      className="w-full rounded-lg border border-slate-300 p-2 text-sm"
+                      className={fileInputClass}
                       onChange={(event) => {
                         const file = event.target.files?.[0];
                         if (!file) return;
@@ -488,25 +469,17 @@ const EditBlogNews = () => {
 
           {isEvent || isPlace || isRestaurant ? (
             <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-4">
-          {isEvent || isPlace ? (
-            <Controller
-              name="serialNumber"
-              control={control}
-              render={({ field }) => (
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  <label className="text-sm text-slate-700">
-                    Serial Number
-                  </label>
-                  <Input
-                    {...field}
-                    placeholder="Serial number"
-                    variant="outlined"
-                    color="neutral"
-                  />
-                </div>
-              )}
-            />
-          ) : null}
+              {isEvent || isPlace ? (
+                <Controller
+                  name="serialNumber"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="w-full">
+                      <WebsiteFormField field={field} label="Serial Number" placeholder="Serial number" />
+                    </div>
+                  )}
+                />
+              ) : null}
               {(isRestaurant
                 ? [
                     "category",
@@ -536,26 +509,23 @@ const EditBlogNews = () => {
                   name={name}
                   control={control}
                   render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mt-4">
-                      <label className="text-sm text-slate-700">
-                        {name === "eventType"
-                          ? "Event Type"
-                          : name === "placeType"
-                            ? "Place Type"
-                            : name === "restaurantType"
-                              ? "Restaurant Type"
-                              : name === "googleMapsLink"
-                                ? "Google Maps Link"
-                                : name === "timeAvailability"
-                                  ? "Time Availability"
-                                  : name.charAt(0).toUpperCase() +
-                                    name.slice(1)}
-                      </label>
-                      <Input
-                        {...field}
+                    <div className="w-full">
+                      <WebsiteFormField
+                        field={field}
+                        label={
+                          name === "eventType"
+                            ? "Event Type"
+                            : name === "placeType"
+                              ? "Place Type"
+                              : name === "restaurantType"
+                                ? "Restaurant Type"
+                                : name === "googleMapsLink"
+                                  ? "Google Maps Link"
+                                  : name === "timeAvailability"
+                                    ? "Time Availability"
+                                    : name.charAt(0).toUpperCase() + name.slice(1)
+                        }
                         placeholder={name}
-                        variant="outlined"
-                        color="neutral"
                       />
                     </div>
                   )}
@@ -570,15 +540,11 @@ const EditBlogNews = () => {
                   name={name}
                   control={control}
                   render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mt-4">
-                      <label className="text-sm text-slate-700">
-                        {name.charAt(0).toUpperCase() + name.slice(1)}
-                      </label>
-                      <Input
-                        {...field}
+                    <div className="w-full">
+                      <WebsiteFormField
+                        field={field}
+                        label={name.charAt(0).toUpperCase() + name.slice(1)}
                         placeholder={name}
-                        variant="outlined"
-                        color="neutral"
                       />
                     </div>
                   )}
@@ -588,14 +554,8 @@ const EditBlogNews = () => {
                 name="date"
                 control={control}
                 render={({ field }) => (
-                  <div className="flex flex-col gap-2 w-full mt-4">
-                    <label className="text-sm text-slate-700">Date</label>
-                    <Input
-                      {...field}
-                      type="date"
-                      variant="outlined"
-                      color="neutral"
-                    />
+                  <div className="w-full">
+                    <WebsiteFormField field={field} type="date" label="Date" />
                   </div>
                 )}
               />
@@ -603,18 +563,16 @@ const EditBlogNews = () => {
                 name="isActive"
                 control={control}
                 render={({ field }) => (
-                  <div className="flex flex-col gap-2 w-full mt-4">
-                    <label className="text-sm text-slate-700">Status</label>
-                    <Select
-                      value={field.value !== undefined ? field.value : true}
-                      placeholder="Select status"
-                      variant="outlined"
-                      color="neutral"
-                      onChange={(_, val) => field.onChange(val)}
+                  <div className="w-full">
+                    <WebsiteFormField
+                      select
+                      label="Status"
+                      value={field.value === false ? "false" : "true"}
+                      onChange={(event) => field.onChange(event.target.value === "true")}
                     >
-                      <Option value={true}>Active</Option>
-                      <Option value={false}>Inactive</Option>
-                    </Select>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </WebsiteFormField>
                   </div>
                 )}
               />
@@ -626,18 +584,13 @@ const EditBlogNews = () => {
               name={contentFieldName}
               control={control}
               render={({ field }) => (
-                <div className="flex flex-col gap-2 w-full mt-4">
-                  <label className="text-sm text-slate-700">
-                    {isEvent || isPlace || isRestaurant
-                      ? "Short Description"
-                      : "Main Content"}
-                  </label>
-                  <Textarea
-                    {...field}
+                <div className="w-full">
+                  <WebsiteFormField
+                    field={field}
+                    label={isEvent || isPlace || isRestaurant ? "Short Description" : "Main Content"}
                     placeholder="Type content here..."
+                    multiline
                     minRows={4}
-                    variant="outlined"
-                    color="neutral"
                   />
                 </div>
               )}
@@ -676,16 +629,8 @@ const EditBlogNews = () => {
                     name={`sections.${index}.title`}
                     control={control}
                     render={({ field }) => (
-                      <div className="flex min-w-0 flex-col gap-2 w-full mb-3">
-                        <label className="text-sm text-slate-700">
-                          Section Title
-                        </label>
-                        <Input
-                          {...field}
-                          placeholder="Section Title"
-                          variant="outlined"
-                          color="neutral"
-                        />
+                      <div className="w-full mb-3">
+                        <WebsiteFormField field={field} label="Section Title" placeholder="Section Title" />
                       </div>
                     )}
                   />
@@ -704,16 +649,8 @@ const EditBlogNews = () => {
                         }))}
                       />
                     ) : (
-                      <div className="flex flex-col gap-2 w-full mb-3">
-                        <label className="text-sm text-slate-700">
-                          Section Image URL
-                        </label>
-                        <Input
-                          {...field}
-                          placeholder="Section Image URL"
-                          variant="outlined"
-                          color="neutral"
-                        />
+                      <div className="w-full mb-3">
+                        <WebsiteFormField field={field} label="Section Image URL" placeholder="Section Image URL" />
                       </div>
                     )}
                   />
@@ -722,16 +659,13 @@ const EditBlogNews = () => {
                   name={`sections.${index}.content`}
                   control={control}
                   render={({ field }) => (
-                    <div className="flex flex-col gap-2 w-full mb-3">
-                      <label className="text-sm text-slate-700">
-                        Section Content
-                      </label>
-                      <Textarea
-                        {...field}
+                    <div className="w-full mb-3">
+                      <WebsiteFormField
+                        field={field}
+                        label="Section Content"
                         placeholder="Type section content here..."
+                        multiline
                         minRows={3}
-                        variant="outlined"
-                        color="neutral"
                       />
                     </div>
                   )}

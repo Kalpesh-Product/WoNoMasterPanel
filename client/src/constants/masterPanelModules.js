@@ -4,6 +4,13 @@
 //
 // NOTE: submenu `key`s must stay in sync with server/config/masterPanelModules.js.
 
+// A submenu with tabs (e.g. Data Upload) can be granted as the bare key
+// (every tab) or as specific "key.tabKey" entries (just some tabs) — either
+// way, the module itself must still show up in the sidebar/dashboard.
+export const hasModuleAccess = (allowedModules, key) =>
+  allowedModules.includes(key) ||
+  allowedModules.some((m) => m.startsWith(`${key}.`));
+
 import {
   LuLayoutDashboard,
   LuBuilding2,
