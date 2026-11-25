@@ -182,6 +182,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/visa-countries",
           },
           {
+            id: 40,
+            key: "dashboard.visa-countries-v2",
+            title: "Visa Countries (Algo 2.0)",
+            icon: LuPlane,
+            route: "/dashboard/visa-countries-v2",
+          },
+          {
             id: 27,
             key: "dashboard.nomad-click-analytics",
             title: "Nomad Click Analytics",

@@ -174,6 +174,8 @@ import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/Upload
 import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
 import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
 import ListingsDataUpdate from "../pages/Dashboard/FrontendDashboard/DataUpload/ListingsDataUpdate";
+import WorldRankingWeightsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/WorldRankingWeightsUpload";
+import VisaRulesV2Upload from "../pages/Dashboard/FrontendDashboard/DataUpload/VisaRulesV2Upload";
 import ProductsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/ProductsUpload";
 import NewsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/NewsUpload";
 import BlogUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/BlogUpload";
@@ -250,6 +252,7 @@ import HostSupportTickets from "../pages/Dashboard/FrontendDashboard/HostSupport
 // import CustomerSupport from "../pages/Dashboard/CustomerSupport/CustomerSupport";
 
 import VisaCountries from "../pages/Dashboard/FrontendDashboard/VisaCountries";
+import VisaCountriesV2 from "../pages/Dashboard/FrontendDashboard/VisaCountriesV2";
 
 export const routes = createBrowserRouter([
   {
@@ -420,6 +423,14 @@ export const routes = createBrowserRouter([
                       {
                         path: "listings-data-update",
                         element: <ListingsDataUpdate />,
+                      },
+                      {
+                        path: "world-ranking-weights-upload",
+                        element: <WorldRankingWeightsUpload />,
+                      },
+                      {
+                        path: "visa-rules-v2-upload",
+                        element: <VisaRulesV2Upload />,
                       },
                       {
                         path: "company-upload",
@@ -679,6 +690,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "visa-countries",
                     element: <VisaCountries />,
+                  },
+                  {
+                    path: "visa-countries-v2",
+                    element: <VisaCountriesV2 />,
                   },
                   {
                     path: "master-panel-users",

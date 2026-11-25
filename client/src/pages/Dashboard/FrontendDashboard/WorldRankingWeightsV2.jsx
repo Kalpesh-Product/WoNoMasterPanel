@@ -2,29 +2,144 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Search,
-  Plus,
-  Eye,
-  Edit,
-  X,
-  Globe,
   BarChart3,
+  Calculator,
   CheckCircle2,
+  Download,
+  Edit,
+  Globe,
+  Layers3,
+  Plus,
+  Search,
+  Target,
+  X,
   XCircle,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import {
-  calculateScore,
-  getLabelForScore,
   ATTRIBUTE_TIER_LABELS,
   STATEWISE_WEIGHT_FORMULAS,
+  calculateScore,
+  getLabelForScore,
   stateWiseWeightCalculation,
 } from "../../../utils/weightCalculationsV2";
+import {
+  ALGO2_BASE_METRICS,
+  FACTOR_SHORT_LABELS,
+  tierPillClass,
+} from "../../../constants/algo2Metrics";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
+import { downloadCsv } from "../../../utils/csvExport";
+import Algo2MathDrawer from "./Algo2MathDrawer";
 
 const WORLD_RANKING_ENDPOINT = `${NOMADS_API_BASE_URL}/state-wise-weight-v2`;
+
+// Algo 2.0 categories. The Master Panel naming uses `financialStability`,
+// while the calc engine key is `financialStabilityLowRisk` — the alias below
+// keeps the UI copy stable while calculating with the real formula.
+const CATEGORY_DEFINITIONS = {
+  world: {
+    label: "World Ranking (9 Pillars)",
+    attributes: [
+      "bestForNomads",
+      "mostAffordable",
+      "safestCities",
+      "easyVisaLongStay",
+      "strongNomadCommunity",
+      "healthcareFriendly",
+      "startupBusinessOpportunities",
+      "cleanAirEnvironment",
+      "bestWorkInfrastructure",
+    ],
+  },
+  savings: {
+    label: "Increase Your Savings (6)",
+    attributes: [
+      "maximumSavings",
+      "lowTaxation",
+      "purchasingPower",
+      "financialStability",
+      "startupSetupCost",
+      "balancedFinancialLifestyle",
+    ],
+  },
+  remote: {
+    label: "Work From Anywhere (6)",
+    attributes: [
+      "bestForRemoteWorkSetup",
+      "mostAffordable",
+      "bestConnectedCitiesFlights",
+      "strongNomadCommunity",
+      "fastInternetCities",
+      "bestWorkInfrastructure",
+    ],
+  },
+  career: {
+    label: "Advance Your Career (8)",
+    attributes: [
+      "startupEcosystems",
+      "remoteJobOpportunities",
+      "techTalentDensity",
+      "startupFundingSupport",
+      "ventureCapitalPresence",
+      "founderNomads",
+      "balancedCareerGrowth",
+      "conferencesEvents",
+    ],
+  },
+  community: {
+    label: "Find Your Community (9)",
+    attributes: [
+      "socialPartyLifestyle",
+      "chillWellnessLifestyle",
+      "adventureExploration",
+      "strongNomadCommunity",
+      "soloNomads",
+      "coupleFriendlyLifestyle",
+      "femaleFriendlyLifestyle",
+      "familyFriendlyLifestyle",
+      "founderNomads",
+    ],
+  },
+};
+
+const ATTRIBUTE_KEY_ALIASES = {
+  financialStability: "financialStabilityLowRisk",
+};
+
+const ATTRIBUTE_LABEL_OVERRIDES = {
+  financialStabilityLowRisk: "Financial Stability",
+  easyVisaLongStay: "Easy Visa & Long Stay",
+  startupBusinessOpportunities: "Startup Business Opportunities",
+};
+
+const TIER_THRESHOLDS = [
+  { min: "≥ 9.0", index: 0 },
+  { min: "≥ 8.0", index: 1 },
+  { min: "≥ 6.5", index: 2 },
+  { min: "≥ 5.0", index: 3 },
+  { min: "< 5.0", index: 4 },
+];
+
+const resolveAttributeKey = (key) => ATTRIBUTE_KEY_ALIASES[key] || key;
+
+const titleCaseAttributeKey = (key = "") =>
+  key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (char) => char.toUpperCase())
+    .trim();
+
+const getAttributeLabel = (key) =>
+  ATTRIBUTE_LABEL_OVERRIDES[key] || titleCaseAttributeKey(key);
+
+const CALCULATION_CONFIG = Object.keys(STATEWISE_WEIGHT_FORMULAS).map(
+  (formula) => ({ label: getAttributeLabel(formula), formula }),
+);
+
+const getDestinationName = (row = {}) =>
+  row.destination || row.state || row.title || row.city || "-";
 
 const toRows = (payload) => {
   if (Array.isArray(payload)) return payload;
@@ -41,7 +156,6 @@ const normalizeImageUrls = (source) => {
     if (typeof source.url === "string" && source.url.trim()) {
       return [source.url.trim()];
     }
-
     return Object.values(source)
       .map((item) => {
         if (typeof item === "string") return item.trim();
@@ -60,11 +174,11 @@ const MAX_IMAGES = 5;
 const getImageUrlsFromRow = (row = {}) =>
   normalizeImageUrls(
     row?.imageUrls ??
-    row?.imageurls ??
-    row?.imageURLS ??
-    row?.imageUrl ??
-    row?.imageurl ??
-    row?.images,
+      row?.imageurls ??
+      row?.imageURLS ??
+      row?.imageUrl ??
+      row?.imageurl ??
+      row?.images,
   );
 
 const fmtNumber = (value, digits = 2) => {
@@ -80,102 +194,13 @@ const toNumericOrFallback = (value, fallback = 0) => {
   return Number.isNaN(numericValue) ? fallback : numericValue;
 };
 
-// Algo 2.0: exactly the 24 normalized base metrics (1.0–10.0). There is no
-// separate labels subdocument — all 33 attribute labels are derived at runtime
-// from the calculated score via getLabelForScore().
-const weightColumns = [
-  { field: "costOfLiving", headerName: "Cost Of Living", minWidth: 150 },
-  { field: "internet", headerName: "Internet", minWidth: 120 },
-  { field: "safety", headerName: "Safety", minWidth: 120 },
-  { field: "nomadCommunity", headerName: "Nomad Community", minWidth: 170 },
-  {
-    field: "workInfrastructure",
-    headerName: "Work Infrastructure",
-    minWidth: 180,
-  },
-  { field: "airQualityIndex", headerName: "Air Quality Index", minWidth: 160 },
-  { field: "startupEcosystem", headerName: "Startup Ecosystem", minWidth: 170 },
-  {
-    field: "healthcareCostIndex",
-    headerName: "Healthcare Cost Index",
-    minWidth: 190,
-  },
-  { field: "purchasingPower", headerName: "Purchasing Power", minWidth: 160 },
-  {
-    field: "inflationStability",
-    headerName: "Inflation Stability",
-    minWidth: 170,
-  },
-  { field: "meetupsEvents", headerName: "Meetups & Events", minWidth: 160 },
-  {
-    field: "incubators",
-    headerName: "Startup Incubators & Accelerators",
-    minWidth: 250,
-  },
-  {
-    field: "climateEnvironment",
-    headerName: "Climate & Environment",
-    minWidth: 190,
-  },
-  { field: "lowerTaxes", headerName: "Lower Taxes", minWidth: 140 },
-  {
-    field: "natureNomadTravelling",
-    headerName: "Nature Nomad Travelling",
-    minWidth: 200,
-  },
-  { field: "yoga", headerName: "Yoga", minWidth: 100 },
-  {
-    field: "ventureCapitalPresence",
-    headerName: "Venture Capital Presence",
-    minWidth: 190,
-  },
-  {
-    field: "ventureCapitalInvestments",
-    headerName: "Venture Capital Investments",
-    minWidth: 230,
-  },
-  { field: "visaOpenness", headerName: "Visa Openness", minWidth: 150 },
-  { field: "healthcareQuality", headerName: "Healthcare Quality", minWidth: 170 },
-  {
-    field: "flightConnectivity",
-    headerName: "Flight Connectivity",
-    minWidth: 170,
-  },
-  { field: "remoteJobs", headerName: "Remote Jobs", minWidth: 130 },
-  {
-    field: "techTalentDensity",
-    headerName: "Tech Talent Density",
-    minWidth: 170,
-  },
-  {
-    field: "conferencesEvents",
-    headerName: "Conferences & Events",
-    minWidth: 180,
-  },
-];
-
-const titleCaseAttributeKey = (key = "") =>
-  key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (char) => char.toUpperCase())
-    .trim();
-
-// Algo 2.0: the 33 calculated attributes. Labels are derived from the score
-// via the universal 5-tier classifier (getLabelForScore), never edited.
-const CALCULATION_CONFIG = Object.keys(STATEWISE_WEIGHT_FORMULAS).map(
-  (formula) => ({
-    label: titleCaseAttributeKey(formula),
-    formula,
-  }),
-);
-
 const deriveCalculatedScores = (weights = {}) => stateWiseWeightCalculation(weights);
 
 const deriveLabelsFromCalculatedScores = (calculatedScores = {}) =>
   Object.fromEntries(
-    Object.entries(calculatedScores).map(([attribute, scoreValue]) => [
+    Object.entries(calculatedScores).map(([attribute, score]) => [
       attribute,
-      getLabelForScore(attribute, scoreValue),
+      getLabelForScore(attribute, score),
     ]),
   );
 
@@ -184,18 +209,13 @@ const getCalculatedScoreValue = (form, config) => {
   if (scoreValue !== undefined && scoreValue !== null && scoreValue !== "") {
     return scoreValue;
   }
-
-  const factors = STATEWISE_WEIGHT_FORMULAS[config.formula] || {};
-  return calculateScore(form?.weight || {}, factors);
+  return calculateScore(form?.weight || {}, STATEWISE_WEIGHT_FORMULAS[config.formula] || {});
 };
 
 const getDerivedLabelValue = (form, config) => {
   const storedLabel = form?.calculatedLabels?.[config.formula];
   if (storedLabel) return storedLabel;
-  return getLabelForScore(
-    config.formula,
-    getCalculatedScoreValue(form, config),
-  );
+  return getLabelForScore(config.formula, getCalculatedScoreValue(form, config));
 };
 
 const getInitialForm = (row = {}) => {
@@ -207,6 +227,7 @@ const getInitialForm = (row = {}) => {
     country: row?.country ?? "",
     state: row?.state ?? "",
     title: row?.title ?? "",
+    destination: getDestinationName(row),
     isActive:
       row?.isActive === true ? "true" : row?.isActive === false ? "false" : "",
     imageUrls: getImageUrlsFromRow(row),
@@ -216,24 +237,22 @@ const getInitialForm = (row = {}) => {
     calculatedLabels: row?.calculatedLabels || {},
   };
 
-  weightColumns.forEach((column) => {
-    initialForm.weight[column.field] =
-      rowWeights?.[column.field] ?? row?.[column.field] ?? "";
+  ALGO2_BASE_METRICS.forEach((metric) => {
+    initialForm.weight[metric.field] =
+      rowWeights?.[metric.field] ?? row?.[metric.field] ?? "";
   });
 
   if (!row?.calculatedScores) {
     const derivedScores = deriveCalculatedScores(initialForm.weight);
     initialForm.calculatedScores = derivedScores;
-    initialForm.calculatedLabels = deriveLabelsFromCalculatedScores(
-      derivedScores,
-    );
+    initialForm.calculatedLabels = deriveLabelsFromCalculatedScores(derivedScores);
   }
 
   return initialForm;
 };
 
 const buildPayload = (form) => {
-  const normalizedImageUrls = normalizeImageUrls(form.imageUrls).filter(
+  const cleanedImageUrls = normalizeImageUrls(form.imageUrls).filter(
     (url) => !url.startsWith("blob:"),
   );
   const payload = {
@@ -248,19 +267,133 @@ const buildPayload = (form) => {
         : form.isActive === "false"
           ? false
           : form.isActive,
-    imageUrls: normalizedImageUrls,
+    imageUrls: cleanedImageUrls,
     weight: {},
   };
 
-  weightColumns.forEach((column) => {
-    payload.weight[column.field] = toNumericOrFallback(
-      form.weight?.[column.field],
+  ALGO2_BASE_METRICS.forEach((metric) => {
+    payload.weight[metric.field] = toNumericOrFallback(
+      form.weight?.[metric.field],
       0,
     );
   });
 
   return payload;
 };
+
+const Stat = ({ label, value, icon: Icon, border, accent }) => (
+  <div
+    className={`bg-white rounded-[2rem] border border-slate-100 border-l-4 ${border} px-5 py-5 shadow-sm min-w-[150px]`}
+  >
+    <div
+      className={`flex items-center gap-2 text-[10px] font-pmedium uppercase tracking-widest ${accent}`}
+    >
+      <Icon size={13} /> {label}
+    </div>
+    <div className="mt-2 text-[17px] font-pmedium text-slate-900">{value}</div>
+  </div>
+);
+
+const FormulaBanner = ({ attributeKey, categoryLabel, averageScore }) => {
+  const factors = STATEWISE_WEIGHT_FORMULAS[attributeKey] || {};
+  const tierLabels = ATTRIBUTE_TIER_LABELS[attributeKey] || [];
+  const formulaText = Object.entries(factors)
+    .map(
+      ([factor, multiplier]) =>
+        `${FACTOR_SHORT_LABELS[factor] || titleCaseAttributeKey(factor)}(${Math.round(multiplier * 100)}%)`,
+    )
+    .join(" + ");
+
+  return (
+    <section className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-4 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white text-[#2563EB] shadow-sm">
+            <Calculator size={14} />
+          </span>
+          <div>
+            <p className="text-[10px] font-pmedium uppercase tracking-widest text-blue-600">
+              Active Formula · {categoryLabel}
+            </p>
+            <p className="mt-0.5 text-[12px] font-pmedium text-blue-950">
+              {getAttributeLabel(attributeKey)}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 shadow-sm">
+          <span className="text-[9px] font-pmedium uppercase tracking-widest text-slate-400">
+            Average score
+          </span>
+          <span className="text-[12px] font-pmedium text-[#2563EB]">
+            {averageScore}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-3 break-words font-mono text-[11px] leading-6 text-blue-950">
+        {formulaText}
+      </p>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+        {TIER_THRESHOLDS.map((threshold) => (
+          <div
+            key={threshold.min}
+            className={`flex items-center justify-between gap-2 rounded-xl border bg-white px-2.5 py-2 ${tierPillClass(tierLabels[threshold.index], tierLabels)}`}
+          >
+            <span className="text-[9px] font-pmedium uppercase tracking-wider">
+              {tierLabels[threshold.index] || "-"}
+            </span>
+            <span className="text-[10px] font-pmedium">{threshold.min}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const CalculationsGrid = ({ form }) => (
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    {CALCULATION_CONFIG.map((config) => {
+      const currentScore = getCalculatedScoreValue(form, config);
+      const derivedLabel = getDerivedLabelValue(form, config);
+      const tierOptions = ATTRIBUTE_TIER_LABELS[config.formula] || [];
+      return (
+        <div key={config.formula} className="flex items-end gap-2">
+          <div className="flex-1">
+            <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+              Score {config.label}
+            </label>
+            <input
+              type="text"
+              readOnly
+              disabled
+              value={fmtNumber(currentScore, 2)}
+              className="w-full px-3 py-2 bg-slate-100 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-500"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
+              {config.label}
+            </label>
+            <select
+              disabled
+              value={derivedLabel || ""}
+              onChange={() => {}}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed"
+            >
+              <option value="">None</option>
+              {tierOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
 
 const WorldRankingWeightsV2 = () => {
   const axios = useAxiosPrivate();
@@ -270,6 +403,9 @@ const WorldRankingWeightsV2 = () => {
   const [addForm, setAddForm] = useState(() => getInitialForm());
   const [editMode, setEditMode] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("world");
+  const [selectedAttribute, setSelectedAttribute] = useState("bestForNomads");
+  const [mathRow, setMathRow] = useState(null);
 
   const {
     data: rows = [],
@@ -291,67 +427,57 @@ const WorldRankingWeightsV2 = () => {
     },
   });
 
-  const continents = useMemo(() => {
-    return [
-      ...new Set(
-        companies.map((c) => c.companyContinent?.trim()).filter(Boolean),
-      ),
-    ].sort();
-  }, [companies]);
+  const continents = useMemo(
+    () =>
+      [
+        ...new Set(companies.map((c) => c.companyContinent?.trim()).filter(Boolean)),
+      ].sort(),
+    [companies],
+  );
 
-  const countries = useMemo(() => {
-    return [
-      ...new Set(
-        companies
-          .filter(
-            (c) =>
-              !addForm.continent || c.companyContinent === addForm.continent,
-          )
-          .map((c) => c.companyCountry?.trim())
-          .filter(Boolean),
-      ),
-    ].sort();
-  }, [companies, addForm.continent]);
+  const countries = useMemo(
+    () =>
+      [
+        ...new Set(
+          companies
+            .filter((c) => !addForm.continent || c.companyContinent === addForm.continent)
+            .map((c) => c.companyCountry?.trim())
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [companies, addForm.continent],
+  );
 
-  const states = useMemo(() => {
-    return [
-      ...new Set(
-        companies
-          .filter(
-            (c) =>
-              (!addForm.continent ||
-                c.companyContinent === addForm.continent) &&
-              (!addForm.country || c.companyCountry === addForm.country),
-          )
-          .map((c) => c.companyState?.trim())
-          .filter(Boolean),
-      ),
-    ].sort();
-  }, [companies, addForm.continent, addForm.country]);
+  const states = useMemo(
+    () =>
+      [
+        ...new Set(
+          companies
+            .filter(
+              (c) =>
+                (!addForm.continent || c.companyContinent === addForm.continent) &&
+                (!addForm.country || c.companyCountry === addForm.country),
+            )
+            .map((c) => c.companyState?.trim())
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [companies, addForm.continent, addForm.country],
+  );
 
   const { mutate: updateWeights, isPending: isUpdating } = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const response = await axios.patch(
-        `${WORLD_RANKING_ENDPOINT}/${id}`,
-        payload,
-      );
+      const response = await axios.patch(`${WORLD_RANKING_ENDPOINT}/${id}`, payload);
       return response.data;
     },
     onSuccess: (data) => {
-      toast.success(
-        data?.message || "World ranking weight (v2) updated successfully",
-      );
-      queryClient.invalidateQueries({
-        queryKey: ["world-ranking-weights-v2"],
-      });
+      toast.success(data?.message || "World ranking weight (v2) updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights-v2"] });
       setIsEditOpen(false);
       setEditForm(null);
     },
     onError: (error) => {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to update world ranking weight (v2)",
-      );
+      toast.error(error?.response?.data?.message || "Failed to update world ranking weight (v2)");
     },
   });
 
@@ -361,61 +487,96 @@ const WorldRankingWeightsV2 = () => {
     variables: togglingVariables,
   } = useMutation({
     mutationFn: async ({ id, payload }) => {
-      const response = await axios.patch(
-        `${WORLD_RANKING_ENDPOINT}/${id}`,
-        payload,
-      );
+      const response = await axios.patch(`${WORLD_RANKING_ENDPOINT}/${id}`, payload);
       return response.data;
     },
     onSuccess: (data) => {
       toast.success(data?.message || "Status updated successfully");
-      queryClient.invalidateQueries({
-        queryKey: ["world-ranking-weights-v2"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights-v2"] });
     },
     onError: (error) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update status",
-      );
+      toast.error(error?.response?.data?.message || "Failed to update status");
     },
   });
+
+  const { mutate: createWeight, isPending: isCreating } = useMutation({
+    mutationFn: async (payload) => {
+      const response = await axios.post(`${WORLD_RANKING_ENDPOINT}/add`, payload);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      toast.success(data?.message || "World ranking weight (v2) added successfully");
+      queryClient.invalidateQueries({ queryKey: ["world-ranking-weights-v2"] });
+      setIsAddOpen(false);
+      setAddForm(getInitialForm());
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || "Failed to add world ranking weight (v2)");
+    },
+  });
+
+  const category = CATEGORY_DEFINITIONS[selectedCategory];
+  const activeAttributeKey = resolveAttributeKey(selectedAttribute);
+  const activeTierLabels = ATTRIBUTE_TIER_LABELS[activeAttributeKey] || [];
+
+  const handleCategoryChange = (categoryKey) => {
+    setSelectedCategory(categoryKey);
+    setSelectedAttribute(CATEGORY_DEFINITIONS[categoryKey].attributes[0]);
+  };
+
+  const rankedRows = useMemo(() => {
+    const factors = STATEWISE_WEIGHT_FORMULAS[activeAttributeKey] || {};
+    const scored = rows.map((row) => {
+      const score = calculateScore(row?.weight || row?.weights || {}, factors);
+      return {
+        ...row,
+        attributeScore: score,
+        semanticBadge: getLabelForScore(activeAttributeKey, score),
+      };
+    });
+
+    return scored
+      .sort(
+        (a, b) =>
+          b.attributeScore - a.attributeScore ||
+          String(getDestinationName(a)).localeCompare(String(getDestinationName(b))),
+      )
+      .map((row, index) => ({ ...row, dynamicRank: index + 1 }));
+  }, [rows, activeAttributeKey]);
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return rankedRows;
+    return rankedRows.filter((row) =>
+      [getDestinationName(row), row.country, row.continent, row.state, row.title, String(row.dynamicRank)]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    );
+  }, [rankedRows, search]);
+
+  const stats = useMemo(() => {
+    const total = rankedRows.length;
+    const scores = rankedRows.map((row) => row.attributeScore);
+    const top = scores.length ? Math.max(...scores) : 0;
+    const average = scores.length
+      ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+      : 0;
+    const active = rankedRows.filter((row) => row.isActive === true || row.isActive === "true").length;
+    return {
+      total,
+      top: fmtNumber(top, 2),
+      average: fmtNumber(average, 2),
+      active,
+    };
+  }, [rankedRows]);
 
   const handleToggleActive = (row) => {
     if (!row?._id) return;
     const currentlyActive = row.isActive === true || row.isActive === "true";
     const form = getInitialForm(row);
-    const payload = buildPayload({
-      ...form,
-      isActive: currentlyActive ? "false" : "true",
-    });
+    const payload = buildPayload({ ...form, isActive: currentlyActive ? "false" : "true" });
     toggleActive({ id: row._id, payload });
   };
-
-  const { mutate: createWeight, isPending: isCreating } = useMutation({
-    mutationFn: async (payload) => {
-      const response = await axios.post(
-        `${WORLD_RANKING_ENDPOINT}/add`,
-        payload,
-      );
-      return response.data;
-    },
-    onSuccess: (data) => {
-      toast.success(
-        data?.message || "World ranking weight (v2) added successfully",
-      );
-      queryClient.invalidateQueries({
-        queryKey: ["world-ranking-weights-v2"],
-      });
-      setIsAddOpen(false);
-      setAddForm(getInitialForm());
-    },
-    onError: (error) => {
-      toast.error(
-        error?.response?.data?.message ||
-          "Failed to add world ranking weight (v2)",
-      );
-    },
-  });
 
   const handleOpenEdit = (row, startEditing = false) => {
     setEditForm(getInitialForm(row));
@@ -430,8 +591,7 @@ const WorldRankingWeightsV2 = () => {
   };
 
   const handleOpenAddModal = () => {
-    const maxRank =
-      rows.length > 0 ? Math.max(...rows.map((r) => Number(r.rank) || 0)) : 0;
+    const maxRank = rows.length > 0 ? Math.max(...rows.map((r) => Number(r.rank) || 0)) : 0;
     const initialForm = getInitialForm();
     initialForm.rank = maxRank + 1;
     setAddForm(initialForm);
@@ -445,10 +605,7 @@ const WorldRankingWeightsV2 = () => {
   };
 
   const handleFormFieldChange = (field, value) => {
-    setEditForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setEditForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleWeightFieldChange = (field, value, formType = "edit") => {
@@ -456,31 +613,18 @@ const WorldRankingWeightsV2 = () => {
     setForm((prev) => {
       const nextWeight = { ...prev.weight, [field]: value };
       const nextCalculatedScores = deriveCalculatedScores(nextWeight);
-      const nextCalculatedLabels = deriveLabelsFromCalculatedScores(
-        nextCalculatedScores,
-      );
-
       return {
         ...prev,
         weight: nextWeight,
         calculatedScores: nextCalculatedScores,
-        calculatedLabels: nextCalculatedLabels,
+        calculatedLabels: deriveLabelsFromCalculatedScores(nextCalculatedScores),
       };
     });
   };
 
   const handleUpdateSubmit = () => {
     if (!editForm) return;
-
     const payload = buildPayload(editForm);
-
-    weightColumns.forEach((column) => {
-      payload.weight[column.field] = toNumericOrFallback(
-        editForm.weight?.[column.field],
-        0,
-      );
-    });
-
     if (!editForm.id) {
       toast.error("Unable to update weight: missing record id");
       return;
@@ -497,7 +641,6 @@ const WorldRankingWeightsV2 = () => {
       formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
       editForm.imageFiles.forEach((file) => formData.append("images", file));
       formData.append("weight", JSON.stringify(payload.weight));
-
       updateWeights({ id: editForm.id, payload: formData });
       return;
     }
@@ -507,7 +650,6 @@ const WorldRankingWeightsV2 = () => {
 
   const handleAddSubmit = () => {
     const payload = buildPayload(addForm);
-
     const formData = new FormData();
     formData.append("rank", String(payload.rank));
     formData.append("continent", payload.continent || "");
@@ -517,11 +659,7 @@ const WorldRankingWeightsV2 = () => {
     formData.append("isActive", String(payload.isActive ?? ""));
     formData.append("imageUrls", JSON.stringify(payload.imageUrls || []));
     formData.append("weight", JSON.stringify(payload.weight));
-
-    (addForm.imageFiles || []).forEach((file) =>
-      formData.append("images", file),
-    );
-
+    (addForm.imageFiles || []).forEach((file) => formData.append("images", file));
     createWeight(formData);
   };
 
@@ -540,28 +678,23 @@ const WorldRankingWeightsV2 = () => {
     setForm((prev) => {
       const existingUrls = normalizeImageUrls(prev?.imageUrls);
       const remainingSlots = Math.max(0, MAX_IMAGES - existingUrls.length);
-
       if (remainingSlots <= 0) {
         toast.error(`You can upload a maximum of ${MAX_IMAGES} images`);
         return prev;
       }
-
       const acceptedFiles = files.slice(0, remainingSlots);
       if (acceptedFiles.length < files.length) {
         toast.error(`Only ${MAX_IMAGES} images are allowed`);
       }
-
-      const previewUrls = acceptedFiles.map((file) =>
-        URL.createObjectURL(file),
-      );
-
       return {
         ...prev,
-        imageUrls: [...existingUrls, ...previewUrls],
+        imageUrls: [
+          ...existingUrls,
+          ...acceptedFiles.map((file) => URL.createObjectURL(file)),
+        ],
         imageFiles: [...(prev?.imageFiles || []), ...acceptedFiles],
       };
     });
-
     event.target.value = "";
   };
 
@@ -571,412 +704,360 @@ const WorldRankingWeightsV2 = () => {
       const currentUrls = normalizeImageUrls(prev?.imageUrls);
       const targetUrl = currentUrls[index];
       if (!targetUrl) return prev;
-
       const nextUrls = currentUrls.filter((_, i) => i !== index);
       let nextFiles = [...(prev?.imageFiles || [])];
-
       if (targetUrl.startsWith("blob:")) {
         const blobIndex =
-          currentUrls
-            .slice(0, index + 1)
-            .filter((url) => url.startsWith("blob:")).length - 1;
+          currentUrls.slice(0, index + 1).filter((url) => url.startsWith("blob:")).length - 1;
         nextFiles = nextFiles.filter((_, i) => i !== blobIndex);
         URL.revokeObjectURL(targetUrl);
       }
-
-      return {
-        ...prev,
-        imageUrls: nextUrls,
-        imageFiles: nextFiles,
-      };
+      return { ...prev, imageUrls: nextUrls, imageFiles: nextFiles };
     });
   };
 
-  useEffect(() => {
-    if (!isEditOpen) {
-      setEditMode(false);
-    }
-  }, [isEditOpen]);
+  const handleExportWeights = () => {
+    const matrix = [
+      [
+        "_id",
+        // Stored rank, exported as-is. It is the published ordering and already
+        // breaks equal-weight ties A→Z, so the CSV must keep shipping it.
+        "Rank",
+        "Destination",
+        "State",
+        "Title",
+        "Country",
+        "Continent",
+        "Active",
+        ...ALGO2_BASE_METRICS.map((metric) => metric.label),
+      ],
+      ...rankedRows.map((row) => [
+        row._id || "",
+        row.rank ?? "",
+        getDestinationName(row),
+        row.state || "",
+        row.title || "",
+        row.country || "",
+        row.continent || "",
+        row.isActive === true || row.isActive === "true" ? "Active" : "Inactive",
+        ...ALGO2_BASE_METRICS.map((metric) =>
+          toNumericOrFallback(row.weight?.[metric.field] ?? row?.[metric.field], 0),
+        ),
+      ]),
+    ];
+    downloadCsv({ filename: "wono_algo2_base_weights.csv", matrix });
+    toast.success("Weights exported with 24 base metrics and locked _ids");
+  };
 
   useEffect(() => {
-    return () => {
+    if (!isEditOpen) setEditMode(false);
+  }, [isEditOpen]);
+
+  useEffect(
+    () => () => {
       (editForm?.imageUrls || []).forEach((url) => {
         if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
       });
       (addForm?.imageUrls || []).forEach((url) => {
         if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
       });
-    };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const rowData = useMemo(
-    () =>
-      rows.map((item, index) => ({
-        srNo: index + 1,
-        ...item,
-      })),
-    [rows],
+    [],
   );
 
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rowData.filter(
-      (row) =>
-        !q ||
-        [row.state, row.country, row.continent, row.title, String(row.rank)]
-          .filter(Boolean)
-          .some((v) => String(v).toLowerCase().includes(q)),
-    );
-  }, [rowData, search]);
-
-  const stats = useMemo(() => {
-    const total = rowData.length;
-    const active = rowData.filter(
-      (r) => r.isActive === true || r.isActive === "true",
-    ).length;
-    const inactive = total - active;
-    const avgRank =
-      total > 0
-        ? (
-            rowData.reduce((s, r) => s + (Number(r.rank) || 0), 0) / total
-          ).toFixed(1)
-        : "0.0";
-    return { total, active, inactive, avgRank };
-  }, [rowData]);
-
-  const inputCls =
-    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400";
-  const inputDisabledCls =
-    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed";
-  const selectCls =
-    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all";
-  const selectDisabledCls =
-    "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed";
-
-  const CalculationsGrid = ({ form }) => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-      {CALCULATION_CONFIG.map((config) => {
-        const currentScore = getCalculatedScoreValue(form, config);
-        const derivedLabel = getDerivedLabelValue(form, config);
-        const tierOptions = ATTRIBUTE_TIER_LABELS[config.formula] || [];
-        return (
-          <div key={config.formula} className="flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                Score {config.label}
-              </label>
-              <input
-                type="text"
-                readOnly
-                disabled
-                value={fmtNumber(currentScore, 2)}
-                className="w-full px-3 py-2 bg-slate-100 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-500"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                {config.label}
-              </label>
-              <select
-                disabled
-                value={derivedLabel || ""}
-                onChange={() => {}}
-                className={selectDisabledCls}
-              >
-                <option value="">None</option>
-                {tierOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
+  const renderSkeleton = () => (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse"
+          >
+            <div className="h-3 w-20 bg-slate-200 rounded-full mb-2" />
+            <div className="h-5 w-10 bg-slate-200 rounded-lg" />
           </div>
-        );
-      })}
+        ))}
+      </div>
+      <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="flex items-center gap-4 animate-pulse">
+            <div className="h-3 bg-slate-200 rounded-full w-8" />
+            <div className="h-3 bg-slate-200 rounded-full w-24" />
+            <div className="h-3 bg-slate-200 rounded-full w-40" />
+          </div>
+        ))}
+      </div>
     </div>
   );
-
-  if (isPending) {
-    return (
-      <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
-        <PageFrame>
-          <div className="flex flex-col gap-4">
-            <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
-              <div>
-                <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
-                  World Ranking Weights (Algo 2.0)
-                </h2>
-                <p className="text-xs font-pmedium text-slate-500 mt-1">
-                  Manage country and state rankings with WoNo AI Algorithm 2.0
-                  weight configurations.
-                </p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm animate-pulse"
-                >
-                  <div className="h-3 w-20 bg-slate-200 rounded-full mb-2" />
-                  <div className="h-5 w-10 bg-slate-200 rounded-lg" />
-                </div>
-              ))}
-            </div>
-            <div className="bg-white/80 rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-4 animate-pulse">
-                  <div className="h-3 bg-slate-200 rounded-full w-8" />
-                  <div className="h-3 bg-slate-200 rounded-full w-16" />
-                  <div className="h-3 bg-slate-200 rounded-full w-24" />
-                  <div className="h-3 bg-slate-200 rounded-full w-32" />
-                  <div className="h-3 bg-slate-200 rounded-full w-20" />
-                  <div className="h-3 bg-slate-200 rounded-full w-16" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </PageFrame>
-      </div>
-    );
-  }
 
   return (
     <div className="p-2 lg:p-2.5 min-h-full text-[#0F172A] font-sans text-[12px]">
       <PageFrame>
         <div className="flex flex-col gap-4">
-          <div className="mb-3 flex flex-col md:flex-row justify-between items-start md:items-end gap-1.5">
+          <div className="mb-1 flex flex-col md:flex-row justify-between items-start md:items-end gap-2">
             <div>
               <h2 className="text-title font-pmedium text-primary uppercase flex items-center gap-1.5">
                 World Ranking Weights (Algo 2.0)
               </h2>
               <p className="text-xs font-pmedium text-slate-500 mt-1">
-                Manage country and state rankings with WoNo AI Algorithm 2.0
-                weight configurations.
+                Filter a persona, recalculate all 132 destinations live, and inspect the exact
+                formula behind every rank.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handleExportWeights}
+              disabled={!rankedRows.length}
+              data-tour="world-ranking-weights-v2-export"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Download size={13} /> Export Weights (.csv)
+            </button>
           </div>
 
-          <div data-tour="world-ranking-weights-v2-stats" className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
-            {[
-              {
-                label: "Total Entries",
-                value: stats.total,
-                icon: BarChart3,
-                accent: "border-l-slate-400",
-                textColor: "text-slate-500",
-                bgColor: "bg-slate-50",
-              },
-              {
-                label: "Active",
-                value: stats.active,
-                icon: CheckCircle2,
-                accent: "border-l-emerald-500",
-                textColor: "text-emerald-600",
-                bgColor: "bg-emerald-50",
-              },
-              {
-                label: "Inactive",
-                value: stats.inactive,
-                icon: XCircle,
-                accent: "border-l-amber-500",
-                textColor: "text-amber-600",
-                bgColor: "bg-amber-50",
-              },
-              {
-                label: "Average Rank",
-                value: stats.avgRank,
-                icon: Globe,
-                accent: "border-l-blue-500",
-                textColor: "text-blue-600",
-                bgColor: "bg-blue-50",
-              },
-            ].map((s) => {
-              const Icon = s.icon;
-              return (
-                <div
-                  key={s.label}
-                  className={`flex items-center justify-between rounded-[2rem] border border-slate-100 border-l-4 bg-white p-5 shadow-sm ${s.accent}`}
-                >
-                  <div>
-                    <p
-                      className={`mb-1 text-[10px] font-pmedium uppercase tracking-widest ${s.textColor}`}
+          {isPending ? (
+            renderSkeleton()
+          ) : (
+            <>
+              <div
+                data-tour="world-ranking-weights-v2-stats"
+                className="grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0"
+              >
+                <Stat
+                  label="Destinations"
+                  value={stats.total}
+                  icon={Globe}
+                  border="border-l-slate-400"
+                  accent="text-slate-500"
+                />
+                <Stat
+                  label="Top Score"
+                  value={stats.top}
+                  icon={Target}
+                  border="border-l-emerald-500"
+                  accent="text-emerald-600"
+                />
+                <Stat
+                  label="Average Score"
+                  value={stats.average}
+                  icon={BarChart3}
+                  border="border-l-blue-500"
+                  accent="text-blue-600"
+                />
+                <Stat
+                  label="Active Entries"
+                  value={stats.active}
+                  icon={CheckCircle2}
+                  border="border-l-violet-500"
+                  accent="text-violet-600"
+                />
+              </div>
+
+              <FormulaBanner
+                attributeKey={activeAttributeKey}
+                categoryLabel={category.label}
+                averageScore={stats.average}
+              />
+
+              <section className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
+                <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                      <Layers3 size={13} /> Hierarchical filters
+                    </div>
+                    <select
+                      value={selectedCategory}
+                      onChange={(event) => handleCategoryChange(event.target.value)}
+                      data-tour="world-ranking-weights-v2-category"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-700 outline-none focus:border-[#2563EB] min-w-[210px]"
                     >
-                      {s.label}
+                      {Object.entries(CATEGORY_DEFINITIONS).map(([key, value]) => (
+                        <option key={key} value={key}>
+                          {value.label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={selectedAttribute}
+                      onChange={(event) => setSelectedAttribute(event.target.value)}
+                      data-tour="world-ranking-weights-v2-attribute"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-700 outline-none focus:border-[#2563EB] min-w-[200px]"
+                    >
+                      {category.attributes.map((attribute) => (
+                        <option key={attribute} value={attribute}>
+                          {getAttributeLabel(resolveAttributeKey(attribute))}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="relative flex-1 min-w-[200px] max-w-sm" data-tour="world-ranking-weights-v2-search">
+                      <Search
+                        className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                        size={15}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search destination, country, continent..."
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-pmedium text-[#0F172A] outline-none focus:border-[#2563EB] placeholder:text-slate-400"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleOpenAddModal}
+                      data-tour="world-ranking-weights-v2-add"
+                      className="ml-auto inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700"
+                    >
+                      <Plus size={13} /> Add Entry
+                    </button>
+                  </div>
+                  <p className="text-[10px] font-pmedium text-slate-400">
+                    Ranks are recalculated on every attribute change from the 24 normalized base
+                    weights — stored ranks are never reused for this view.
+                  </p>
+                </div>
+
+                {isError ? (
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                    <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-400">
+                      <XCircle size={28} />
+                    </div>
+                    <p className="text-red-500 font-semibold font-pmedium">
+                      Could not load world ranking (Algo 2.0) data.
                     </p>
-                    <p className="text-[15px] font-pmedium text-slate-900">
-                      {s.value}
+                    <p className="text-xs text-slate-400 mt-1">
+                      Please verify World Ranking V2 API connectivity.
                     </p>
                   </div>
-                  <div
-                    className={`rounded-2xl p-2 ${s.bgColor} ${s.textColor}`}
-                  >
-                    <Icon size={16} />
+                ) : filteredRows.length === 0 ? (
+                  <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
+                    <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
+                      <Globe size={28} />
+                    </div>
+                    <p className="text-slate-400 font-semibold font-pmedium">No entries found.</p>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col min-h-[500px]">
-            <div className="p-3 sm:p-4 lg:p-5 border-b border-slate-100/60 flex flex-col gap-3 bg-slate-50/50">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 max-w-sm" data-tour="world-ranking-weights-v2-search">
-                  <Search
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
-                    size={15}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search state, country, title..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200/60 rounded-lg text-[12px] font-pmedium text-[#0F172A] focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] outline-none transition-all placeholder:text-slate-400"
-                  />
-                </div>
-                <button
-                  onClick={handleOpenAddModal}
-                  data-tour="world-ranking-weights-v2-add"
-                  className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-3xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                  <Plus size={14} /> Add Entry
-                </button>
-              </div>
-            </div>
-
-            {isError ? (
-              <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 text-red-400">
-                  <XCircle size={28} />
-                </div>
-                <p className="text-red-500 font-semibold font-pmedium">
-                  Could not load world ranking (Algo 2.0) data.
-                </p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Please verify World Ranking V2 API connectivity.
-                </p>
-              </div>
-            ) : filteredRows.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center">
-                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-400">
-                  <Globe size={28} />
-                </div>
-                <p className="text-slate-400 font-semibold font-pmedium">
-                  No entries found.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto flex-1">
-                <table data-tour="world-ranking-weights-v2-table" className="w-full text-left min-w-[900px]">
-                  <thead className="bg-slate-50/50 text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100/60">
-                    <tr>
-                      <th className="px-5 py-4">#</th>
-                      <th className="px-5 py-4">Rank</th>
-                      <th className="px-5 py-4">State</th>
-                      <th className="px-5 py-4">Country</th>
-                      <th className="px-5 py-4">Title</th>
-                      <th className="px-5 py-4">Default Score</th>
-                      <th className="px-5 py-4">Default Label</th>
-                      <th className="px-5 py-4 text-center">Status</th>
-                      <th className="px-5 py-4 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100/60">
-                    {filteredRows.map((row, index) => {
-                      const isActive =
-                        row.isActive === true || row.isActive === "true";
-                      const defaultScore =
-                        row.calculatedScores?.bestForNomads ?? "";
-                      const defaultLabel =
-                        row.calculatedLabels?.bestForNomads ?? "";
-                      return (
-                        <tr
-                          key={row._id || row.srNo}
-                          className="hover:bg-slate-50/50 transition-colors group"
-                        >
-                          <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
-                            {row.srNo}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {row.rank}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {row.state}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {row.country}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700 truncate max-w-[200px]">
-                            {row.title}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {fmtNumber(defaultScore, 2)}
-                          </td>
-                          <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
-                            {defaultLabel || "-"}
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <span
-                              className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}
-                            >
-                              {isActive ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-                          <td className="px-5 py-4 text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(row)}
-                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
-                                title="View"
-                                data-tour={index === 0 ? "world-ranking-weights-v2-action-view" : undefined}
-                              >
-                                <Eye size={15} strokeWidth={2.5} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(row, true)}
-                                className="p-1.5 bg-slate-100 text-slate-600 hover:bg-blue-100 hover:text-blue-700 rounded-lg transition-all"
-                                title="Edit"
-                                data-tour={index === 0 ? "world-ranking-weights-v2-action-edit" : undefined}
-                              >
-                                <Edit size={15} strokeWidth={2.5} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleActive(row)}
-                                disabled={
-                                  isTogglingActive &&
-                                  togglingVariables?.id === row._id
-                                }
-                                className={`p-1.5 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                                  isActive
-                                    ? "bg-slate-100 text-slate-600 hover:bg-red-100 hover:text-red-700"
-                                    : "bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700"
-                                }`}
-                                title={isActive ? "Disable" : "Enable"}
-                                data-tour={index === 0 ? "world-ranking-weights-v2-action-toggle" : undefined}
-                              >
-                                {isActive ? (
-                                  <XCircle size={15} strokeWidth={2.5} />
-                                ) : (
-                                  <CheckCircle2 size={15} strokeWidth={2.5} />
-                                )}
-                              </button>
-                            </div>
-                          </td>
+                ) : (
+                  <div className="overflow-x-auto flex-1" data-tour="world-ranking-weights-v2-table">
+                    <table className="w-full min-w-[900px] text-left">
+                      <thead className="border-b border-slate-100 bg-white text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                        <tr>
+                          <th className="px-5 py-3">Rank</th>
+                          <th className="px-5 py-3">Destination</th>
+                          <th className="px-5 py-3">Country</th>
+                          <th className="px-5 py-3">Continent</th>
+                          <th className="px-5 py-3 text-center">Attribute Score</th>
+                          <th className="px-5 py-3 text-left">Semantic Badge</th>
+                          <th className="px-5 py-3 text-center">Actions</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredRows.map((row, index) => (
+                          <tr
+                            key={row._id || `${row.dynamicRank}-${getDestinationName(row)}`}
+                            className="transition-colors hover:bg-slate-50/70"
+                          >
+                            <td className="px-5 py-3.5 font-pmedium text-slate-500">
+                              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-lg bg-slate-100 px-1.5 text-[10px] font-pmedium text-slate-600">
+                                #{row.dynamicRank}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 font-pmedium text-[#0F172A]">
+                              {getDestinationName(row)}
+                            </td>
+                            <td className="px-5 py-3.5 font-pmedium text-slate-600">
+                              {row.country || "-"}
+                            </td>
+                            <td className="px-5 py-3.5 font-pmedium text-slate-600">
+                              {row.continent || "-"}
+                            </td>
+                            <td className="px-5 py-3.5 text-center font-pmedium text-slate-900">
+                              {fmtNumber(row.attributeScore, 2)}
+                              <span className="text-[10px] font-pregular text-slate-400"> / 10</span>
+                            </td>
+                            <td className="px-5 py-3.5">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${tierPillClass(row.semanticBadge, activeTierLabels)}`}
+                              >
+                                {row.semanticBadge || "-"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3.5 text-right">
+                              <div className="inline-flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setMathRow(row)}
+                                  aria-label={`Show math for ${getDestinationName(row)}`}
+                                  data-tour={index === 0 ? "world-ranking-weights-v2-action-math" : undefined}
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]"
+                                >
+                                  <Calculator size={12} /> Math
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEdit(row, true)}
+                                  aria-label={`Edit ${getDestinationName(row)}`}
+                                  data-tour={index === 0 ? "world-ranking-weights-v2-action-edit" : undefined}
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1.5 text-[10px] font-pmedium text-slate-600 transition-colors hover:bg-blue-50 hover:text-[#2563EB]"
+                                >
+                                  <Edit size={12} /> Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleActive(row)}
+                                  disabled={
+                                    isTogglingActive && togglingVariables?.id === row._id
+                                  }
+                                  aria-label={
+                                    row.isActive === true || row.isActive === "true"
+                                      ? "Disable entry"
+                                      : "Enable entry"
+                                  }
+                                  data-tour={index === 0 ? "world-ranking-weights-v2-action-toggle" : undefined}
+                                  className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition-colors disabled:opacity-50 ${
+                                    row.isActive === true || row.isActive === "true"
+                                      ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"
+                                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  {row.isActive === true || row.isActive === "true" ? (
+                                    <CheckCircle2 size={12} />
+                                  ) : (
+                                    <XCircle size={12} />
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </>
+          )}
         </div>
       </PageFrame>
+
+      {mathRow && (
+        <Algo2MathDrawer
+          row={mathRow}
+          attributeKey={activeAttributeKey}
+          categoryAttributes={category.attributes.map(resolveAttributeKey)}
+          onClose={() => setMathRow(null)}
+          onEdit={(row) => {
+            setMathRow(null);
+            handleOpenEdit(row, true);
+          }}
+          onSelectAttribute={(key) => {
+            const sourceKey = Object.entries(ATTRIBUTE_KEY_ALIASES).find(
+              ([, resolved]) => resolved === key,
+            )?.[0];
+            setSelectedAttribute(sourceKey || key);
+          }}
+        />
+      )}
 
       {isEditOpen && editForm && (
         <div
@@ -986,7 +1067,7 @@ const WorldRankingWeightsV2 = () => {
           <div
             data-tour="world-ranking-weights-v2-edit-modal"
             className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
@@ -995,7 +1076,7 @@ const WorldRankingWeightsV2 = () => {
                 </div>
                 <div className="min-w-0">
                   <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800">
-                    Edit Weights (Algo 2.0) : {editForm.state || ""}
+                    Edit Weights (Algo 2.0) : {editForm.state || getDestinationName(editForm)}
                   </h2>
                   <p className="text-[11px] font-pmedium text-slate-500 mt-0.5">
                     {editForm.country}, {editForm.continent}
@@ -1005,6 +1086,7 @@ const WorldRankingWeightsV2 = () => {
               <div className="flex items-center gap-2 shrink-0">
                 {!editMode ? (
                   <button
+                    type="button"
                     onClick={() => setEditMode(true)}
                     className="flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm"
                   >
@@ -1013,6 +1095,7 @@ const WorldRankingWeightsV2 = () => {
                 ) : (
                   <>
                     <button
+                      type="button"
                       onClick={() => setEditMode(false)}
                       disabled={isUpdating}
                       className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 transition-colors shadow-sm"
@@ -1020,8 +1103,9 @@ const WorldRankingWeightsV2 = () => {
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleUpdateSubmit}
-                      disabled={isUpdating || !editForm}
+                      disabled={isUpdating}
                       className="flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
                     >
                       {isUpdating ? "Updating..." : "Update"}
@@ -1046,13 +1130,10 @@ const WorldRankingWeightsV2 = () => {
                 {editForm.imageUrls?.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                     {editForm.imageUrls.map((url, index) => (
-                      <div
-                        key={`${url}-${index}`}
-                        className="relative group"
-                      >
+                      <div key={`${url}-${index}`} className="relative group">
                         <img
                           src={url}
-                          alt={`${editForm.state} preview ${index + 1}`}
+                          alt={`${editForm.state || "Destination"} preview ${index + 1}`}
                           className="w-full h-28 object-cover rounded-xl border border-slate-100"
                         />
                         {editMode && (
@@ -1068,20 +1149,12 @@ const WorldRankingWeightsV2 = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] text-slate-400 font-pmedium">
-                    No images uploaded.
-                  </p>
+                  <p className="text-[12px] text-slate-400 font-pmedium">No images uploaded.</p>
                 )}
                 {editMode && (
                   <label className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 cursor-pointer transition-colors shadow-sm">
                     Upload Images
-                    <input
-                      hidden
-                      accept="image/*"
-                      type="file"
-                      multiple
-                      onChange={(e) => handleImageUpload(e, "edit")}
-                    />
+                    <input hidden accept="image/*" type="file" multiple onChange={(event) => handleImageUpload(event, "edit")} />
                   </label>
                 )}
               </div>
@@ -1092,77 +1165,42 @@ const WorldRankingWeightsV2 = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Rank
-                    </label>
-                    <input
-                      type="number"
-                      disabled
-                      value={editForm.rank}
-                      onChange={(e) =>
-                        handleFormFieldChange("rank", e.target.value)
-                      }
-                      className={inputDisabledCls}
-                    />
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Rank</label>
+                    <input type="number" disabled value={editForm.rank} className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Continent
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={editForm.continent}
-                      className={inputDisabledCls}
-                    />
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Continent</label>
+                    <input type="text" disabled value={editForm.continent} className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Country
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={editForm.country}
-                      className={inputDisabledCls}
-                    />
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Country</label>
+                    <input type="text" disabled value={editForm.country} className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      State
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={editForm.state}
-                      className={inputDisabledCls}
-                    />
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">State / Destination</label>
+                    <input type="text" disabled value={editForm.state || getDestinationName(editForm)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed" />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Title
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Title</label>
                     <input
                       type="text"
                       disabled={!editMode}
                       value={editForm.title}
-                      onChange={(e) =>
-                        handleFormFieldChange("title", e.target.value)
-                      }
-                      className={editMode ? inputCls : inputDisabledCls}
+                      onChange={(event) => handleFormFieldChange("title", event.target.value)}
+                      className={editMode
+                        ? "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
+                        : "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed"}
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Status
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Status</label>
                     <select
                       disabled={!editMode}
                       value={editForm.isActive}
-                      onChange={(e) =>
-                        handleFormFieldChange("isActive", e.target.value)
-                      }
-                      className={editMode ? selectCls : selectDisabledCls}
+                      onChange={(event) => handleFormFieldChange("isActive", event.target.value)}
+                      className={editMode
+                        ? "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
+                        : "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed"}
                     >
                       <option value="">Select</option>
                       <option value="true">Active</option>
@@ -1177,24 +1215,20 @@ const WorldRankingWeightsV2 = () => {
                   Weights (24 Metrics)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {weightColumns.map((column) => (
-                    <div key={column.field}>
+                  {ALGO2_BASE_METRICS.map((metric) => (
+                    <div key={metric.field}>
                       <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                        {column.headerName}
+                        {metric.label}
                       </label>
                       <input
                         type="number"
                         step="0.01"
                         disabled={!editMode}
-                        value={editForm.weight?.[column.field] ?? ""}
-                        onChange={(e) =>
-                          handleWeightFieldChange(
-                            column.field,
-                            e.target.value,
-                            "edit",
-                          )
-                        }
-                        className={editMode ? inputCls : inputDisabledCls}
+                        value={editForm.weight?.[metric.field] ?? ""}
+                        onChange={(event) => handleWeightFieldChange(metric.field, event.target.value, "edit")}
+                        className={editMode
+                          ? "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
+                          : "w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 disabled:opacity-60 cursor-not-allowed"}
                       />
                     </div>
                   ))}
@@ -1220,18 +1254,16 @@ const WorldRankingWeightsV2 = () => {
           <div
             data-tour="world-ranking-weights-v2-add-modal"
             className="bg-white rounded-[2rem] max-w-5xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-white/70"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
           >
             <div className="p-5 sm:p-6 border-b border-slate-100 bg-blue-50/30 flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-11 h-11 rounded-full flex items-center justify-center text-[12px] font-pmedium shadow-sm shrink-0 bg-[#2563EB] text-white">
                   <Plus size={16} />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800">
-                    Add World Ranking Weight (Algo 2.0)
-                  </h2>
-                </div>
+                <h2 className="text-base lg:text-lg font-pmedium tracking-tight text-slate-800">
+                  Add World Ranking Weight (Algo 2.0)
+                </h2>
               </div>
               <button
                 type="button"
@@ -1250,35 +1282,15 @@ const WorldRankingWeightsV2 = () => {
                 {addForm.imageUrls?.length > 0 && (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-3">
                     {addForm.imageUrls.map((url, index) => (
-                      <div
-                        key={`${url}-${index}`}
-                        className="relative group"
-                      >
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-28 object-cover rounded-xl border border-slate-100"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleImageDelete(index, "add")}
-                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        >
-                          <X size={12} />
-                        </button>
+                      <div key={`${url}-${index}`} className="relative group">
+                        <img src={url} alt={`Preview ${index + 1}`} className="w-full h-28 object-cover rounded-xl border border-slate-100" />
                       </div>
                     ))}
                   </div>
                 )}
                 <label className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 cursor-pointer transition-colors shadow-sm">
                   Upload Images
-                  <input
-                    hidden
-                    accept="image/*"
-                    type="file"
-                    multiple
-                    onChange={(e) => handleImageUpload(e, "add")}
-                  />
+                  <input hidden accept="image/*" type="file" multiple onChange={(event) => handleImageUpload(event, "add")} />
                 </label>
               </div>
 
@@ -1288,123 +1300,73 @@ const WorldRankingWeightsV2 = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Rank
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Rank</label>
                     <input
                       type="number"
                       value={addForm.rank}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          rank: e.target.value,
-                        }))
-                      }
-                      className={inputCls}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, rank: event.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Continent
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Continent</label>
                     <select
                       value={addForm.continent}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          continent: e.target.value,
-                          country: "",
-                          state: "",
-                        }))
-                      }
-                      className={selectCls}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, continent: event.target.value, country: "", state: "" }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                     >
                       <option value="">None</option>
-                      {continents.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
+                      {continents.map((continent) => (
+                        <option key={continent} value={continent}>{continent}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Country
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Country</label>
                     <select
                       value={addForm.country}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          country: e.target.value,
-                          state: "",
-                        }))
-                      }
-                      className={selectCls}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, country: event.target.value, state: "" }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                     >
                       <option value="">None</option>
-                      {countries.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
+                      {countries.map((country) => (
+                        <option key={country} value={country}>{country}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      State / City
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">State / Destination</label>
                     <select
                       value={addForm.state}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          state: e.target.value,
-                        }))
-                      }
-                      className={selectCls}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, state: event.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                     >
                       <option value="">None</option>
-                      {states.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
+                      {states.map((state) => (
+                        <option key={state} value={state}>{state}</option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Status
-                    </label>
-                    <select
-                      value={addForm.isActive}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          isActive: e.target.value,
-                        }))
-                      }
-                      className={selectCls}
-                    >
-                      <option value="true">Active</option>
-                      <option value="false">Inactive</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                      Title
-                    </label>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Title</label>
                     <input
                       type="text"
                       value={addForm.title}
-                      onChange={(e) =>
-                        setAddForm((prev) => ({
-                          ...prev,
-                          title: e.target.value,
-                        }))
-                      }
-                      className={inputCls}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, title: event.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">Status</label>
+                    <select
+                      value={addForm.isActive}
+                      onChange={(event) => setAddForm((prev) => ({ ...prev, isActive: event.target.value }))}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
+                    >
+                      <option value="">Select</option>
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -1414,52 +1376,40 @@ const WorldRankingWeightsV2 = () => {
                   Weights (24 Metrics)
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {weightColumns.map((column) => (
-                    <div key={column.field}>
+                  {ALGO2_BASE_METRICS.map((metric) => (
+                    <div key={metric.field}>
                       <label className="block text-[10px] font-pmedium text-slate-500 uppercase tracking-widest mb-1">
-                        {column.headerName}
+                        {metric.label}
                       </label>
                       <input
                         type="number"
                         step="0.01"
-                        value={addForm.weight?.[column.field] ?? ""}
-                        onChange={(e) =>
-                          handleWeightFieldChange(
-                            column.field,
-                            e.target.value,
-                            "add",
-                          )
-                        }
-                        className={inputCls}
+                        value={addForm.weight?.[metric.field] ?? ""}
+                        onChange={(event) => handleWeightFieldChange(metric.field, event.target.value, "add")}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200/60 rounded-xl text-[12px] font-pmedium text-slate-700 focus:border-[#2563EB] outline-none"
                       />
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">
-                  Calculated Scores &amp; Derived Labels (Algo 2.0, read-only)
-                </h3>
-                <CalculationsGrid form={addForm} />
+              <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={handleCloseAddModal}
+                  className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-[11px] font-pmedium hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddSubmit}
+                  disabled={isCreating}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] text-white rounded-xl text-[11px] font-pmedium hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  <Plus size={13} /> {isCreating ? "Adding..." : "Add Entry"}
+                </button>
               </div>
-            </div>
-
-            <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-3 shrink-0">
-              <button
-                onClick={handleCloseAddModal}
-                disabled={isCreating}
-                className="px-6 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-pmedium text-[12px] hover:bg-slate-100 transition-colors shadow-sm"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddSubmit}
-                disabled={isCreating}
-                className="px-6 py-2.5 bg-[#2563EB] text-white rounded-xl font-pmedium text-[12px] hover:bg-blue-700 transition-colors shadow-sm disabled:opacity-50"
-              >
-                {isCreating ? "Adding..." : "Add"}
-              </button>
             </div>
           </div>
         </div>

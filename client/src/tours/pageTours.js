@@ -2077,7 +2077,7 @@ const PAGE_TOURS = [
         selector: '[data-tour="visa-countries-action-view"]',
         title: "Open the visa rules",
         description:
-          "The eye icon on a row opens that passport country's visa rules — the requirement (e-visa, visa free, visa on arrival, visa required and more) and duration for each destination. Select Edit in the popup to unlock the rows for adjustment, then Save.",
+          "The eye icon on a row opens that passport country's visa rules — the requirement (e-visa, visa free, visa on arrival, physical visa and more) and duration for each destination. Select Edit in the popup to unlock the rows for adjustment, then Save.",
         side: "left",
       },
     ],

@@ -41,6 +41,9 @@ const corsConfig = {
   },
   optionsSuccessStatus: 200,
   credentials: true,
+  // The dry-run PDF endpoint returns the file itself; these headers carry the
+  // archived S3 URL so the panel can confirm it was saved to Logs.
+  exposedHeaders: ["X-Report-Stored", "X-Report-Url", "X-Report-Log-Id"],
 };
 
 module.exports = { corsConfig, allowedOrigins };

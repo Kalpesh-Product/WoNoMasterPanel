@@ -354,11 +354,25 @@ const LogPage = () => {
                           ) : null}
                           <tr className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">{row.srNo}</td>
-                            <td
-                              className="px-5 py-4 text-[12px] font-pmedium text-blue-600 cursor-pointer hover:underline"
-                              onClick={() => handleViewLog(row)}
-                            >
-                              {row.action || "-"}
+                            <td className="px-5 py-4 text-[12px] font-pmedium text-blue-600">
+                              <span
+                                className="cursor-pointer hover:underline"
+                                onClick={() => handleViewLog(row)}
+                              >
+                                {row.action || "-"}
+                              </span>
+                              {row.payload?.reportUrl ? (
+                                <a
+                                  href={row.payload.reportUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Open the exported PDF report"
+                                  onClick={(event) => event.stopPropagation()}
+                                  className="ml-2 inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 align-middle text-[9px] font-pmedium uppercase tracking-wider text-blue-700 hover:bg-blue-100"
+                                >
+                                  <FileText size={10} /> PDF
+                                </a>
+                              ) : null}
                             </td>
                             <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">{row.module || "-"}</td>
                             <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700 truncate max-w-[160px]">{row.companyName || "-"}</td>
@@ -438,6 +452,28 @@ const LogPage = () => {
                   ))}
               </div>
 
+              {selectedLog.payload?.reportUrl ? (
+                <div>
+                  <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Exported report</h3>
+                  <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
+                    <div className="min-w-0">
+                      <p className="truncate text-[12px] font-pmedium text-slate-900">{selectedLog.payload.reportFileName || "Dry run report.pdf"}</p>
+                      <p className="mt-0.5 text-[10px] font-pmedium text-slate-500">
+                        {selectedLog.payload.uploadFileName ? `Source sheet: ${selectedLog.payload.uploadFileName}` : "Archived in S3"}
+                      </p>
+                    </div>
+                    <a
+                      href={selectedLog.payload.reportUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3 py-2 text-[11px] font-pmedium text-white shadow-sm hover:bg-blue-700 transition-colors"
+                    >
+                      <FileText size={13} /> Open PDF
+                    </a>
+                  </div>
+                </div>
+              ) : null}
+
               {Array.isArray(selectedLog.changes) && selectedLog.changes.length > 0 && (
                 <div>
                   <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Changes ({selectedLog.changes.length})</h3>
@@ -471,7 +507,7 @@ const LogPage = () => {
                   <h3 className="text-[10px] font-pmedium text-slate-500 uppercase tracking-widest border-b border-slate-100 pb-2 mb-3">Submitted Data</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/60 p-4 rounded-2xl border border-slate-100">
                     {Object.entries(selectedLog.payload)
-                      .filter(([key]) => !skipKeys.includes(key))
+                      .filter(([key]) => !skipKeys.includes(key) && key !== "reportUrl")
                       .map(([key, value], index) => {
                         const formattedValue = formatValue(key, value);
                         if (formattedValue === null) return null;
