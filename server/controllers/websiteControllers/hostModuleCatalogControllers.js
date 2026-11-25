@@ -82,7 +82,7 @@ const updateModuleFields = async (req, res) => {
 
 const uploadModuleScreenshot = async (req, res) => {
   try {
-    const { categoryId, moduleId } = req.params;
+    const { categoryId, moduleId, plan } = req.params;
     const { childId } = req.body;
     const file = req.file;
 
@@ -97,11 +97,12 @@ const uploadModuleScreenshot = async (req, res) => {
     });
 
     const query = childId ? `?childId=${encodeURIComponent(childId)}` : "";
-    const response = await nomadsAdminClient.post(
-      `/${categoryId}/modules/${moduleId}/screenshot${query}`,
-      formData,
-      { headers: formData.getHeaders() },
-    );
+    const path = plan
+      ? `/${categoryId}/modules/${moduleId}/screenshot/${plan}${query}`
+      : `/${categoryId}/modules/${moduleId}/screenshot${query}`;
+    const response = await nomadsAdminClient.post(path, formData, {
+      headers: formData.getHeaders(),
+    });
 
     return res.status(200).json(response.data);
   } catch (error) {
