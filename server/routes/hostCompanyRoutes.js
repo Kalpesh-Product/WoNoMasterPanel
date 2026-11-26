@@ -60,6 +60,7 @@ const {
   getWonoDestinationAnalytics,
   createWonoDestination,
   updateWonoDestination,
+  bulkImportDestinationRanking,
 } = require("../controllers/destinationDataControllers");
 const {
   getDestinationListingSummary,
@@ -151,6 +152,7 @@ router.get("/destinations-data", getDestinationsData);
 router.get("/destination-analytics", getWonoDestinationAnalytics);
 router.post("/destination-analytics", createWonoDestination);
 router.patch("/destination-analytics/:id", updateWonoDestination);
+router.post("/destination-analytics/bulk-import", uploadSpreadsheets.single("file"), bulkImportDestinationRanking);
 router.get("/destination-listings/summary", getDestinationListingSummary);
 router.get("/destination-listings/uploaded", getUploadedDestinations);
 router.get("/destination-listings", getDestinationListings);

@@ -173,6 +173,7 @@ import EditNomadListing from "../pages/Dashboard/FrontendDashboard/EditNomadList
 import UploadLayout from "../pages/Dashboard/FrontendDashboard/DataUpload/UploadLayout";
 import DestinationAddUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationAddUpload";
 import DestinationReuploadUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationReuploadUpload";
+import DestinationRankingUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/DestinationRankingUpload";
 import ListingsDataUpdate from "../pages/Dashboard/FrontendDashboard/DataUpload/ListingsDataUpdate";
 import WorldRankingWeightsUpload from "../pages/Dashboard/FrontendDashboard/DataUpload/WorldRankingWeightsUpload";
 import VisaRulesV2Upload from "../pages/Dashboard/FrontendDashboard/DataUpload/VisaRulesV2Upload";
@@ -419,6 +420,10 @@ export const routes = createBrowserRouter([
                       {
                         path: "destination-reupload",
                         element: <DestinationReuploadUpload />,
+                      },
+                      {
+                        path: "destination-ranking-upload",
+                        element: <DestinationRankingUpload />,
                       },
                       {
                         path: "listings-data-update",
