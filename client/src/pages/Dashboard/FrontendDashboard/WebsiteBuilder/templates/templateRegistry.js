@@ -147,7 +147,7 @@ export const TEMPLATE_REGISTRY = {
             bg: "#101519",
             fg: "#f5f0e9",
             accent: "#c29a77",
-            font: "'Merriweather', Georgia, serif",
+            font: "'Playfair Display', Georgia, serif",
         },
         recommendedFor: ["menu"],
         supportsBooking: true,
