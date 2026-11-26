@@ -1464,6 +1464,23 @@ const ORCHARD_DEMO_BUSINESS = (() => {
             "The rooms are calm, comfortable and full of practical details—good light, proper storage and beds made for real rest.",
             "Downstairs, the lounge, garden kitchen and rooftop give you room to work, cook, meet people or simply take an afternoon for yourself.",
         ],
+        team: base.team.map((member) => {
+            if (member.title === "Kabir")
+                return { ...member, image: faceCrop("photo-1758525589507-1d64a20415ac") };
+            if (member.title === "Anjali")
+                return { ...member, image: faceCrop("photo-1573496799515-eebbb63814f2") };
+            return member;
+        }),
+        testimonials: [
+            ...base.testimonials,
+            {
+                name: "Meera K.",
+                jobPosition: "Guest",
+                rating: 4,
+                image: "",
+                testimony: "I had enough space to work during the day and usually ended up chatting with someone in the kitchen after dinner.",
+            },
+        ],
         founders: [
             {
                 name: "Ananya Rao",
