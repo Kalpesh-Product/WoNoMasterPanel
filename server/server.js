@@ -194,6 +194,7 @@ app.use("/api/website-theme-catalog", verifyJwt, auditLogger, websiteThemeCatalo
 app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 app.use("/api/contributor-leads", verifyJwt, auditLogger, require("./routes/contributorLeadRoutes"));
+app.use("/api/partner-invites", verifyJwt, auditLogger, require("./routes/partnerInviteRoutes"));
 app.use(
   "/api/company-verification-leads",
   verifyJwt,

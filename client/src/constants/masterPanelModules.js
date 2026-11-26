@@ -65,6 +65,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/contributor-leads",
           },
           {
+            id: 33,
+            key: "dashboard.value-adds-partner-leads",
+            title: "Value Adds Partner Leads",
+            icon: LuHandshake,
+            route: "/dashboard/value-adds-partner-leads",
+          },
+          {
             id: 4,
             key: "dashboard.value-adds-leads",
             title: "Value Adds Leads",

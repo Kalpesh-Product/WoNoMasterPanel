@@ -157,6 +157,7 @@ import CompaniesRequestNomadListing from "../pages/Dashboard/FrontendDashboard/C
 import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import ContributorLeads from "../pages/Dashboard/Leads/ContributorLeads";
+import ValueAddsPartnerLeads from "../pages/Dashboard/Leads/ValueAddsPartnerLeads";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
@@ -355,6 +356,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "contributor-leads/:contributorLeadTab?",
                     element: <ContributorLeads />,
+                  },
+                  {
+                    path: "value-adds-partner-leads/:partnerLeadTab?",
+                    element: <ValueAddsPartnerLeads />,
                   },
                   {
                     path: "value-adds-leads",
