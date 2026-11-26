@@ -1,17 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Reveal } from "../motion";
-import { uniqueCategories, } from "../serviceAdapter";
 import { LeadFormPanel } from "../shared/TplLead";
 import { FaqSection, PhotoViewer } from "../shared/TplParts";
 import { Icon } from "../shared/TplUI";
 import { useWavex } from "./WavexContext";
 import { WxCrumbs, WxMedia, WxPageHero, WxRoomCard, WxSectionHead, detailRows, priceLine, seatsOf, } from "./WavexUI";
-const SIZES = [
-    { label: "1–4", min: 1, max: 4 },
-    { label: "5–8", min: 5, max: 8 },
-    { label: "9–12", min: 9, max: 12 },
-    { label: "13+", min: 13, max: Infinity },
-];
 export const ServicesIndex = () => {
     const { t, services, draft, c } = useWavex();
     return (<>
@@ -19,9 +12,9 @@ export const ServicesIndex = () => {
       <section className="wx-section">
         <div className="wx-shell">
           <WxSectionHead eyebrow="Book a room" title={c("services.index.title", "Find a room / desk")} body={c("services.index.body", "Every space is ready when you are — choose a size, then tell us when you need it.")}/>
-          {services.length ? (<div className="wx-space-grid">
+          {services.length ? (<div className="wx-space-grid wx-services-index-grid">
               {services.map((service, index) => (<Reveal key={service.key} delay={Math.min(index * 0.06, 0.3)}>
-                  <button type="button" className="wx-space-card" style={{ width: "100%", textAlign: "left", color: "inherit", padding: 0, border: 0, cursor: "pointer" }} onClick={() => t.goToProductPage(service.slug)}>
+                  <button type="button" className="wx-space-card" style={{ width: "100%", color: "inherit", padding: 0, border: 0, cursor: "pointer" }} onClick={() => t.goToProductPage(service.slug)}>
                     <WxMedia className="wx-space-photo" src={service.cardImage || service.heroImage} label={service.name}/>
                     <div className="wx-space-body">
                       <span className="wx-space-cat">{service.profile.labels.tag}</span>
@@ -43,19 +36,6 @@ export const ServicesIndex = () => {
 };
 export const ServicePage = ({ service }) => {
     const { t, openLead, c } = useWavex();
-    const [category, setCategory] = useState("");
-    const [size, setSize] = useState("");
-    const categories = useMemo(() => uniqueCategories(service.items), [service.items]);
-    const sizes = useMemo(() => SIZES.filter((option) => service.items.some((item) => {
-        const seats = seatsOf(item);
-        return seats >= option.min && seats <= option.max;
-    })), [service.items]);
-    const chosen = SIZES.find((option) => option.label === size);
-    const filtered = service.items.filter((item) => {
-        const seats = seatsOf(item);
-        return (!category || item.category === category) &&
-            (!chosen || (seats >= chosen.min && seats <= chosen.max));
-    });
     return (<>
       <WxPageHero index="Rooms / Collection" title={service.heroHeading || service.name} body={service.heroSubHeading || service.subText} image={service.heroImage || service.cardImage || service.items[0]?.image}>
         {service.leadEnabled ? (<button type="button" className="wx-btn" style={{ marginTop: 26 }} onClick={() => openLead(service)}>
@@ -71,35 +51,17 @@ export const ServicePage = ({ service }) => {
 
       <section className="wx-section" style={{ paddingTop: 34 }}>
         <div className="wx-shell">
-          {categories.length > 1 || sizes.length > 1 ? (<div className="wx-filter-bar">
-              {categories.length > 1 ? (<div className="wx-filter-group" role="group" aria-label="Filter by type">
-                  <button type="button" className="tp-tab" aria-pressed={category === ""} onClick={() => setCategory("")}>
-                    All
-                  </button>
-                  {categories.map((name) => (<button key={name} type="button" className="tp-tab" aria-pressed={category === name} onClick={() => setCategory(category === name ? "" : name)}>
-                      {name}
-                    </button>))}
-                </div>) : null}
-              {sizes.length > 1 ? (<div className="wx-filter-group" role="group" aria-label="Filter by capacity">
-                  {sizes.map((option) => (<button key={option.label} type="button" className="tp-tab" aria-pressed={size === option.label} onClick={() => setSize(size === option.label ? "" : option.label)}>
-                      {option.label} people
-                    </button>))}
-                </div>) : null}
-            </div>) : null}
-
-          {filtered.length ? (<div className="wx-space-grid">
-              {filtered.map((item, index) => (<Reveal key={item.key} delay={Math.min(index * 0.05, 0.3)}>
+          {service.items.length ? (<div className="wx-space-grid">
+              {service.items.map((item, index) => (<Reveal key={item.key} delay={Math.min(index * 0.05, 0.3)}>
                   <WxRoomCard item={item} service={service}/>
                 </Reveal>))}
-            </div>) : (<div className="wx-empty">
-              {service.items.length ? "No rooms match those filters." : "We're getting this room ready."}
-            </div>)}
+            </div>) : (<div className="wx-empty">We're getting this room ready.</div>)}
         </div>
       </section>
 
       {service.leadEnabled ? (<section className="wx-section-tight">
           <div className="wx-shell">
-            <Reveal className="wx-contact-form">
+            <Reveal className="wx-contact-form wx-contact-form-solo">
               <span className="wx-kicker">Booking</span>
               <h3 style={{ marginTop: 12 }}>
                 {c("services.cta.title", "Not sure which room you need?")}
@@ -149,23 +111,6 @@ export const ItemDetail = ({ service, item, }) => {
             {facts.length ? (<Reveal className="wx-facts">
                 {facts.map(([label, value]) => (<div className="wx-fact" key={label}><span>{label}</span><b>{value}</b></div>))}
               </Reveal>) : null}
-            {related.length ? (<div style={{ marginTop: 42 }}>
-                <WxSectionHead title={c("room.related.title", "More rooms like this")}/>
-                <div className="wx-room-grid">
-                  {related.map((room) => (<div className="wx-room" key={room.key}>
-                      <WxMedia className="wx-room-photo" src={room.image} label={room.title}/>
-                      <div className="wx-room-body">
-                        <h3>{room.title}</h3>
-                        <p>{room.description}</p>
-                        <div className="wx-room-actions">
-                          <button type="button" className="wx-btn wx-btn-sm" onClick={() => t.goToProductItem(service.slug, room.slug)}>
-                            View room
-                          </button>
-                        </div>
-                      </div>
-                    </div>))}
-                </div>
-              </div>) : null}
           </div>
 
           <Reveal delay={0.1} className="wx-aside">
@@ -187,6 +132,23 @@ export const ItemDetail = ({ service, item, }) => {
               </div>) : null}
           </Reveal>
         </div>
+        {related.length ? (<div className="wx-shell wx-related-rooms">
+            <WxSectionHead title={c("room.related.title", "More rooms like this")}/>
+            <div className="wx-room-grid wx-related-grid">
+              {related.map((room) => (<div className="wx-room" key={room.key}>
+                  <WxMedia className="wx-room-photo" src={room.image} label={room.title}/>
+                  <div className="wx-room-body">
+                    <h3>{room.title}</h3>
+                    <p>{room.description}</p>
+                    <div className="wx-room-actions">
+                      <button type="button" className="wx-btn wx-btn-sm" onClick={() => t.goToProductItem(service.slug, room.slug)}>
+                        View room
+                      </button>
+                    </div>
+                  </div>
+                </div>))}
+            </div>
+          </div>) : null}
       </section>
       <PhotoViewer images={photos} index={viewer} onClose={() => setViewer(null)} onChange={setViewer}/>
     </>);
