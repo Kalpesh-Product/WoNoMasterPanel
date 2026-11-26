@@ -24,9 +24,9 @@ import {
   getCountryMeta,
   isSameCountry,
 } from "../../../utils/visaCountryMeta";
+import { downloadCsv } from "../../../utils/csvExport";
 import { FileDropzone } from "./DataUpload/UploadUI";
 
-const VISA_ROWS_EXPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/export-csv`;
 const VISA_ROWS_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-rows-csv`;
 
 const CONTINENT_OPTIONS = ["Europe", "Asia", "Africa", "Americas", "Oceania"];
@@ -369,6 +369,26 @@ const VisaCountriesV2 = () => {
     },
   });
 
+  // Scoped to the selected passport, reusing data already loaded for the
+  // table — the all-passports backend export hangs on production (full
+  // unfiltered collection scan), so this stays client-side and per-passport.
+  const handleExportMatrix = () => {
+    const matrix = [
+      ["Passport", "Destination", "Requirement", "DurationDays"],
+      ...rows.map((row) => [
+        selectedPassport,
+        row.destination,
+        row.rawRequirement || row.requirement || "",
+        row.durationDays ?? "",
+      ]),
+    ];
+    const safePassport = (selectedPassport || "passport")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-");
+    downloadCsv({ filename: `visa-rules-${safePassport}.csv`, matrix });
+    toast.success(`Visa rules exported for ${selectedPassport}`);
+  };
+
   const passportMeta = getCountryMeta(selectedPassport);
   const isLoading =
     isLoadingPassports ||
@@ -389,14 +409,15 @@ const VisaCountriesV2 = () => {
                 selected passport matrix.
               </p>
             </div>
-            <a
-              href={VISA_ROWS_EXPORT_ENDPOINT}
-              download
+            <button
+              type="button"
+              onClick={handleExportMatrix}
+              disabled={!selectedPassport || !rows.length}
               data-tour="visa-countries-v2-export"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-[11px] font-pmedium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Download size={13} /> Export All Visa Rules (.csv)
-            </a>
+              <Download size={13} /> Export Visa Rules (.csv)
+            </button>
           </div>
 
           {isPassportError ? (
@@ -620,10 +641,11 @@ const VisaCountriesV2 = () => {
                     Rules
                   </h3>
                   <p className="mt-1 text-[10px] font-pmedium text-slate-400">
-                    Upload the CSV from “Export All Visa Rules” to update every
-                    passport at once. Blank Requirement / DurationDays leaves
-                    that field unchanged, -1 clears it, and an unknown Passport +
-                    Destination pair is inserted as a new row.
+                    Upload a CSV from “Export Visa Rules” (one passport, or
+                    several combined) to update those rows. Blank Requirement /
+                    DurationDays leaves that field unchanged, -1 clears it, and
+                    an unknown Passport + Destination pair is inserted as a new
+                    row.
                   </p>
                 </div>
 

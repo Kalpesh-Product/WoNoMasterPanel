@@ -51,10 +51,12 @@ export function StayServicePage({ service }) {
 }
 export function StayDetailPage({ service, item }) {
     const { draft, goToService, openLead, goToItem, c } = useCabin();
+    const [previewPhoto, setPreviewPhoto] = useState(0);
     const [selectedPhoto, setSelectedPhoto] = useState(null);
     const photos = item.images.length
         ? item.images.map((image, index) => cabinImage(image, cabinFallback(index)))
         : [cabinImage(item.image, service.heroImage, service.cardImage, cabinFallback(0))];
+    const previewIndex = photos[previewPhoto] ? previewPhoto : 0;
     const facts = [...new Set([...item.chips, ...item.features])];
     const related = service.items.filter((entry) => entry.key !== item.key).slice(0, 3);
     const price = priceWithUnit(item.price, item.priceUnit);
@@ -62,11 +64,16 @@ export function StayDetailPage({ service, item }) {
       <button type="button" className="cabin-text-link" onClick={() => goToService(service)}>← Back to {service.name}</button>
       <div className="cabin-split cabin-item-detail">
         <div>
-          {photos[0] ? <button className="cabin-image-button" type="button" aria-label="Enlarge stay photo" onClick={() => setSelectedPhoto(0)}>
-            <CabinImage src={photos[0]} fallback={cabinFallback(0)} alt={item.title} eager/>
+          {photos[previewIndex] ? <button className="cabin-image-button" type="button" aria-label="Enlarge stay photo" onClick={() => setSelectedPhoto(previewIndex)}>
+            <CabinImage src={photos[previewIndex]} fallback={cabinFallback(previewIndex)} alt={item.title} eager/>
           </button> : null}
           {photos.length > 1 ? <div className="cabin-thumbnails">
-            {photos.map((image, index) => <button key={image + index} type="button" onClick={() => setSelectedPhoto(index)} aria-label={"Enlarge stay photo " + (index + 1)}><CabinImage src={image} fallback={cabinFallback(index)}/></button>)}
+            {photos.map((image, index) => (<button key={image + index} type="button" aria-label={`Enlarge stay photo ${index + 1}`} onPointerEnter={() => setPreviewPhoto(index)} onFocus={() => setPreviewPhoto(index)} onClick={() => {
+                    setPreviewPhoto(index);
+                    setSelectedPhoto(index);
+                }}>
+                <CabinImage src={image} fallback={cabinFallback(index)}/>
+              </button>))}
           </div> : null}
         </div>
         <div>
