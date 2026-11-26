@@ -455,11 +455,13 @@ export const WorkhubPartner = () => {
                 "Tell us how your organisation, community or local business would like to work together."}
             </p>
           </div>
-          <MessageForm
-            inquiryType="partner"
-            submitLabel="Send partnership enquiry"
-            success="Thank you. Our partnerships team will contact you shortly."
-          />
+          <div className="wh-form-panel">
+            <MessageForm
+              inquiryType="partner"
+              submitLabel="Send partnership enquiry"
+              success="Thank you. Our partnerships team will contact you shortly."
+            />
+          </div>
         </div>
       </section>
     </>
@@ -495,7 +497,7 @@ export const WorkhubCareers = () => {
             >
               ← Back to all roles
             </button>
-            <div className="wh-apply wh-apply-panel">
+            <div className="wh-apply wh-apply-panel wh-form-panel">
               <h2>
                 {applyOnly
                   ? "General application"
@@ -521,31 +523,29 @@ export const WorkhubCareers = () => {
       <section className="wh-section">
         <div className="wh-shell">
           <WhSectionHead label="Join the team" title="Help people do their best work" />
-          <div className="wh-jobs">
-            {t.careersJobsLoading ? (
-              <p>Loading roles…</p>
-            ) : jobs.length ? (
-              jobs.map((job) => (
-                <button
-                  type="button"
-                  key={job._id || job.id}
-                  onClick={() => {
-                    t.setCareersApplyJob(job);
-                    t.setCareersDetailTab("apply");
-                  }}
-                >
-                  <span>{job.department || "Operations"}</span>
-                  <h3>{job.title || job.jobTitle}</h3>
-                  <p>{job.location || "On site"}</p>
-                  {WhIcon.arrow()}
-                </button>
-              ))
-            ) : (
-              <p className="wh-empty">
-                No open roles right now. Please check again soon.
-              </p>
-            )}
-          </div>
+          {t.careersJobsLoading || jobs.length > 0 ? (
+            <div className="wh-jobs">
+              {t.careersJobsLoading ? (
+                <p>Loading roles…</p>
+              ) : (
+                jobs.map((job) => (
+                  <button
+                    type="button"
+                    key={job._id || job.id}
+                    onClick={() => {
+                      t.setCareersApplyJob(job);
+                      t.setCareersDetailTab("apply");
+                    }}
+                  >
+                    <span>{job.department || "Operations"}</span>
+                    <h3>{job.title || job.jobTitle}</h3>
+                    <p>{job.location || "On site"}</p>
+                    {WhIcon.arrow()}
+                  </button>
+                ))
+              )}
+            </div>
+          ) : null}
           <div className="wh-careers-general">
             <p>Don’t see the right role? We’d still like to hear from you.</p>
             <button
@@ -574,7 +574,7 @@ export const WorkhubContact = () => {
       />
       <section className="wh-section wh-contact-section">
         <div className="wh-shell wh-form-grid">
-          <div className="wh-contact-form">
+          <div className="wh-contact-form wh-form-panel">
             <MessageForm
               inquiryType="contact"
               submitLabel="Send message"

@@ -1,5 +1,6 @@
 import { serviceNameToKind } from "./serviceChoices";
 import { DEMO_BUSINESSES, withFaqs } from "./demoContent";
+import { coPlaceDemoLogos } from "./coplace/coPlaceDemoLogos";
 import cafePhoto from "./restobar/cafe-visit.jpg";
 import italianoBarista from "./italiano/head-barista.jpg";
 const TEMPLATE_KIND = {
@@ -765,6 +766,14 @@ const WORKHUB_DEMO_BUSINESS = (() => {
             },
         ],
         address: "18 Richmond Road, Bangalore 560025",
+        settings: {
+            ...base.settings,
+            logoCarousel: {
+                enabled: true,
+                title: "Trusted by Leading Companies",
+                logos: coPlaceDemoLogos,
+            },
+        },
         page: {
             ...base.page,
             heroHeading: "Work in Northline Rooms",
