@@ -1,6 +1,7 @@
 import { serviceNameToKind } from "./serviceChoices";
 import { DEMO_BUSINESSES, withFaqs } from "./demoContent";
 import cafePhoto from "./restobar/cafe-visit.jpg";
+import italianoBarista from "./italiano/head-barista.jpg";
 const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
@@ -1360,12 +1361,17 @@ const italianoDemo = (() => {
         aboutPageMission: "We roll our pasta by hand and build our menu around what is in season.",
         aboutPageValues: "Come for a quick espresso or make an evening of it. There is always room at our table.",
         about: ["A neighborhood café and dining room serving the Italian dishes we grew up with."],
+        team: base.team.map((member) => member.title === "Rhea" ? { ...member, image: italianoBarista } : member),
         founders: [
             { name: "Elena Rossi", role: "Head chef", bio: "Elena brings the pasta and sauces she learned to make at home to the Italiano kitchen.", highlights: "", image: faceCrop("photo-1573497019236-17f8177b81e8") },
         ],
         testimonials: [
-            { name: "Sofia M.", jobPosition: "Guest", rating: 5, image: "", testimony: "We shared the mushroom pasta and stayed for another coffee. It felt like an evening at a friend's table." },
-            { name: "Daniel P.", jobPosition: "Guest", rating: 5, image: "", testimony: "The pizza came out crisp and hot, and the team made room for us on a busy evening." },
+          { name: "Sofia M.", jobPosition: "Guest", rating: 5, image: "", testimony: "We shared the mushroom pasta and stayed for another coffee. It felt like an evening at a friend's table." },
+          { name: "Daniel P.", jobPosition: "Guest", rating: 5, image: "", testimony: "The pizza came out crisp and hot, and the team made room for us on a busy evening." },
+          { name: "Maya R.", jobPosition: "Guest", rating: 4, image: "", testimony: "We stopped in for lunch and shared the burrata. The tomatoes were excellent, and the staff gave us time to enjoy the meal." },
+          { name: "Nina S.", jobPosition: "Guest", rating: 5, image: "", testimony: "The hand-cut tagliatelle was my favorite. I’d come back just for that and an espresso." },
+          { name: "Luca B.", jobPosition: "Guest", rating: 5, image: "", testimony: "We brought friends for dinner, and there was something for everyone. The panna cotta was the first plate we finished." },
+          { name: "Asha K.", jobPosition: "Guest", rating: 4, image: "", testimony: "It was lively on Saturday, but our server was attentive and the Margherita was worth the wait." },
         ],
         address: "12 Museum Road, Bengaluru 560001",
         page: {
