@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Calendar,
+  CheckCircle2,
+  ChevronDown,
   Clock,
   Eye,
   Mail,
@@ -15,6 +17,7 @@ import {
   UserRoundCheck,
   Users,
   X,
+  XCircle,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -69,6 +72,17 @@ const getContributionTypes = (row) => {
     .filter(Boolean);
 };
 
+const REVIEW_STATUSES = ["pending", "approved", "rejected"];
+const normalizeReviewStatus = (value) => {
+  const status = normalize(value);
+  return REVIEW_STATUSES.includes(status) ? status : "pending";
+};
+const reviewStatusTone = {
+  pending: "border-amber-200 bg-amber-50 text-amber-700",
+  approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  rejected: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
 const matchesTab = (row, tab) => {
   const contributionTypes = getContributionTypes(row);
   if (!contributionTypes.length) return row?.[tab.roleFlag] === true;
@@ -93,6 +107,11 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
       label: "text-emerald-600",
       icon: "bg-emerald-50 text-emerald-600",
     },
+    rose: {
+      border: "border-l-rose-500",
+      label: "text-rose-600",
+      icon: "bg-rose-50 text-rose-600",
+    },
   }[tone];
 
   return (
@@ -112,7 +131,7 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
   );
 };
 
-const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, onClose }) => {
+const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, reviewStatuses, onClose }) => {
   if (!lead) return null;
   const contributionTypes = getContributionTypes(lead);
   const contributionType =
@@ -186,6 +205,9 @@ const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, onClose }) => {
             <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
               {[
                 ["Contribution Type", contributionType],
+                ...(reviewStatuses
+                  ? [["Review Status", normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag])]]
+                  : []),
                 ["Current Country", lead.currentCountry || lead.country || "--"],
                 ["LinkedIn Profile", lead.linkedinProfile || "--"],
                 ["Message", lead.message || "--"],
@@ -226,6 +248,7 @@ const RoleLeadsPage = ({
   queryKey,
   modalKindLabel,
   inviteEndpoint,
+  reviewStatuses = false,
 }) => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
@@ -237,6 +260,7 @@ const RoleLeadsPage = ({
   );
   const activeTab = tabBySlug[activeSlug] || defaultTab;
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedLeadId, setSelectedLeadId] = useState(null);
 
   useEffect(() => {
@@ -247,6 +271,7 @@ const RoleLeadsPage = ({
 
   useEffect(() => {
     setSearchQuery("");
+    setStatusFilter("all");
     setSelectedLeadId(null);
   }, [activeTab.slug]);
 
@@ -259,10 +284,10 @@ const RoleLeadsPage = ({
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ leadId, role, isActive }) =>
-      (await axiosPrivate.patch(`${apiEndpoint}/${leadId}/status`, { role, isActive })).data,
+    mutationFn: async ({ leadId, role, isActive, status }) =>
+      (await axiosPrivate.patch(`${apiEndpoint}/${leadId}/status`, { role, isActive, status })).data,
     onSuccess: (data) => {
-      toast.success(data.message || "Access updated.");
+      toast.success(data.message || "Lead status updated.");
       queryClient.invalidateQueries({ queryKey: [queryKey] });
     },
     onError: (error) => {
@@ -299,22 +324,40 @@ const RoleLeadsPage = ({
 
   const filteredLeads = useMemo(() => {
     const query = normalize(searchQuery);
-    if (!query) return activeLeads;
     return activeLeads.filter((lead) =>
-      [
-        getName(lead),
-        getEmail(lead),
-        getPhone(lead),
-        lead.currentCountry,
-        lead.country,
-        lead.linkedinProfile,
-        lead.message,
-        getContributionTypes(lead).join(" "),
-      ]
-        .filter(Boolean)
-        .some((value) => normalize(value).includes(query)),
+      (!reviewStatuses ||
+        statusFilter === "all" ||
+        normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag]) === statusFilter) &&
+      (!query ||
+        [
+          getName(lead),
+          getEmail(lead),
+          getPhone(lead),
+          lead.currentCountry,
+          lead.country,
+          lead.linkedinProfile,
+          lead.message,
+          getContributionTypes(lead).join(" "),
+        ]
+          .filter(Boolean)
+          .some((value) => normalize(value).includes(query))),
     );
-  }, [activeLeads, searchQuery]);
+  }, [activeLeads, activeTab.roleFlag, reviewStatuses, searchQuery, statusFilter]);
+
+  const reviewCounts = useMemo(
+    () =>
+      activeLeads.reduce(
+        (counts, lead) => {
+          const status = normalizeReviewStatus(
+            lead.partnerStatuses?.[activeTab.roleFlag],
+          );
+          counts[status] += 1;
+          return counts;
+        },
+        { pending: 0, approved: 0, rejected: 0 },
+      ),
+    [activeLeads, activeTab.roleFlag],
+  );
 
   const thisWeek = useMemo(() => {
     const weekStart = new Date();
@@ -382,24 +425,24 @@ const RoleLeadsPage = ({
             </div>
           ) : (
             <>
-              <div className="grid shrink-0 grid-cols-2 gap-3 md:grid-cols-3">
-                <StatTile
-                  label={`Total ${activeTab.label}`}
-                  value={activeLeads.length}
-                  icon={Target}
-                  tone="slate"
-                />
-                <StatTile label="This Week" value={thisWeek} icon={Clock} tone="amber" />
-                <StatTile
-                  label="Showing"
-                  value={filteredLeads.length}
-                  icon={Users}
-                  tone="emerald"
-                />
+              <div className={`grid shrink-0 grid-cols-2 gap-3 ${reviewStatuses ? "xl:grid-cols-4" : "md:grid-cols-3"}`}>
+                <StatTile label="Total Leads" value={activeLeads.length} icon={Target} tone="slate" />
+                {reviewStatuses ? (
+                  <>
+                    <StatTile label="Pending Review" value={reviewCounts.pending} icon={Clock} tone="amber" />
+                    <StatTile label="Approved" value={reviewCounts.approved} icon={CheckCircle2} tone="emerald" />
+                    <StatTile label="Rejected" value={reviewCounts.rejected} icon={XCircle} tone="rose" />
+                  </>
+                ) : (
+                  <>
+                    <StatTile label="This Week" value={thisWeek} icon={Clock} tone="amber" />
+                    <StatTile label="Showing" value={filteredLeads.length} icon={Users} tone="emerald" />
+                  </>
+                )}
               </div>
 
               <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur-md">
-                <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:p-4 lg:p-5">
+                <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:flex-row sm:items-center sm:p-4 lg:p-5">
                   <div className="relative min-w-[180px] flex-1">
                     <Search
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -413,6 +456,31 @@ const RoleLeadsPage = ({
                       className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
                     />
                   </div>
+                  {reviewStatuses ? (
+                    <div className="flex items-center gap-2 sm:shrink-0">
+                      <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                        <select
+                          value={statusFilter}
+                          onChange={(event) => setStatusFilter(event.target.value)}
+                          aria-label="Filter partner leads by status"
+                          className="w-full appearance-none rounded-lg border border-slate-200/60 bg-white py-2.5 pl-3.5 pr-9 text-[12px] font-pmedium text-slate-700 outline-none transition-all focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+                        >
+                          <option value="all">All statuses</option>
+                          <option value="pending">Pending</option>
+                          <option value="approved">Approved</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          aria-hidden="true"
+                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
+                        />
+                      </div>
+                      <span className="whitespace-nowrap text-[10px] font-pmedium text-slate-400">
+                        {filteredLeads.length} of {activeLeads.length}
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
 
                 {filteredLeads.length === 0 ? (
@@ -434,6 +502,7 @@ const RoleLeadsPage = ({
                           <th className="px-5 py-4">LinkedIn Profile</th>
                           <th className="px-5 py-4">Nationality</th>
                           <th className="px-5 py-4">Date</th>
+                          {reviewStatuses ? <th className="px-5 py-4 text-center">Status</th> : null}
                           <th className="px-5 py-4 text-center">Actions</th>
                         </tr>
                       </thead>
@@ -441,6 +510,9 @@ const RoleLeadsPage = ({
                         {filteredLeads.map((lead, index) => {
                           const leadId = lead._id || lead.id;
                           const isActive = lead[activeTab.roleFlag] === true;
+                          const reviewStatus = normalizeReviewStatus(
+                            lead.partnerStatuses?.[activeTab.roleFlag],
+                          );
                           return (
                             <tr
                               key={leadId || index}
@@ -480,6 +552,34 @@ const RoleLeadsPage = ({
                               <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
                                 {formatDateLabel(lead.createdAt)}
                               </td>
+                              {reviewStatuses ? (
+                                <td className="px-5 py-4 text-center">
+                                  <div className="relative mx-auto w-[132px]">
+                                    <select
+                                      value={reviewStatus}
+                                      onChange={(event) =>
+                                        updateStatus.mutate({
+                                          leadId,
+                                          role: activeTab.roleFlag,
+                                          status: event.target.value,
+                                        })
+                                      }
+                                      disabled={updateStatus.isPending}
+                                      aria-label={`Review status for ${getName(lead)}`}
+                                      className={`w-full appearance-none rounded-full border py-2 pl-4 pr-9 text-[10px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[reviewStatus]}`}
+                                    >
+                                      <option value="pending">Pending</option>
+                                      <option value="approved">Approved</option>
+                                      <option value="rejected">Rejected</option>
+                                    </select>
+                                    <ChevronDown
+                                      size={14}
+                                      aria-hidden="true"
+                                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-60"
+                                    />
+                                  </div>
+                                </td>
+                              ) : null}
                               <td className="px-5 py-4 text-center">
                                 <div className="flex items-center justify-center gap-1.5">
                                 <button
@@ -490,27 +590,29 @@ const RoleLeadsPage = ({
                                 >
                                   <Eye size={15} strokeWidth={2.5} />
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => updateStatus.mutate({ leadId, role: activeTab.roleFlag, isActive: !isActive })}
-                                  disabled={updateStatus.isPending}
-                                  title={isActive ? "Mark as Inactive" : "Mark as Active"}
-                                  aria-label={`${isActive ? "Mark as Inactive" : "Mark as Active"}: ${getName(lead)} (${activeTab.singular})`}
-                                  aria-pressed={isActive}
-                                  className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
-                                    isActive
-                                      ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
-                                      : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
-                                  }`}
-                                >
-                                  <Power size={15} strokeWidth={2.5} />
-                                </button>
+                                {!reviewStatuses ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateStatus.mutate({ leadId, role: activeTab.roleFlag, isActive: !isActive })}
+                                    disabled={updateStatus.isPending}
+                                    title={isActive ? "Mark as Inactive" : "Mark as Active"}
+                                    aria-label={`${isActive ? "Mark as Inactive" : "Mark as Active"}: ${getName(lead)} (${activeTab.singular})`}
+                                    aria-pressed={isActive}
+                                    className={`p-1.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+                                      isActive
+                                        ? "bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700"
+                                        : "bg-rose-100 text-rose-700 hover:bg-emerald-100 hover:text-emerald-700"
+                                    }`}
+                                  >
+                                    <Power size={15} strokeWidth={2.5} />
+                                  </button>
+                                ) : null}
                                 {inviteEndpoint ? (
                                   <button
                                     type="button"
                                     onClick={() => sendInvite.mutate(lead)}
-                                    disabled={!isActive || sendInvite.isPending}
-                                    title={isActive ? "Send partner invite" : "Approve this lead first"}
+                                    disabled={reviewStatus !== "approved" || sendInvite.isPending}
+                                    title={reviewStatus === "approved" ? "Send partner invite" : "Approve this lead first"}
                                     aria-label={`Send partner invite: ${getName(lead)}`}
                                     className="rounded-lg bg-blue-100 p-1.5 text-blue-700 transition-all hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-40"
                                   >
@@ -536,6 +638,7 @@ const RoleLeadsPage = ({
         lead={selectedLead}
         activeTab={activeTab}
         modalKindLabel={modalKindLabel}
+        reviewStatuses={reviewStatuses}
         onClose={() => setSelectedLeadId(null)}
       />
     </div>

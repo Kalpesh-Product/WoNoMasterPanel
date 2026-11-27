@@ -24,8 +24,8 @@ router.patch("/:id/status", async (req, res) => {
     if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
       return res.status(400).json({ message: "Invalid contributor lead ID." });
     }
-    const { role, isActive } = req.body || {};
-    const response = await client.patch(`/${req.params.id}/status`, { role, isActive });
+    const { role, isActive, status } = req.body || {};
+    const response = await client.patch(`/${req.params.id}/status`, { role, isActive, status });
     return res.status(200).json(response.data);
   } catch (error) {
     return res.status(error.response?.status || 502).json({ message: error.response?.data?.message || "Failed to update contributor access." });

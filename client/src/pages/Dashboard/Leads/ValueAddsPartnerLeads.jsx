@@ -64,6 +64,7 @@ const ValueAddsPartnerLeads = () => {
       queryKey="contributorLeads"
       modalKindLabel="Become a Partner"
       inviteEndpoint="/api/partner-invites"
+      reviewStatuses
     />
   );
 };
