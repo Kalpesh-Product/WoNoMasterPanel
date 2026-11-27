@@ -20,7 +20,7 @@ const CURRENT_DATA_HEADERS = ["Business ID", "Business Name", "Company Type", "R
 const currentDataFilename = () => `Listings Data - ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.csv`;
 
 const StatGrid = ({ items }) => (
-  <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-5">
+  <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-3 lg:grid-cols-6">
     {items.map((item) => (
       <div key={item.label} className="px-3 py-3 text-center">
         <p className={`text-[9px] font-pmedium uppercase tracking-widest ${item.labelTone || "text-slate-400"}`}>{item.label}</p>
@@ -118,6 +118,7 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
           { label: "No change", value: result.unchangedCount },
           { label: "Not found", value: result.notFoundCount, tone: "text-amber-700", labelTone: "text-amber-600" },
           { label: "Row issues", value: (result.rowErrors || []).length, tone: "text-rose-600", labelTone: "text-rose-500" },
+          { label: "Blank cells", value: result.skippedNothingToUpdate },
         ]}
       />
 
@@ -347,6 +348,7 @@ const ListingsDataUpdate = () => {
         { label: "No change", value: result.unchangedCount ?? 0 },
         { label: "Not found", value: result.notFoundCount ?? 0 },
         { label: "Row issues", value: (result.rowErrors || []).length },
+        { label: "Blank cells", value: result.skippedNothingToUpdate ?? 0 },
       ],
       sections: [
         {

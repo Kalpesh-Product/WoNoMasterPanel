@@ -549,6 +549,7 @@ const bulkUpdateListingStats = async (req, res) => {
         willUpdateCount: preview.length,
         unchangedCount,
         notFoundCount: notFound.length,
+        skippedNothingToUpdate,
         rowErrors: failures,
         notFound,
         preview,
