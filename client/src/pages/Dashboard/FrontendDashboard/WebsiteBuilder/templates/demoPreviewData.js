@@ -3,6 +3,7 @@ import { DEMO_BUSINESSES, withFaqs } from "./demoContent";
 import { coPlaceDemoLogos } from "./coplace/coPlaceDemoLogos";
 import cafePhoto from "./restobar/cafe-visit.jpg";
 import italianoBarista from "./italiano/head-barista.jpg";
+import destinflowHero from "./destinflow/destinflow-hero.jpg";
 const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
@@ -50,7 +51,7 @@ const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop
 // transparent navigation and centered banner read the way they were designed.
 const DESTINFLOW_ASSETS = {
     logo: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/64c8f0e8ad1c8a6f73e9a4fe_destinflow-logo.svg",
-    hero: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/646dad4d11883642cfe0ec1f_home-banner-image.jpg",
+    hero: destinflowHero,
 };
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
