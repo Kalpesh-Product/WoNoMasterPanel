@@ -24,13 +24,11 @@ import {
   UploadPanel,
 } from "./UploadUI";
 
-// Nomads owns this endpoint. Import format is one row per passport +
-// destination pair. Unlike the weights importer this one upserts: a visa
-// rule legitimately gains new passport/destination pairs over time, so
-// "insert" is a normal outcome, not an error.
-// Same URL handles both steps: ?dryRun=true previews, no query writes.
-const VISA_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-rows-csv`;
-const VISA_IMPORT_FIELD = "visa-rules-file";
+// Passport-rows × destination-columns matrix — two files (requirement grid +
+// duration grid), matching how the source data is actually maintained
+// upstream (e.g. the "Visa Type" / "Visa Duration" tabs in the master
+// spreadsheet). Same endpoint handles both dry-run and commit.
+const VISA_MATRIX_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-csv`;
 
 const isCsv = (file) => /\.csv$/i.test(file.name);
 
@@ -356,33 +354,37 @@ const ErrorPanel = ({ message, rowErrors = [] }) => (
   </section>
 );
 
-// How many passports to fetch in parallel per round. The all-passports
-// backend export (one unfiltered collection scan) hangs in production; this
-// instead reuses the per-passport endpoint — already proven fast — in small
-// batches, so no single request is ever large.
-const EXPORT_BATCH_SIZE = 5;
-
 const VisaRulesV2Upload = () => {
   const axios = useAxiosPrivate();
-  const [file, setFile] = useState(null);
-  const [exportProgress, setExportProgress] = useState(null);
-
-  const postFile = async (dryRun) => {
-    const formData = new FormData();
-    formData.append(VISA_IMPORT_FIELD, file);
-    const response = await axios.post(
-      VISA_IMPORT_ENDPOINT,
-      formData,
-      dryRun ? { params: { dryRun: true } } : undefined,
-    );
-    return response.data;
-  };
+  const [requirementFile, setRequirementFile] = useState(null);
+  const [durationFile, setDurationFile] = useState(null);
+  const [matrixExportProgress, setMatrixExportProgress] = useState(null);
 
   const errorMessage = (error) =>
     error?.response?.data?.message || "Request failed.";
 
-  const preview = useMutation({
-    mutationFn: () => postFile(true),
+  // Matrix backend returns processedRules/no rowErrors; the shared
+  // DryRunPanel/CommitPanel/ErrorPanel read processedRows/rowErrors (the row
+  // importer's field names) — normalized here so those components work
+  // unchanged for both flows.
+  const postMatrixFiles = async (dryRun) => {
+    const formData = new FormData();
+    formData.append("visa-requirement-file", requirementFile);
+    formData.append("visa-duration-file", durationFile);
+    const response = await axios.post(
+      VISA_MATRIX_IMPORT_ENDPOINT,
+      formData,
+      dryRun ? { params: { dryRun: true } } : undefined,
+    );
+    return {
+      ...response.data,
+      processedRows: response.data.processedRules,
+      rowErrors: response.data.rowErrors || [],
+    };
+  };
+
+  const matrixPreview = useMutation({
+    mutationFn: () => postMatrixFiles(true),
     onSuccess: (result) => {
       const count = (result.preview || []).length;
       if (count) {
@@ -392,14 +394,14 @@ const VisaRulesV2Upload = () => {
           } updated. Review, then confirm.`,
         );
       } else {
-        toast.info("The sheet already matches the database.");
+        toast.info("The sheets already match the database.");
       }
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const commit = useMutation({
-    mutationFn: () => postFile(false),
+  const matrixCommit = useMutation({
+    mutationFn: () => postMatrixFiles(false),
     onSuccess: (result) => {
       toast.success(
         `Imported: ${result.modifiedCount ?? 0} modified, ${
@@ -412,27 +414,42 @@ const VisaRulesV2Upload = () => {
     onError: (error) => toast.error(errorMessage(error)),
   });
 
-  const pickFile = (picked) => {
+  const pickRequirementFile = (picked) => {
     if (!picked) return;
     if (!isCsv(picked)) {
       toast.error("Only .csv files are allowed.");
       return;
     }
-    setFile(picked);
-    preview.reset();
-    commit.reset();
+    setRequirementFile(picked);
+    matrixPreview.reset();
+    matrixCommit.reset();
   };
 
-  const removeFile = () => {
-    setFile(null);
-    preview.reset();
-    commit.reset();
+  const removeRequirementFile = () => {
+    setRequirementFile(null);
+    matrixPreview.reset();
+    matrixCommit.reset();
   };
 
-  // The archived PDF mirrors the dry-run preview: every rule that would be
-  // inserted or corrected, plus the rows the backend skipped.
-  const buildReport = () => {
-    const result = preview.data || {};
+  const pickDurationFile = (picked) => {
+    if (!picked) return;
+    if (!isCsv(picked)) {
+      toast.error("Only .csv files are allowed.");
+      return;
+    }
+    setDurationFile(picked);
+    matrixPreview.reset();
+    matrixCommit.reset();
+  };
+
+  const removeDurationFile = () => {
+    setDurationFile(null);
+    matrixPreview.reset();
+    matrixCommit.reset();
+  };
+
+  const buildMatrixReport = () => {
+    const result = matrixPreview.data || {};
     const previewRows = result.preview || [];
     const changeRows = [];
 
@@ -455,17 +472,16 @@ const VisaRulesV2Upload = () => {
     ]);
 
     return {
-      title: "Visa Rules V2 — Dry Run",
+      title: "Visa Rules V2 Matrix — Dry Run",
       module: "Data Upload",
       page: "Visa Rules V2 Import",
-      action: "Dry run PDF — Visa Rules V2",
-      fileName: file?.name || "",
+      action: "Dry run PDF — Visa Rules V2 Matrix",
+      fileName: [requirementFile?.name, durationFile?.name].filter(Boolean).join(" + "),
       summary: [
-        { label: "Rows read", value: result.processedRows ?? 0 },
+        { label: "Pairs read", value: result.processedRows ?? 0 },
         { label: "New rows", value: result.willInsertCount ?? 0 },
         { label: "Will update", value: result.willUpdateCount ?? 0 },
         { label: "No change", value: result.unchangedCount ?? 0 },
-        { label: "Row issues", value: (result.rowErrors || []).length },
       ],
       sections: [
         {
@@ -480,24 +496,16 @@ const VisaRulesV2Upload = () => {
           ],
           rows: changeRows,
         },
-        {
-          title: `Rows skipped (${skippedRows.length})`,
-          columns: [
-            { label: "Row", width: 0.16 },
-            { label: "Reason", width: 0.84 },
-          ],
-          rows: skippedRows,
-        },
       ].filter((section) => section.rows.length > 0),
       notes: [
         "This is a dry run: no visa rule was written by generating this report.",
-        "Import upserts by passport + destination. Blank cells leave a field untouched, -1 clears it, and an unknown pair is inserted.",
+        "Requirement-sheet rows set both fields; duration-only rows never overwrite an existing requirement.",
       ],
     };
   };
 
-  const pdfExport = useMutation({
-    mutationFn: () => exportDryRunPdf({ axios, report: buildReport() }),
+  const matrixPdfExport = useMutation({
+    mutationFn: () => exportDryRunPdf({ axios, report: buildMatrixReport() }),
     onSuccess: ({ stored }) => {
       if (stored) {
         toast.success("PDF downloaded and archived in Master Panel logs.");
@@ -508,115 +516,158 @@ const VisaRulesV2Upload = () => {
     onError: async (error) => toast.error(await readDryRunReportError(error)),
   });
 
-  const busy = preview.isPending || commit.isPending;
-  const failedRequest = preview.error || commit.error;
-  const failedResult = failedRequest?.response?.data;
-  const isExporting = Boolean(exportProgress);
+  const matrixBusy = matrixPreview.isPending || matrixCommit.isPending;
+  const matrixFailedRequest = matrixPreview.error || matrixCommit.error;
+  const matrixFailedResult = matrixFailedRequest?.response?.data;
+  const isMatrixExporting = Boolean(matrixExportProgress);
 
-  const handleExportAll = async () => {
+  // Shared by both export buttons: pulls every passport's rules via the
+  // already-proven-fast per-passport endpoint, batched, never one big
+  // unfiltered query. Row export flattens the result; matrix export reshapes
+  // the same data into two grids.
+  // Served from Nomads' in-memory cache (10-min stale-while-revalidate,
+  // refreshed via the same scoped per-passport queries this used to run
+  // client-side) — one request instead of ~190 batched ones.
+  const fetchAllVisaRules = async (onProgress) => {
+    onProgress?.(0, 1);
+    const response = await axios.get(`${NOMADS_API_BASE_URL}/visa-rules-v2/cached-all`);
+    const { countries = [], rulesByPassport: rulesByPassportObject = {} } = response.data || {};
+    if (!countries.length) {
+      throw new Error("No passports found to export.");
+    }
+    onProgress?.(1, 1);
+
+    return {
+      countries,
+      rulesByPassport: new Map(Object.entries(rulesByPassportObject)),
+      failedPassports: [],
+    };
+  };
+
+  const describeFailures = (failedPassports) =>
+    `${failedPassports.length} passport(s) failed: ${failedPassports
+      .slice(0, 5)
+      .join(", ")}${failedPassports.length > 5 ? "…" : ""}`;
+
+  const handleExportMatrices = async () => {
     try {
-      const countriesRes = await axios.get(
-        `${NOMADS_API_BASE_URL}/visa-rules-v2/destinations/countries`,
+      setMatrixExportProgress({ done: 0, total: 0 });
+      const { countries, rulesByPassport, failedPassports } = await fetchAllVisaRules(
+        (done, total) => setMatrixExportProgress({ done, total }),
       );
-      const passports = countriesRes?.data?.countries || [];
-      if (!passports.length) {
-        toast.error("No passports found to export.");
-        return;
-      }
 
-      setExportProgress({ done: 0, total: passports.length });
-      const matrix = [["Passport", "Destination", "Requirement", "DurationDays"]];
-      const failedPassports = [];
+      // Same universe for rows and columns, generated together — so both
+      // files always have identical destination columns, no manual-edit
+      // mismatch possible.
+      const destinations = countries;
+      const header = ["Passport", ...destinations];
+      const requirementMatrix = [header];
+      const durationMatrix = [header];
 
-      for (let i = 0; i < passports.length; i += EXPORT_BATCH_SIZE) {
-        const batch = passports.slice(i, i + EXPORT_BATCH_SIZE);
-        const results = await Promise.allSettled(
-          batch.map((passport) =>
-            axios.get(
-              `${NOMADS_API_BASE_URL}/visa-rules-v2/passport/${encodeURIComponent(passport)}`,
-            ),
-          ),
+      countries.forEach((passport) => {
+        const rules = rulesByPassport.get(passport) || [];
+        const requirementByDestination = new Map(
+          rules.map((rule) => [rule.destination, rule.requirement || ""]),
         );
+        const durationByDestination = new Map(
+          rules.map((rule) => [rule.destination, rule.durationDays ?? ""]),
+        );
+        requirementMatrix.push([
+          passport,
+          ...destinations.map((destination) =>
+            destination === passport
+              ? "N/A"
+              : requirementByDestination.get(destination) ?? "",
+          ),
+        ]);
+        durationMatrix.push([
+          passport,
+          ...destinations.map((destination) => {
+            if (destination === passport) return "N/A";
+            const value = durationByDestination.get(destination);
+            return value === undefined || value === null || value === "" ? "N/A" : value;
+          }),
+        ]);
+      });
 
-        results.forEach((result, index) => {
-          const passport = batch[index];
-          if (result.status === "fulfilled") {
-            const rules = result.value?.data?.data || [];
-            rules.forEach((rule) => {
-              matrix.push([
-                passport,
-                rule.destination || "",
-                rule.requirement || "",
-                rule.durationDays ?? "",
-              ]);
-            });
-          } else {
-            failedPassports.push(passport);
-          }
-        });
-
-        setExportProgress({
-          done: Math.min(i + EXPORT_BATCH_SIZE, passports.length),
-          total: passports.length,
-        });
-      }
-
-      downloadCsv({ filename: "wono_visa_rules_v2_full.csv", matrix });
+      downloadCsv({ filename: "wono_visa_requirement_matrix.csv", matrix: requirementMatrix });
+      downloadCsv({ filename: "wono_visa_duration_matrix.csv", matrix: durationMatrix });
 
       if (failedPassports.length) {
-        toast.warning(
-          `Exported, but ${failedPassports.length} passport(s) failed: ${failedPassports.slice(0, 5).join(", ")}${failedPassports.length > 5 ? "…" : ""}`,
-        );
+        toast.warning(`Exported, but ${describeFailures(failedPassports)}`);
       } else {
-        toast.success(`Exported ${passports.length} passports, ${matrix.length - 1} rows.`);
+        toast.success(
+          `Exported matrices: ${countries.length} passports × ${destinations.length} destinations.`,
+        );
       }
     } catch (error) {
-      toast.error("Export failed. Please try again.");
+      toast.error(error.message || "Matrix export failed. Please try again.");
     } finally {
-      setExportProgress(null);
+      setMatrixExportProgress(null);
     }
   };
 
   return (
     <div className="flex flex-col gap-4">
       <UploadCard
-        title="Visa Rules V2 Import"
-        description="Upload one CSV to preview and import visa rules for every passport → destination pair."
+        title="Visa Rules V2 Matrix Import"
+        description="Upload a Requirement matrix + a Duration matrix (passport rows, destination columns) — matches how the source data is kept upstream."
       >
         <p className="mb-3 text-[10px] font-pmedium text-slate-400">
-          One row per rule with the columns{" "}
-          <span className="text-slate-600">Passport, Destination, Requirement,
-          DurationDays</span>. The file only needs to contain the rows you want
-          to touch; everything else in the database is left alone.
+          First column <span className="text-slate-600">Passport</span>, every
+          other column a destination. Same destination columns in both files —
+          a column only in the Requirement file is fine, but a column only in
+          the Duration file never overwrites an existing requirement.
         </p>
 
         <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5">
           <p className="text-[10px] font-pmedium text-slate-500">
-            {isExporting
-              ? `Exporting passports… ${exportProgress.done}/${exportProgress.total}`
-              : "Export every passport's current rules into one CSV, ready to edit and re-upload."}
+            {isMatrixExporting
+              ? `Exporting passports… ${matrixExportProgress.done}/${matrixExportProgress.total}`
+              : "Export both matrices from current data, ready to edit and re-upload."}
           </p>
           <button
             type="button"
-            onClick={handleExportAll}
-            disabled={isExporting}
+            onClick={handleExportMatrices}
+            disabled={isMatrixExporting}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[10px] font-pmedium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <FileDown size={12} />
-            {isExporting ? "Exporting..." : "Export All (.csv)"}
+            {isMatrixExporting ? "Exporting..." : "Export Matrices (2 .csv)"}
           </button>
         </div>
 
         <UploadPanel>
-          <FileDropzone
-            file={file}
-            onPick={pickFile}
-            onRemove={removeFile}
-            accept=".csv"
-            dataTour="data-upload-dropzone"
-            disabled={busy}
-            hint="CSV with Passport, Destination, Requirement, DurationDays"
-          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                Requirement matrix
+              </p>
+              <FileDropzone
+                file={requirementFile}
+                onPick={pickRequirementFile}
+                onRemove={removeRequirementFile}
+                accept=".csv"
+                dataTour="data-upload-matrix-requirement"
+                disabled={matrixBusy}
+                hint="Passport + one column per destination"
+              />
+            </div>
+            <div>
+              <p className="mb-1.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
+                Duration matrix
+              </p>
+              <FileDropzone
+                file={durationFile}
+                onPick={pickDurationFile}
+                onRemove={removeDurationFile}
+                accept=".csv"
+                dataTour="data-upload-matrix-duration"
+                disabled={matrixBusy}
+                hint="Passport + one column per destination"
+              />
+            </div>
+          </div>
 
           <div className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
             <p className="text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
@@ -624,53 +675,53 @@ const VisaRulesV2Upload = () => {
             </p>
             <ul className="mt-1.5 space-y-1 text-[10px] font-pmedium text-slate-500">
               <li>
-                <span className="text-slate-700">Blank</span> Requirement or
-                DurationDays → that field is left unchanged.
+                A cell in the Requirement file sets both Requirement and
+                Duration for that pair — blank Duration for it becomes empty,
+                not left alone.
               </li>
               <li>
-                <span className="text-slate-700">-1</span> in either column →
-                that field is explicitly cleared.
+                A pair only present in the Duration file sets Duration only;
+                an existing Requirement is never touched.
               </li>
               <li>
                 A Passport + Destination pair that isn’t in the database yet is
                 inserted as a new row.
               </li>
-              <li>
-                Both cells blank in a row → the row is skipped and listed as a
-                row issue.
-              </li>
             </ul>
           </div>
 
           <UploadActions
-            onUpload={() => preview.mutate()}
-            onReset={removeFile}
+            onUpload={() => matrixPreview.mutate()}
+            onReset={() => {
+              removeRequirementFile();
+              removeDurationFile();
+            }}
             uploadLabel="Preview changes (dry run)"
-            pendingLabel="Checking sheet..."
-            uploadDisabled={!file || busy}
-            resetDisabled={busy}
-            pending={preview.isPending}
+            pendingLabel="Checking sheets..."
+            uploadDisabled={!requirementFile || !durationFile || matrixBusy}
+            resetDisabled={matrixBusy}
+            pending={matrixPreview.isPending}
           />
 
-          {failedResult && (
+          {matrixFailedResult && (
             <ErrorPanel
-              message={failedResult.message}
-              rowErrors={failedResult.rowErrors}
+              message={matrixFailedResult.message}
+              rowErrors={matrixFailedResult.rowErrors}
             />
           )}
 
-          {preview.data && !commit.data && (
+          {matrixPreview.data && !matrixCommit.data && (
             <DryRunPanel
-              result={preview.data}
-              onConfirm={() => commit.mutate()}
-              onDiscard={() => preview.reset()}
-              isCommitting={commit.isPending}
-              onExportPdf={() => pdfExport.mutate()}
-              isExporting={pdfExport.isPending}
+              result={matrixPreview.data}
+              onConfirm={() => matrixCommit.mutate()}
+              onDiscard={() => matrixPreview.reset()}
+              isCommitting={matrixCommit.isPending}
+              onExportPdf={() => matrixPdfExport.mutate()}
+              isExporting={matrixPdfExport.isPending}
             />
           )}
 
-          {commit.data && <CommitPanel result={commit.data} />}
+          {matrixCommit.data && <CommitPanel result={matrixCommit.data} />}
         </UploadPanel>
       </UploadCard>
     </div>

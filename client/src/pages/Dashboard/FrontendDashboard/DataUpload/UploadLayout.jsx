@@ -30,7 +30,7 @@ const UploadLayout = () => {
     { label: "Reupload Destination Data", path: "destination-reupload", heading: "Reupload Destination Data", description: "Replace an already-uploaded destination's listings with a new file." },
     { label: "Listings Data Update", path: "listings-data-update", heading: "Listings Data Update", description: "Refresh ratings, review counts and inactive status for live nomad listings." },
     { label: "World Ranking Weights Upload", path: "world-ranking-weights-upload", heading: "World Ranking Weights Upload", description: "Preview and apply Algo 2.0 weight changes from a CSV — dry run first, then commit." },
-    { label: "Visa Rules V2 Upload", path: "visa-rules-v2-upload", heading: "Visa Rules V2 Upload", description: "Import visa rules from a single CSV — dry run first, then confirm." },
+    { label: "Visa Rules V2 Upload", path: "visa-rules-v2-upload", heading: "Visa Rules V2 Upload", description: "Import visa rules from a Requirement + Duration matrix — dry run first, then confirm." },
   ];
 
   // The bare key is just the on/off gate — which tabs show comes from the
