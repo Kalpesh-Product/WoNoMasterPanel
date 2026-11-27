@@ -628,7 +628,7 @@ const DestinationRankingUpload = () => {
       <AuditRecentUploadHistory
         action="destination-ranking-upload"
         title="Recent Destination Ranking Uploads"
-        description="Open to view recently committed ranking CSV files."
+        description="Open to view the latest 25 successfully committed ranking CSV files."
       />
     </div>
   );

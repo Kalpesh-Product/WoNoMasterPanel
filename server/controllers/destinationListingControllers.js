@@ -193,6 +193,13 @@ const bulkImportDestinationListings = async (req, res, next) => {
     // Set when the caller already knows the destination (e.g. picked from a
     // dropdown on the Add New / Reupload tabs) — overrides the filename guess.
     const destinationOverride = String(req.body.destination || "").trim();
+    const uploadMode = String(req.body.uploadMode || "add").trim().toLowerCase() === "reupload" ? "reupload" : "add";
+    req.logContext = {
+      ...(req.logContext || {}),
+      module: "Data Upload",
+      page: uploadMode === "reupload" ? "Reupload Destination Data" : "Add Destination Data",
+      action: uploadMode === "reupload" ? "destination-reupload" : "destination-add-upload",
+    };
 
     const results = [];
     for (const file of files) {
@@ -316,6 +323,8 @@ const bulkImportDestinationListings = async (req, res, next) => {
       }
     }
 
+    req.body.applied = results.some((result) => result.success) ? "true" : "false";
+    req.body.imported = results.reduce((total, result) => total + (result.success ? Number(result.imported || 0) : 0), 0);
     return res.status(200).json({ results });
   } catch (error) {
     next(error);

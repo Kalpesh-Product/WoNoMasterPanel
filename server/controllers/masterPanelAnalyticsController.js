@@ -376,6 +376,8 @@ const UPLOAD_ACTION_TABS = {
   "upload-restaurant-logo": "Restaurant Logo Upload",
   "bulk-upload-restaurant-images": "Bulk Restaurant Images Upload",
   "destination-ranking-upload": "Destination Ranking Upload",
+  "destination-add-upload": "Add Destination Data",
+  "destination-reupload": "Reupload Destination Data",
 };
 
 const fileNamesOf = (payload) => {
@@ -462,7 +464,7 @@ const getDataUploadAnalytics = async (req, res, next) => {
       ]),
       Log.find(match)
         .sort({ createdAt: -1 })
-        .limit(25)
+        .limit(50)
         .select("action fullName method success createdAt responseTime payload")
         .lean(),
       Log.countDocuments(match),
@@ -509,6 +511,9 @@ const getDataUploadAnalytics = async (req, res, next) => {
         responseTime: log.responseTime,
         files: fileNamesOf(log.payload),
         dryRun: String(log.payload?.dryRun || "") === "true",
+        applied: String(log.payload?.applied ?? "true") !== "false",
+        destination: log.payload?.destination || "",
+        imported: Number(log.payload?.imported || 0),
       })),
       generatedAt: new Date().toISOString(),
     });

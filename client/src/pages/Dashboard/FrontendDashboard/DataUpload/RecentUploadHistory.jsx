@@ -99,13 +99,16 @@ export const AuditRecentUploadHistory = ({ action, title, description }) => {
   });
 
   const items = useMemo(() => (data?.recentUploads || [])
-    .filter((upload) => !upload.dryRun)
-    .slice(0, 8)
+    .filter((upload) => !upload.dryRun && upload.success && upload.applied !== false)
+    .slice(0, 25)
     .map((upload) => ({
       id: upload.id,
-      label: upload.tab,
+      label: upload.destination || upload.tab,
       fileName: upload.files?.[0] || "",
-      details: upload.fullName ? `Uploaded by ${upload.fullName}` : "Committed upload",
+      details: [
+        upload.imported ? `${upload.imported} businesses` : "",
+        upload.fullName ? `Uploaded by ${upload.fullName}` : "Committed upload",
+      ].filter(Boolean).join(" · "),
       uploadedAt: upload.createdAt,
     })), [data]);
 

@@ -92,7 +92,7 @@ const ImportResultSummary = ({ result }) => {
 // Single-destination upload: the destination is already known (picked from a
 // dropdown or list by the caller), so it's sent as an explicit override and
 // the bulk-import endpoint doesn't need to guess it from the file name.
-const DestinationListingUploadPanel = ({ destination, onUploaded }) => {
+const DestinationListingUploadPanel = ({ destination, uploadMode = "add", onUploaded }) => {
   const axios = useAxiosPrivate();
   const [file, setFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -101,6 +101,7 @@ const DestinationListingUploadPanel = ({ destination, onUploaded }) => {
     mutationFn: async () => {
       const formData = new FormData();
       formData.append("destination", destination);
+      formData.append("uploadMode", uploadMode);
       formData.append("files", file);
       const response = await axios.post("/api/hosts/destination-listings/bulk-import", formData);
       return response.data.results[0];

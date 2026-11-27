@@ -496,7 +496,7 @@ const ListingsDataUpdate = () => {
       <AuditRecentUploadHistory
         action="bulk-update-listing-stats"
         title="Recent Listings Data Updates"
-        description="Open to view recently committed listings update CSV files."
+        description="Open to view the latest 25 successfully committed listings update CSV files."
       />
     </div>
   );

@@ -4,7 +4,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import DestinationListingUploadPanel from "./DestinationListingUploadPanel";
 import DestinationUploadCoverage from "./DestinationUploadCoverage";
-import RecentUploadHistory from "./RecentUploadHistory";
+import { AuditRecentUploadHistory } from "./RecentUploadHistory";
 import { TemplateDownloadLink } from "./UploadUI";
 
 const selectCls = "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
@@ -48,13 +48,6 @@ const DestinationReuploadUpload = () => {
     () => new Set(uploadedRows.map((row) => row.destination)).size,
     [uploadedRows],
   );
-  const recentDestinations = useMemo(() => (uploadedData?.destinations || []).slice(0, 8).map((item) => ({
-    id: item.destination,
-    label: item.destination,
-    fileName: item.sheetName,
-    details: `${item.count} businesses`,
-    uploadedAt: item.uploadedAt || item.lastUpdated,
-  })), [uploadedData]);
 
   const continents = useMemo(() => Array.from(new Set(uploadedRows.map((r) => r.continent))).sort(), [uploadedRows]);
   const countries = useMemo(
@@ -73,6 +66,7 @@ const DestinationReuploadUpload = () => {
     queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-uploaded"] });
     queryClient.invalidateQueries({ queryKey: ["wono-destination-listings-summary", destination] });
     queryClient.invalidateQueries({ queryKey: ["wono-destination-listings", destination] });
+    queryClient.invalidateQueries({ queryKey: ["recent-data-uploads", "destination-reupload"] });
   };
 
   return (
@@ -133,15 +127,13 @@ const DestinationReuploadUpload = () => {
       </div>
 
       {destination && (
-        <DestinationListingUploadPanel destination={destination} onUploaded={handleUploaded} />
+        <DestinationListingUploadPanel destination={destination} uploadMode="reupload" onUploaded={handleUploaded} />
       )}
 
-      <RecentUploadHistory
-        title="Recent Destination Data Uploads"
-        description="Open to view the latest workbook currently stored for each destination."
-        items={recentDestinations}
-        isLoading={isUploadedPending}
-        emptyMessage="No destination uploads found yet."
+      <AuditRecentUploadHistory
+        action="destination-reupload"
+        title="Recently Reuploaded Destinations"
+        description="Open to view the latest 25 successfully applied destination replacements."
       />
     </div>
   );
