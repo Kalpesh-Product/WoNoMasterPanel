@@ -375,12 +375,16 @@ const UPLOAD_ACTION_TABS = {
   "upload-single-image": "Upload Single Image",
   "upload-restaurant-logo": "Restaurant Logo Upload",
   "bulk-upload-restaurant-images": "Bulk Restaurant Images Upload",
+  "destination-ranking-upload": "Destination Ranking Upload",
 };
 
 const fileNamesOf = (payload) => {
   const names = [];
   if (payload?.uploadedFile?.originalName) {
     names.push(payload.uploadedFile.originalName);
+  }
+  if (payload?.["uploadedFile.originalName"]) {
+    names.push(payload["uploadedFile.originalName"]);
   }
   if (Array.isArray(payload?.uploadedFiles)) {
     payload.uploadedFiles.forEach((file) => {
@@ -395,7 +399,12 @@ const getDataUploadAnalytics = async (req, res, next) => {
     const periods = periodConds();
     const trendBuckets = buildTrendBuckets();
     const trendStart = trendStartDate(trendBuckets);
-    const match = { action: { $in: Object.keys(UPLOAD_ACTION_TABS) } };
+    const requestedAction = String(req.query.action || "").trim();
+    const allowedActions = Object.keys(UPLOAD_ACTION_TABS);
+    const selectedActions = requestedAction && allowedActions.includes(requestedAction)
+      ? [requestedAction]
+      : allowedActions;
+    const match = { action: { $in: selectedActions } };
 
     const [
       metricsRows,
@@ -499,6 +508,7 @@ const getDataUploadAnalytics = async (req, res, next) => {
         createdAt: log.createdAt,
         responseTime: log.responseTime,
         files: fileNamesOf(log.payload),
+        dryRun: String(log.payload?.dryRun || "") === "true",
       })),
       generatedAt: new Date().toISOString(),
     });

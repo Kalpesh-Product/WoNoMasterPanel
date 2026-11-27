@@ -6,4 +6,9 @@ const setLogModule = (module) => (req, res, next) => {
   next();
 };
 
-module.exports = { setLogModule };
+const setLogAction = (action, page) => (req, res, next) => {
+  req.logContext = { ...(req.logContext || {}), action, ...(page ? { page } : {}) };
+  next();
+};
+
+module.exports = { setLogModule, setLogAction };

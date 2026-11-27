@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const wonoDestinationListingSchema = new mongoose.Schema(
   {
     destination: { type: String, required: true, trim: true },
+    sourceFileName: { type: String, trim: true, default: "" },
+    sourceUploadedAt: { type: Date, default: null },
     category: { type: String, required: true, enum: ["Coworking", "Coliving", "Cafe", "Hostel", "Meeting Room"] },
     businessName: { type: String, required: true, trim: true },
     continent: { type: String, trim: true },

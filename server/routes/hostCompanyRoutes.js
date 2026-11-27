@@ -2,7 +2,7 @@ const router = require("express").Router();
 const upload = require("../config/multerConfig");
 const verifyJwt = require("../middlewares/verifyJwt");
 const { COUNTRY_TO_CONTINENT } = require("../utils/countryContinent");
-const { setLogModule } = require("../middlewares/logContext");
+const { setLogAction, setLogModule } = require("../middlewares/logContext");
 const { getCompanyOverview } = require("../controllers/companyOverviewController");
 
 // Default module for company management routes; nomad listing routes below
@@ -152,7 +152,13 @@ router.get("/destinations-data", getDestinationsData);
 router.get("/destination-analytics", getWonoDestinationAnalytics);
 router.post("/destination-analytics", createWonoDestination);
 router.patch("/destination-analytics/:id", updateWonoDestination);
-router.post("/destination-analytics/bulk-import", uploadSpreadsheets.single("file"), bulkImportDestinationRanking);
+router.post(
+  "/destination-analytics/bulk-import",
+  uploadSpreadsheets.single("file"),
+  setLogModule("Data Upload"),
+  setLogAction("destination-ranking-upload", "Destination Ranking Upload"),
+  bulkImportDestinationRanking,
+);
 router.get("/destination-listings/summary", getDestinationListingSummary);
 router.get("/destination-listings/uploaded", getUploadedDestinations);
 router.get("/destination-listings", getDestinationListings);

@@ -5,6 +5,8 @@ import { AlertTriangle, ArrowRight, CheckCircle2, FileDown, FileSpreadsheet, Upl
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { toCsv } from "../../../../utils/csvExport";
 import { exportDryRunPdf, readDryRunReportError } from "../../../../utils/dryRunReport";
+import { queryClient } from "../../../../main";
+import { AuditRecentUploadHistory } from "./RecentUploadHistory";
 import { TemplateDownloadLink } from "./UploadUI";
 
 // This server forwards the write to Nomads' /company/bulk-update-company-stats,
@@ -258,6 +260,7 @@ const ListingsDataUpdate = () => {
     mutationFn: () => postFile(false),
     onSuccess: (result) => {
       toast.success(`Updated ${result.updated ?? 0} listings, ${result.markedPrivate ?? 0} made private.`);
+      queryClient.invalidateQueries({ queryKey: ["recent-data-uploads", "bulk-update-listing-stats"] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -490,6 +493,11 @@ const ListingsDataUpdate = () => {
           {commitResult && <CommitPanel result={commitResult} />}
         </div>
       </div>
+      <AuditRecentUploadHistory
+        action="bulk-update-listing-stats"
+        title="Recent Listings Data Updates"
+        description="Open to view recently committed listings update CSV files."
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import DestinationListingUploadPanel from "./DestinationListingUploadPanel";
 import DestinationUploadCoverage from "./DestinationUploadCoverage";
+import RecentUploadHistory from "./RecentUploadHistory";
 import { TemplateDownloadLink } from "./UploadUI";
 
 const selectCls = "w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-pmedium text-slate-900 outline-none transition focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400";
@@ -33,6 +34,13 @@ const DestinationAddUpload = () => {
 
   const rows = useMemo(() => rankingData?.items || [], [rankingData]);
   const uploadedNames = useMemo(() => new Set((uploadedData?.destinations || []).map((d) => d.destination)), [uploadedData]);
+  const recentDestinations = useMemo(() => (uploadedData?.destinations || []).slice(0, 8).map((item) => ({
+    id: item.destination,
+    label: item.destination,
+    fileName: item.sheetName,
+    details: `${item.count} businesses`,
+    uploadedAt: item.uploadedAt || item.lastUpdated,
+  })), [uploadedData]);
   const totalDestinations = useMemo(() => new Set(rows.map((row) => row.destination)).size, [rows]);
   const uploadedDestinationCount = useMemo(
     () => new Set(rows.filter((row) => uploadedNames.has(row.destination)).map((row) => row.destination)).size,
@@ -119,6 +127,14 @@ const DestinationAddUpload = () => {
       {destination && (
         <DestinationListingUploadPanel destination={destination} onUploaded={handleUploaded} />
       )}
+
+      <RecentUploadHistory
+        title="Recently Added Destinations"
+        description="Open to view the latest destination workbooks uploaded to analytics."
+        items={recentDestinations}
+        isLoading={isUploadedPending}
+        emptyMessage="No destinations have been uploaded yet."
+      />
     </div>
   );
 };

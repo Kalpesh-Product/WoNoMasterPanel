@@ -153,8 +153,8 @@ const updateDestinationListingInfo = async (req, res, next) => {
 };
 
 // Every destination that already has at least one listing uploaded, with its
-// business count and when it was last touched — for the Reupload tab, and for
-// disabling already-added destinations on the Add New tab.
+// business count, source workbook and latest upload time — for the Add New and
+// Reupload tabs.
 const getUploadedDestinations = async (req, res, next) => {
   try {
     const rows = await WonoDestinationListing.aggregate([
@@ -163,12 +163,20 @@ const getUploadedDestinations = async (req, res, next) => {
           _id: "$destination",
           count: { $sum: 1 },
           lastUpdated: { $max: "$updatedAt" },
+          uploadedAt: { $max: "$sourceUploadedAt" },
+          sheetName: { $first: "$sourceFileName" },
         },
       },
-      { $sort: { _id: 1 } },
+      { $sort: { uploadedAt: -1, lastUpdated: -1, _id: 1 } },
     ]);
     return res.status(200).json({
-      destinations: rows.map((row) => ({ destination: row._id, count: row.count, lastUpdated: row.lastUpdated })),
+      destinations: rows.map((row) => ({
+        destination: row._id,
+        count: row.count,
+        sheetName: row.sheetName || "",
+        uploadedAt: row.uploadedAt || row.lastUpdated,
+        lastUpdated: row.lastUpdated,
+      })),
     });
   } catch (error) {
     next(error);
@@ -243,6 +251,8 @@ const bulkImportDestinationListings = async (req, res, next) => {
           const scored = scoreListing(b, byCategory[b.category]);
           return {
             destination,
+            sourceFileName: file.originalname,
+            sourceUploadedAt: new Date(),
             category: b.category,
             businessName: b.businessName,
             continent: b.continent,

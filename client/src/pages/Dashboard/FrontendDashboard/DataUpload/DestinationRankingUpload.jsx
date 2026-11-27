@@ -7,6 +7,7 @@ import { queryClient } from "../../../../main";
 import { toCsv } from "../../../../utils/csvExport";
 import { exportDryRunPdf, readDryRunReportError } from "../../../../utils/dryRunReport";
 import { FileDropzone, UploadActions, UploadCard, UploadPanel } from "./UploadUI";
+import { AuditRecentUploadHistory } from "./RecentUploadHistory";
 
 // This server owns WonoDestinationRanking (unlike the Nomads-owned World
 // Ranking Weights / Visa Rules V2 uploads it otherwise mirrors). Same URL
@@ -378,6 +379,7 @@ const DestinationRankingUpload = () => {
     onSuccess: (result) => {
       toast.success(`Updated: ${result.modifiedCount ?? 0} modified, ${result.upsertedCount ?? 0} new.`);
       queryClient.invalidateQueries({ queryKey: ["wono-destination-analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["recent-data-uploads", "destination-ranking-upload"] });
     },
     onError: (error) => toast.error(errorMessage(error)),
   });
@@ -623,6 +625,11 @@ const DestinationRankingUpload = () => {
           {commit.data && <CommitPanel result={commit.data} />}
         </UploadPanel>
       </UploadCard>
+      <AuditRecentUploadHistory
+        action="destination-ranking-upload"
+        title="Recent Destination Ranking Uploads"
+        description="Open to view recently committed ranking CSV files."
+      />
     </div>
   );
 };
