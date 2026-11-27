@@ -268,40 +268,6 @@ const fetchNomadsCompanyListings = async () => {
   return state.items;
 };
 
-// Bypasses the stale-while-revalidate fast path above: fetchNomadsCompanyListings
-// happily returns a snapshot that's minutes old and refreshes in the
-// background without ever waiting on it, which is fine for a dashboard count
-// but wrong for a dry run — a "not found" there has to reflect Nomads right
-// now, not whatever was cached the last time anything touched this list.
-// This does NOT reuse refreshNomadsCompanyListingsCache: that helper falls
-// back to fetchAllNomadListings()'s slow per-company crawl whenever the
-// direct call comes back empty, and uses a 3-minute timeout doing it — fine
-// for a background refresh, but it turned one slow/failed Nomads response
-// into a multi-minute hang that a reverse-proxy tunnel (100s patience) kills
-// as a bare "Request failed". A live dry run needs to fail fast instead, and
-// fall back to the last known-good cache rather than block on a crawl.
-// Kept a little under CloudFront's origin response timeout (60s max without
-// an AWS support request) so our own clear error message wins the race
-// against CloudFront's generic gateway-timeout page if Nomads is ever this
-// slow.
-const FRESH_FETCH_TIMEOUT_MS = 55 * 1000;
-const fetchFreshNomadsCompanyListings = async () => {
-  try {
-    const items = await requestNomadsRows("/company/companies", FRESH_FETCH_TIMEOUT_MS);
-    if (items.length) {
-      nomadsCompanyListingsCache.items = items;
-      nomadsCompanyListingsCache.fetchedAt = Date.now();
-      return items;
-    }
-  } catch (error) {
-    console.error("Live Nomads company directory fetch failed:", error.message);
-  }
-  // Live fetch failed or came back empty — fall back to whatever is cached
-  // (even if stale) rather than fail the whole request outright.
-  if (nomadsCompanyListingsCache.items?.length) return nomadsCompanyListingsCache.items;
-  throw new Error("Could not reach the Nomads company directory. Try again in a moment.");
-};
-
 const fetchNomadListingCounts = async () => {
   try {
     return await requestNomadsRows("/company/destination-listing-counts", 15000);
@@ -1142,5 +1108,4 @@ module.exports = {
   updateWonoDestination,
   bulkImportDestinationRanking,
   fetchNomadsCompanyListings,
-  fetchFreshNomadsCompanyListings,
 };
