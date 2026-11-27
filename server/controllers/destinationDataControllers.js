@@ -280,7 +280,11 @@ const fetchNomadsCompanyListings = async () => {
 // into a multi-minute hang that a reverse-proxy tunnel (100s patience) kills
 // as a bare "Request failed". A live dry run needs to fail fast instead, and
 // fall back to the last known-good cache rather than block on a crawl.
-const FRESH_FETCH_TIMEOUT_MS = 20 * 1000;
+// Kept a little under CloudFront's origin response timeout (60s max without
+// an AWS support request) so our own clear error message wins the race
+// against CloudFront's generic gateway-timeout page if Nomads is ever this
+// slow.
+const FRESH_FETCH_TIMEOUT_MS = 55 * 1000;
 const fetchFreshNomadsCompanyListings = async () => {
   try {
     const items = await requestNomadsRows("/company/companies", FRESH_FETCH_TIMEOUT_MS);
