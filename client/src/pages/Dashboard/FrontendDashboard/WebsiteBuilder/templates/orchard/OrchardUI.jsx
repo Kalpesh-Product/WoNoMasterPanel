@@ -97,9 +97,9 @@ export const OrchardContactItems = () => {
         </div>))}
     </div>);
 };
-export const OrchardReviews = ({ limit }) => {
+export const OrchardReviews = ({ limit = 4, offset = 0 }) => {
     const { t } = useTpl();
-    const reviews = (t.testimonials || []).slice(0, limit || 4);
+    const reviews = (t.testimonials || []).slice(offset, offset + limit);
     if (!reviews.length)
         return null;
     return (<div className="ol-review-grid">

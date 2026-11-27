@@ -7,7 +7,7 @@ const WebsiteTemplateSettings = require("../../models/website/WebsiteTemplateSet
 const Workspace = require("../../models/hostCompany/Workspace");
 
 const PLAN_KEYS = ["basic", "professional", "custom"];
-const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "wavex", "workhub", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "cabin", "tinyhome", "commons", "huddle", "lodge", "destinflow", "grindelwald"];
+const TEMPLATE_IDS = ["default", "fresh-studio", "warm-organic", "emerald-studio", "minimal-swiss", "savor", "tastyc", "grandbar", "aromatica", "italiano", "restobar", "flowspace", "workscape", "wavex", "workhub", "brixspace", "worpace", "cobox", "coplace", "qerja", "wayfarer", "travigo", "haven", "camelia", "tulum", "cabin", "tinyhome", "commons", "huddle", "lodge", "destinflow", "orchard", "grindelwald"];
 const DEFAULT_SETTINGS = {
   key: "global",
   limitPeriod: "monthly",
@@ -23,6 +23,7 @@ const DEFAULT_SETTINGS = {
     { templateId: "travigo", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "lodge", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "destinflow", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
+    { templateId: "orchard", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "tastyc", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "grandbar", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },
     { templateId: "aromatica", enabled: true, visible: true, allowedPlans: [...PLAN_KEYS], disabledReason: "" },

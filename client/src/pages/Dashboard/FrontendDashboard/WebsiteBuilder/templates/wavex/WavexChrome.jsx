@@ -56,7 +56,7 @@ export const WavexHeader = () => {
                 </button>
               </div>
               <nav className="wx-drawer-nav" aria-label="Mobile navigation">
-                {t.navItems.map((item) => (<button key={item.slug} type="button" onClick={() => t.goToSection(item.slug)}>
+                {t.navItems.map((item) => (<button key={item.slug} type="button" aria-current={active(item) ? "page" : undefined} onClick={() => t.goToSection(item.slug)}>
                     {item.name}
                     <span aria-hidden="true">{Icon.arrow(15)}</span>
                   </button>))}

@@ -69,7 +69,8 @@ const createImageLoader = () => {
     };
     return async (source) => {
         const url = urlOf(source);
-        if (!/^https?:\/\//i.test(url))
+        // Vite serves bundled sample photos from same-origin root-relative URLs.
+        if (!/^https?:\/\//i.test(url) && !/^\/(?!\/)/.test(url))
             return null;
         if (!blobs.has(url))
             blobs.set(url, fetchBlob(url));

@@ -9,6 +9,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import WonoListingDetailModal from "./WonoListingDetailModal";
 import WonoListingEditModal from "./WonoListingEditModal";
+import { getDestinationExternalUrl } from "./wonoDestinationLinks";
 import { getDestinationPriorityMeta } from "./wonoDestinationAnalyticsTheme";
 
 const number = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -400,8 +401,12 @@ const WonoDestinationExecutiveDashboard = () => {
                           <td className="whitespace-nowrap px-4 py-3.5"><span className="inline-flex rounded-lg border px-2 py-1 text-[10px] font-pmedium" style={{ color: priorityColors[lead.scoring?.priority], borderColor: priorityColors[lead.scoring?.priority] }}>{lead.scoring?.priority}</span></td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{lead.contact || "—"}</td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{lead.email || "—"}</td>
-                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium text-slate-600" title={lead.website}>{lead.website || "—"}</td>
-                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium text-slate-600" title={lead.linkedin}>{lead.linkedin || "—"}</td>
+                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium" title={lead.website}>
+                            {getDestinationExternalUrl(lead.website) ? <a href={getDestinationExternalUrl(lead.website)} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline">{lead.website}</a> : <span className="text-slate-600">{lead.website || "—"}</span>}
+                          </td>
+                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium" title={lead.linkedin}>
+                            {getDestinationExternalUrl(lead.linkedin) ? <a href={getDestinationExternalUrl(lead.linkedin)} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline">{lead.linkedin}</a> : <span className="text-slate-600">{lead.linkedin || "—"}</span>}
+                          </td>
                           <td className="whitespace-nowrap px-4 py-3.5">
                             <select value={leadStatus} disabled={isSavingField("status")} onChange={(event) => handleFieldChange(lead, "status", event.target.value)} aria-label={`Update status for ${lead.businessName}`} className={`cursor-pointer rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider outline-none transition focus:ring-2 focus:ring-[#2563EB]/20 disabled:cursor-wait disabled:opacity-60 ${statusStyle[leadStatus] || "border-slate-200 bg-slate-50 text-slate-600"}`}>
                               {STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}

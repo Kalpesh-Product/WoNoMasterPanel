@@ -14,12 +14,16 @@ export const formatFileSize = (bytes) =>
 
 // A blank xlsx/csv with the exact headers the matching endpoint expects —
 // so the data team starts from a file that's already shaped right.
-export const TemplateDownloadLink = ({ href, label = "Download Template" }) => {
+// `filename` names the downloaded file — required for a blob: URL (a live
+// export), which otherwise saves as a random id with no extension; a static
+// file under /templates already has a real name in its own URL, so it's
+// optional there.
+export const TemplateDownloadLink = ({ href, label = "Download Template", filename }) => {
   if (!href) return null;
   return (
     <a
       href={href}
-      download
+      download={filename || true}
       className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-pmedium text-[#2563EB] transition hover:bg-[#2563EB]/10"
     >
       <Download size={12} />
@@ -28,7 +32,7 @@ export const TemplateDownloadLink = ({ href, label = "Download Template" }) => {
   );
 };
 
-export const UploadCard = ({ title, description, templateHref, templateLabel, children }) => (
+export const UploadCard = ({ title, description, templateHref, templateLabel, templateFilename, children }) => (
   <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
     {(title || description || templateHref) && (
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -38,7 +42,7 @@ export const UploadCard = ({ title, description, templateHref, templateLabel, ch
             <p className="mt-1 text-[10px] font-pmedium text-slate-400">{description}</p>
           )}
         </div>
-        <TemplateDownloadLink href={templateHref} label={templateLabel} />
+        <TemplateDownloadLink href={templateHref} label={templateLabel} filename={templateFilename} />
       </div>
     )}
     {children}

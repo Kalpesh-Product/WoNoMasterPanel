@@ -9,6 +9,7 @@ import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../main";
 import WonoListingDetailModal from "./WonoListingDetailModal";
 import WonoListingEditModal from "./WonoListingEditModal";
+import { getDestinationExternalUrl } from "./wonoDestinationLinks";
 import {
   getDestinationPriorityClasses,
   getDestinationPriorityMeta,
@@ -317,8 +318,12 @@ const WonoDestinationCategoryDashboard = () => {
                           <td className="whitespace-nowrap px-4 py-3.5"><span className={`inline-flex rounded-lg border px-2 py-1 text-[10px] font-pmedium ${priorityStyle[item.scoring?.priority]}`}>{item.scoring?.priority}</span></td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{item.contact || "—"}</td>
                           <td className="whitespace-nowrap px-4 py-3.5 font-pmedium text-slate-600">{item.email || "—"}</td>
-                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium text-slate-600" title={item.website}>{item.website || "—"}</td>
-                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium text-slate-600" title={item.linkedin}>{item.linkedin || "—"}</td>
+                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium" title={item.website}>
+                            {getDestinationExternalUrl(item.website) ? <a href={getDestinationExternalUrl(item.website)} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline">{item.website}</a> : <span className="text-slate-600">{item.website || "—"}</span>}
+                          </td>
+                          <td className="max-w-[180px] truncate px-4 py-3.5 font-pmedium" title={item.linkedin}>
+                            {getDestinationExternalUrl(item.linkedin) ? <a href={getDestinationExternalUrl(item.linkedin)} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline">{item.linkedin}</a> : <span className="text-slate-600">{item.linkedin || "—"}</span>}
+                          </td>
                           <td className="whitespace-nowrap px-4 py-3.5">
                             <select
                               value={itemStatus}

@@ -345,6 +345,7 @@ export const TEMPLATE_CONTENT = {
                 "Reviews: introduction",
                 "The nicest part of running a house like this is hearing from the people who stayed.",
             ),
+            text("home.reviews.write", HOME, "Reviews: write button", "Write a review"),
             image("home.neighbourhood.image", HOME, "Neighbourhood: large photo"),
             image(
                 "home.neighbourhood.card1.image",
@@ -457,6 +458,13 @@ export const TEMPLATE_CONTENT = {
                 HOME,
                 "Tour form: note",
                 "Send a note and the team will get back to you the same day.",
+            ),
+            text("home.tour.expectTitle", HOME, "Tour form: what to expect heading", "What to expect on your tour"),
+            text(
+              "home.tour.expectBody",
+              HOME,
+              "Tour form: what to expect text",
+              "Use your visit to compare room options, see the shared spaces, and ask about check-in. If you’re visiting with a group or have accessibility needs, mention them in your request.",
             ),
             text(
                 "home.tour.submit",
@@ -581,7 +589,6 @@ export const TEMPLATE_CONTENT = {
                 "View all rooms",
             ),
             image("about.image1", OTHER, "About page: first photo"),
-            image("about.image2", OTHER, "About page: second photo"),
             text("about.eyebrow", OTHER, "About page: small label", "Our story"),
             text(
                 "about.title",
@@ -1541,6 +1548,9 @@ export const TEMPLATE_CONTENT = {
           "Partner page: introduction",
           "Companies, communities and local businesses — let's work together.",
         ),
+        image("partner.hero.image", OTHER, "Partner page: banner image"),
+        image("careers.hero.image", OTHER, "Careers page: banner image"),
+        image("contact.hero.image", OTHER, "Contact page: banner image"),
         text("footer.cta", FOOTER, "Footer: call-to-action", "Your next meeting starts here."),
       ],
       switches: [],
@@ -2544,7 +2554,7 @@ export const TEMPLATE_CONTENT = {
           "Dining: introduction",
           "Start with coffee, stay for dinner. Our kitchen brings local flavours to a table everyone can share.",
         ),
-        text("home.dining.cta", HOME, "Dining: button", "Explore the menu"),
+        text("home.dining.cta", HOME, "Dining: button", "Explore"),
 
         text("home.facilities.eyebrow", HOME, "Facilities: small label", "Facilities"),
         text(
@@ -2611,7 +2621,6 @@ export const TEMPLATE_CONTENT = {
           "Testimonials: heading",
           "Kind words from our guests",
         ),
-        text("home.reviews.link", HOME, "Testimonials: link", "All reviews"),
         text("home.reviews.write", HOME, "Testimonials: write button", "Write a review"),
 
         image("home.gallery.image", HOME, "Gallery strip: fallback photo"),
@@ -2693,9 +2702,6 @@ export const TEMPLATE_CONTENT = {
 
         text("gallery.eyebrow", OTHER, "Gallery page: small label", "Gallery"),
         text("gallery.empty", OTHER, "Gallery page: empty copy", "Photos are on their way."),
-        text("reviews.eyebrow", OTHER, "Reviews page: small label", "Reviews"),
-        text("reviews.empty", OTHER, "Reviews page: empty copy", "Be the first to leave a review."),
-        text("reviews.write", OTHER, "Reviews page: write button", "Write a review"),
 
         text("contact.eyebrow", OTHER, "Contact page: small label", "Get in touch"),
         text("contact.form.eyebrow", OTHER, "Contact page: form label", "Send a message"),
@@ -2755,18 +2761,6 @@ export const TEMPLATE_CONTENT = {
         text("footer.explore.title", FOOTER, "Footer: explore column", "Explore"),
         text("footer.contact.title", FOOTER, "Footer: contact column", "Contact"),
         text("footer.hours.title", FOOTER, "Footer: hours column", "Opening hours"),
-        text(
-          "footer.newsletter.title",
-          FOOTER,
-          "Footer: newsletter heading",
-          "Subscribe to our newsletter",
-        ),
-        text(
-          "footer.newsletter.success",
-          FOOTER,
-          "Footer: newsletter success",
-          "Thanks for subscribing.",
-        ),
         text("footer.crafted", FOOTER, "Footer: closing line", "Made for memorable stays."),
       ],
       switches: [

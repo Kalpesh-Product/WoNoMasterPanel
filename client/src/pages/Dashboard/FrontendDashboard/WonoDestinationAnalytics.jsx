@@ -630,6 +630,7 @@ const WonoDestinationAnalytics = () => {
                   <table className="w-full min-w-[980px] text-left">
                     <thead className="border-b border-slate-100 bg-white text-[10px] font-pmedium uppercase tracking-widest text-slate-400">
                       <tr>
+                        <th className="px-5 py-3">Sr No</th>
                         <th className="px-5 py-3">Rank</th>
                         <th className="px-5 py-3">Destination</th>
                         <th className="px-5 py-3">Country</th>
@@ -641,11 +642,14 @@ const WonoDestinationAnalytics = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {rows.map((row) => (
+                      {rows.map((row, index) => (
                         <tr
                           key={row._id || `${row.rank}-${row.destination}`}
                           className="transition-colors hover:bg-slate-50/70"
                         >
+                          <td className="px-5 py-3.5 font-pmedium text-slate-500">
+                            {index + 1}
+                          </td>
                           <td className="px-5 py-3.5 font-pmedium text-slate-500">
                             {row.rank ?? "—"}
                           </td>

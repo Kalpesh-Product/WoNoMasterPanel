@@ -1,5 +1,9 @@
 import { serviceNameToKind } from "./serviceChoices";
 import { DEMO_BUSINESSES, withFaqs } from "./demoContent";
+import { coPlaceDemoLogos } from "./coplace/coPlaceDemoLogos";
+import cafePhoto from "./restobar/cafe-visit.jpg";
+import italianoBarista from "./italiano/head-barista.jpg";
+import destinflowHero from "./destinflow/destinflow-hero.jpg";
 const TEMPLATE_KIND = {
     savor: "menu",
     tastyc: "menu",
@@ -47,7 +51,7 @@ const faceCrop = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop
 // transparent navigation and centered banner read the way they were designed.
 const DESTINFLOW_ASSETS = {
     logo: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/64c8f0e8ad1c8a6f73e9a4fe_destinflow-logo.svg",
-    hero: "https://cdn.prod.website-files.com/646c59363e244b8b05ff0d1c/646dad4d11883642cfe0ec1f_home-banner-image.jpg",
+    hero: destinflowHero,
 };
 // Travigo intentionally has its own photo direction instead of inheriting Wayfarer's
 // hostel library. These images lean into tropical rooms, real traveller moments and
@@ -763,6 +767,14 @@ const WORKHUB_DEMO_BUSINESS = (() => {
             },
         ],
         address: "18 Richmond Road, Bangalore 560025",
+        settings: {
+            ...base.settings,
+            logoCarousel: {
+                enabled: true,
+                title: "Trusted by Leading Companies",
+                logos: coPlaceDemoLogos,
+            },
+        },
         page: {
             ...base.page,
             heroHeading: "Work in Northline Rooms",
@@ -1094,7 +1106,6 @@ const RESTOBAR_DEMO_BUSINESS = (() => {
         "photo-1552566626-52f8b828add9",
         "photo-1514933651103-005eec06c04b",
         "photo-1515003197210-e0cd71810b5f",
-        "photo-1527761939622-911909463c76",
     ];
     const menu = [
         ["Starters", "Burrata & tomatoes", "$13", "Ripe tomatoes, basil oil and a slice of toasted sourdough.", "photo-1547592180-85f173990554"],
@@ -1115,7 +1126,7 @@ const RESTOBAR_DEMO_BUSINESS = (() => {
         subTitle: "An all-day café and bistro for plates worth passing around, a good drink, and time with friends.",
         cta: "See our menu",
         heroImages: hero.map((id) => photo(id, 1920)),
-        gallery: [...room, ...hero].map((id) => photo(id, 1300)),
+        gallery: [...room.map((id) => photo(id, 1300)), cafePhoto, ...hero.map((id) => photo(id, 1300))],
         aboutImages: [room[0], room[2]].map((id) => photo(id, 1200)),
         aboutTitle: "A neighborhood table",
         aboutPageStory: "Restobar began with a simple idea: a neighborhood café should make it easy to slow down and share a good meal.",
@@ -1360,12 +1371,17 @@ const italianoDemo = (() => {
         aboutPageMission: "We roll our pasta by hand and build our menu around what is in season.",
         aboutPageValues: "Come for a quick espresso or make an evening of it. There is always room at our table.",
         about: ["A neighborhood café and dining room serving the Italian dishes we grew up with."],
+        team: base.team.map((member) => member.title === "Rhea" ? { ...member, image: italianoBarista } : member),
         founders: [
             { name: "Elena Rossi", role: "Head chef", bio: "Elena brings the pasta and sauces she learned to make at home to the Italiano kitchen.", highlights: "", image: faceCrop("photo-1573497019236-17f8177b81e8") },
         ],
         testimonials: [
-            { name: "Sofia M.", jobPosition: "Guest", rating: 5, image: "", testimony: "We shared the mushroom pasta and stayed for another coffee. It felt like an evening at a friend's table." },
-            { name: "Daniel P.", jobPosition: "Guest", rating: 5, image: "", testimony: "The pizza came out crisp and hot, and the team made room for us on a busy evening." },
+          { name: "Sofia M.", jobPosition: "Guest", rating: 5, image: "", testimony: "We shared the mushroom pasta and stayed for another coffee. It felt like an evening at a friend's table." },
+          { name: "Daniel P.", jobPosition: "Guest", rating: 5, image: "", testimony: "The pizza came out crisp and hot, and the team made room for us on a busy evening." },
+          { name: "Maya R.", jobPosition: "Guest", rating: 4, image: "", testimony: "We stopped in for lunch and shared the burrata. The tomatoes were excellent, and the staff gave us time to enjoy the meal." },
+          { name: "Nina S.", jobPosition: "Guest", rating: 5, image: "", testimony: "The hand-cut tagliatelle was my favorite. I’d come back just for that and an espresso." },
+          { name: "Luca B.", jobPosition: "Guest", rating: 5, image: "", testimony: "We brought friends for dinner, and there was something for everyone. The panna cotta was the first plate we finished." },
+          { name: "Asha K.", jobPosition: "Guest", rating: 4, image: "", testimony: "It was lively on Saturday, but our server was attentive and the Margherita was worth the wait." },
         ],
         address: "12 Museum Road, Bengaluru 560001",
         page: {
@@ -1457,6 +1473,23 @@ const ORCHARD_DEMO_BUSINESS = (() => {
         about: [
             "The rooms are calm, comfortable and full of practical details—good light, proper storage and beds made for real rest.",
             "Downstairs, the lounge, garden kitchen and rooftop give you room to work, cook, meet people or simply take an afternoon for yourself.",
+        ],
+        team: base.team.map((member) => {
+            if (member.title === "Kabir")
+                return { ...member, image: faceCrop("photo-1758525589507-1d64a20415ac") };
+            if (member.title === "Anjali")
+                return { ...member, image: faceCrop("photo-1573496799515-eebbb63814f2") };
+            return member;
+        }),
+        testimonials: [
+            ...base.testimonials,
+            {
+                name: "Meera K.",
+                jobPosition: "Guest",
+                rating: 4,
+                image: "",
+                testimony: "I had enough space to work during the day and usually ended up chatting with someone in the kitchen after dinner.",
+            },
         ],
         founders: [
             {

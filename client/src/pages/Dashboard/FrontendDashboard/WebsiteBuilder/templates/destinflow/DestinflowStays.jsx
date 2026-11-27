@@ -111,7 +111,7 @@ const ServicePage = ({ service }) => {
 
       <section className="df-section-tight">
         <div className="df-shell">
-          {service.items.length ? <div className="df-service-layout">
+          {service.items.length ? <div className="df-service-layout df-services-split">
               <div>
                 <DfSectionHead
     eyebrow={c("services.list.eyebrow", "Choose your room")}
@@ -201,7 +201,7 @@ const ItemDetail = ({ service, item }) => {
 
       <section className="df-section-tight">
         <div className="df-shell">
-          <div className="df-service-layout">
+          <div className="df-service-layout df-item-detail-split">
             <div>
               {images.length ? <Reveal className="df-detail-media">
                   {images.slice(0, 5).map((src, index) => <button key={`${src}-${index}`} type="button" onClick={() => setViewer(index)} aria-label={`Open photo ${index + 1}`}>

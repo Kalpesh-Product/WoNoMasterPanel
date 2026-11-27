@@ -26,7 +26,6 @@ export const OrchardAbout = () => {
             c("about.story.body", "Orchard started with a simple question: why do the places we stay so often feel disposable? We set out to make somewhere comfortable, calm and genuinely connected to its neighbourhood.")}
             </p>
           </div>
-          <OrchardPhoto src={photo("about.image2", photos[2] || t.galleryItems?.[2])} alt="A shared space" className="ol-about-photo ol-about-photo-offset"/>
         </div>
       </section>
 
@@ -158,7 +157,7 @@ export const OrchardCareers = () => {
             c("careers.title", `Join ${draft?.companyName || "our team"}`)} text={draft?.careersPageIntro || t.careersFallbackIntro?.[0]} image={t.galleryItems?.[2]}/>
       <section className="ol-section">
         <div className="ol-shell">
-          <OrchardHeading eyebrow={c("careers.roles.eyebrow", "Open roles")} title={c("careers.roles.title", "Bring your energy. We will teach the rest.")} sub={c("careers.roles.sub", "From housekeeping to guest experience, good people make this place work.")}/>
+          <OrchardHeading className="ol-careers-roles-heading" eyebrow={c("careers.roles.eyebrow", "Open roles")} title={c("careers.roles.title", "Bring your energy. We will teach the rest.")} sub={c("careers.roles.sub", "From housekeeping to guest experience, good people make this place work.")}/>
           {t.careersJobsLoading ? (<p className="ol-lead">{c("careers.loading", "Loading roles…")}</p>) : t.careersJobs.length ? (<div className="ol-role-list">
               {t.careersJobs.map((role, index) => (<button key={index} type="button" onClick={() => t.openCareersJob(role)}>
                   <span className="ol-eyebrow">{getCareersJobMeta(role)}</span>

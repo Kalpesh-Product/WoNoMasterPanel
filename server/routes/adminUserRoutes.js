@@ -4,6 +4,7 @@ const {
   changePassword,
   bulkUploadData,
   bulkUpdateListingStats,
+  getListingsCurrentData,
   bulkUploadImages,
   bulkUploadRestaurantImages,
   getRestaurantImageReuploadTargets,
@@ -48,6 +49,7 @@ router.post(
   setLogModule("Data Upload"),
   bulkUpdateListingStats,
 );
+router.get("/listings-current-data", getListingsCurrentData);
 router.post(
   "/bulk-upload-images",
   upload.array("images"),

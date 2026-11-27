@@ -54,11 +54,13 @@ const uploadSpreadsheets = multer({
   fileFilter: (req, file, cb) => {
     if (
       file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      file.mimetype === "application/vnd.ms-excel.sheet.macroEnabled.12"
+      file.mimetype === "application/vnd.ms-excel.sheet.macroEnabled.12" ||
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" // some browsers report .csv this way
     ) {
       return cb(null, true);
     }
-    cb(new Error("Only .xlsx and .xlsm files are allowed"), false);
+    cb(new Error("Only .xlsx, .xlsm and .csv files are allowed"), false);
   },
 });
 
