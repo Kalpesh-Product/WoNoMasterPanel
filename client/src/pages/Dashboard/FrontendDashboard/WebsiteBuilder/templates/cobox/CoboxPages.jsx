@@ -392,7 +392,12 @@ export const CoboxCareers = () => {
         return (<>
         <CPageHero title={t.careersDirectApply
                 ? "General application"
-                : getCareersJobTitle(job)} eyebrow={t.careersDirectApply ? "Join our team" : getCareersJobMeta(job)}/>
+                : getCareersJobTitle(job)} eyebrow={t.careersDirectApply ? "Join our team" : getCareersJobMeta(job)}>
+          <button type="button" className="cbx-text-link cbx-career-back" onClick={t.closeCareersJob}>
+            <span aria-hidden="true">{CIcon.chevronLeft(16)}</span>
+            Back to careers
+          </button>
+        </CPageHero>
         <section className="cbx-page">
           <div className={`cbx-shell cbx-career-detail${t.careersDirectApply ? " cbx-career-detail--general" : ""}`}>
             {!t.careersDirectApply ? (<div>

@@ -9,18 +9,18 @@ import { TemplateDownloadLink } from "./UploadUI";
 
 // This server forwards the write to Nomads' /company/bulk-update-company-stats,
 // which has no preview mode of its own — so the dry-run diff below is built
-// here, against Nomads' own company directory (fetchNomadsCompanyListings),
-// before anything is sent to that write endpoint. Same URL handles both
-// steps: ?dryRun=true previews, no query writes.
+// here, against Nomads' own company directory, before anything is sent to
+// that write endpoint. Same URL handles both steps: ?dryRun=true previews,
+// no query writes.
 const isCsv = (file) => /\.csv$/i.test(file.name);
 const formatSize = (bytes) => (bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`);
 const formatValue = (value) => (value === null || value === undefined || value === "" ? "— (blank)" : String(value));
 
-const CURRENT_DATA_HEADERS = ["Business ID", "Business Name", "Ratings", "Total Reviews", "STATUS"];
+const CURRENT_DATA_HEADERS = ["Business ID", "Business Name", "Company Type", "Ratings", "Total Reviews", "STATUS"];
 const currentDataFilename = () => `Listings Data - ${new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })}.csv`;
 
 const StatGrid = ({ items }) => (
-  <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-5">
+  <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-3 lg:grid-cols-6">
     {items.map((item) => (
       <div key={item.label} className="px-3 py-3 text-center">
         <p className={`text-[9px] font-pmedium uppercase tracking-widest ${item.labelTone || "text-slate-400"}`}>{item.label}</p>
@@ -30,8 +30,22 @@ const StatGrid = ({ items }) => (
   </div>
 );
 
-const RowIssues = ({ rowErrors = [], notFound = [] }) => (
+const RowIssues = ({ rowErrors = [], notFound = [], warnings = [] }) => (
   <>
+    {warnings.length > 0 && (
+      <div className="border-t border-blue-100 bg-blue-50/60 px-4 py-3">
+        <div className="flex items-center gap-2 text-[10px] font-pmedium uppercase tracking-widest text-blue-700">
+          <AlertTriangle size={13} />
+          Workbook warnings
+        </div>
+        <div className="mt-1.5 space-y-1">
+          {warnings.map((warning) => (
+            <p key={warning} className="text-[10px] font-pmedium text-blue-800">{warning}</p>
+          ))}
+        </div>
+      </div>
+    )}
+
     {notFound.length > 0 && (
       <div className="border-t border-amber-100 bg-amber-50/60 px-4 py-3">
         <div className="flex items-center gap-2 text-[10px] font-pmedium uppercase tracking-widest text-amber-700">
@@ -104,6 +118,7 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
           { label: "No change", value: result.unchangedCount },
           { label: "Not found", value: result.notFoundCount, tone: "text-amber-700", labelTone: "text-amber-600" },
           { label: "Row issues", value: (result.rowErrors || []).length, tone: "text-rose-600", labelTone: "text-rose-500" },
+          { label: "Blank cells", value: result.skippedNothingToUpdate },
         ]}
       />
 
@@ -112,18 +127,22 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
           <p className="px-4 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Changed listings</p>
           <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
             {preview.map((row) => (
-              <div key={row.id} className="px-4 py-2.5">
-                <p className="truncate text-xs font-pmedium text-slate-800">
+              <div key={row.id} className="flex items-start justify-between gap-4 px-4 py-2.5">
+                <p className="min-w-0 flex-1 truncate text-xs font-pmedium text-slate-800">
                   {row.businessName || row.businessId}
-                  <span className="ml-2 text-[10px] font-pmedium text-slate-400">{row.businessId} · Row {row.rowNumber}</span>
+                  <span className="ml-2 text-[10px] font-pmedium text-slate-400">
+                    {row.companyType ? `${row.companyType} · ` : ""}{row.businessId} · Row {row.rowNumber}
+                  </span>
                 </p>
-                <div className="mt-1.5 space-y-1 pl-1">
+                <div className="w-52 shrink-0 space-y-1 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
                   {row.changedFields.map((change) => (
-                    <div key={change.field} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] font-pmedium">
-                      <span className="min-w-[90px] text-slate-400">{change.label}</span>
-                      <span className="text-slate-400 line-through decoration-slate-300">{formatValue(change.oldValue)}</span>
-                      <ArrowRight size={10} className="shrink-0 text-slate-300" />
-                      <span className="rounded bg-white px-1 py-0.5 text-slate-900 ring-1 ring-slate-200">{formatValue(change.newValue)}</span>
+                    <div key={change.field} className="flex items-center justify-between gap-2 text-[10px] font-pmedium">
+                      <span className="text-slate-400">{change.label}</span>
+                      <span className="flex items-center gap-1">
+                        <span className="text-slate-400">{formatValue(change.oldValue)}</span>
+                        <ArrowRight size={10} className="shrink-0 text-slate-300" />
+                        <span className="text-slate-900">{formatValue(change.newValue)}</span>
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -133,7 +152,7 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
         </div>
       )}
 
-      <RowIssues rowErrors={result.rowErrors} notFound={result.notFound} />
+      <RowIssues rowErrors={result.rowErrors} notFound={result.notFound} warnings={result.warnings} />
 
       <div className="border-t border-slate-100 px-4 py-3">
         <button
@@ -145,7 +164,7 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
           {isCommitting ? "Applying..." : `Apply ${preview.length} change${preview.length === 1 ? "" : "s"}`}
         </button>
         <p className="mt-2 text-[10px] font-pmedium text-slate-400">
-          Blank Ratings / Total Reviews cells never overwrite existing values. Rows marked IN-ACTIVE are made private; nothing is ever force-published.
+          Blank Ratings / Total Reviews cells never overwrite existing values. Rows marked IN-ACTIVE, Temporarily Closed or Permanently Closed are made private; nothing is ever force-published.
         </p>
         <div className="mt-2 text-center">
           <button
@@ -169,7 +188,7 @@ const CommitPanel = ({ result }) => (
       <div>
         <p className="text-xs font-pmedium text-slate-800">{result.message || "Listings data update completed"}</p>
         <p className="mt-1 text-[10px] font-pmedium text-slate-400">
-          Blank Ratings / Total Reviews cells never overwrite existing values. Rows marked IN-ACTIVE were made private; nothing was made public.
+          Blank Ratings / Total Reviews cells never overwrite existing values. Rows marked IN-ACTIVE, Temporarily Closed or Permanently Closed were made private; nothing was made public.
         </p>
       </div>
     </div>
@@ -184,7 +203,7 @@ const CommitPanel = ({ result }) => (
       ]}
     />
 
-    <RowIssues rowErrors={result.failures} />
+    <RowIssues rowErrors={result.failures} warnings={result.warnings} />
   </section>
 );
 
@@ -270,7 +289,7 @@ const ListingsDataUpdate = () => {
     }
     const matrix = [
       CURRENT_DATA_HEADERS,
-      ...currentListings.map((item) => [item.businessId, item.businessName, item.ratings, item.totalReviews, item.status]),
+      ...currentListings.map((item) => [item.businessId, item.businessName, item.companyType, item.ratings, item.totalReviews, item.status]),
     ];
     const blob = new Blob(["﻿", toCsv(matrix)], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
@@ -307,7 +326,7 @@ const ListingsDataUpdate = () => {
     previewRows.forEach((row) => {
       (row.changedFields || []).forEach((change) => {
         changeRows.push([
-          `${row.businessName || row.businessId} (Row ${row.rowNumber})`,
+          `${row.businessName || row.businessId}${row.companyType ? ` (${row.companyType})` : ""} — Row ${row.rowNumber}`,
           change.label,
           formatValue(change.oldValue),
           formatValue(change.newValue),
@@ -329,6 +348,7 @@ const ListingsDataUpdate = () => {
         { label: "No change", value: result.unchangedCount ?? 0 },
         { label: "Not found", value: result.notFoundCount ?? 0 },
         { label: "Row issues", value: (result.rowErrors || []).length },
+        { label: "Blank cells", value: result.skippedNothingToUpdate ?? 0 },
       ],
       sections: [
         {
@@ -363,6 +383,7 @@ const ListingsDataUpdate = () => {
         "This is a dry run: no listing was written by generating this report.",
         "Rows are matched by Business ID against Nomads' own company directory.",
         "Blank Ratings / Total Reviews cells never overwrite existing values.",
+        ...(result.warnings || []),
       ],
     };
   };
@@ -394,7 +415,8 @@ const ListingsDataUpdate = () => {
         <p className="mt-1 text-[10px] font-pmedium text-slate-400">
           Best flow: download the current data → edit Ratings, Total Reviews or STATUS → upload here. Rows are matched by
           Business ID. Ratings and Total Reviews update only where the sheet has a value — blank cells are left untouched.
-          Rows marked IN-ACTIVE are taken off the public site (made private); this upload never makes a listing public.
+          STATUS accepts ACTIVE/Open, or IN-ACTIVE/Closed/Temporarily Closed/Permanently Closed — any closed status takes the listing off the
+          public site (made private); this upload never makes a listing public.
         </p>
 
         <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/50 p-4">

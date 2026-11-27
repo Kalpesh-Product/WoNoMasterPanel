@@ -1,25 +1,36 @@
+import { useRef } from "react";
 import { Reveal, Stagger } from "../motion";
 import { getInclusionMeta } from "../inclusionIcons";
 import { FaqSection } from "../shared/TplParts";
 import { useTpl } from "../shared/TplContext";
 import { Icon, Placeholder } from "../shared/TplUI";
+import { getMediaSrc } from "../useWebsiteTemplateData";
+import destinflowHero from "./destinflow-hero.jpg";
 import {
   DfReviewCard,
   DfRoomCard,
   DfSectionHead,
   DfTextLink
 } from "./DestinflowUI";
-const imageOf = (value) => typeof value === "string" ? value : value?.url || "";
 const Hero = () => {
   const { t, photo, c } = useTpl();
-  const images = t.heroImages?.length ? t.heroImages.map(imageOf) : photo("home.hero.image", t.resolvedHomeHeroImage || "") ? [photo("home.hero.image", t.resolvedHomeHeroImage || "")] : [];
-  const image = images.length ? images[t.heroIndex % images.length] : "";
+  const images = (t.heroImages || []).map(getMediaSrc).filter(Boolean);
+  const image = images.length
+    ? images[t.heroIndex % images.length]
+    : photo("home.hero.image", t.mainHeroImage || getMediaSrc(t.resolvedHomeHeroImage) || destinflowHero);
   return <section className="df-hero">
-      {image ? <div
-    key={image}
-    className="df-hero-media"
-    style={{ backgroundImage: `url("${image}")` }}
-  /> : null}
+      <img
+        key={image}
+        className="df-hero-media"
+        src={image}
+        alt=""
+        fetchPriority="high"
+        onError={({ currentTarget }) => {
+          if (currentTarget.getAttribute("src") !== destinflowHero) {
+            currentTarget.src = destinflowHero;
+          }
+        }}
+      />
       <div className="df-shell df-hero-inner">
         <div>
           <div className="df-hero-subtitle">
@@ -54,7 +65,7 @@ const Intro = () => {
         <Reveal>
           <div className="df-icon-tile">{Icon.pin(24)}</div>
           <p className="df-intro-label">{c("home.intro.label", draft?.companyName || "Your home away")}</p>
-          {image ? <div className="df-photo" style={{ marginTop: 34, aspectRatio: "4 / 5" }}>
+          {image ? <div className="df-photo" style={{ marginTop: 34, aspectRatio: "16 / 9" }}>
               <img src={image} alt="" loading="lazy" decoding="async" />
             </div> : null}
         </Reveal>
@@ -66,7 +77,7 @@ const Intro = () => {
           <Reveal delay={0.08}>
             <p className="df-lead">{copy}</p>
           </Reveal>
-          {blocks[1] ? <Reveal delay={0.14}>
+          {blocks[1] ? <Reveal delay={0.14} className="df-intro-block">
               <p>{blocks[1]}</p>
             </Reveal> : null}
           <Reveal delay={0.2} className="df-intro-actions">
@@ -95,8 +106,8 @@ const Rooms = ({ service }) => {
               {c("home.rooms.link", "See all rooms")}
             </DfTextLink>}
   />
-        <Stagger className="df-grid-3">
-          {list.slice(0, 6).map((item, index) => <DfRoomCard key={item.key} service={service} item={item} index={index} />)}
+        <Stagger className="df-grid-3 df-rooms-grid">
+          {list.slice(0, 3).map((item, index) => <DfRoomCard key={item.key} service={service} item={item} index={index} />)}
         </Stagger>
       </div>
     </section>;
@@ -134,7 +145,7 @@ const Dining = ({ services }) => {
           </Reveal>
           <Reveal delay={0.14}>
             <button type="button" className="df-btn df-btn-light" onClick={open}>
-              {c("home.dining.cta", "Explore the menu")}
+              {c("home.dining.cta", "Explore")}
             </button>
           </Reveal>
         </div>
@@ -249,7 +260,15 @@ const LakeFeature = ({ service }) => {
 };
 const Testimonials = () => {
   const { t, rating, c } = useTpl();
+  const trackRef = useRef(null);
   const list = t.testimonials.slice(0, 8);
+  const slide = (direction) => {
+    const track = trackRef.current;
+    if (!track) return;
+    const card = track.querySelector(".df-review");
+    const step = card ? card.getBoundingClientRect().width + 20 : track.clientWidth;
+    track.scrollBy({ left: direction * step, behavior: "smooth" });
+  };
   if (!list.length) return null;
   return <section className="df-testimonials">
       <div className="df-shell">
@@ -257,17 +276,22 @@ const Testimonials = () => {
     eyebrow={c("home.reviews.eyebrow", "Testimonials")}
     title={c("home.reviews.title", "Kind words from our guests")}
     sub={rating.count ? `${rating.avg.toFixed(1)} out of 5 \xB7 ${rating.count} reviews` : void 0}
-    action={<div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-              <DfTextLink onClick={() => t.goToSection("testimonials")}>
-                {c("home.reviews.link", "All reviews")}
-              </DfTextLink>
-              {t.showWriteReview ? <button type="button" className="df-btn df-btn-sm" onClick={t.openReviewModal}>
-                  {c("home.reviews.write", "Write a review")}
-                </button> : null}
-            </div>}
+    action={t.showWriteReview ? (
+              <button type="button" className="df-btn df-btn-sm" onClick={t.openReviewModal}>
+                {c("home.reviews.write", "Write a review")}
+              </button>
+            ) : void 0}
   />
-        <div className="df-review-track">
+        <div className="df-review-track" ref={trackRef}>
           {list.map((item, index) => <DfReviewCard key={item.key || index} item={{ ...item, role: item.jobPosition || item.role }} />)}
+        </div>
+        <div className="df-carousel-controls">
+          <button type="button" className="df-carousel-btn" onClick={() => slide(-1)} aria-label="Previous review">
+            {Icon.arrow(16)}
+          </button>
+          <button type="button" className="df-carousel-btn" onClick={() => slide(1)} aria-label="Next review">
+            {Icon.arrow(16)}
+          </button>
         </div>
       </div>
     </section>;

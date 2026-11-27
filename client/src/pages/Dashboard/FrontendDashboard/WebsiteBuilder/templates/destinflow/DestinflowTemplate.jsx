@@ -35,8 +35,7 @@ import {
   DestinflowCareers,
   DestinflowContact,
   DestinflowGallery,
-  DestinflowPartner,
-  DestinflowTestimonials
+  DestinflowPartner
 } from "./DestinflowPages";
 const DestinflowTemplate = () => {
   const t = useWebsiteTemplateData();
@@ -130,8 +129,6 @@ const DestinflowTemplate = () => {
         return t.productsPageEnabled ? renderProducts() : <DestinflowHome />;
       case "gallery":
         return t.galleryPageEnabled ? <DestinflowGallery /> : <DestinflowHome />;
-      case "testimonials":
-        return <DestinflowTestimonials />;
       case "partner":
         return t.partnerPageEnabled ? <DestinflowPartner /> : <DestinflowHome />;
       case "careers":

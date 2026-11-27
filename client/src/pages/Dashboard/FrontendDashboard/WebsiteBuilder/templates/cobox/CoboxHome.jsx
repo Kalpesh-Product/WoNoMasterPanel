@@ -37,7 +37,7 @@ const Hero = () => {
               {draft?.title ||
             c("home.hero.title", "Flexible co-working spaces tailored to your needs")}
             </h1>
-            <p>
+            <p className="cbx-hero-subtitle">
               {draft?.subTitle ||
             c("home.hero.body", "Discover modern, inspiring and fully equipped workspaces designed to fuel creativity, collaboration and growth.")}
             </p>
@@ -574,6 +574,12 @@ const CoreValues = () => {
     const gallery = t.galleryItems || [];
     const first = photo("home.values.image1", gallery[3] || gallery[0]) || "";
     const second = photo("home.values.image2", gallery[7] || gallery[2]) || "";
+    const innovation = photo(
+        "home.values.card2.image",
+        [gallery[4], ...gallery].find((image) => image && image !== first && image !== second) ||
+            t.resolvedHomeHeroImage ||
+            "",
+    );
     const review = (t.testimonials || [])[0];
     const avatars = (t.testimonials || [])
         .map((item) => srcOf(item.image))
@@ -620,6 +626,11 @@ const CoreValues = () => {
                 <p>
                   {c("home.values.card2.body", "Every professional works differently. That's why we offer workspaces and plans that adapt.")}
                 </p>
+                {innovation ? (
+                  <figure className="cbx-value-innovation-photo">
+                    <img src={innovation} alt="" loading="lazy" />
+                  </figure>
+                ) : null}
                 <div className="cbx-value-counts">
                   {[
             [c("home.values.projects", isDemo(draft) ? "500+" : ""), "Projects completed"],
@@ -709,7 +720,11 @@ const Testimonials = () => {
                 {CIcon.chevronRight()}
               </button>
             </div>) : null}
-          {t.showWriteReview ? <CCtaButton onClick={t.openReviewModal}>Write a review</CCtaButton> : null}
+          {t.showWriteReview ? (
+            <CCtaButton className="cbx-write-review" onClick={t.openReviewModal}>
+              Write a review
+            </CCtaButton>
+          ) : null}
         </CReveal>
         <div className="cbx-review-rail" ref={rail}>
           {reviews.map((review, index) => (<article className="cbx-review" key={review.key || index}>

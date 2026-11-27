@@ -336,6 +336,9 @@ const bulkUpdateListingStats = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ message: "No file provided" });
     }
+    if (!/\.csv$/i.test(req.file.originalname || "")) {
+      return res.status(400).json({ message: "Only .csv files are allowed." });
+    }
     const dryRun = String(req.query.dryRun || "") === "true";
 
     const workbook = new ExcelJS.Workbook();
@@ -349,15 +352,21 @@ const bulkUpdateListingStats = async (req, res) => {
 
     // Columns found by header text, not fixed position — same defensive
     // approach as parseDestinationRawData.js, since the team's sheets vary.
+    // Some months' sheets carry a "last month" reference column alongside
+    // the live one, e.g. "Ratings (OCT)" next to "Rating (Nov)" — stripping
+    // a trailing "(...)" before matching treats both as the same field, and
+    // since the live column is always the later one in these sheets (same
+    // pattern as "STATUS" vs "Business Status"), the later match naturally
+    // wins without needing to know this month's label in code.
     const sheet = workbook.worksheets[0];
     const cols = {};
     if (sheet) {
       const header = sheet.getRow(1);
       for (let c = 1; c <= (sheet.actualColumnCount || sheet.columnCount); c += 1) {
-        const h = norm(header.getCell(c).value);
+        const h = norm(header.getCell(c).value).replace(/\s*\([^)]*\)\s*$/, "").trim();
         if (h === "business id") cols.businessId = c;
         else if (h === "ratings" || h === "rating") cols.ratings = c;
-        else if (h === "total reviews") cols.totalReviews = c;
+        else if (h === "total reviews" || h === "total review" || h === "reviews" || h === "review count" || h === "no of reviews" || h === "number of reviews") cols.totalReviews = c;
         else if (h === "status" || h === "business status") cols.status = c;
       }
     }
@@ -442,15 +451,20 @@ const bulkUpdateListingStats = async (req, res) => {
         }
       }
 
-      // "IN-ACTIVE" / "INACTIVE" / "In Active" all count as inactive.
+      // "IN-ACTIVE", "Closed", "Temporarily Closed" and "Permanently Closed"
+      // all mean the same thing here — not currently open for business — so
+      // they all make the listing private, same as the Destination Listings
+      // Business Status field's own aliases.
       const status = norm(cellStr(row, cols.status)).replace(/[^a-z]/g, "");
-      if (status === "inactive") update.makePrivate = true;
-      else if (status && status !== "active") {
+      const INACTIVE_STATUS_VALUES = new Set(["inactive", "closed", "closedtemporarily", "closedpermanently", "temporarilyclosed", "permanentlyclosed"]);
+      const ACTIVE_STATUS_VALUES = new Set(["active", "open"]);
+      if (INACTIVE_STATUS_VALUES.has(status)) update.makePrivate = true;
+      else if (status && !ACTIVE_STATUS_VALUES.has(status)) {
         failures.push({
           row: rowNumber,
           column: "STATUS",
           value: cellStr(row, cols.status),
-          reason: 'Expected "ACTIVE" or "IN-ACTIVE" — visibility left unchanged.',
+          reason: 'Expected "ACTIVE" or a closed status (e.g. "IN-ACTIVE", "Temporarily Closed", "Permanently Closed") — visibility left unchanged.',
         });
       }
 
@@ -474,9 +488,7 @@ const bulkUpdateListingStats = async (req, res) => {
 
     // Dry run: diff each row against Nomads' own company directory before
     // writing anything — the write endpoint itself has no preview mode, so
-    // the comparison happens here, against the full directory (not just
-    // this host's linked companies, since "Business ALL Data" covers every
-    // business Nomads knows about).
+    // the comparison happens here, before anything is sent to that endpoint.
     if (dryRun) {
       const allListings = await fetchNomadsCompanyListings();
       const byBusinessId = new Map(allListings.map((item) => [String(item.businessId), item]));
@@ -493,12 +505,19 @@ const bulkUpdateListingStats = async (req, res) => {
           return;
         }
 
+        // Compared as numbers, not whatever type Nomads' API happens to
+        // return (e.g. "4.5" vs 4.5), so a real string/number mismatch in
+        // the API response can't silently hide or fake a change.
+        const toNum = (value) => (value === null || value === undefined || value === "" ? null : Number(value));
+        const currentRatings = toNum(current.ratings);
+        const currentReviews = toNum(current.totalReviews);
+
         const changedFields = [];
-        if (update.ratings !== undefined && update.ratings !== current.ratings) {
-          changedFields.push({ field: "ratings", label: "Ratings", oldValue: current.ratings ?? null, newValue: update.ratings });
+        if (update.ratings !== undefined && update.ratings !== currentRatings) {
+          changedFields.push({ field: "ratings", label: "Ratings", oldValue: currentRatings, newValue: update.ratings });
         }
-        if (update.totalReviews !== undefined && update.totalReviews !== current.totalReviews) {
-          changedFields.push({ field: "totalReviews", label: "Total Reviews", oldValue: current.totalReviews ?? null, newValue: update.totalReviews });
+        if (update.totalReviews !== undefined && update.totalReviews !== currentReviews) {
+          changedFields.push({ field: "totalReviews", label: "Total Reviews", oldValue: currentReviews, newValue: update.totalReviews });
         }
         if (update.makePrivate && current.isPublic !== false) {
           changedFields.push({ field: "status", label: "Status", oldValue: current.isPublic === false ? "Inactive" : "Active", newValue: "Inactive" });
@@ -512,6 +531,7 @@ const bulkUpdateListingStats = async (req, res) => {
           id: update.businessId,
           businessId: update.businessId,
           businessName: current.companyName || current.businessName || "",
+          companyType: current.companyType || "",
           rowNumber,
           changedFields,
         });
@@ -522,6 +542,7 @@ const bulkUpdateListingStats = async (req, res) => {
         willUpdateCount: preview.length,
         unchangedCount,
         notFoundCount: notFound.length,
+        skippedNothingToUpdate,
         rowErrors: failures,
         notFound,
         preview,
@@ -569,9 +590,9 @@ const bulkUpdateListingStats = async (req, res) => {
 };
 
 // Live export for Listings Data Update's "Download current data" — the same
-// Nomads company directory bulkUpdateListingStats's dry run diffs against,
-// shaped as the columns that upload reads back (Business ID, Ratings, Total
-// Reviews, STATUS), so admins have a monthly reference and a round-trip file.
+// Nomads listings bulkUpdateListingStats's dry run diffs against, shaped as
+// the columns that upload reads back (Business ID, Ratings, Total Reviews,
+// STATUS), so admins have a monthly reference and a round-trip file.
 const getListingsCurrentData = async (req, res, next) => {
   try {
     const listings = await fetchNomadsCompanyListings();
@@ -579,6 +600,7 @@ const getListingsCurrentData = async (req, res, next) => {
       items: listings.map((item) => ({
         businessId: item.businessId,
         businessName: item.companyName || item.businessName || "",
+        companyType: item.companyType || "",
         ratings: item.ratings ?? "",
         totalReviews: item.totalReviews ?? "",
         status: item.isPublic === false ? "IN-ACTIVE" : "ACTIVE",

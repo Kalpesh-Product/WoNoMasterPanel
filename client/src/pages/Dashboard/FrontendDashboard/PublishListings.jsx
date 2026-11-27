@@ -10,11 +10,13 @@ import {
   Layers,
   CheckCircle2,
   XCircle,
+  Download,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import MuiModal from "../../../components/MuiModal";
 import { statusPillClass, STATUS_PILL_BASE } from "../../../lib/status-pill";
+import { downloadCsv } from "../../../utils/csvExport";
 
 const PAGE_SIZE = 30;
 const SEARCH_DEBOUNCE_MS = 700;
@@ -358,6 +360,70 @@ const PublishListings = () => {
   const canSubmit = Boolean(country && state) && !isBulkPending;
   const locationLabel = [country, state, city].filter(Boolean).join(" > ");
 
+  // Exports every listing matching the current filters, not just the rows
+  // the infinite-scroll table has loaded so far — pages through the same
+  // endpoint/params at the server's max page size (100) until exhausted.
+  // fetchAllNomadListings is cached for 5 minutes, and the table's own
+  // queries already warm that cache, so these extra page fetches are cheap.
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const exportParams = {
+        limit: 100,
+        status: statusFilter,
+        isPublic: visibilityFilter === "all" ? undefined : visibilityFilter === "public" ? "true" : "false",
+        type: typeFilter,
+        search: debouncedSearch,
+        country,
+        state,
+        city,
+      };
+
+      const allRows = [];
+      let page = 1;
+      let hasMore = true;
+      while (hasMore) {
+        const response = await axiosPrivate.get("/api/hosts/get-companies-listings", {
+          params: { ...exportParams, page },
+        });
+        allRows.push(...(response.data?.items || []));
+        hasMore = Boolean(response.data?.hasMore);
+        page += 1;
+      }
+
+      if (!allRows.length) {
+        toast.info("No listings match the current filters.");
+        return;
+      }
+
+      const matrix = [
+        ["Sr No", "Business ID", "Company Name", "Title", "Type", "Country", "State", "City", "Status", "Visibility"],
+        ...allRows.map((item, index) => [
+          index + 1,
+          item.businessId || "",
+          item.companyName || "",
+          item.companyTitle || "",
+          formatTypeLabel(item.companyType),
+          item.country || "",
+          item.state || "",
+          item.city || "",
+          item.isActive ? "Active" : "Inactive",
+          item.isPublic ? "Public" : "Private",
+        ]),
+      ];
+
+      const dateLabel = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "2-digit" });
+      downloadCsv({ filename: `Publish Listings (${allRows.length}) - ${dateLabel}.csv`, matrix });
+      toast.success(`Exported ${allRows.length} listing${allRows.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Export failed.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-full text-[#0F172A] font-sans text-[12px]">
       <PageFrame>
@@ -605,6 +671,18 @@ const PublishListings = () => {
                     ? `Showing ${listings.length} of ${totalMatching}`
                     : `${totalMatching} listing${totalMatching === 1 ? "" : "s"}`}
                 </div>
+
+                <button
+                  type="button"
+                  data-tour="publish-export"
+                  disabled={isExporting || totalMatching === 0}
+                  onClick={handleExport}
+                  title="Export every listing matching the current filters"
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-lg font-pmedium text-[11px] uppercase tracking-wider hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap"
+                >
+                  <Download size={14} strokeWidth={2.5} />
+                  {isExporting ? "Exporting..." : "Export (.csv)"}
+                </button>
               </div>
             </div>
 

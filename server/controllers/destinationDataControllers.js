@@ -957,6 +957,9 @@ const rankingChangedFields = (existing, item) => {
 const bulkImportDestinationRanking = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ message: "Upload a .csv file." });
+    if (!/\.csv$/i.test(req.file.originalname || "")) {
+      return res.status(400).json({ message: "Only .csv files are allowed." });
+    }
     const dryRun = String(req.query.dryRun || "") === "true";
 
     const workbook = new ExcelJS.Workbook();

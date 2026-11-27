@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertTriangle, ArrowRight, CheckCircle2, FileDown, Plus, X } from "lucide-react";
@@ -48,6 +48,56 @@ const currentDataFilename = () => `Destination Ranking Data - ${new Date().toLoc
 
 const isCsv = (file) => /\.csv$/i.test(file.name);
 const formatValue = (value) => (value === null || value === undefined || value === "" ? "— (blank)" : String(value));
+const formatScore = (value) => (value === null || value === undefined ? "—" : Number(value).toFixed(2));
+const normKey = (value) => String(value || "").trim().toLowerCase();
+
+// Mirrors the server's computeClientOpportunity/computeFinalScore exactly
+// (destinationDataControllers.js) so the dry run can show the WoNo score and
+// priority impact of each change, not just the raw factor values — same idea
+// as World Ranking Weights Upload's recalculated attribute scores.
+const computeClientOpportunity = (factors) => {
+  const { targetBusinessSupply, tourismAccommodationBase, marketScale } = factors || {};
+  if ([targetBusinessSupply, tourismAccommodationBase, marketScale].some((value) => typeof value !== "number")) return null;
+  return targetBusinessSupply * 0.6 + tourismAccommodationBase * 0.25 + marketScale * 0.15;
+};
+const computeFinalScore = (factors) => {
+  const clientOpportunity = computeClientOpportunity(factors);
+  if (clientOpportunity === null) return null;
+  const { nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare } = factors;
+  const rest = [nomadDemandCommunity, remoteWorkInfrastructure, businessJobsEcosystem, flightConnectivity, affordability, visaEntryAccessibility, safetyHealthcare];
+  if (rest.some((value) => typeof value !== "number")) return null;
+  return Number((
+    clientOpportunity * 0.35
+    + nomadDemandCommunity * 0.20
+    + remoteWorkInfrastructure * 0.15
+    + businessJobsEcosystem * 0.10
+    + flightConnectivity * 0.07
+    + affordability * 0.05
+    + visaEntryAccessibility * 0.05
+    + safetyHealthcare * 0.03
+  ).toFixed(2));
+};
+
+const PRIORITY_LABELS = { P1: "Immediate", P2: "High", P3: "Medium", P4: "Low" };
+
+// Mirrors recomputeActiveRanking's priority split exactly: top/bottom 20%
+// are P1/P4, the middle 60% splits evenly into P2/P3.
+const buildPriorityByScore = (scored) => {
+  const sorted = [...scored].sort((a, b) => b.score - a.score);
+  const total = sorted.length;
+  const p1Count = Math.round(total * 0.2);
+  const p4Count = Math.round(total * 0.2);
+  const p2Count = Math.round((total - p1Count - p4Count) / 2);
+  const map = new Map();
+  sorted.forEach((entry, index) => {
+    let priority = "P3";
+    if (index < p1Count) priority = "P1";
+    else if (index < p1Count + p2Count) priority = "P2";
+    else if (index >= total - p4Count) priority = "P4";
+    map.set(entry.id, { rank: index + 1, priority });
+  });
+  return map;
+};
 
 const StatGrid = ({ items }) => (
   <div className="grid grid-cols-2 divide-x divide-y divide-slate-100 sm:grid-cols-5">
@@ -92,7 +142,53 @@ const ChangedFields = ({ changedFields = [] }) => (
   </div>
 );
 
-const PreviewGroup = ({ title, description, rows, tone }) => {
+// The right half of each row — what this change does to the destination's
+// actual output (score/priority/rank), not just the raw factor edit on the
+// left. "New" rows have no before, since the destination doesn't exist yet.
+const ScoreImpact = ({ impact }) => {
+  if (!impact) return null;
+  const isNew = impact.scoreBefore === null || impact.scoreBefore === undefined;
+  const rankDelta = isNew || !impact.rankBefore || !impact.rankAfter ? 0 : impact.rankBefore - impact.rankAfter;
+
+  return (
+    <div className="w-52 shrink-0 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 text-[10px] font-pmedium">
+        <span className="text-slate-400">WoNo score</span>
+        <span className="flex items-center gap-1">
+          {!isNew && <span className="text-slate-400">{formatScore(impact.scoreBefore)}</span>}
+          {!isNew && <ArrowRight size={10} className="text-slate-300" />}
+          <span className="text-slate-900">{formatScore(impact.scoreAfter)}</span>
+        </span>
+      </div>
+      <div className="mt-1 flex items-center justify-between gap-2 text-[10px] font-pmedium">
+        <span className="text-slate-400">Priority</span>
+        <span className="flex items-center gap-1">
+          {!isNew && (
+            <span className="text-slate-400" title={impact.priorityBefore ? PRIORITY_LABELS[impact.priorityBefore] : undefined}>
+              {impact.priorityBefore || "—"}
+            </span>
+          )}
+          {!isNew && <ArrowRight size={10} className="text-slate-300" />}
+          <span className="text-slate-900" title={impact.priorityAfter ? PRIORITY_LABELS[impact.priorityAfter] : undefined}>
+            {impact.priorityAfter || "—"}
+          </span>
+        </span>
+      </div>
+      {!isNew && impact.rankBefore && impact.rankAfter && (
+        <div className="mt-1 flex items-center justify-end gap-1.5 text-[10px] font-pmedium">
+          <span className="text-slate-400">#{impact.rankBefore} → #{impact.rankAfter}</span>
+          {rankDelta !== 0 && (
+            <span className={rankDelta > 0 ? "text-emerald-600" : "text-rose-500"}>
+              {rankDelta > 0 ? `▲${rankDelta}` : `▼${Math.abs(rankDelta)}`}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const PreviewGroup = ({ title, description, rows, tone, impactById }) => {
   if (!rows.length) return null;
   const isInsert = tone === "insert";
 
@@ -105,17 +201,20 @@ const PreviewGroup = ({ title, description, rows, tone }) => {
       {description && <p className="px-4 pt-1 text-[10px] font-pmedium text-slate-400">{description}</p>}
       <div className="mt-2 max-h-80 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
         {rows.map((row) => (
-          <div key={row.id} className="flex items-start gap-2 px-4 py-2">
-            <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-pmedium uppercase tracking-wider ${isInsert ? "bg-blue-50 text-[#2563EB] ring-1 ring-blue-100" : "bg-slate-100 text-slate-500"}`}>
-              {isInsert ? "New destination" : "Update"}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-pmedium text-slate-800">
-                {row.destination} <span className="mx-1.5 text-slate-300">·</span> {[row.country, row.continent].filter(Boolean).join(", ")}
-                <span className="ml-2 text-[10px] text-slate-400">Row {row.rowNumber}</span>
-              </p>
-              <ChangedFields changedFields={row.changedFields} />
+          <div key={row.id} className="flex items-start justify-between gap-4 px-4 py-2">
+            <div className="flex min-w-0 flex-1 items-start gap-2">
+              <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9px] font-pmedium uppercase tracking-wider ${isInsert ? "bg-blue-50 text-[#2563EB] ring-1 ring-blue-100" : "bg-slate-100 text-slate-500"}`}>
+                {isInsert ? "New destination" : "Update"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-pmedium text-slate-800">
+                  {row.destination} <span className="mx-1.5 text-slate-300">·</span> {[row.country, row.continent].filter(Boolean).join(", ")}
+                  <span className="ml-2 text-[10px] text-slate-400">Row {row.rowNumber}</span>
+                </p>
+                <ChangedFields changedFields={row.changedFields} />
+              </div>
             </div>
+            <ScoreImpact impact={impactById?.[row.id]} />
           </div>
         ))}
       </div>
@@ -123,7 +222,7 @@ const PreviewGroup = ({ title, description, rows, tone }) => {
   );
 };
 
-const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, isExporting }) => {
+const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, isExporting, impact }) => {
   const preview = result.preview || [];
   const inserts = preview.filter((row) => row.action === "insert");
   const updates = preview.filter((row) => row.action !== "insert");
@@ -146,6 +245,9 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
           </p>
           {inserts.length > 0 && (
             <p className="mt-1 text-[10px] font-pmedium text-slate-400">{inserts.length} of these are brand-new destination names that don&apos;t exist yet; the rest correct existing destinations.</p>
+          )}
+          {impact?.universeCount > 0 && (
+            <p className="mt-1 text-[10px] font-pmedium text-slate-400">Score and priority impact on the right are recalculated over all {impact.universeCount} active destinations after this import.</p>
           )}
         </div>
         <button
@@ -176,8 +278,9 @@ const DryRunPanel = ({ result, onConfirm, onDiscard, isCommitting, onExportPdf, 
         title="New destinations to insert"
         description="These names have no row in the database yet — confirming will create them, active, with the factors below."
         rows={inserts}
+        impactById={impact?.byId}
       />
-      <PreviewGroup tone="update" title="Existing destinations to update" rows={updates} />
+      <PreviewGroup tone="update" title="Existing destinations to update" rows={updates} impactById={impact?.byId} />
 
       <div className="border-t border-slate-100 px-4 py-3">
         <button
@@ -305,6 +408,52 @@ const DestinationRankingUpload = () => {
     return () => window.URL.revokeObjectURL(url);
   }, [liveRows]);
 
+  // Recalculates each previewed destination's WoNo score/priority/rank
+  // before vs. after, over the whole active set — same technique World
+  // Ranking Weights Upload uses for its attribute-score impact, since the
+  // backend dry run only returns the raw factor diff, not the downstream
+  // score/priority it would produce.
+  const rankingImpact = useMemo(() => {
+    const previewRows = preview.data?.preview || [];
+    if (!previewRows.length || !liveRows.length) return { byId: {}, universeCount: 0 };
+
+    const activeRows = liveRows.filter((row) => row.isActive);
+    const beforeByKey = new Map(activeRows.map((row) => [normKey(row.destination), row]));
+    const afterFactorsByKey = new Map(activeRows.map((row) => [normKey(row.destination), row.factors]));
+
+    previewRows.forEach((row) => {
+      const key = normKey(row.destination);
+      const base = beforeByKey.get(key)?.factors || {};
+      const overrides = Object.fromEntries(
+        (row.changedFields || []).filter((change) => FACTOR_FIELDS.includes(change.field)).map((change) => [change.field, change.newValue]),
+      );
+      afterFactorsByKey.set(key, { ...base, ...overrides });
+    });
+
+    const afterScored = Array.from(afterFactorsByKey.entries())
+      .map(([key, factors]) => ({ id: key, score: computeFinalScore(factors) }))
+      .filter((entry) => typeof entry.score === "number");
+    const afterByKey = buildPriorityByScore(afterScored);
+    const afterScoreByKey = new Map(afterScored.map((entry) => [entry.id, entry.score]));
+
+    const byId = {};
+    previewRows.forEach((row) => {
+      const key = normKey(row.destination);
+      const before = beforeByKey.get(key);
+      const after = afterByKey.get(key);
+      byId[row.id] = {
+        scoreBefore: before?.score ?? null,
+        scoreAfter: afterScoreByKey.get(key) ?? null,
+        priorityBefore: before?.priority ?? null,
+        priorityAfter: after?.priority ?? null,
+        rankBefore: before?.rank ?? null,
+        rankAfter: after?.rank ?? null,
+      };
+    });
+
+    return { byId, universeCount: afterScored.length };
+  }, [preview.data, liveRows]);
+
   const pickFile = (picked) => {
     if (!picked) return;
     if (!isCsv(picked)) {
@@ -339,6 +488,18 @@ const DestinationRankingUpload = () => {
       });
     });
     const skippedRows = (result.rowErrors || []).map((entry) => [`Row ${entry.rowNumber}`, entry.destination || "—", entry.reason]);
+    const impactRows = previewRows.map((row) => {
+      const impact = rankingImpact.byId[row.id] || {};
+      return [
+        row.destination,
+        impact.scoreBefore === null || impact.scoreBefore === undefined ? "New" : formatScore(impact.scoreBefore),
+        formatScore(impact.scoreAfter),
+        impact.priorityBefore || "—",
+        impact.priorityAfter || "—",
+        impact.rankBefore ? `#${impact.rankBefore}` : "—",
+        impact.rankAfter ? `#${impact.rankAfter}` : "—",
+      ];
+    });
 
     return {
       title: "Destination Ranking — Dry Run",
@@ -367,6 +528,19 @@ const DestinationRankingUpload = () => {
           rows: changeRows,
         },
         {
+          title: `Score & priority impact (${impactRows.length})`,
+          columns: [
+            { label: "Destination", width: 0.28 },
+            { label: "Score before", width: 0.13 },
+            { label: "Score after", width: 0.13 },
+            { label: "Priority before", width: 0.13 },
+            { label: "Priority after", width: 0.13 },
+            { label: "Rank before", width: 0.1 },
+            { label: "Rank after", width: 0.1 },
+          ],
+          rows: impactRows,
+        },
+        {
           title: `Rows skipped (${skippedRows.length})`,
           columns: [
             { label: "Row", width: 0.14 },
@@ -380,6 +554,7 @@ const DestinationRankingUpload = () => {
         "This is a dry run: nothing was written by generating this report.",
         "Rows are matched by destination name. A new name is inserted active; an existing destination's country/continent/factors are replaced.",
         "Rank, priority and WoNo score are recalculated from the factors — never read from the sheet.",
+        `Score & priority impact is recalculated over all ${rankingImpact.universeCount} active destinations after this import.`,
       ],
     };
   };
@@ -441,6 +616,7 @@ const DestinationRankingUpload = () => {
               isCommitting={commit.isPending}
               onExportPdf={() => pdfExport.mutate()}
               isExporting={pdfExport.isPending}
+              impact={rankingImpact}
             />
           )}
 

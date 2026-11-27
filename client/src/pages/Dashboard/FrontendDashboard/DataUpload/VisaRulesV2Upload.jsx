@@ -12,6 +12,7 @@ import {
 import useAxiosPrivate from "../../../../hooks/useAxiosPrivate";
 import { queryClient } from "../../../../main";
 import { NOMADS_API_BASE_URL } from "../../../../constants/api";
+import { downloadCsv } from "../../../../utils/csvExport";
 import {
   exportDryRunPdf,
   readDryRunReportError,
@@ -23,14 +24,12 @@ import {
   UploadPanel,
 } from "./UploadUI";
 
-// Nomads owns these endpoints. The import format is one row per passport +
-// destination pair — the exact shape /visa-rules-v2/export-csv produces, so
-// export → edit → re-upload is a round trip. Unlike the weights importer this
-// one upserts: a visa rule legitimately gains new passport/destination pairs
-// over time, so "insert" is a normal outcome, not an error.
+// Nomads owns this endpoint. Import format is one row per passport +
+// destination pair. Unlike the weights importer this one upserts: a visa
+// rule legitimately gains new passport/destination pairs over time, so
+// "insert" is a normal outcome, not an error.
 // Same URL handles both steps: ?dryRun=true previews, no query writes.
 const VISA_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-rows-csv`;
-const VISA_EXPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/export-csv`;
 const VISA_IMPORT_FIELD = "visa-rules-file";
 
 const isCsv = (file) => /\.csv$/i.test(file.name);
@@ -357,9 +356,16 @@ const ErrorPanel = ({ message, rowErrors = [] }) => (
   </section>
 );
 
+// How many passports to fetch in parallel per round. The all-passports
+// backend export (one unfiltered collection scan) hangs in production; this
+// instead reuses the per-passport endpoint — already proven fast — in small
+// batches, so no single request is ever large.
+const EXPORT_BATCH_SIZE = 5;
+
 const VisaRulesV2Upload = () => {
   const axios = useAxiosPrivate();
   const [file, setFile] = useState(null);
+  const [exportProgress, setExportProgress] = useState(null);
 
   const postFile = async (dryRun) => {
     const formData = new FormData();
@@ -505,23 +511,101 @@ const VisaRulesV2Upload = () => {
   const busy = preview.isPending || commit.isPending;
   const failedRequest = preview.error || commit.error;
   const failedResult = failedRequest?.response?.data;
+  const isExporting = Boolean(exportProgress);
+
+  const handleExportAll = async () => {
+    try {
+      const countriesRes = await axios.get(
+        `${NOMADS_API_BASE_URL}/visa-rules-v2/destinations/countries`,
+      );
+      const passports = countriesRes?.data?.countries || [];
+      if (!passports.length) {
+        toast.error("No passports found to export.");
+        return;
+      }
+
+      setExportProgress({ done: 0, total: passports.length });
+      const matrix = [["Passport", "Destination", "Requirement", "DurationDays"]];
+      const failedPassports = [];
+
+      for (let i = 0; i < passports.length; i += EXPORT_BATCH_SIZE) {
+        const batch = passports.slice(i, i + EXPORT_BATCH_SIZE);
+        const results = await Promise.allSettled(
+          batch.map((passport) =>
+            axios.get(
+              `${NOMADS_API_BASE_URL}/visa-rules-v2/passport/${encodeURIComponent(passport)}`,
+            ),
+          ),
+        );
+
+        results.forEach((result, index) => {
+          const passport = batch[index];
+          if (result.status === "fulfilled") {
+            const rules = result.value?.data?.data || [];
+            rules.forEach((rule) => {
+              matrix.push([
+                passport,
+                rule.destination || "",
+                rule.requirement || "",
+                rule.durationDays ?? "",
+              ]);
+            });
+          } else {
+            failedPassports.push(passport);
+          }
+        });
+
+        setExportProgress({
+          done: Math.min(i + EXPORT_BATCH_SIZE, passports.length),
+          total: passports.length,
+        });
+      }
+
+      downloadCsv({ filename: "wono_visa_rules_v2_full.csv", matrix });
+
+      if (failedPassports.length) {
+        toast.warning(
+          `Exported, but ${failedPassports.length} passport(s) failed: ${failedPassports.slice(0, 5).join(", ")}${failedPassports.length > 5 ? "…" : ""}`,
+        );
+      } else {
+        toast.success(`Exported ${passports.length} passports, ${matrix.length - 1} rows.`);
+      }
+    } catch (error) {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExportProgress(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-4">
       <UploadCard
         title="Visa Rules V2 Import"
         description="Upload one CSV to preview and import visa rules for every passport → destination pair."
-        templateHref={VISA_EXPORT_ENDPOINT}
-        templateLabel="Download current data (.csv)"
       >
         <p className="mb-3 text-[10px] font-pmedium text-slate-400">
           One row per rule with the columns{" "}
           <span className="text-slate-600">Passport, Destination, Requirement,
-          DurationDays</span>{" "}
-          — exactly what “Download current data” exports. The file only needs to
-          contain the rows you want to touch; everything else in the database is
-          left alone.
+          DurationDays</span>. The file only needs to contain the rows you want
+          to touch; everything else in the database is left alone.
         </p>
+
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+          <p className="text-[10px] font-pmedium text-slate-500">
+            {isExporting
+              ? `Exporting passports… ${exportProgress.done}/${exportProgress.total}`
+              : "Export every passport's current rules into one CSV, ready to edit and re-upload."}
+          </p>
+          <button
+            type="button"
+            onClick={handleExportAll}
+            disabled={isExporting}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[10px] font-pmedium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FileDown size={12} />
+            {isExporting ? "Exporting..." : "Export All (.csv)"}
+          </button>
+        </div>
 
         <UploadPanel>
           <FileDropzone

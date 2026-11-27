@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "../motion";
 import { useTpl } from "../shared/TplContext";
-import { Icon } from "../shared/TplUI";
+import { Icon, StarRow } from "../shared/TplUI";
 import { LeadFormPanel } from "../shared/TplLead";
 import { MessageForm } from "../shared/TplForms";
 import { OrchardContactItems, OrchardHeading, OrchardPhoto, OrchardPlanCard, OrchardReviews, OrchardTextLink, } from "./OrchardUI";
@@ -11,6 +11,10 @@ export const OrchardHome = () => {
     const { t, draft, primary, rating, openLead, c, photo } = useTpl();
     const [amenity, setAmenity] = useState(0);
     const [space, setSpace] = useState(0);
+    const [reviewPage, setReviewPage] = useState(0);
+    const reviewsPerPage = 3;
+    const reviewPages = Math.ceil(t.testimonials.length / reviewsPerPage);
+    const activeReviewPage = Math.min(reviewPage, Math.max(0, reviewPages - 1));
     const hero = photo("home.hero.image", t.heroImages?.[0] || primary?.heroImage || t.galleryItems?.[0] || "");
     const gallery = t.galleryItems || [];
     const rooms = primary?.items || [];
@@ -106,7 +110,7 @@ export const OrchardHome = () => {
       <section id="ol-welcome" className="ol-section ol-section-soft">
         <div className="ol-shell ol-welcome-grid">
           <OrchardPhoto src={photo("home.welcome.image1", gallery[1] || hero)} alt="Welcome to the house" className="ol-welcome-photo"/>
-          <div>
+          <div className="ol-welcome-content">
             <OrchardHeading eyebrow={c("home.welcome.eyebrow", "Welcome to Orchard")} title={c("home.welcome.title", "A place to land, and a place to belong.")} sub={c("home.welcome.sub", "We have brought together the comfort of a well-run home and the energy of a good hostel—without the noise, the queues or the compromise.")} small/>
             <p className="ol-lead">
               {t.aboutIntroBlocks?.[0] ||
@@ -146,7 +150,7 @@ export const OrchardHome = () => {
         </div>
       </section>
 
-      {rooms.length ? (<section className="ol-section ol-section-soft">
+      {rooms.length ? (<section className="ol-section ol-section-soft ol-home-plans">
           <div className="ol-shell">
             <OrchardHeading eyebrow={c("home.plans.eyebrow", "Find your room")} title={c("home.plans.title", "Floor plans for every rhythm.")} sub={c("home.plans.sub", "Compare the details, then let us know which one feels like yours.")} action={primary ? (<OrchardTextLink onClick={() => t.goToProductPage(primary.slug)}>
                     {c("home.plans.link", "View all rooms")}
@@ -210,10 +214,23 @@ export const OrchardHome = () => {
         </div>
       </section>
 
-      {t.testimonials?.length ? (<section className="ol-section ol-section-soft">
+      {t.testimonials?.length || t.showWriteReview ? (<section className="ol-section ol-section-soft ol-home-reviews">
           <div className="ol-shell">
             <OrchardHeading eyebrow={c("home.reviews.eyebrow", "Guest notes")} title={c("home.reviews.title", "What people say after they leave.")} sub={c("home.reviews.sub", "The nicest part of running a house like this is hearing from the people who stayed.")} small/>
-            <OrchardReviews limit={2}/>
+            {rating.count > 0 ? (<div className="ol-home-review-summary">
+                <strong>{rating.avg.toFixed(1)} / 5</strong>
+                <span aria-hidden="true"><StarRow value={rating.avg} size={16}/></span>
+                <span>from {rating.count} {rating.count === 1 ? "rating" : "ratings"}</span>
+              </div>) : null}
+            <div aria-live="polite">
+              <OrchardReviews limit={reviewsPerPage} offset={activeReviewPage * reviewsPerPage}/>
+            </div>
+            {reviewPages > 1 ? (<div className="ol-home-review-pages" role="group" aria-label="Guest review slides">
+                {Array.from({ length: reviewPages }, (_, index) => (<button key={index} type="button" aria-label={`Show review slide ${index + 1}`} aria-current={index === activeReviewPage ? "true" : undefined} onClick={() => setReviewPage(index)}/>))}
+              </div>) : null}
+            {t.showWriteReview ? (<button type="button" className="ol-btn ol-home-review-write" onClick={t.openReviewModal}>
+                {c("home.reviews.write", "Write a review")}
+              </button>) : null}
           </div>
         </section>) : null}
 
@@ -248,13 +265,17 @@ export const OrchardHome = () => {
 
       <section className="ol-section">
         <div className="ol-shell ol-tour-grid">
-          <div>
-            <OrchardHeading eyebrow={c("home.tour.eyebrow", "Come see it for yourself")} title={c("home.tour.title", "Schedule a tour.")} sub={c("home.tour.sub", "Tell us when you would like to visit and we will show you around, answer the small questions and help you settle in.")} small/>
+          <div className="ol-tour-info">
+            <OrchardHeading className="ol-tour-heading" eyebrow={c("home.tour.eyebrow", "Come see it for yourself")} title={c("home.tour.title", "Schedule a tour.")} sub={c("home.tour.sub", "Tell us when you would like to visit and we will show you around, answer the small questions and help you settle in.")} small/>
             <OrchardContactItems />
             <p className="ol-tour-note">
               <strong>{c("home.tour.noteLabel", "Prefer to message us?")}</strong>{" "}
               {c("home.tour.note", "Send a note and the team will get back to you the same day.")}
             </p>
+            <div className="ol-tour-expect">
+              <h3>{c("home.tour.expectTitle", "What to expect on your tour")}</h3>
+              <p>{c("home.tour.expectBody", "Use your visit to compare room options, see the shared spaces, and ask about check-in. If you’re visiting with a group or have accessibility needs, mention them in your request.")}</p>
+            </div>
           </div>
           <div className="ol-tour-panel">
             {primary?.leadEnabled ? (<LeadFormPanel service={primary}/>) : (<MessageForm inquiryType="Tour" submitLabel={c("home.tour.submit", "Request a tour")} success="Thanks — we will be in touch shortly."/>)}

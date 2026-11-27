@@ -22,23 +22,36 @@ const COLORS = {
   white: rgb(1, 1, 1),
 };
 
-// pdf-lib's standard fonts are WinAnsi only. Drop control characters and
-// replace glyphs the encoding can't hold, so a stray emoji never breaks the
-// export.
-const toEncodable = (value) =>
+// pdf-lib's standard fonts use WinAnsiEncoding, which covers common "smart"
+// punctuation (em/en dash, curly quotes, bullet, ellipsis) above code point
+// 255 in addition to Latin-1 — so this checks real encodability against the
+// embedded font instead of guessing from the Unicode code point. A blanket
+// "code > 255 -> ?" check (the previous approach) wrongly mangled an em dash
+// or a bullet into "?"; this only degrades glyphs the font truly can't hold
+// (emoji, CJK, currency symbols), so a stray one never breaks the export.
+const canEncode = (font, char) => {
+  try {
+    font.widthOfTextAtSize(char, 10);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const toEncodable = (font, value) =>
   [...String(value ?? "")]
     .map((char) => {
       const code = char.codePointAt(0);
       if (code === 9) return " ";
       if (code < 32 || (code >= 127 && code <= 159)) return "";
-      return code <= 255 ? char : "?";
+      return canEncode(font, char) ? char : "?";
     })
     .join("")
     .replace(/\s+/g, " ")
     .trim();
 
 const fitText = (font, value, size, maxWidth) => {
-  const text = toEncodable(value);
+  const text = toEncodable(font, value);
   if (!text) return "";
   if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
 
@@ -53,7 +66,7 @@ const fitText = (font, value, size, maxWidth) => {
 };
 
 const wrapText = (font, value, size, maxWidth) => {
-  const words = toEncodable(value).split(" ").filter(Boolean);
+  const words = toEncodable(font, value).split(" ").filter(Boolean);
   const lines = [];
   let line = "";
 
@@ -98,12 +111,12 @@ const buildDryRunReportPdf = async ({
   generatedAt = new Date(),
 }) => {
   const pdfDoc = await PDFDocument.create();
-  pdfDoc.setTitle(toEncodable(title));
   pdfDoc.setCreator("Wono Master Panel");
   pdfDoc.setProducer("Wono Master Panel");
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  pdfDoc.setTitle(toEncodable(font, title));
 
   const stamp = generatedAt.toLocaleString("en-GB", {
     timeZone: "UTC",
@@ -127,7 +140,7 @@ const buildDryRunReportPdf = async ({
   };
 
   const text = (value, { x = MARGIN, size = 9, useBold = false, color = COLORS.body } = {}) => {
-    const content = toEncodable(value);
+    const content = toEncodable(useBold ? bold : font, value);
     if (!content) return;
     current.drawText(fitText(useBold ? bold : font, content, size, CONTENT_WIDTH - (x - MARGIN)), {
       x,

@@ -3,6 +3,12 @@ import { useCoPlace } from "./CoPlaceContext";
 export function CoPlaceImage({ src, alt = "", eager = false }) {
     return src ? <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async"/> : null;
 }
+export function CoPlaceMap() {
+    const { t, draft } = useCoPlace();
+    const query = encodeURIComponent(t.contactAddress || "");
+    const map = draft.mapUrl || (query ? `https://www.google.com/maps?q=${query}&output=embed` : "");
+    return map ? (<iframe className="coplace-map" title="Workspace location" src={map} loading="lazy" referrerPolicy="no-referrer-when-downgrade"/>) : null;
+}
 export function CoPlacePageHero({ title, label, image, body }) {
     return (<section className="coplace-page-hero">
       <CoPlaceImage src={image} eager/>

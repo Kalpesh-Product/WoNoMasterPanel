@@ -2,8 +2,12 @@ import { useState } from "react";
 import { groupByCategory } from "../serviceAdapter";
 import { groupOpeningHours, priceWithUnit } from "../templateKit";
 import { useRestobar } from "./RestobarContext";
-export function RestobarImage({ src, alt = "", eager = false }) {
-    return src ? <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async"/> : null;
+export function RestobarImage({ src, alt = "", eager = false, fallbackSrc }) {
+    const imageSrc = src || fallbackSrc;
+    return imageSrc ? (<img src={imageSrc} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" onError={fallbackSrc ? ({ currentTarget }) => {
+            if (currentTarget.getAttribute("src") !== fallbackSrc)
+                currentTarget.src = fallbackSrc;
+        } : undefined}/>) : null;
 }
 export function RestobarPageHero({ title, label, image, body }) {
     return (<section className="resto-page-hero">
