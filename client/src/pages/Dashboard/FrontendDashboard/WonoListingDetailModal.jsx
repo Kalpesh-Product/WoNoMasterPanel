@@ -1,5 +1,6 @@
 import React from "react";
 import { Pencil, X } from "lucide-react";
+import { getDestinationExternalUrl } from "./wonoDestinationLinks";
 
 const number = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
@@ -12,6 +13,8 @@ const priorityStyle = {
 const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
   if (!listing) return null;
   const s = listing.scoring || {};
+  const websiteUrl = getDestinationExternalUrl(listing.website);
+  const linkedinUrl = getDestinationExternalUrl(listing.linkedin);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4">
@@ -81,10 +84,28 @@ const WonoListingDetailModal = ({ listing, onClose, onEdit }) => {
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
             <div className="border-b border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-pmedium uppercase tracking-widest text-slate-400">Contact</div>
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-xs font-pmedium text-slate-600">
-              {listing.website && <p className="col-span-2 truncate">Website: <span className="text-slate-900">{listing.website}</span></p>}
+              {listing.website && (
+                <p className="col-span-2 truncate">
+                  Website:{" "}
+                  {websiteUrl ? (
+                    <a href={websiteUrl} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline" title={listing.website}>{listing.website}</a>
+                  ) : (
+                    <span className="text-slate-900">{listing.website}</span>
+                  )}
+                </p>
+              )}
               {listing.email && <p className="truncate">Email: <span className="text-slate-900">{listing.email}</span></p>}
               {listing.contact && <p className="truncate">Contact: <span className="text-slate-900">{listing.contact}</span></p>}
-              {listing.linkedin && <p className="col-span-2 truncate">LinkedIn: <span className="text-slate-900">{listing.linkedin}</span></p>}
+              {listing.linkedin && (
+                <p className="col-span-2 truncate">
+                  LinkedIn:{" "}
+                  {linkedinUrl ? (
+                    <a href={linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-[#2563EB] hover:underline" title={listing.linkedin}>{listing.linkedin}</a>
+                  ) : (
+                    <span className="text-slate-900">{listing.linkedin}</span>
+                  )}
+                </p>
+              )}
               {!listing.website && !listing.email && !listing.contact && !listing.linkedin && <p className="col-span-2 text-slate-400">No contact details on file.</p>}
             </div>
           </div>
