@@ -268,6 +268,16 @@ const fetchNomadsCompanyListings = async () => {
   return state.items;
 };
 
+// Bypasses the stale-while-revalidate fast path above: fetchNomadsCompanyListings
+// happily returns a snapshot that's minutes old and refreshes in the
+// background without ever waiting on it, which is fine for a dashboard count
+// but wrong for a dry run — a "not found" there has to reflect Nomads right
+// now, not whatever was cached the last time anything touched this list.
+const fetchFreshNomadsCompanyListings = async () => {
+  await refreshNomadsCompanyListingsCache();
+  return nomadsCompanyListingsCache.items || [];
+};
+
 const fetchNomadListingCounts = async () => {
   try {
     return await requestNomadsRows("/company/destination-listing-counts", 15000);
@@ -1108,4 +1118,5 @@ module.exports = {
   updateWonoDestination,
   bulkImportDestinationRanking,
   fetchNomadsCompanyListings,
+  fetchFreshNomadsCompanyListings,
 };

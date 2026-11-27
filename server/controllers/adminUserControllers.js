@@ -15,9 +15,11 @@ const HostLeadCompany = require("../models/hostCompany/hostLeadCompany");
 // fetchAllNomadListings (hostListingControllers.js) crawls every host
 // company's listings one at a time — on a cold cache that's slow enough to
 // trip a reverse-proxy's response timeout (524), so it's too slow for a
-// request/response dry run. fetchNomadsCompanyListings (/company/companies)
-// is one fast bulk call instead.
-const { fetchNomadsCompanyListings } = require("./destinationDataControllers");
+// request/response dry run. fetchFreshNomadsCompanyListings
+// (/company/companies) is one fast bulk call instead, and — unlike
+// fetchNomadsCompanyListings — always waits for a real fetch rather than
+// handing back a cached snapshot that can be stale by design.
+const { fetchFreshNomadsCompanyListings } = require("./destinationDataControllers");
 const HostUser = require("../models/hostCompany/hostUser");
 const Workspace = require("../models/hostCompany/Workspace");
 const WebsiteTemplate = require("../models/website/WebsiteTemplate");
@@ -495,7 +497,7 @@ const bulkUpdateListingStats = async (req, res) => {
     // writing anything — the write endpoint itself has no preview mode, so
     // the comparison happens here, before anything is sent to that endpoint.
     if (dryRun) {
-      const allListings = await fetchNomadsCompanyListings();
+      const allListings = await fetchFreshNomadsCompanyListings();
       const byBusinessId = new Map(allListings.map((item) => [String(item.businessId), item]));
 
       const notFound = [];
@@ -599,7 +601,7 @@ const bulkUpdateListingStats = async (req, res) => {
 // STATUS), so admins have a monthly reference and a round-trip file.
 const getListingsCurrentData = async (req, res, next) => {
   try {
-    const listings = await fetchNomadsCompanyListings();
+    const listings = await fetchFreshNomadsCompanyListings();
     return res.status(200).json({
       items: listings.map((item) => ({
         businessId: item.businessId,
