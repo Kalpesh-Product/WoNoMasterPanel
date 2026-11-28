@@ -30,6 +30,11 @@ import {
 // spreadsheet). Same endpoint handles both dry-run and commit.
 const VISA_MATRIX_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-csv`;
 
+// Row-per-pair alternative — one CSV, columns Passport,Destination,Requirement,
+// DurationDays. Simpler to hand-edit a few rows than the matrix format.
+const VISA_ROW_IMPORT_ENDPOINT = `${NOMADS_API_BASE_URL}/visa-rules-v2/import-rows-csv`;
+const VISA_ROW_IMPORT_FIELD = "visa-rules-file";
+
 const isCsv = (file) => /\.csv$/i.test(file.name);
 
 const FIELD_LABELS = {
@@ -359,6 +364,8 @@ const VisaRulesV2Upload = () => {
   const [requirementFile, setRequirementFile] = useState(null);
   const [durationFile, setDurationFile] = useState(null);
   const [matrixExportProgress, setMatrixExportProgress] = useState(null);
+  const [rowFile, setRowFile] = useState(null);
+  const [isRowExporting, setIsRowExporting] = useState(false);
 
   const errorMessage = (error) =>
     error?.response?.data?.message || "Request failed.";
@@ -521,6 +528,161 @@ const VisaRulesV2Upload = () => {
   const matrixFailedResult = matrixFailedRequest?.response?.data;
   const isMatrixExporting = Boolean(matrixExportProgress);
 
+  const postRowFile = async (dryRun) => {
+    const formData = new FormData();
+    formData.append(VISA_ROW_IMPORT_FIELD, rowFile);
+    const response = await axios.post(
+      VISA_ROW_IMPORT_ENDPOINT,
+      formData,
+      dryRun ? { params: { dryRun: true } } : undefined,
+    );
+    return response.data;
+  };
+
+  const rowPreview = useMutation({
+    mutationFn: () => postRowFile(true),
+    onSuccess: (result) => {
+      const count = (result.preview || []).length;
+      if (count) {
+        toast.success(
+          `${count} rule(s) will change — ${result.willInsertCount ?? 0} new, ${
+            result.willUpdateCount ?? 0
+          } updated. Review, then confirm.`,
+        );
+      } else {
+        toast.info("The sheet already matches the database.");
+      }
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const rowCommit = useMutation({
+    mutationFn: () => postRowFile(false),
+    onSuccess: (result) => {
+      toast.success(
+        `Imported: ${result.modifiedCount ?? 0} modified, ${
+          result.upsertedCount ?? 0
+        } new.`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["visaCountriesList"] });
+      queryClient.invalidateQueries({ queryKey: ["visaRulesByPassport"] });
+    },
+    onError: (error) => toast.error(errorMessage(error)),
+  });
+
+  const pickRowFile = (picked) => {
+    if (!picked) return;
+    if (!isCsv(picked)) {
+      toast.error("Only .csv files are allowed.");
+      return;
+    }
+    setRowFile(picked);
+    rowPreview.reset();
+    rowCommit.reset();
+  };
+
+  const removeRowFile = () => {
+    setRowFile(null);
+    rowPreview.reset();
+    rowCommit.reset();
+  };
+
+  const buildRowReport = () => {
+    const result = rowPreview.data || {};
+    const previewRows = result.preview || [];
+    const changeRows = [];
+
+    previewRows.forEach((row) => {
+      (row.changedFields || []).forEach((change) => {
+        changeRows.push([
+          row.action === "insert" ? "New row" : "Update",
+          row.passport || "",
+          row.destination || "",
+          FIELD_LABELS[change.field] || change.field,
+          formatFieldValue(change.field, change.oldValue),
+          formatFieldValue(change.field, change.newValue),
+        ]);
+      });
+    });
+
+    return {
+      title: "Visa Rules V2 — Dry Run",
+      module: "Data Upload",
+      page: "Visa Rules V2 Import",
+      action: "Dry run PDF — Visa Rules V2",
+      fileName: rowFile?.name,
+      summary: [
+        { label: "Rows read", value: result.processedRows ?? 0 },
+        { label: "New rows", value: result.willInsertCount ?? 0 },
+        { label: "Will update", value: result.willUpdateCount ?? 0 },
+        { label: "No change", value: result.unchangedCount ?? 0 },
+      ],
+      sections: [
+        {
+          title: `Rules changing (${previewRows.length})`,
+          columns: [
+            { label: "Action", width: 0.1 },
+            { label: "Passport", width: 0.2 },
+            { label: "Destination", width: 0.2 },
+            { label: "Field", width: 0.16 },
+            { label: "Before", width: 0.17 },
+            { label: "After", width: 0.17 },
+          ],
+          rows: changeRows,
+        },
+      ].filter((section) => section.rows.length > 0),
+      notes: ["This is a dry run: no visa rule was written by generating this report."],
+    };
+  };
+
+  const rowPdfExport = useMutation({
+    mutationFn: () => exportDryRunPdf({ axios, report: buildRowReport() }),
+    onSuccess: ({ stored }) => {
+      if (stored) {
+        toast.success("PDF downloaded and archived in Master Panel logs.");
+      } else {
+        toast.warning("PDF downloaded, but the archived copy could not be saved to logs.");
+      }
+    },
+    onError: async (error) => toast.error(await readDryRunReportError(error)),
+  });
+
+  const rowBusy = rowPreview.isPending || rowCommit.isPending;
+  const rowFailedRequest = rowPreview.error || rowCommit.error;
+  const rowFailedResult = rowFailedRequest?.response?.data;
+
+  const handleExportRows = async () => {
+    try {
+      setIsRowExporting(true);
+      const { countries, rulesByPassport, failedPassports } = await fetchAllVisaRules();
+
+      const rows = [["Passport", "Destination", "Requirement", "DurationDays"]];
+      countries.forEach((passport) => {
+        const rules = rulesByPassport.get(passport) || [];
+        rules.forEach((rule) => {
+          rows.push([
+            passport,
+            rule.destination,
+            rule.requirement ?? "",
+            rule.durationDays ?? "",
+          ]);
+        });
+      });
+
+      downloadCsv({ filename: "wono_visa_rules.csv", matrix: rows });
+
+      if (failedPassports.length) {
+        toast.warning(`Exported, but ${describeFailures(failedPassports)}`);
+      } else {
+        toast.success(`Exported ${rows.length - 1} rule(s).`);
+      }
+    } catch (error) {
+      toast.error(error.message || "Export failed. Please try again.");
+    } finally {
+      setIsRowExporting(false);
+    }
+  };
+
   // Shared by both export buttons: pulls every passport's rules via the
   // already-proven-fast per-passport endpoint, batched, never one big
   // unfiltered query. Row export flattens the result; matrix export reshapes
@@ -609,7 +771,7 @@ const VisaRulesV2Upload = () => {
 
   return (
     <div className="flex flex-col gap-4">
-      <UploadCard
+      {/* <UploadCard
         title="Visa Rules V2 Matrix Import"
         description="Upload a Requirement matrix + a Duration matrix (passport rows, destination columns) — matches how the source data is kept upstream."
       >
@@ -722,6 +884,73 @@ const VisaRulesV2Upload = () => {
           )}
 
           {matrixCommit.data && <CommitPanel result={matrixCommit.data} />}
+        </UploadPanel>
+      </UploadCard> */}
+
+      <UploadCard
+        title="Visa Rules V2 Import"
+        description="One CSV, one row per passport → destination pair — simpler to hand-edit a few rules than the matrix."
+      >
+        <p className="mb-3 text-[10px] font-pmedium text-slate-400">
+          Columns: <span className="text-slate-600">Passport, Destination, Requirement, DurationDays</span>.
+          Blank cells leave that field unchanged; -1 clears it.
+        </p>
+
+        {/* <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+          <p className="text-[10px] font-pmedium text-slate-500">
+            Export every rule as one sheet, ready to edit and re-upload.
+          </p>
+          <button
+            type="button"
+            onClick={handleExportRows}
+            disabled={isRowExporting}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 py-1.5 text-[10px] font-pmedium text-white transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FileDown size={12} />
+            {isRowExporting ? "Exporting..." : "Export All (.csv)"}
+          </button>
+        </div> */}
+
+        <UploadPanel>
+          <FileDropzone
+            file={rowFile}
+            onPick={pickRowFile}
+            onRemove={removeRowFile}
+            accept=".csv"
+            dataTour="data-upload-visa-rows"
+            disabled={rowBusy}
+            hint="Passport, Destination, Requirement, DurationDays"
+          />
+
+          <UploadActions
+            onUpload={() => rowPreview.mutate()}
+            onReset={removeRowFile}
+            uploadLabel="Preview changes (dry run)"
+            pendingLabel="Checking sheet..."
+            uploadDisabled={!rowFile || rowBusy}
+            resetDisabled={rowBusy}
+            pending={rowPreview.isPending}
+          />
+
+          {rowFailedResult && (
+            <ErrorPanel
+              message={rowFailedResult.message}
+              rowErrors={rowFailedResult.rowErrors}
+            />
+          )}
+
+          {rowPreview.data && !rowCommit.data && (
+            <DryRunPanel
+              result={rowPreview.data}
+              onConfirm={() => rowCommit.mutate()}
+              onDiscard={() => rowPreview.reset()}
+              isCommitting={rowCommit.isPending}
+              onExportPdf={() => rowPdfExport.mutate()}
+              isExporting={rowPdfExport.isPending}
+            />
+          )}
+
+          {rowCommit.data && <CommitPanel result={rowCommit.data} />}
         </UploadPanel>
       </UploadCard>
     </div>

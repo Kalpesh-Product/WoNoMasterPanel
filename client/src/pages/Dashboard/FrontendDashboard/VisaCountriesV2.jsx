@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Edit,
+  FileDown,
   Globe2,
   Pencil,
   Plane,
@@ -14,6 +15,7 @@ import {
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { NOMADS_API_BASE_URL } from "../../../constants/api";
+import { downloadCsv } from "../../../utils/csvExport";
 import { STATUS_PILL_BASE } from "../../../lib/status-pill";
 import {
   getAllPassportOptions,
@@ -253,6 +255,24 @@ const VisaCountriesV2 = () => {
     });
   };
 
+  const handleExportPassport = () => {
+    if (!rows.length) {
+      toast.info("No rules loaded for this passport yet.");
+      return;
+    }
+    // Mirrors import-rows-csv's exact column shape (Passport/Destination/
+    // Requirement/DurationDays) so this round-trips through that importer.
+    const matrix = [
+      ["Passport", "Destination", "Requirement", "DurationDays"],
+      ...rows.map((row) => [selectedPassport, row.destination, row.rawRequirement || row.requirement, row.durationDays ?? ""]),
+    ];
+    downloadCsv({
+      filename: `wono_visa_rules_${selectedPassport.replace(/\s+/g, "_")}.csv`,
+      matrix,
+    });
+    toast.success(`Exported ${rows.length} rule(s) for ${selectedPassport}.`);
+  };
+
   const passportMeta = getCountryMeta(selectedPassport);
   const isLoading =
     isLoadingPassports ||
@@ -274,6 +294,16 @@ const VisaCountriesV2 = () => {
                 Visa Rules V2 Upload.
               </p>
             </div>
+            <button
+              type="button"
+              onClick={handleExportPassport}
+              disabled={isLoading || !rows.length}
+              data-tour="visa-countries-v2-export"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[#2563EB] px-4 py-2.5 text-xs font-pmedium text-white shadow-sm transition hover:bg-[#1d4ed8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FileDown size={14} />
+              Export Visa Rules (.csv)
+            </button>
           </div>
 
           {isPassportError ? (
