@@ -18,6 +18,7 @@ import {
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { RANGE_OPTIONS } from "./RangeTabs";
 import WonoAnalyticsDecisionLayer from "./WonoAnalyticsDecisionLayer";
+import GeographicUsersChart from "./GeographicUsersChart";
 import { exportWonoAnalyticsPdf } from "./wonoAnalyticsPdf";
 import {
   BarDiagram,
@@ -27,6 +28,9 @@ import {
 } from "../MainDashboard/charts/charts";
 
 const renderChart = (chart) => {
+  if (chart.type === "geo-bars") {
+    return <GeographicUsersChart data={chart.dataset} title={chart.title} />;
+  }
   if (chart.type === "bars") return <BarDiagram bars={chart.dataset} title={chart.title} />;
   if (chart.type === "line") return <TrendLine data={chart.dataset} title={chart.title} />;
   return <DistributionDonut data={chart.dataset} title={chart.title} />;
@@ -182,9 +186,14 @@ const exportChartsToCsv = (charts, range, reportedRange, summary) => {
   charts.forEach((chart) => {
     lines.push(escapeCsvCell(chart.title));
     lines.push(`Records,${chart.dataset.length}`);
-    lines.push("Label,Value");
+    const isGeographicComparison = chart.type === "geo-bars";
+    lines.push(isGeographicComparison ? "Location,Active Users,New Users" : "Label,Value");
     chart.dataset.forEach((row) => {
-      lines.push(`${escapeCsvCell(row.label)},${escapeCsvCell(row.value)}`);
+      lines.push(
+        isGeographicComparison
+          ? [row.label, row.activeUsers, row.newUsers].map(escapeCsvCell).join(",")
+          : `${escapeCsvCell(row.label)},${escapeCsvCell(row.value)}`,
+      );
     });
     lines.push("");
   });
@@ -301,9 +310,24 @@ const WonoHistoricalAnalytics = ({ range }) => {
         { type: "bars", title: "Sessions by Acquisition Channel", dataset: data.byChannel },
         { type: "pie", title: "Active Users by Device", dataset: data.byDevice },
         { type: "bars", title: "Top Pages (Unique Visitors)", dataset: data.topPages },
-        { type: "pie", title: "Unique Visitors by Country", dataset: data.byCountry },
-        { type: "bars", title: "Unique Visitors by State", dataset: data.byState },
-        { type: "bars", title: "Unique Visitors by City", dataset: data.byCity },
+        {
+          type: "geo-bars",
+          title: "Active vs New Users by Country",
+          dataset: data.geographicUsers?.countries,
+          fullWidth: true,
+        },
+        {
+          type: "geo-bars",
+          title: "Active vs New Users by State",
+          dataset: data.geographicUsers?.states,
+          fullWidth: true,
+        },
+        {
+          type: "geo-bars",
+          title: "Active vs New Users by City",
+          dataset: data.geographicUsers?.cities,
+          fullWidth: true,
+        },
         { type: "line", title: "Traffic by Hour of Day", dataset: data.byHour },
         { type: "bars", title: "Traffic by Day of Week", dataset: data.byDayOfWeek },
       ].filter((chart) => Array.isArray(chart.dataset) && chart.dataset.length > 0)
@@ -345,7 +369,7 @@ const WonoHistoricalAnalytics = ({ range }) => {
               wono.co — Traffic & Audience
             </span>
             <span className="block text-xs font-pmedium text-slate-500 mt-0.5">
-              Top pages, where visitors come from, and when traffic peaks.
+              Active and new users by location, plus traffic sources and timing.
             </span>
           </span>
         </span>

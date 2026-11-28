@@ -116,6 +116,20 @@ const rowsToRankedLabel = (rows, buildLabel, options = {}) =>
     .sort((a, b) => b.value - a.value)
     .slice(0, options.limit || Infinity);
 
+const rowsToGeographicUsers = (rows, buildLabel) =>
+  (rows || [])
+    .filter((row) =>
+      (row.dimensionValues || []).every((dimension) =>
+        isKnownGaDimensionValue(dimension?.value),
+      ),
+    )
+    .map((row) => ({
+      label: buildLabel(row.dimensionValues || []),
+      activeUsers: Number(row.metricValues?.[0]?.value || 0),
+      newUsers: Number(row.metricValues?.[1]?.value || 0),
+    }))
+    .sort((a, b) => b.activeUsers - a.activeUsers);
+
 const bucketByIndex = (rows, size, mapLabel) => {
   const buckets = Array.from({ length: size }, (_, index) => ({
     label: mapLabel(index),
@@ -252,23 +266,23 @@ const getHistoricalAnalytics = async (req, res) => {
           {
             dateRanges,
             dimensions: [{ name: "country" }],
-            metrics: [{ name: "activeUsers" }],
+            metrics: [{ name: "activeUsers" }, { name: "newUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 25,
+            limit: 1000,
           },
           {
             dateRanges,
             dimensions: [{ name: "region" }, { name: "country" }],
-            metrics: [{ name: "activeUsers" }],
+            metrics: [{ name: "activeUsers" }, { name: "newUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 25,
+            limit: 1000,
           },
           {
             dateRanges,
             dimensions: [{ name: "city" }, { name: "region" }],
-            metrics: [{ name: "activeUsers" }],
+            metrics: [{ name: "activeUsers" }, { name: "newUsers" }],
             orderBys: topMetricOrder("activeUsers"),
-            limit: 25,
+            limit: 1000,
           },
         ],
       }),
@@ -287,21 +301,30 @@ const getHistoricalAnalytics = async (req, res) => {
     const [summaryR, dailyR, channelR, deviceR, previousSummaryR] = qualityBatch.reports;
 
     const topPages = rowsToRankedLabel(pagesR.rows, (d) => d[0]?.value || "Unknown");
-    const byCountry = rowsToRankedLabel(
+    const usersByCountry = rowsToGeographicUsers(
       countryR.rows,
       (d) => d[0]?.value || "Unknown",
-      { onlyKnownDimensions: true, limit: 10 },
     );
-    const byState = rowsToRankedLabel(
+    const usersByState = rowsToGeographicUsers(
       regionR.rows,
       (d) => [d[0]?.value, d[1]?.value].filter(Boolean).join(", ") || "Unknown",
-      { onlyKnownDimensions: true, limit: 10 },
     );
-    const byCity = rowsToRankedLabel(
+    const usersByCity = rowsToGeographicUsers(
       cityR.rows,
       (d) => [d[0]?.value, d[1]?.value].filter(Boolean).join(", ") || "Unknown",
-      { onlyKnownDimensions: true, limit: 10 },
     );
+    const byCountry = usersByCountry.slice(0, 10).map((item) => ({
+      label: item.label,
+      value: item.activeUsers,
+    }));
+    const byState = usersByState.slice(0, 10).map((item) => ({
+      label: item.label,
+      value: item.activeUsers,
+    }));
+    const byCity = usersByCity.slice(0, 10).map((item) => ({
+      label: item.label,
+      value: item.activeUsers,
+    }));
 
     const byHour = bucketByIndex(hourR.rows, 24, (hour) => `${String(hour).padStart(2, "0")}:00`);
     const byDayOfWeek = bucketByIndex(dayR.rows, 7, (day) => DAY_NAMES[day]);
@@ -325,6 +348,11 @@ const getHistoricalAnalytics = async (req, res) => {
       byChannel,
       byDevice,
       topPages,
+      geographicUsers: {
+        countries: usersByCountry,
+        states: usersByState,
+        cities: usersByCity,
+      },
       byCountry,
       byState,
       byCity,
