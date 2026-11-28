@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
   Clock3,
   Download,
   Eye,
+  FileDown,
   Gauge,
+  Loader2,
   Minus,
   MousePointerClick,
   TrendingDown,
@@ -14,6 +17,8 @@ import {
 } from "lucide-react";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
 import { RANGE_OPTIONS } from "./RangeTabs";
+import WonoAnalyticsDecisionLayer from "./WonoAnalyticsDecisionLayer";
+import { exportWonoAnalyticsPdf } from "./wonoAnalyticsPdf";
 import {
   BarDiagram,
   TrendLine,
@@ -240,7 +245,7 @@ const TrafficExecutiveSummary = ({ summary, range, reportedRange }) => {
   const context = getExportContext(range, reportedRange);
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+    <section data-wono-pdf-section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
       <div className="flex flex-col justify-between gap-3 border-b border-slate-100 bg-slate-50/50 px-5 py-4 md:flex-row md:items-center">
         <span className="flex min-w-0 items-center gap-3">
           <span className="shrink-0 rounded-xl bg-[#2563EB] p-2 text-white shadow-sm shadow-blue-200">
@@ -277,6 +282,8 @@ const TrafficExecutiveSummary = ({ summary, range, reportedRange }) => {
 // so this widget stays in lockstep with every other section on the page.
 const WonoHistoricalAnalytics = ({ range }) => {
   const axiosPrivate = useAxiosPrivate();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["wonoHistoricalAnalytics", range],
@@ -302,6 +309,23 @@ const WonoHistoricalAnalytics = ({ range }) => {
       ].filter((chart) => Array.isArray(chart.dataset) && chart.dataset.length > 0)
     : [];
 
+  const handleExportPdf = async () => {
+    const context = getExportContext(range, data?.range);
+    setIsExportingPdf(true);
+    setPdfError("");
+    try {
+      await exportWonoAnalyticsPdf({
+        filename: `wono-analytics-${context.filenamePeriod}-${context.startIso}-to-${context.endIso}.pdf`,
+        rangeLabel: `${context.periodLabel}: ${formatReviewDate(context.startDate)} to ${formatReviewDate(context.endDate)}`,
+      });
+    } catch (error) {
+      console.error("WONO analytics PDF export failed:", error);
+      setPdfError("Could not create the PDF. Please try again.");
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <>
       {isPending ? (
@@ -309,6 +333,7 @@ const WonoHistoricalAnalytics = ({ range }) => {
       ) : (
         <TrafficExecutiveSummary summary={data?.summary} range={range} reportedRange={data?.range} />
       )}
+      {!isPending && !isError && <WonoAnalyticsDecisionLayer data={data} range={range} />}
       <section data-tour="master-panel-analytics-traffic" className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 px-5 py-4 bg-slate-50/50 border-b border-slate-100">
         <span className="flex items-center gap-3 min-w-0">
@@ -325,15 +350,32 @@ const WonoHistoricalAnalytics = ({ range }) => {
           </span>
         </span>
         {charts.length > 0 && (
-          <button
-            type="button"
-            onClick={() => exportChartsToCsv(charts, range, data?.range, data?.summary)}
-            className="flex items-center gap-1.5 self-start md:self-auto px-3 py-2 rounded-xl bg-white border border-slate-200 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 shadow-sm transition-all hover:bg-slate-50"
-          >
-            <Download size={12} /> Export CSV
-          </button>
+          <div data-html2canvas-ignore="true" className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+            <button
+              type="button"
+              onClick={() => exportChartsToCsv(charts, range, data?.range, data?.summary)}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-slate-600 shadow-sm transition-all hover:bg-slate-50"
+            >
+              <Download size={12} /> Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf}
+              className="flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3 py-2 text-[10px] font-pmedium uppercase tracking-widest text-white shadow-sm shadow-blue-200 transition-all hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+            >
+              {isExportingPdf ? <Loader2 size={12} className="animate-spin" /> : <FileDown size={12} />}
+              {isExportingPdf ? "Creating PDF" : "Export PDF"}
+            </button>
+          </div>
         )}
       </div>
+
+      {pdfError && (
+        <p data-html2canvas-ignore="true" className="border-b border-red-100 bg-red-50 px-5 py-2 text-[10px] font-pmedium text-red-600">
+          {pdfError}
+        </p>
+      )}
 
       <div className="p-4">
         {isPending ? (
@@ -370,6 +412,7 @@ const WonoHistoricalAnalytics = ({ range }) => {
             {layoutChartRows(charts).map((entry, index) => (
               <div
                 key={`${entry.chart.title}-${index}`}
+                data-wono-pdf-section
                 className={`h-full ${entry.span === 2 ? "md:col-span-2" : ""}`}
               >
                 {renderChart(entry.chart)}

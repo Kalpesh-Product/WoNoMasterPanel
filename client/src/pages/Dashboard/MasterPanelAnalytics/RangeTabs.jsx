@@ -4,6 +4,7 @@
 // widgets use the same option keys so both systems stay consistent.
 export const RANGE_OPTIONS = [
   { key: "thisMonth", label: "This Month" },
+  { key: "today", label: "Today" },
   { key: "7daysAgo", label: "Last 7 Days" },
   { key: "30daysAgo", label: "Last 30 Days" },
   { key: "90daysAgo", label: "Last 90 Days" },

@@ -61,7 +61,7 @@ const MasterPanelAnalytics = () => {
   // One shared range control governs every stat card/chart on this page —
   // the Overall Panel Activity section and every module's every tab —
   // rather than each section duplicating its own picker.
-  const [range, setRange] = useState("30daysAgo");
+  const [range, setRange] = useState("thisMonth");
   const [expandedModules, setExpandedModules] = useState(
     () => new Set(filteredModules.length > 0 ? [filteredModules[0].key] : []),
   );
@@ -115,8 +115,10 @@ const MasterPanelAnalytics = () => {
             <RangeTabs value={range} onChange={setRange} />
           </div>
 
-          <WonoHistoricalAnalytics range={range} />
-          <WonoLiveActiveUsers />
+          <div id="wono-analytics-report" className="flex flex-col gap-4">
+            <WonoHistoricalAnalytics range={range} />
+            <WonoLiveActiveUsers />
+          </div>
 
           {OVERALL_SECTIONS.map((section) => {
             const SectionIcon = section.icon;

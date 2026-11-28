@@ -19,11 +19,13 @@ const itemDate = (item) => {
 // recognize.
 export const filterDataByRange = (data, range) => {
   const days = RANGE_DAYS[range];
-  if (!data || (!days && range !== "thisMonth")) return data;
+  if (!data || (!days && range !== "thisMonth" && range !== "today")) return data;
 
   const cutoff = new Date();
   if (range === "thisMonth") {
     cutoff.setDate(1);
+    cutoff.setHours(0, 0, 0, 0);
+  } else if (range === "today") {
     cutoff.setHours(0, 0, 0, 0);
   } else {
     cutoff.setDate(cutoff.getDate() - days);
