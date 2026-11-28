@@ -90,6 +90,8 @@ const matchesTab = (row, tab) => {
   return tab.matchers.some((matcher) => typeText.includes(matcher));
 };
 
+const getMatchedTabs = (row, tabsList) => tabsList.filter((tab) => matchesTab(row, tab));
+
 const StatTile = ({ label, value, icon: Icon, tone }) => {
   const tones = {
     slate: {
@@ -131,7 +133,7 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
   );
 };
 
-const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, reviewStatuses, onClose }) => {
+const LeadDetailsModal = ({ lead, activeTab, tabs, combineRoles, modalKindLabel, reviewStatuses, onClose }) => {
   if (!lead) return null;
   const contributionTypes = getContributionTypes(lead);
   const contributionType =
@@ -140,6 +142,28 @@ const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, reviewStatuses, onC
     ) ||
     contributionTypes.join(", ") ||
     activeTab.contributionLabel;
+  const matchedTabs = combineRoles ? getMatchedTabs(lead, tabs) : [activeTab];
+
+  const detailRows = [];
+  if (combineRoles) {
+    detailRows.push(["Requested Services", matchedTabs.map((tab) => tab.label).join(", ") || "--"]);
+    if (reviewStatuses) {
+      matchedTabs.forEach((tab) =>
+        detailRows.push([`${tab.label} Status`, normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag])]),
+      );
+    }
+  } else {
+    detailRows.push(["Contribution Type", contributionType]);
+    if (reviewStatuses) {
+      detailRows.push(["Review Status", normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag])]);
+    }
+  }
+  detailRows.push(
+    ["Current Country", lead.currentCountry || lead.country || "--"],
+    ["LinkedIn Profile", lead.linkedinProfile || "--"],
+    ["Message", lead.message || "--"],
+    ["Submitted At", formatDateLabel(lead.createdAt)],
+  );
 
   return (
     <div
@@ -203,16 +227,7 @@ const LeadDetailsModal = ({ lead, activeTab, modalKindLabel, reviewStatuses, onC
               <Calendar size={14} /> Details
             </h3>
             <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:grid-cols-2">
-              {[
-                ["Contribution Type", contributionType],
-                ...(reviewStatuses
-                  ? [["Review Status", normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag])]]
-                  : []),
-                ["Current Country", lead.currentCountry || lead.country || "--"],
-                ["LinkedIn Profile", lead.linkedinProfile || "--"],
-                ["Message", lead.message || "--"],
-                ["Submitted At", formatDateLabel(lead.createdAt)],
-              ].map(([label, value]) => (
+              {detailRows.map(([label, value]) => (
                 <div key={label}>
                   <p className="mb-1 text-[9px] font-pmedium uppercase tracking-widest text-slate-500">
                     {label}
@@ -249,6 +264,9 @@ const RoleLeadsPage = ({
   modalKindLabel,
   inviteEndpoint,
   reviewStatuses = false,
+  combineRoles = false,
+  pageLabel,
+  pageDescription,
 }) => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
@@ -264,10 +282,11 @@ const RoleLeadsPage = ({
   const [selectedLeadId, setSelectedLeadId] = useState(null);
 
   useEffect(() => {
+    if (combineRoles) return;
     if (!activeSlug || !tabBySlug[activeSlug]) {
       navigate(`${basePath}/${defaultTab.slug}`, { replace: true });
     }
-  }, [activeSlug, basePath, defaultTab.slug, navigate, tabBySlug]);
+  }, [activeSlug, basePath, combineRoles, defaultTab.slug, navigate, tabBySlug]);
 
   useEffect(() => {
     setSearchQuery("");
@@ -296,7 +315,7 @@ const RoleLeadsPage = ({
   });
 
   const sendInvite = useMutation({
-    mutationFn: async (lead) =>
+    mutationFn: async ({ lead, service }) =>
       (
         await axiosPrivate.post(inviteEndpoint, {
           leadId: lead._id || lead.id,
@@ -306,7 +325,9 @@ const RoleLeadsPage = ({
           contactNumber: lead.contactNumber || lead.mobileNumber || "",
           linkedinProfile: lead.linkedinProfile || "",
           currentCountry: lead.currentCountry || lead.country || "",
-          service: activeTab.service,
+          message: lead.message || "",
+          submittedAt: lead.createdAt || "",
+          service,
         })
       ).data,
     onSuccess: (data) => {
@@ -317,17 +338,23 @@ const RoleLeadsPage = ({
     },
   });
 
-  const activeLeads = useMemo(
-    () => leads.filter((lead) => matchesTab(lead, activeTab)),
-    [activeTab, leads],
-  );
+  const activeLeads = useMemo(() => {
+    if (combineRoles) {
+      return leads.filter((lead) => tabs.some((tab) => matchesTab(lead, tab)));
+    }
+    return leads.filter((lead) => matchesTab(lead, activeTab));
+  }, [activeTab, combineRoles, leads, tabs]);
 
   const filteredLeads = useMemo(() => {
     const query = normalize(searchQuery);
     return activeLeads.filter((lead) =>
       (!reviewStatuses ||
         statusFilter === "all" ||
-        normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag]) === statusFilter) &&
+        (combineRoles
+          ? getMatchedTabs(lead, tabs).some(
+              (tab) => normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag]) === statusFilter,
+            )
+          : normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag]) === statusFilter)) &&
       (!query ||
         [
           getName(lead),
@@ -342,12 +369,18 @@ const RoleLeadsPage = ({
           .filter(Boolean)
           .some((value) => normalize(value).includes(query))),
     );
-  }, [activeLeads, activeTab.roleFlag, reviewStatuses, searchQuery, statusFilter]);
+  }, [activeLeads, activeTab.roleFlag, combineRoles, reviewStatuses, searchQuery, statusFilter, tabs]);
 
   const reviewCounts = useMemo(
     () =>
       activeLeads.reduce(
         (counts, lead) => {
+          if (combineRoles) {
+            getMatchedTabs(lead, tabs).forEach((tab) => {
+              counts[normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag])] += 1;
+            });
+            return counts;
+          }
           const status = normalizeReviewStatus(
             lead.partnerStatuses?.[activeTab.roleFlag],
           );
@@ -356,7 +389,7 @@ const RoleLeadsPage = ({
         },
         { pending: 0, approved: 0, rejected: 0 },
       ),
-    [activeLeads, activeTab.roleFlag],
+    [activeLeads, activeTab.roleFlag, combineRoles, tabs],
   );
 
   const thisWeek = useMemo(() => {
@@ -389,35 +422,39 @@ const RoleLeadsPage = ({
           <div className="mb-1 flex flex-col gap-1.5">
             <div className="flex items-center gap-2">
               <h2 className="text-title font-pmedium uppercase text-primary">
-                {activeTab.label}
+                {combineRoles ? pageLabel || "Leads" : activeTab.label}
               </h2>
             </div>
             <p className="text-xs font-pmedium text-slate-500">
-              Leads received for {activeTab.label}.
+              {combineRoles
+                ? pageDescription || "Leads received across all services."
+                : `Leads received for ${activeTab.label}.`}
             </p>
           </div>
 
-          <div
-            role="tablist"
-            aria-label="Lead type"
-            className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm"
-          >
-            {tabs.map((tab) => (
-              <NavLink
-                key={tab.slug}
-                role="tab"
-                aria-selected={activeTab.slug === tab.slug}
-                to={`${basePath}/${tab.slug}`}
-                className={`flex-1 rounded-xl px-4 py-2 text-center text-[10px] font-pmedium uppercase tracking-widest transition-all ${
-                  activeTab.slug === tab.slug
-                    ? "bg-[#2563EB] text-white shadow-sm"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                {tab.label}
-              </NavLink>
-            ))}
-          </div>
+          {!combineRoles ? (
+            <div
+              role="tablist"
+              aria-label="Lead type"
+              className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm"
+            >
+              {tabs.map((tab) => (
+                <NavLink
+                  key={tab.slug}
+                  role="tab"
+                  aria-selected={activeTab.slug === tab.slug}
+                  to={`${basePath}/${tab.slug}`}
+                  className={`flex-1 rounded-xl px-4 py-2 text-center text-[10px] font-pmedium uppercase tracking-widest transition-all ${
+                    activeTab.slug === tab.slug
+                      ? "bg-[#2563EB] text-white shadow-sm"
+                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  {tab.label}
+                </NavLink>
+              ))}
+            </div>
+          ) : null}
 
           {isError ? (
             <div className="rounded-2xl border border-slate-100 bg-white py-16 text-center text-sm font-semibold text-red-500">
@@ -450,7 +487,7 @@ const RoleLeadsPage = ({
                     />
                     <input
                       type="text"
-                      placeholder={`Search ${activeTab.singular.toLowerCase()}...`}
+                      placeholder={`Search ${combineRoles ? "partner leads" : activeTab.singular.toLowerCase()}...`}
                       value={searchQuery}
                       onChange={(event) => setSearchQuery(event.target.value)}
                       className="w-full rounded-lg border border-slate-200/60 bg-white py-2.5 pl-9 pr-4 text-[12px] font-pmedium text-[#0F172A] outline-none transition-all placeholder:text-slate-400 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
@@ -502,7 +539,11 @@ const RoleLeadsPage = ({
                           <th className="px-5 py-4">LinkedIn Profile</th>
                           <th className="px-5 py-4">Nationality</th>
                           <th className="px-5 py-4">Date</th>
-                          {reviewStatuses ? <th className="px-5 py-4 text-center">Status</th> : null}
+                          {reviewStatuses ? (
+                            <th className="px-5 py-4 text-center">
+                              {combineRoles ? "Requested Services" : "Status"}
+                            </th>
+                          ) : null}
                           <th className="px-5 py-4 text-center">Actions</th>
                         </tr>
                       </thead>
@@ -554,30 +595,86 @@ const RoleLeadsPage = ({
                               </td>
                               {reviewStatuses ? (
                                 <td className="px-5 py-4 text-center">
-                                  <div className="relative mx-auto w-[132px]">
-                                    <select
-                                      value={reviewStatus}
-                                      onChange={(event) =>
-                                        updateStatus.mutate({
-                                          leadId,
-                                          role: activeTab.roleFlag,
-                                          status: event.target.value,
-                                        })
-                                      }
-                                      disabled={updateStatus.isPending}
-                                      aria-label={`Review status for ${getName(lead)}`}
-                                      className={`w-full appearance-none rounded-full border py-2 pl-4 pr-9 text-[10px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[reviewStatus]}`}
-                                    >
-                                      <option value="pending">Pending</option>
-                                      <option value="approved">Approved</option>
-                                      <option value="rejected">Rejected</option>
-                                    </select>
-                                    <ChevronDown
-                                      size={14}
-                                      aria-hidden="true"
-                                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-60"
-                                    />
-                                  </div>
+                                  {combineRoles ? (
+                                    <div className="flex flex-col items-start gap-1.5">
+                                      {getMatchedTabs(lead, tabs).map((tab) => {
+                                        const tabStatus = normalizeReviewStatus(
+                                          lead.partnerStatuses?.[tab.roleFlag],
+                                        );
+                                        return (
+                                          <div key={tab.slug} className="flex items-center gap-1.5">
+                                            <span
+                                              className="min-w-[110px] truncate text-left text-[9px] font-pmedium uppercase tracking-wider text-slate-500"
+                                              title={tab.label}
+                                            >
+                                              {tab.label}
+                                            </span>
+                                            <div className="relative">
+                                              <select
+                                                value={tabStatus}
+                                                onChange={(event) =>
+                                                  updateStatus.mutate({
+                                                    leadId,
+                                                    role: tab.roleFlag,
+                                                    status: event.target.value,
+                                                  })
+                                                }
+                                                disabled={updateStatus.isPending}
+                                                aria-label={`Review status for ${getName(lead)} - ${tab.label}`}
+                                                className={`appearance-none rounded-full border py-1 pl-3 pr-7 text-[9px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[tabStatus]}`}
+                                              >
+                                                <option value="pending">Pending</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="rejected">Rejected</option>
+                                              </select>
+                                              <ChevronDown
+                                                size={12}
+                                                aria-hidden="true"
+                                                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-60"
+                                              />
+                                            </div>
+                                            {inviteEndpoint ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => sendInvite.mutate({ lead, service: tab.service })}
+                                                disabled={tabStatus !== "approved" || sendInvite.isPending}
+                                                title={tabStatus === "approved" ? `Send invite for ${tab.label}` : "Approve this service first"}
+                                                aria-label={`Send partner invite for ${tab.label}: ${getName(lead)}`}
+                                                className="shrink-0 rounded-lg bg-blue-100 p-1 text-blue-700 transition-all hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-40"
+                                              >
+                                                <Send size={13} strokeWidth={2.5} />
+                                              </button>
+                                            ) : null}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="relative mx-auto w-[132px]">
+                                      <select
+                                        value={reviewStatus}
+                                        onChange={(event) =>
+                                          updateStatus.mutate({
+                                            leadId,
+                                            role: activeTab.roleFlag,
+                                            status: event.target.value,
+                                          })
+                                        }
+                                        disabled={updateStatus.isPending}
+                                        aria-label={`Review status for ${getName(lead)}`}
+                                        className={`w-full appearance-none rounded-full border py-2 pl-4 pr-9 text-[10px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[reviewStatus]}`}
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="rejected">Rejected</option>
+                                      </select>
+                                      <ChevronDown
+                                        size={14}
+                                        aria-hidden="true"
+                                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-60"
+                                      />
+                                    </div>
+                                  )}
                                 </td>
                               ) : null}
                               <td className="px-5 py-4 text-center">
@@ -607,10 +704,10 @@ const RoleLeadsPage = ({
                                     <Power size={15} strokeWidth={2.5} />
                                   </button>
                                 ) : null}
-                                {inviteEndpoint ? (
+                                {inviteEndpoint && !combineRoles ? (
                                   <button
                                     type="button"
-                                    onClick={() => sendInvite.mutate(lead)}
+                                    onClick={() => sendInvite.mutate({ lead, service: activeTab.service })}
                                     disabled={reviewStatus !== "approved" || sendInvite.isPending}
                                     title={reviewStatus === "approved" ? "Send partner invite" : "Approve this lead first"}
                                     aria-label={`Send partner invite: ${getName(lead)}`}
@@ -637,6 +734,8 @@ const RoleLeadsPage = ({
       <LeadDetailsModal
         lead={selectedLead}
         activeTab={activeTab}
+        tabs={tabs}
+        combineRoles={combineRoles}
         modalKindLabel={modalKindLabel}
         reviewStatuses={reviewStatuses}
         onClose={() => setSelectedLeadId(null)}

@@ -24,7 +24,7 @@ router.use(setLogModule("Partner Invites"));
 // Partners Panel, once WoNo has approved that lead for the given service.
 router.post("/", async (req, res) => {
   try {
-    const { leadId, email, fullName, contactCode, contactNumber, linkedinProfile, currentCountry, service } =
+    const { leadId, email, fullName, contactCode, contactNumber, linkedinProfile, currentCountry, message, submittedAt, service } =
       req.body || {};
 
     if (!email || typeof email !== "string" || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -44,6 +44,8 @@ router.post("/", async (req, res) => {
       contactNumber,
       linkedinProfile,
       currentCountry,
+      message,
+      submittedAt,
       leadId,
       invitedBy,
     });

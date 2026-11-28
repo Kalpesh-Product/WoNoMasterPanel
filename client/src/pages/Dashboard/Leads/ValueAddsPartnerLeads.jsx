@@ -1,5 +1,4 @@
 import React from "react";
-import { useParams } from "react-router-dom";
 import RoleLeadsPage from "./RoleLeadsPage";
 
 // Same "become a contributor" submission and lead collection as ContributorLeads —
@@ -52,21 +51,19 @@ const PARTNER_TABS = [
   },
 ];
 
-const ValueAddsPartnerLeads = () => {
-  const { partnerLeadTab } = useParams();
-
-  return (
-    <RoleLeadsPage
-      tabs={PARTNER_TABS}
-      activeSlug={partnerLeadTab}
-      basePath="/dashboard/value-adds-partner-leads"
-      apiEndpoint="/api/contributor-leads"
-      queryKey="contributorLeads"
-      modalKindLabel="Become a Partner"
-      inviteEndpoint="/api/partner-invites"
-      reviewStatuses
-    />
-  );
-};
+const ValueAddsPartnerLeads = () => (
+  <RoleLeadsPage
+    tabs={PARTNER_TABS}
+    basePath="/dashboard/value-adds-partner-leads"
+    apiEndpoint="/api/contributor-leads"
+    queryKey="contributorLeads"
+    modalKindLabel="Become a Partner"
+    inviteEndpoint="/api/partner-invites"
+    reviewStatuses
+    combineRoles
+    pageLabel="Value Adds Partner Leads"
+    pageDescription="All Value Adds Partner leads in one place — approve a service, then invite for it. A lead who picked several services gets one invite covering all of them."
+  />
+);
 
 export default ValueAddsPartnerLeads;
