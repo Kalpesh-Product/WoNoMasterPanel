@@ -158,6 +158,7 @@ import AddCompany from "../pages/Dashboard/FrontendDashboard/AddCompany";
 import AllLeads from "../pages/Dashboard/Leads/AllLeads";
 import ContributorLeads from "../pages/Dashboard/Leads/ContributorLeads";
 import ValueAddsPartnerLeads from "../pages/Dashboard/Leads/ValueAddsPartnerLeads";
+import OnboardedPartners from "../pages/Dashboard/OnboardedPartners/OnboardedPartners";
 import SignupLeads from "../pages/Dashboard/Leads/SignupLeads";
 import PlanPricingSettings from "../pages/Dashboard/Leads/PlanPricingSettings";
 import CompanyVerificationLeads from "../pages/Dashboard/Leads/CompanyVerificationLeads";
@@ -360,6 +361,10 @@ export const routes = createBrowserRouter([
                   {
                     path: "value-adds-partner-leads/:partnerLeadTab?",
                     element: <ValueAddsPartnerLeads />,
+                  },
+                  {
+                    path: "onboarded-partners",
+                    element: <OnboardedPartners />,
                   },
                   {
                     path: "value-adds-leads",

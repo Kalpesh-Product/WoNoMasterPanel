@@ -195,6 +195,7 @@ app.use("/api/subscription", verifyJwt, subscriptionRoutes);
 app.use("/api/nomad-users", verifyJwt, auditLogger, nomadUserRoutes);
 app.use("/api/contributor-leads", verifyJwt, auditLogger, require("./routes/contributorLeadRoutes"));
 app.use("/api/partner-invites", verifyJwt, auditLogger, require("./routes/partnerInviteRoutes"));
+app.use("/api/onboarded-partners", verifyJwt, auditLogger, require("./routes/onboardedPartnersRoutes"));
 app.use(
   "/api/company-verification-leads",
   verifyJwt,

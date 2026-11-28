@@ -1,6 +1,6 @@
 import React from "react";
 import { useParams } from "react-router-dom";
-import RoleLeadsPage from "./RoleLeadsPage";
+import SharedLeadsReviewPage from "./RoleLeadsPage";
 
 const CONTRIBUTOR_TABS = [
   {
@@ -41,7 +41,7 @@ const ContributorLeads = () => {
   const { contributorLeadTab } = useParams();
 
   return (
-    <RoleLeadsPage
+    <SharedLeadsReviewPage
       tabs={CONTRIBUTOR_TABS}
       activeSlug={contributorLeadTab}
       basePath="/dashboard/contributor-leads"

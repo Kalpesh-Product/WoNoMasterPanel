@@ -134,6 +134,13 @@ export const MASTER_PANEL_MODULES = [
             route: "/dashboard/company-reviews",
           },
           {
+            id: 41,
+            key: "dashboard.onboarded-partners",
+            title: "Value Adds Partners (New)",
+            icon: LuUserCheck,
+            route: "/dashboard/onboarded-partners",
+          },
+          {
             id: 26,
             key: "dashboard.value-adds-partners",
             title: "Value Adds Partners",

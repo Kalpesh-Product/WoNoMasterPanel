@@ -4,11 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Calendar,
+  CalendarDays,
+  CalendarRange,
   CheckCircle2,
   ChevronDown,
   Clock,
   Eye,
   Mail,
+  Paperclip,
   Phone,
   Power,
   Search,
@@ -17,7 +20,6 @@ import {
   UserRoundCheck,
   Users,
   X,
-  XCircle,
 } from "lucide-react";
 import PageFrame from "../../../components/Pages/PageFrame";
 import useAxiosPrivate from "../../../hooks/useAxiosPrivate";
@@ -72,15 +74,43 @@ const getContributionTypes = (row) => {
     .filter(Boolean);
 };
 
-const REVIEW_STATUSES = ["pending", "approved", "rejected"];
+const REVIEW_STATUSES = ["pending", "contacted", "approved", "rejected"];
 const normalizeReviewStatus = (value) => {
   const status = normalize(value);
   return REVIEW_STATUSES.includes(status) ? status : "pending";
 };
 const reviewStatusTone = {
   pending: "border-amber-200 bg-amber-50 text-amber-700",
+  contacted: "border-blue-200 bg-blue-50 text-blue-700",
   approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
   rejected: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+const invitationStatusTone = {
+  not_invited: "border-slate-200 bg-slate-50 text-slate-600",
+  invite_sent: "border-blue-200 bg-blue-50 text-blue-700",
+  joined: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
+const invitationStatusLabel = {
+  not_invited: "Not Invited",
+  invite_sent: "Invite Sent",
+  joined: "Joined",
+};
+const stickyActionHeaderClass =
+  "sticky right-0 z-20 border-l border-slate-100 bg-slate-50 shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.18)]";
+const stickyActionCellClass =
+  "sticky right-0 z-10 border-l border-slate-100 bg-white shadow-[-6px_0_10px_-6px_rgba(15,23,42,0.18)] group-hover:bg-slate-50";
+
+const MAX_AGREEMENT_BYTES = 5 * 1024 * 1024;
+
+const matchesDateFilter = (value, filter) => {
+  if (filter === "all") return true;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+  const now = new Date();
+  if (filter === "today") return date.toDateString() === now.toDateString();
+  const days = filter === "7d" ? 7 : 30;
+  return date >= new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 };
 
 const matchesTab = (row, tab) => {
@@ -109,6 +139,21 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
       label: "text-emerald-600",
       icon: "bg-emerald-50 text-emerald-600",
     },
+    indigo: {
+      border: "border-l-indigo-500",
+      label: "text-indigo-600",
+      icon: "bg-indigo-50 text-indigo-600",
+    },
+    sky: {
+      border: "border-l-sky-500",
+      label: "text-sky-600",
+      icon: "bg-sky-50 text-sky-600",
+    },
+    blue: {
+      border: "border-l-blue-500",
+      label: "text-blue-600",
+      icon: "bg-blue-50 text-blue-600",
+    },
     rose: {
       border: "border-l-rose-500",
       label: "text-rose-600",
@@ -133,6 +178,35 @@ const StatTile = ({ label, value, icon: Icon, tone }) => {
   );
 };
 
+const RequestedServiceBadges = ({ tabs }) => {
+  const [expanded, setExpanded] = useState(false);
+  const extraCount = tabs.length - 1;
+  const visibleTabs = expanded ? tabs : tabs.slice(0, 1);
+
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {visibleTabs.map((tab) => (
+        <span
+          key={tab.slug}
+          title={tab.label}
+          className="whitespace-nowrap rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-pmedium capitalize text-slate-600"
+        >
+          {tab.label}
+        </span>
+      ))}
+      {extraCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="whitespace-nowrap text-[10px] font-pmedium text-blue-600 hover:underline"
+        >
+          {expanded ? "Show less" : `+${extraCount} more`}
+        </button>
+      ) : null}
+    </div>
+  );
+};
+
 const LeadDetailsModal = ({ lead, activeTab, tabs, combineRoles, modalKindLabel, reviewStatuses, onClose }) => {
   if (!lead) return null;
   const contributionTypes = getContributionTypes(lead);
@@ -148,9 +222,7 @@ const LeadDetailsModal = ({ lead, activeTab, tabs, combineRoles, modalKindLabel,
   if (combineRoles) {
     detailRows.push(["Requested Services", matchedTabs.map((tab) => tab.label).join(", ") || "--"]);
     if (reviewStatuses) {
-      matchedTabs.forEach((tab) =>
-        detailRows.push([`${tab.label} Status`, normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag])]),
-      );
+      detailRows.push(["Review Status", normalizeReviewStatus(lead.partnerStatuses?.[matchedTabs[0]?.roleFlag])]);
     }
   } else {
     detailRows.push(["Contribution Type", contributionType]);
@@ -255,7 +327,7 @@ const LeadDetailsModal = ({ lead, activeTab, tabs, combineRoles, modalKindLabel,
   );
 };
 
-const RoleLeadsPage = ({
+const SharedLeadsReviewPage = ({
   tabs,
   activeSlug,
   basePath,
@@ -279,7 +351,10 @@ const RoleLeadsPage = ({
   const activeTab = tabBySlug[activeSlug] || defaultTab;
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [inviteFilter, setInviteFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [selectedLeadId, setSelectedLeadId] = useState(null);
+  const [inviteLead, setInviteLead] = useState(null);
 
   useEffect(() => {
     if (combineRoles) return;
@@ -291,6 +366,8 @@ const RoleLeadsPage = ({
   useEffect(() => {
     setSearchQuery("");
     setStatusFilter("all");
+    setInviteFilter("all");
+    setDateFilter("all");
     setSelectedLeadId(null);
   }, [activeTab.slug]);
 
@@ -301,6 +378,16 @@ const RoleLeadsPage = ({
       return response?.data?.data || [];
     },
   });
+
+  const { data: invitationStatuses = {} } = useQuery({
+    queryKey: ["partner-lead-invitation-statuses"],
+    queryFn: async () =>
+      (await axiosPrivate.get("/api/onboarded-partners/lead-statuses")).data?.data || {},
+    enabled: Boolean(inviteEndpoint),
+  });
+
+  const getInvitationState = (lead) =>
+    invitationStatuses[normalize(getEmail(lead))]?.status || "not_invited";
 
   const updateStatus = useMutation({
     mutationFn: async ({ leadId, role, isActive, status }) =>
@@ -315,8 +402,11 @@ const RoleLeadsPage = ({
   });
 
   const sendInvite = useMutation({
-    mutationFn: async ({ lead, service }) =>
-      (
+    mutationFn: async ({ lead, service, services: requestedServices }) => {
+      // One request for every requested service — Partners Panel sends a
+      // single email listing all of them, never one email per service.
+      const servicesToInvite = requestedServices || [service];
+      return (
         await axiosPrivate.post(inviteEndpoint, {
           leadId: lead._id || lead.id,
           email: getEmail(lead),
@@ -327,16 +417,78 @@ const RoleLeadsPage = ({
           currentCountry: lead.currentCountry || lead.country || "",
           message: lead.message || "",
           submittedAt: lead.createdAt || "",
-          service,
+          services: servicesToInvite,
         })
-      ).data,
+      ).data;
+    },
     onSuccess: (data) => {
       toast.success(data.message || "Invite sent.");
+      queryClient.invalidateQueries({ queryKey: ["partner-lead-invitation-statuses"] });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to send invite.");
     },
   });
+
+  // Same one-PDF-attached-to-every-invite pattern as Signup Leads' invite
+  // flow for hosts — an agreement must be on file before Send is allowed.
+  const { data: defaultAgreement } = useQuery({
+    queryKey: ["partner-invite-default-agreement"],
+    queryFn: async () =>
+      (await axiosPrivate.get("/api/partner-invites/agreement")).data?.agreement || null,
+    enabled: Boolean(inviteEndpoint),
+  });
+
+  const saveAgreementMutation = useMutation({
+    mutationFn: async (file) => {
+      const formData = new FormData();
+      formData.append("agreement", file);
+      return (await axiosPrivate.put("/api/partner-invites/agreement", formData)).data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["partner-invite-default-agreement"] });
+      toast.success(data?.message || "Default agreement saved");
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || "Failed to save the agreement"),
+  });
+
+  const removeAgreementMutation = useMutation({
+    mutationFn: async () => (await axiosPrivate.delete("/api/partner-invites/agreement")).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["partner-invite-default-agreement"] });
+      toast.success("Default agreement removed");
+    },
+    onError: (err) => toast.error(err?.response?.data?.message || "Failed to remove the agreement"),
+  });
+
+  const handleAgreementPick = (event) => {
+    const file = event.target.files?.[0] || null;
+    event.target.value = "";
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("The agreement must be a PDF file");
+      return;
+    }
+    if (file.size > MAX_AGREEMENT_BYTES) {
+      toast.error("The agreement must be 5 MB or smaller");
+      return;
+    }
+    saveAgreementMutation.mutate(file);
+  };
+
+  const handleConfirmInvite = () => {
+    if (!inviteLead || !defaultAgreement) return;
+    const leadMatchedTabs = combineRoles ? getMatchedTabs(inviteLead, tabs) : [activeTab];
+    const approved = leadMatchedTabs
+      .filter((tab) => normalizeReviewStatus(inviteLead.partnerStatuses?.[tab.roleFlag]) === "approved")
+      .map((tab) => tab.service);
+    sendInvite.mutate({
+      lead: inviteLead,
+      services: combineRoles ? approved : undefined,
+      service: combineRoles ? undefined : activeTab.service,
+    });
+    setInviteLead(null);
+  };
 
   const activeLeads = useMemo(() => {
     if (combineRoles) {
@@ -355,6 +507,9 @@ const RoleLeadsPage = ({
               (tab) => normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag]) === statusFilter,
             )
           : normalizeReviewStatus(lead.partnerStatuses?.[activeTab.roleFlag]) === statusFilter)) &&
+      (inviteFilter === "all" ||
+        (invitationStatuses[normalize(getEmail(lead))]?.status || "not_invited") === inviteFilter) &&
+      matchesDateFilter(lead.createdAt, dateFilter) &&
       (!query ||
         [
           getName(lead),
@@ -369,28 +524,7 @@ const RoleLeadsPage = ({
           .filter(Boolean)
           .some((value) => normalize(value).includes(query))),
     );
-  }, [activeLeads, activeTab.roleFlag, combineRoles, reviewStatuses, searchQuery, statusFilter, tabs]);
-
-  const reviewCounts = useMemo(
-    () =>
-      activeLeads.reduce(
-        (counts, lead) => {
-          if (combineRoles) {
-            getMatchedTabs(lead, tabs).forEach((tab) => {
-              counts[normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag])] += 1;
-            });
-            return counts;
-          }
-          const status = normalizeReviewStatus(
-            lead.partnerStatuses?.[activeTab.roleFlag],
-          );
-          counts[status] += 1;
-          return counts;
-        },
-        { pending: 0, approved: 0, rejected: 0 },
-      ),
-    [activeLeads, activeTab.roleFlag, combineRoles, tabs],
-  );
+  }, [activeLeads, activeTab.roleFlag, combineRoles, dateFilter, invitationStatuses, inviteFilter, reviewStatuses, searchQuery, statusFilter, tabs]);
 
   const thisWeek = useMemo(() => {
     const weekStart = new Date();
@@ -399,6 +533,32 @@ const RoleLeadsPage = ({
       (lead) => lead.createdAt && new Date(lead.createdAt) >= weekStart,
     ).length;
   }, [activeLeads]);
+
+  const lifecycleStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const last30Days = new Date(today);
+    last30Days.setDate(last30Days.getDate() - 29);
+    const leadHasStatus = (lead, status) => {
+      const leadTabs = combineRoles ? getMatchedTabs(lead, tabs) : [activeTab];
+      return leadTabs.some(
+        (tab) => normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag]) === status,
+      );
+    };
+    return {
+      newToday: activeLeads.filter((lead) => {
+        const createdAt = new Date(lead.createdAt);
+        return !Number.isNaN(createdAt.getTime()) && createdAt >= today;
+      }).length,
+      last30Days: activeLeads.filter((lead) => {
+        const createdAt = new Date(lead.createdAt);
+        return !Number.isNaN(createdAt.getTime()) && createdAt >= last30Days;
+      }).length,
+      pending: activeLeads.filter((lead) => leadHasStatus(lead, "pending")).length,
+      contacted: activeLeads.filter((lead) => leadHasStatus(lead, "contacted")).length,
+      approved: activeLeads.filter((lead) => leadHasStatus(lead, "approved")).length,
+    };
+  }, [activeLeads, activeTab, combineRoles, tabs]);
 
   const selectedLead = useMemo(
     () => leads.find((lead) => (lead._id || lead.id) === selectedLeadId),
@@ -462,13 +622,15 @@ const RoleLeadsPage = ({
             </div>
           ) : (
             <>
-              <div className={`grid shrink-0 grid-cols-2 gap-3 ${reviewStatuses ? "xl:grid-cols-4" : "md:grid-cols-3"}`}>
+              <div className={`grid shrink-0 grid-cols-2 gap-3 ${reviewStatuses ? "md:grid-cols-3 xl:grid-cols-6" : "md:grid-cols-3"}`}>
                 <StatTile label="Total Leads" value={activeLeads.length} icon={Target} tone="slate" />
                 {reviewStatuses ? (
                   <>
-                    <StatTile label="Pending Review" value={reviewCounts.pending} icon={Clock} tone="amber" />
-                    <StatTile label="Approved" value={reviewCounts.approved} icon={CheckCircle2} tone="emerald" />
-                    <StatTile label="Rejected" value={reviewCounts.rejected} icon={XCircle} tone="rose" />
+                    <StatTile label="New Today" value={lifecycleStats.newToday} icon={CalendarDays} tone="indigo" />
+                    <StatTile label="Last 30 Days" value={lifecycleStats.last30Days} icon={CalendarRange} tone="sky" />
+                    <StatTile label="Pending Review" value={lifecycleStats.pending} icon={Clock} tone="amber" />
+                    <StatTile label="Contacted" value={lifecycleStats.contacted} icon={Phone} tone="blue" />
+                    <StatTile label="Approved Leads" value={lifecycleStats.approved} icon={CheckCircle2} tone="blue" />
                   </>
                 ) : (
                   <>
@@ -479,7 +641,7 @@ const RoleLeadsPage = ({
               </div>
 
               <div className="flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white/80 shadow-sm backdrop-blur-md">
-                <div className="flex flex-col gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:flex-row sm:items-center sm:p-4 lg:p-5">
+                <div className="flex flex-col items-stretch gap-3 border-b border-slate-100/60 bg-slate-50/50 p-3 sm:flex-row sm:items-center sm:p-4 lg:p-5">
                   <div className="relative min-w-[180px] flex-1">
                     <Search
                       className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
@@ -494,16 +656,17 @@ const RoleLeadsPage = ({
                     />
                   </div>
                   {reviewStatuses ? (
-                    <div className="flex items-center gap-2 sm:shrink-0">
-                      <div className="relative min-w-[160px] flex-1 sm:flex-none">
+                    <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto sm:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div className="relative shrink-0">
                         <select
                           value={statusFilter}
                           onChange={(event) => setStatusFilter(event.target.value)}
                           aria-label="Filter partner leads by status"
-                          className="w-full appearance-none rounded-lg border border-slate-200/60 bg-white py-2.5 pl-3.5 pr-9 text-[12px] font-pmedium text-slate-700 outline-none transition-all focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20"
+                          className={`appearance-none rounded-lg border bg-white py-2 pl-3 pr-8 text-[11px] font-pmedium outline-none transition-all focus:ring-2 focus:ring-[#2563EB]/20 ${statusFilter === "all" ? "border-slate-200/60 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
                         >
                           <option value="all">All statuses</option>
                           <option value="pending">Pending</option>
+                          <option value="contacted">Contacted</option>
                           <option value="approved">Approved</option>
                           <option value="rejected">Rejected</option>
                         </select>
@@ -513,9 +676,42 @@ const RoleLeadsPage = ({
                           className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400"
                         />
                       </div>
-                      <span className="whitespace-nowrap text-[10px] font-pmedium text-slate-400">
+                      {inviteEndpoint ? (
+                        <select
+                          value={inviteFilter}
+                          onChange={(event) => setInviteFilter(event.target.value)}
+                          aria-label="Filter partner leads by invite status"
+                          className={`shrink-0 rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${inviteFilter === "all" ? "border-slate-200/60 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
+                        >
+                          <option value="all">All invites</option>
+                          <option value="not_invited">Not Invited</option>
+                          <option value="invite_sent">Invite Sent</option>
+                          <option value="joined">Joined</option>
+                        </select>
+                      ) : null}
+                      <select
+                        value={dateFilter}
+                        onChange={(event) => setDateFilter(event.target.value)}
+                        aria-label="Filter leads by date"
+                        className={`shrink-0 rounded-lg border bg-white px-2.5 py-2 text-[11px] font-pmedium outline-none focus:ring-2 focus:ring-[#2563EB]/20 ${dateFilter === "all" ? "border-slate-200/60 text-slate-600" : "border-[#2563EB]/40 text-[#2563EB]"}`}
+                      >
+                        <option value="all">Any date</option>
+                        <option value="today">Today</option>
+                        <option value="7d">Last 7 days</option>
+                        <option value="30d">Last 30 days</option>
+                      </select>
+                      {statusFilter !== "all" || inviteFilter !== "all" || dateFilter !== "all" ? (
+                        <button
+                          type="button"
+                          onClick={() => { setStatusFilter("all"); setInviteFilter("all"); setDateFilter("all"); }}
+                          className="shrink-0 text-[11px] font-pmedium text-slate-500 underline hover:text-slate-800"
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                      {/* <span className="whitespace-nowrap text-[10px] font-pmedium text-slate-400">
                         {filteredLeads.length} of {activeLeads.length}
-                      </span>
+                      </span> */}
                     </div>
                   ) : null}
                 </div>
@@ -531,153 +727,150 @@ const RoleLeadsPage = ({
                   </div>
                 ) : (
                   <div className="flex-1 overflow-x-auto">
-                    <table className="w-full min-w-[860px] text-left">
-                      <thead className="border-b border-slate-100/60 bg-slate-50/50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                    <table className="w-max min-w-full table-auto bg-white text-left">
+                      <thead className="border-b border-slate-100 bg-slate-50 text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
                         <tr>
-                          <th className="px-5 py-4">Name</th>
-                          <th className="px-5 py-4">Contact</th>
-                          <th className="px-5 py-4">LinkedIn Profile</th>
-                          <th className="px-5 py-4">Nationality</th>
-                          <th className="px-5 py-4">Date</th>
+                          <th className="whitespace-nowrap px-5 py-4">Sr No</th>
+                          <th className="whitespace-nowrap px-5 py-4">Lead</th>
+                          <th className="whitespace-nowrap px-5 py-4">Contact</th>
+                          <th className="whitespace-nowrap px-5 py-4">Nationality</th>
+                          {reviewStatuses && combineRoles ? (
+                            <th className="whitespace-nowrap px-5 py-4">Requested Service</th>
+                          ) : null}
+                          <th className="whitespace-nowrap px-5 py-4">Date</th>
                           {reviewStatuses ? (
-                            <th className="px-5 py-4 text-center">
-                              {combineRoles ? "Requested Services" : "Status"}
+                            <th className="whitespace-nowrap px-5 py-4 text-center">
+                              Status
                             </th>
                           ) : null}
-                          <th className="px-5 py-4 text-center">Actions</th>
+                          {reviewStatuses && inviteEndpoint ? (
+                            <>
+                              <th className="whitespace-nowrap px-5 py-4">Invite Status</th>
+                              <th className="whitespace-nowrap px-5 py-4 text-center">Invite</th>
+                            </>
+                          ) : null}
+                          <th className={`whitespace-nowrap px-5 py-4 text-center ${stickyActionHeaderClass}`}>Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100/60">
                         {filteredLeads.map((lead, index) => {
                           const leadId = lead._id || lead.id;
                           const isActive = lead[activeTab.roleFlag] === true;
+                          const matchedTabs = getMatchedTabs(lead, tabs);
+                          // One shared status per lead when several services were
+                          // requested — approving it approves every requested
+                          // service at once, never some approved and some not.
                           const reviewStatus = normalizeReviewStatus(
-                            lead.partnerStatuses?.[activeTab.roleFlag],
+                            lead.partnerStatuses?.[(combineRoles ? matchedTabs[0] : activeTab)?.roleFlag],
                           );
+                          const invitationState = getInvitationState(lead);
+                          const hasJoined = invitationState === "joined";
+                          const approvedServices = matchedTabs
+                            .filter(
+                              (tab) =>
+                                normalizeReviewStatus(lead.partnerStatuses?.[tab.roleFlag]) ===
+                                "approved",
+                            )
+                            .map((tab) => tab.service);
                           return (
                             <tr
                               key={leadId || index}
-                              className="transition-colors hover:bg-slate-50/50"
+                              className="group transition-colors hover:bg-slate-50"
                             >
-                              <td className="px-5 py-4">
+                              <td className="whitespace-nowrap px-5 py-4 text-[12px] font-pmedium text-slate-400">
+                                {index + 1}
+                              </td>
+                              <td className="whitespace-nowrap px-5 py-4">
                                 <div className="flex items-center gap-2.5">
                                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-[10px] font-pmedium text-white shadow-sm">
                                     {getInitials(getName(lead))}
                                   </div>
-                                  <span className="max-w-[170px] truncate text-[12px] font-pmedium text-slate-900">
-                                    {getName(lead)}
-                                  </span>
+                                  <div>
+                                    <p className="whitespace-nowrap text-[12px] font-pmedium text-slate-900" title={getName(lead)}>{getName(lead)}</p>
+                                    <p className="whitespace-nowrap text-[10px] font-pmedium text-slate-500" title={getEmail(lead)}>{getEmail(lead)}</p>
+                                  </div>
                                 </div>
                               </td>
-                              <td className="px-5 py-4">
-                                <div className="space-y-0.5 text-[11px] font-pmedium text-slate-600">
+                              <td className="whitespace-nowrap px-5 py-4">
+                                <div className="text-[11px] font-pmedium text-slate-600">
                                   <p className="flex items-center gap-1">
                                     <Phone size={10} className="text-slate-400" />
                                     {getPhone(lead)}
                                   </p>
-                                  <p className="flex items-center gap-1">
-                                    <Mail size={10} className="text-slate-400" />
-                                    {getEmail(lead)}
-                                  </p>
                                 </div>
                               </td>
-                              <td
-                                className="max-w-[180px] truncate px-5 py-4 text-[12px] font-pmedium text-slate-700"
-                                title={lead.linkedinProfile || ""}
-                              >
-                                {lead.linkedinProfile || "--"}
-                              </td>
-                              <td className="px-5 py-4 text-[12px] font-pmedium text-slate-700">
+                              <td className="whitespace-nowrap px-5 py-4 text-[12px] font-pmedium text-slate-700">
                                 {lead.currentCountry || lead.country || "--"}
                               </td>
-                              <td className="px-5 py-4 text-[11px] font-pmedium text-slate-500">
+                              {reviewStatuses && combineRoles ? (
+                                <td className="whitespace-nowrap px-5 py-4">
+                                  <RequestedServiceBadges tabs={matchedTabs} />
+                                </td>
+                              ) : null}
+                              <td className="whitespace-nowrap px-5 py-4 text-[11px] font-pmedium text-slate-500">
                                 {formatDateLabel(lead.createdAt)}
                               </td>
                               {reviewStatuses ? (
-                                <td className="px-5 py-4 text-center">
-                                  {combineRoles ? (
-                                    <div className="flex flex-col items-start gap-1.5">
-                                      {getMatchedTabs(lead, tabs).map((tab) => {
-                                        const tabStatus = normalizeReviewStatus(
-                                          lead.partnerStatuses?.[tab.roleFlag],
+                                <td className="whitespace-nowrap px-5 py-4 text-center">
+                                  <div className="relative mx-auto min-w-[112px]">
+                                    <select
+                                      value={reviewStatus}
+                                      onChange={(event) => {
+                                        const nextStatus = event.target.value;
+                                        const rolesToUpdate = combineRoles
+                                          ? matchedTabs.map((tab) => tab.roleFlag)
+                                          : [activeTab.roleFlag];
+                                        rolesToUpdate.forEach((role) =>
+                                          updateStatus.mutate({ leadId, role, status: nextStatus }),
                                         );
-                                        return (
-                                          <div key={tab.slug} className="flex items-center gap-1.5">
-                                            <span
-                                              className="min-w-[110px] truncate text-left text-[9px] font-pmedium uppercase tracking-wider text-slate-500"
-                                              title={tab.label}
-                                            >
-                                              {tab.label}
-                                            </span>
-                                            <div className="relative">
-                                              <select
-                                                value={tabStatus}
-                                                onChange={(event) =>
-                                                  updateStatus.mutate({
-                                                    leadId,
-                                                    role: tab.roleFlag,
-                                                    status: event.target.value,
-                                                  })
-                                                }
-                                                disabled={updateStatus.isPending}
-                                                aria-label={`Review status for ${getName(lead)} - ${tab.label}`}
-                                                className={`appearance-none rounded-full border py-1 pl-3 pr-7 text-[9px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[tabStatus]}`}
-                                              >
-                                                <option value="pending">Pending</option>
-                                                <option value="approved">Approved</option>
-                                                <option value="rejected">Rejected</option>
-                                              </select>
-                                              <ChevronDown
-                                                size={12}
-                                                aria-hidden="true"
-                                                className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-60"
-                                              />
-                                            </div>
-                                            {inviteEndpoint ? (
-                                              <button
-                                                type="button"
-                                                onClick={() => sendInvite.mutate({ lead, service: tab.service })}
-                                                disabled={tabStatus !== "approved" || sendInvite.isPending}
-                                                title={tabStatus === "approved" ? `Send invite for ${tab.label}` : "Approve this service first"}
-                                                aria-label={`Send partner invite for ${tab.label}: ${getName(lead)}`}
-                                                className="shrink-0 rounded-lg bg-blue-100 p-1 text-blue-700 transition-all hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-40"
-                                              >
-                                                <Send size={13} strokeWidth={2.5} />
-                                              </button>
-                                            ) : null}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : (
-                                    <div className="relative mx-auto w-[132px]">
-                                      <select
-                                        value={reviewStatus}
-                                        onChange={(event) =>
-                                          updateStatus.mutate({
-                                            leadId,
-                                            role: activeTab.roleFlag,
-                                            status: event.target.value,
-                                          })
-                                        }
-                                        disabled={updateStatus.isPending}
-                                        aria-label={`Review status for ${getName(lead)}`}
-                                        className={`w-full appearance-none rounded-full border py-2 pl-4 pr-9 text-[10px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[reviewStatus]}`}
-                                      >
-                                        <option value="pending">Pending</option>
-                                        <option value="approved">Approved</option>
-                                        <option value="rejected">Rejected</option>
-                                      </select>
-                                      <ChevronDown
-                                        size={14}
-                                        aria-hidden="true"
-                                        className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-60"
-                                      />
-                                    </div>
-                                  )}
+                                      }}
+                                      disabled={updateStatus.isPending || hasJoined}
+                                      aria-label={`Review status for ${getName(lead)}`}
+                                      title={combineRoles ? "Approving/rejecting applies to every requested service at once" : undefined}
+                                      className={`w-full appearance-none rounded-full border py-2 pl-4 pr-9 text-[10px] font-pmedium uppercase tracking-wider outline-none transition-colors focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 ${reviewStatusTone[reviewStatus]}`}
+                                    >
+                                      <option value="pending">Pending</option>
+                                      <option value="contacted">Contacted</option>
+                                      <option value="approved">Approved</option>
+                                      <option value="rejected">Rejected</option>
+                                    </select>
+                                    <ChevronDown
+                                      size={14}
+                                      aria-hidden="true"
+                                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 opacity-60"
+                                    />
+                                  </div>
                                 </td>
                               ) : null}
-                              <td className="px-5 py-4 text-center">
+                              {reviewStatuses && inviteEndpoint ? (
+                                <td className="whitespace-nowrap px-5 py-4">
+                                  <span
+                                    className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-pmedium uppercase tracking-wider ${invitationStatusTone[invitationState]}`}
+                                  >
+                                    {invitationStatusLabel[invitationState]}
+                                  </span>
+                                  {invitationState === "invite_sent" && invitationStatuses[normalize(getEmail(lead))]?.updatedAt ? (
+                                    <p className="mt-1 text-[10px] font-pmedium text-slate-500">
+                                      Sent {formatDateLabel(invitationStatuses[normalize(getEmail(lead))].updatedAt)}
+                                    </p>
+                                  ) : null}
+                                </td>
+                              ) : null}
+                              {reviewStatuses && inviteEndpoint ? (
+                                <td className="whitespace-nowrap px-5 py-4 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setInviteLead(lead)}
+                                    disabled={(combineRoles ? approvedServices.length === 0 : reviewStatus !== "approved") || hasJoined || sendInvite.isPending}
+                                    title={hasJoined ? "Partner has already joined" : (combineRoles ? approvedServices.length > 0 : reviewStatus === "approved") ? "Send partner invite" : "Approve this lead first"}
+                                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[10px] font-pmedium transition ${(combineRoles ? approvedServices.length > 0 : reviewStatus === "approved") && !hasJoined ? "bg-blue-600 text-white hover:bg-blue-700" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}
+                                  >
+                                    <Send size={10} />
+                                    {sendInvite.isPending ? "Sending..." : invitationState === "invite_sent" ? "Resend" : "Invite"}
+                                  </button>
+                                </td>
+                              ) : null}
+                              <td className={`px-5 py-4 text-center ${stickyActionCellClass}`}>
                                 <div className="flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
@@ -704,18 +897,6 @@ const RoleLeadsPage = ({
                                     <Power size={15} strokeWidth={2.5} />
                                   </button>
                                 ) : null}
-                                {inviteEndpoint && !combineRoles ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => sendInvite.mutate({ lead, service: activeTab.service })}
-                                    disabled={reviewStatus !== "approved" || sendInvite.isPending}
-                                    title={reviewStatus === "approved" ? "Send partner invite" : "Approve this lead first"}
-                                    aria-label={`Send partner invite: ${getName(lead)}`}
-                                    className="rounded-lg bg-blue-100 p-1.5 text-blue-700 transition-all hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-40"
-                                  >
-                                    <Send size={15} strokeWidth={2.5} />
-                                  </button>
-                                ) : null}
                                 </div>
                               </td>
                             </tr>
@@ -740,8 +921,112 @@ const RoleLeadsPage = ({
         reviewStatuses={reviewStatuses}
         onClose={() => setSelectedLeadId(null)}
       />
+
+      {inviteEndpoint && inviteLead ? (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#0F172A]/40 p-3 backdrop-blur-sm"
+          onClick={() => setInviteLead(null)}
+        >
+          <div
+            className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-blue-50/30 p-5 sm:p-6">
+              <div className="min-w-0">
+                <h2 className="text-base font-pmedium tracking-tight text-slate-800">
+                  {getInvitationState(inviteLead) === "invite_sent" ? "Resend Invite" : "Send Invite"}
+                </h2>
+                <p className="mt-0.5 truncate text-[11px] font-pmedium text-slate-500">
+                  {getName(inviteLead)} &middot; {getEmail(inviteLead)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInviteLead(null)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3 p-5 sm:p-6">
+              <label className="block text-[10px] font-pmedium uppercase tracking-widest text-slate-500">
+                Agreement (required)
+              </label>
+              {defaultAgreement ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <a
+                    href={defaultAgreement.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex min-w-0 items-center gap-2 text-[12px] font-pmedium text-blue-600 hover:underline"
+                  >
+                    <Paperclip size={14} className="shrink-0" />
+                    <span className="truncate">{defaultAgreement.name}</span>
+                  </a>
+                  <span className="flex shrink-0 items-center gap-3 text-[11px] font-pmedium">
+                    <label className="cursor-pointer text-slate-600 hover:text-[#2563EB]">
+                      {saveAgreementMutation.isPending ? "Saving..." : "Replace"}
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        className="hidden"
+                        disabled={saveAgreementMutation.isPending}
+                        onChange={handleAgreementPick}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={removeAgreementMutation.isPending}
+                      onClick={() => removeAgreementMutation.mutate()}
+                      className="text-slate-500 hover:text-rose-600 disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </span>
+                </div>
+              ) : (
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 px-4 py-5 text-[12px] font-pmedium text-slate-600 transition-colors hover:border-[#2563EB] hover:text-[#2563EB]">
+                  <Paperclip size={14} />
+                  {saveAgreementMutation.isPending ? "Saving..." : "Upload agreement PDF to continue"}
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    disabled={saveAgreementMutation.isPending}
+                    onChange={handleAgreementPick}
+                  />
+                </label>
+              )}
+              <p className="text-[11px] font-pmedium leading-5 text-slate-500">
+                {defaultAgreement
+                  ? "This agreement is attached to every invite until you replace it. "
+                  : "An agreement is required before an invite can be sent. Upload it once and it's attached to every invite from now on. "}
+                The partner fills it in, then uploads it back — and ticks &quot;I agree&quot; — while creating their partner account.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2.5 border-t border-slate-100 bg-slate-50 p-4 sm:p-5">
+              <button
+                type="button"
+                onClick={() => setInviteLead(null)}
+                className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[12px] font-pmedium text-slate-600 shadow-sm transition-colors hover:bg-slate-100"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmInvite}
+                disabled={!defaultAgreement}
+                title={defaultAgreement ? undefined : "Upload the agreement first"}
+                className="flex-1 rounded-xl bg-[#2563EB] py-2.5 text-[12px] font-pmedium text-white shadow-sm transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#2563EB]"
+              >
+                {getInvitationState(inviteLead) === "invite_sent" ? "Resend invite" : "Send invite"} with agreement
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
 
-export default RoleLeadsPage;
+export default SharedLeadsReviewPage;

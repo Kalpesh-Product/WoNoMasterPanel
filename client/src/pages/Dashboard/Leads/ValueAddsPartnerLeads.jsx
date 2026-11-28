@@ -1,5 +1,5 @@
 import React from "react";
-import RoleLeadsPage from "./RoleLeadsPage";
+import SharedLeadsReviewPage from "./RoleLeadsPage";
 
 // Same "become a contributor" submission and lead collection as ContributorLeads —
 // these are just the 5 Value Adds Partner options from that same form/dropdown.
@@ -52,7 +52,7 @@ const PARTNER_TABS = [
 ];
 
 const ValueAddsPartnerLeads = () => (
-  <RoleLeadsPage
+  <SharedLeadsReviewPage
     tabs={PARTNER_TABS}
     basePath="/dashboard/value-adds-partner-leads"
     apiEndpoint="/api/contributor-leads"

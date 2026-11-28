@@ -49,6 +49,7 @@ const masterPanelModules = [
       { key: "dashboard.logs", label: "Logs" },
       { key: "dashboard.master-panel-analytics", label: "Master Panel Analytics" },
       { key: "dashboard.reviews", label: "Reviews" },
+      { key: "dashboard.onboarded-partners", label: "Value Adds Partners (New)" },
       { key: "dashboard.value-adds-partners", label: "Value Adds Partners" },
       { key: "dashboard.destinations-data", label: "Destinations Data" },
       { key: "dashboard.destination-data-analytics", label: "Destination Data Analytics" },
