@@ -115,8 +115,8 @@ const MasterPanelAnalytics = () => {
             <RangeTabs value={range} onChange={setRange} />
           </div>
 
-          <WonoLiveActiveUsers />
           <WonoHistoricalAnalytics range={range} />
+          <WonoLiveActiveUsers />
 
           {OVERALL_SECTIONS.map((section) => {
             const SectionIcon = section.icon;

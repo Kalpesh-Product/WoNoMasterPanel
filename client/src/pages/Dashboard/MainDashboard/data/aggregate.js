@@ -19,10 +19,15 @@ const itemDate = (item) => {
 // recognize.
 export const filterDataByRange = (data, range) => {
   const days = RANGE_DAYS[range];
-  if (!data || !days) return data;
+  if (!data || (!days && range !== "thisMonth")) return data;
 
   const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
+  if (range === "thisMonth") {
+    cutoff.setDate(1);
+    cutoff.setHours(0, 0, 0, 0);
+  } else {
+    cutoff.setDate(cutoff.getDate() - days);
+  }
 
   const filterArray = (items) =>
     items.filter((item) => {

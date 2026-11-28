@@ -3,6 +3,7 @@
 // filterDataByRange in MainDashboard/data/aggregate.js) — GA4's realtime
 // widgets use the same option keys so both systems stay consistent.
 export const RANGE_OPTIONS = [
+  { key: "thisMonth", label: "This Month" },
   { key: "7daysAgo", label: "Last 7 Days" },
   { key: "30daysAgo", label: "Last 30 Days" },
   { key: "90daysAgo", label: "Last 90 Days" },
@@ -10,7 +11,7 @@ export const RANGE_OPTIONS = [
 ];
 
 const RangeTabs = ({ value, onChange }) => (
-  <div data-tour="master-panel-analytics-range" className="flex gap-1.5 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm shrink-0">
+  <div data-tour="master-panel-analytics-range" className="flex w-full max-w-full shrink-0 gap-1.5 overflow-x-auto rounded-2xl border border-slate-100 bg-white p-1 shadow-sm md:w-auto [&::-webkit-scrollbar]:hidden">
     {RANGE_OPTIONS.map((option) => (
       <button
         type="button"
